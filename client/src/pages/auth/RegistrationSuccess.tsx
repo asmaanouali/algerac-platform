@@ -1,0 +1,1 @@
+export default function RegistrationSuccess() { return <div>Registration Success</div> }

@@ -19,18 +19,27 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
-    private String userType; // "OEC" ou "EXPERT"
-    
-    // Champs communs
+    // COMMON FIELDS (matching TypeScript schema)
     @Column(nullable = false, unique = true)
     private String email;
     
     @Column(nullable = false)
-    private String telephone;
+    private String password; // BCrypt hash
     
-    // Champs pour OEC
-    private String nomOrganisme;
+    @Column(nullable = false)
+    private String fullName; // Combine nom + prenom for experts, or organization name for OEC
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+    
+    private String organizationName; // For OEC entities
+    private String phone;
+    
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+    
+    // OEC SPECIFIC FIELDS
     private String typeOrganisme;
     private String adresseSiege;
     private String nomRepresentant;
@@ -39,7 +48,7 @@ public class User {
     private String emailProfessionnel;
     private String porteeAccreditation;
     
-    // Champs pour Expert
+    // EXPERT SPECIFIC FIELDS
     private String nom;
     private String prenom;
     private String specialite;
@@ -48,19 +57,30 @@ public class User {
     private String langues;
     private String disponibilite;
     
-    @Column(nullable = false)
+    // STATUS
     private String status; // "PENDING", "APPROVED", "REJECTED"
-    
-    @Column(nullable = false)
-    private LocalDateTime dateInscription;
-    
     private LocalDateTime dateApprobation;
     
     @PrePersist
     protected void onCreate() {
-        dateInscription = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
         if (status == null) {
             status = "PENDING";
         }
+        // Auto-fill fullName if not set
+        if (fullName == null) {
+            if (role == UserRole.EXPERT && nom != null && prenom != null) {
+                fullName = prenom + " " + nom;
+            } else if (organizationName != null) {
+                fullName = organizationName;
+            }
+        }
+    }
+    
+    // Helper method to get role as lowercase string (for JSON)
+    public String getRoleLowercase() {
+        return role != null ? role.name().toLowerCase() : null;
     }
 }

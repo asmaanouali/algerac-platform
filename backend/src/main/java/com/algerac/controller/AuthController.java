@@ -1,10 +1,9 @@
 package com.algerac.controller;
 
-import com.algerac.dto.ApiResponse;
-import com.algerac.dto.ExpertSignupRequest;
-import com.algerac.dto.OECSignupRequest;
+import com.algerac.dto.*;
 import com.algerac.model.User;
 import com.algerac.service.AuthService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +18,75 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
 public class AuthController {
     
     private final AuthService authService;
     
+    // === NEW: Login endpoint ===
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpSession session,
+            BindingResult bindingResult) {
+        
+        if (bindingResult.hasErrors()) {
+            String errors = bindingResult.getAllErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining(", "));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(errors));
+        }
+        
+        try {
+            User user = authService.authenticate(request.getEmail(), request.getPassword());
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Email ou mot de passe incorrect"));
+            }
+            
+            // Store user in session
+            session.setAttribute("userId", user.getId());
+            session.setAttribute("userRole", user.getRole());
+            
+            log.info("Connexion réussie pour : {}", user.getEmail());
+            
+            return ResponseEntity.ok(UserDTO.fromUser(user));
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la connexion : {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erreur inattendue lors de la connexion", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Une erreur est survenue"));
+        }
+    }
+    
+    // === NEW: Logout endpoint ===
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpSession session) {
+        session.invalidate();
+        return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie"));
+    }
+    
+    // === NEW: Get current user endpoint ===
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        User user = authService.getUserById(userId);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        return ResponseEntity.ok(UserDTO.fromUser(user));
+    }
+    
+    // === EXISTING: OEC Registration ===
     @PostMapping("/signup/oec")
     public ResponseEntity<ApiResponse> registerOEC(
             @Valid @RequestBody OECSignupRequest request,
@@ -31,7 +94,6 @@ public class AuthController {
         
         log.info("Réception d'une demande d'inscription OEC : {}", request.getNomOrganisme());
         
-        // Vérifier les erreurs de validation
         if (bindingResult.hasErrors()) {
             String errors = bindingResult.getAllErrors().stream()
                     .map(error -> error.getDefaultMessage())
@@ -61,6 +123,7 @@ public class AuthController {
         }
     }
     
+    // === EXISTING: Expert Registration ===
     @PostMapping("/signup/expert")
     public ResponseEntity<ApiResponse> registerExpert(
             @Valid @RequestBody ExpertSignupRequest request,
@@ -69,7 +132,6 @@ public class AuthController {
         log.info("Réception d'une demande d'inscription Expert : {} {}", 
                 request.getNom(), request.getPrenom());
         
-        // Vérifier les erreurs de validation
         if (bindingResult.hasErrors()) {
             String errors = bindingResult.getAllErrors().stream()
                     .map(error -> error.getDefaultMessage())

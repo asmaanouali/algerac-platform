@@ -1,58 +1,97 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  bigint,
+  timestamp,
+  boolean,
+  integer,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === ENUMS ===
-export const userRoles = ["admin", "ra", "oec", "expert"] as const;
+export const userTypes = ["admin", "ra", "oec", "expert"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
-export const requestStatuses = ["draft", "submitted", "receivability", "planning", "evaluation", "review", "decision", "active", "suspended"] as const;
+export const requestStatuses = [
+  "draft",
+  "submitted",
+  "receivability",
+  "planning",
+  "evaluation",
+  "review",
+  "decision",
+  "active",
+  "suspended",
+] as const;
 
-// === USERS ===
+// === USERS (ALIGNÉ À LA BASE) ===
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number" }).primaryKey(),
+
+  nom: text("nom"),
+  prenom: text("prenom"),
+
   email: text("email").notNull().unique(),
+  emailProfessionnel: text("email_professionnel"),
+
   password: text("password").notNull(),
-  fullName: text("full_name").notNull(),
-  role: text("role", { enum: userRoles }).notNull().default("oec"),
-  organizationName: text("organization_name"), // For OEC
-  phone: text("phone"),
-  createdAt: timestamp("created_at").defaultNow(),
+
+  telephone: text("telephone"),
+  telephoneDirect: text("telephone_direct"),
+
+  fonction: text("fonction"),
+  experience: text("experience"),
+  diplomes: text("diplomes"),
+  specialite: text("specialite"),
+  langues: text("langues"),
+
+  nomOrganisme: text("nom_organisme"),
+  typeOrganisme: text("type_organisme"),
+  porteeAccreditation: text("portee_accreditation"),
+
+  adresseSiege: text("adresse_siege"),
+  disponibilite: text("disponibilite"),
+
+  status: text("status"),
+  userType: text("user_type", { enum: userTypes }),
+
+  dateInscription: timestamp("date_inscription", { withTimezone: true }),
+  dateApprobation: timestamp("date_approbation", { withTimezone: true }),
 });
 
-// === ACCREDITATION REQUESTS (Dossiers) ===
+// === ACCREDITATION REQUESTS ===
 export const accreditationRequests = pgTable("accreditation_requests", {
-  id: serial("id").primaryKey(),
-  referenceNumber: text("reference_number").notNull().unique(), // e.g., D-2024-001
-  oecId: integer("oec_id").notNull(), // Link to user
+  id: integer("id").primaryKey(),
+  referenceNumber: text("reference_number").notNull().unique(),
+  oecId: bigint("oec_id", { mode: "number" }).notNull(),
   type: text("type", { enum: requestTypes }).notNull(),
-  domain: text("domain").notNull(), // e.g., "Laboratoire Essais", "Inspection"
+  domain: text("domain").notNull(),
   status: text("status", { enum: requestStatuses }).notNull().default("draft"),
-  progress: integer("progress").default(0), // 0-100
+  progress: integer("progress").default(0),
   submissionDate: timestamp("submission_date"),
   nextActionDate: timestamp("next_action_date"),
-  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // === DOCUMENTS ===
 export const documents = pgTable("documents", {
-  id: serial("id").primaryKey(),
-  requestId: integer("request_id"), // Optional, some docs might be general
-  uploaderId: integer("uploader_id").notNull(),
+  id: integer("id").primaryKey(),
+  requestId: integer("request_id"),
+  uploaderId: bigint("uploader_id", { mode: "number" }).notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // e.g., "manual", "procedure", "form"
+  type: text("type").notNull(),
   url: text("url").notNull(),
-  status: text("status").default("pending"), // pending, approved, rejected
+  status: text("status").default("pending"),
   uploadDate: timestamp("upload_date").defaultNow(),
 });
 
 // === NOTIFICATIONS ===
 export const notifications = pgTable("notifications", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  id: integer("id").primaryKey(),
+  userId: bigint("user_id", { mode: "number" }).notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
-  type: text("type").default("info"), // info, warning, success, error
+  type: text("type").default("info"),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -72,9 +111,21 @@ export const requestsRelations = relations(accreditationRequests, ({ one, many }
 }));
 
 // === ZOD SCHEMAS ===
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertRequestSchema = createInsertSchema(accreditationRequests).omit({ id: true, createdAt: true, referenceNumber: true });
-export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadDate: true });
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  dateInscription: true,
+  dateApprobation: true,
+});
+
+export const insertRequestSchema = createInsertSchema(accreditationRequests).omit({
+  id: true,
+  referenceNumber: true,
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  uploadDate: true,
+});
 
 // === TYPES ===
 export type User = typeof users.$inferSelect;
@@ -85,6 +136,6 @@ export type Document = typeof documents.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 
 export type LoginRequest = {
-  email: string; // Using email instead of username
+  email: string;
   password: string;
 };

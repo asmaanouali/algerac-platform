@@ -23,7 +23,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(notificationEmail);
-        message.setSubject("Nouvelle inscription OEC - " + user.getNomOrganisme());
+        message.setSubject("Nouvelle inscription OEC - " + user.getOrganizationName());
         
         String emailBody = String.format("""
             Nouvelle demande d'inscription OEC reçue :
@@ -50,17 +50,17 @@ public class EmailService {
             ---
             Cette demande nécessite votre approbation.
             """,
-            user.getNomOrganisme(),
+            user.getOrganizationName(),
             user.getTypeOrganisme(),
             user.getAdresseSiege(),
-            user.getTelephone(),
+            user.getPhone(),
             user.getEmail(),
             user.getNomRepresentant(),
             user.getFonction(),
             user.getTelephoneDirect(),
             user.getEmailProfessionnel(),
             user.getPorteeAccreditation() != null ? user.getPorteeAccreditation() : "Non spécifiée",
-            user.getDateInscription(),
+            user.getCreatedAt(),
             user.getStatus()
         );
         
@@ -100,13 +100,13 @@ public class EmailService {
             user.getNom(),
             user.getPrenom(),
             user.getEmail(),
-            user.getTelephone(),
+            user.getPhone(),
             user.getSpecialite(),
             user.getExperience() != null ? user.getExperience() : "Non spécifiée",
             user.getDiplomes() != null ? user.getDiplomes() : "Non spécifiés",
             user.getLangues() != null ? user.getLangues() : "Non spécifiées",
             user.getDisponibilite() != null ? user.getDisponibilite() : "Non spécifiée",
-            user.getDateInscription(),
+            user.getCreatedAt(),
             user.getStatus()
         );
         
@@ -134,7 +134,7 @@ public class EmailService {
             Cordialement,
             L'équipe ALGERAC
             """,
-            user.getUserType().equals("OEC") ? user.getNomOrganisme() : user.getPrenom()
+            user.getFullName()
         );
         
         message.setText(emailBody);

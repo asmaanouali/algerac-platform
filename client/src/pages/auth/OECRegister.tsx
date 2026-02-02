@@ -13,9 +13,55 @@ export default function OECRegister() {
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
 
+  // États pour le formulaire
+  const [formData, setFormData] = useState({
+    // Step 1 - Organisme
+    nomOrganisme: "",
+    typeOrganisme: "",
+    adresseSiege: "",
+    telephone: "",
+    email: "",
+    // Step 2 - Représentant
+    nomRepresentant: "",
+    fonction: "",
+    telephoneDirect: "",
+    emailProfessionnel: "",
+    // Step 3 - Documents
+    porteeAccreditation: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const next = () => setStep(s => Math.min(s + 1, 3));
   const prev = () => setStep(s => Math.max(s - 1, 1));
-  const submit = () => setLocation("/auth/success");
+  
+  const submit = async () => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/signup/oec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          userType: "OEC"
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erreur lors de l'inscription");
+      }
+      
+      setLocation("/auth/success");
+    } catch (err: any) {
+      setError(err.message || "Une erreur s'est produite. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
@@ -66,11 +112,18 @@ export default function OECRegister() {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>Raison Sociale / Nom de l'organisme</Label>
-                      <Input placeholder="Entrez le nom" />
+                      <Input 
+                        placeholder="Entrez le nom" 
+                        value={formData.nomOrganisme}
+                        onChange={(e) => setFormData({...formData, nomOrganisme: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Type d'organisme</Label>
-                      <Select>
+                      <Select 
+                        value={formData.typeOrganisme}
+                        onValueChange={(value) => setFormData({...formData, typeOrganisme: value})}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner..." />
                         </SelectTrigger>
@@ -83,15 +136,28 @@ export default function OECRegister() {
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label>Adresse du siège social</Label>
-                      <Input placeholder="Adresse complète" />
+                      <Input 
+                        placeholder="Adresse complète" 
+                        value={formData.adresseSiege}
+                        onChange={(e) => setFormData({...formData, adresseSiege: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Téléphone</Label>
-                      <Input placeholder="+213 ..." />
+                      <Input 
+                        placeholder="+213 ..." 
+                        value={formData.telephone}
+                        onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Email officiel</Label>
-                      <Input type="email" placeholder="contact@organisme.dz" />
+                      <Input 
+                        type="email" 
+                        placeholder="contact@organisme.dz" 
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -108,19 +174,36 @@ export default function OECRegister() {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2 md:col-span-2">
                       <Label>Nom et Prénom du représentant légal</Label>
-                      <Input placeholder="Nom complet" />
+                      <Input 
+                        placeholder="Nom complet" 
+                        value={formData.nomRepresentant}
+                        onChange={(e) => setFormData({...formData, nomRepresentant: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Fonction</Label>
-                      <Input placeholder="Directeur, Gérant, ..." />
+                      <Input 
+                        placeholder="Directeur, Gérant, ..." 
+                        value={formData.fonction}
+                        onChange={(e) => setFormData({...formData, fonction: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Téléphone direct</Label>
-                      <Input placeholder="+213 ..." />
+                      <Input 
+                        placeholder="+213 ..." 
+                        value={formData.telephoneDirect}
+                        onChange={(e) => setFormData({...formData, telephoneDirect: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label>Email professionnel</Label>
-                      <Input type="email" placeholder="r.legal@organisme.dz" />
+                      <Input 
+                        type="email" 
+                        placeholder="r.legal@organisme.dz" 
+                        value={formData.emailProfessionnel}
+                        onChange={(e) => setFormData({...formData, emailProfessionnel: e.target.value})}
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -137,7 +220,12 @@ export default function OECRegister() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Portée d'accréditation souhaitée</Label>
-                      <Textarea placeholder="Décrivez brièvement la portée..." className="min-h-[100px]" />
+                      <Textarea 
+                        placeholder="Décrivez brièvement la portée..." 
+                        className="min-h-[100px]"
+                        value={formData.porteeAccreditation}
+                        onChange={(e) => setFormData({...formData, porteeAccreditation: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Documents à joindre (Statuts, Registre de commerce, Organigramme)</Label>
@@ -151,6 +239,12 @@ export default function OECRegister() {
               )}
             </AnimatePresence>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 mt-6">
+                {error}
+              </div>
+            )}
+
             <div className="flex justify-between mt-8 pt-6 border-t">
               <Button variant="outline" onClick={prev} disabled={step === 1}>
                 Précédent
@@ -160,8 +254,12 @@ export default function OECRegister() {
                   Suivant <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button onClick={submit} className="bg-green-600 hover:bg-green-700">
-                  Soumettre la demande
+                <Button 
+                  onClick={submit} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={loading}
+                >
+                  {loading ? "Envoi en cours..." : "Soumettre la demande"}
                 </Button>
               )}
             </div>

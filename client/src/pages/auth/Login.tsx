@@ -93,7 +93,7 @@ export default function Login() {
                 placeholder="nom@exemple.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                className="h-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
@@ -108,7 +108,7 @@ export default function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-white border-gray-300 text-gray-900 pr-10"
+                  className="h-10 bg-white border-gray-300 text-gray-900 pr-10"
                 />
                 <button
                   type="button"
@@ -145,7 +145,7 @@ export default function Login() {
 
             {/* Login Button */}
             <Button
-              className="w-full h-12 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base"
+              className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base"
               asChild
             >
               <Link href="/oec">
@@ -157,17 +157,17 @@ export default function Login() {
             </Button>
 
             {/* Divider */}
-            <div className="text-center py-4">
+            <div className="text-center py-0">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
                 NOUVEAU SUR ALGERAC ?
               </span>
             </div>
 
             {/* Registration Buttons */}
-            <div className="space-y-3">
+            <div className="space-y-1">
               <Button
                 variant="outline"
-                className="w-full h-12 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
+                className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
                 asChild
               >
                 <Link href="/auth/register">

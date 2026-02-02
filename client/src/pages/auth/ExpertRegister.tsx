@@ -43,6 +43,22 @@ export default function ExpertRegister() {
   const [cv, setCV] = useState<File | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
+  // États pour l'API
+  const [formData, setFormData] = useState({
+    nom: "",
+    prenom: "",
+    email: "",
+    telephone: "",
+    specialite: "",
+    experience: "",
+    diplomes: "",
+    langues: "",
+    disponibilite: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+
   const addItem = (items: FormItem[], setItems: (items: FormItem[]) => void) => {
     setItems([...items, { id: Date.now() }]);
   };
@@ -103,6 +119,35 @@ export default function ExpertRegister() {
     }
   };
 
+  // Fonction de soumission
+  const handleSubmit = async () => {
+    setLoading(true);
+    setApiError("");
+    
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/signup/expert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          userType: "EXPERT"
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erreur lors de l'inscription");
+      }
+      
+      setLocation("/auth/success");
+    } catch (err: any) {
+      setApiError(err.message || "Une erreur s'est produite. Veuillez réessayer.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
       <div className="w-full max-w-5xl space-y-8">
@@ -128,13 +173,32 @@ export default function ExpertRegister() {
         <Card className="border-none shadow-xl">
           <CardContent className="p-8 space-y-10">
             
+            {apiError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <span>{apiError}</span>
+              </div>
+            )}
+
             {/* Section 1 - Identification */}
             <div className="space-y-6">
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">1 - Identification</h3>
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label>Nom</Label>
-                  <Input placeholder="Nom complet" />
+                  <Input 
+                    placeholder="Nom complet" 
+                    value={formData.nom}
+                    onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prénom</Label>
+                  <Input 
+                    placeholder="Prénom" 
+                    value={formData.prenom}
+                    onChange={(e) => setFormData({...formData, prenom: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Date de naissance</Label>
@@ -176,137 +240,85 @@ export default function ExpertRegister() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Photo</Label>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="w-full bg-white" onClick={() => document.getElementById('photo')?.click()}>
-                      <Upload className="w-4 h-4 mr-2" /> Choisir
+                  <Label>Photo d'identité</Label>
+                  <div className="flex items-center gap-4">
+                    <Button 
+                      variant="outline" 
+                      className="gap-2 bg-white" 
+                      onClick={() => document.getElementById('photo-file')?.click()}
+                      type="button"
+                    >
+                      <Upload className="w-4 h-4" /> Photo
                     </Button>
-                    <input type="file" id="photo" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                    <input 
+                      type="file" 
+                      id="photo-file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handlePhotoChange} 
+                    />
+                    <span className="text-xs text-slate-400 italic">
+                      {photo ? photo.name : 'Aucune photo'}
+                    </span>
                   </div>
-                  {photo && <span className="text-xs text-green-600">{photo.name}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Section Coordonnées */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">Coordonnées</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input 
+                    type="email" 
+                    placeholder="votre-email@example.com"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData({...formData, email: e.target.value});
+                      validateEmail(e.target.value, 'email');
+                    }}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Date d&apos;élaboration du CV</Label>
-                  <div className="relative">
-                    <Input 
-                      type="date" 
-                      className="pr-10"
-                    />
-                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <Label>Téléphone portable</Label>
+                  <Input 
+                    placeholder="+213 555 123 456"
+                    value={formData.telephone}
+                    onChange={(e) => {
+                      setFormData({...formData, telephone: e.target.value});
+                      validatePhone(e.target.value, 'telephone');
+                    }}
+                  />
+                  {errors.telephone && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.telephone}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Téléphone fixe</Label>
+                  <Input placeholder="+213 21 123 456" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Adresse</Label>
+                  <Input placeholder="Adresse complète" />
                 </div>
               </div>
             </div>
 
-            {/* Section 2 - Contacts */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">2 - Contacts</h3>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-sm">Domicile ou Entreprise</h4>
-                  <div className="space-y-2">
-                    <Label>Domicile</Label>
-                    <Input placeholder="Adresse domicile" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Entreprise</Label>
-                    <Input placeholder="Adresse entreprise" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-sm">Coordonnées</h4>
-                  <div className="space-y-2">
-                    <Label>Numéro de téléphone</Label>
-                    <Input 
-                      placeholder="+213 555 123 456" 
-                      onBlur={(e) => validatePhone(e.target.value, 'phone1')}
-                      className={errors.phone1 ? 'border-red-500' : ''}
-                    />
-                    {errors.phone1 && (
-                      <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.phone1}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Téléphone mobile</Label>
-                    <Input 
-                      placeholder="+213 666 123 456" 
-                      onBlur={(e) => validatePhone(e.target.value, 'mobile1')}
-                      className={errors.mobile1 ? 'border-red-500' : ''}
-                    />
-                    {errors.mobile1 && (
-                      <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.mobile1}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fax</Label>
-                    <Input placeholder="Numéro fax" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>E-mail</Label>
-                    <Input 
-                      type="email" 
-                      placeholder="email@exemple.com"
-                      onBlur={(e) => validateEmail(e.target.value, 'email')}
-                      className={errors.email ? 'border-red-500' : ''}
-                    />
-                    {errors.email && (
-                      <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.email}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 border-t pt-4">
-                <h4 className="font-semibold text-sm">Contact (en cas d&apos;urgences)</h4>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nom</Label>
-                    <Input placeholder="Nom du contact" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Numéro de téléphone</Label>
-                    <Input 
-                      placeholder="+213 555 123 456"
-                      onBlur={(e) => validatePhone(e.target.value, 'emergencyPhone')}
-                      className={errors.emergencyPhone ? 'border-red-500' : ''}
-                    />
-                    {errors.emergencyPhone && (
-                      <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.emergencyPhone}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Téléphone mobile</Label>
-                    <Input 
-                      placeholder="+213 666 123 456"
-                      onBlur={(e) => validatePhone(e.target.value, 'emergencyMobile')}
-                      className={errors.emergencyMobile ? 'border-red-500' : ''}
-                    />
-                    {errors.emergencyMobile && (
-                      <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>{errors.emergencyMobile}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3 - Formation(s) académique(s) */}
+            {/* Section 2 - Formations initiales */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">3 - Formation(s) académique(s)</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">2 - Formations initiales</h3>
                 <Button variant="outline" size="sm" onClick={() => addItem(formations, setFormations)}>
                   <Plus className="w-4 h-4 mr-2" /> Ajouter
                 </Button>
@@ -322,32 +334,39 @@ export default function ExpertRegister() {
                       </Button>
                     )}
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Date & durée</Label>
-                      <Input placeholder="Ex: 2015-2018 (3 ans)" />
+                      <Label>Diplôme obtenu</Label>
+                      <Input placeholder="Ex: Master, Licence..." />
                     </div>
                     <div className="space-y-2">
-                      <Label>Université / Institution</Label>
-                      <Input placeholder="Nom de l'institution" />
+                      <Label>Spécialité</Label>
+                      <Input 
+                        placeholder="Domaine de spécialité"
+                        onChange={(e) => {
+                          if (index === 0) {
+                            setFormData({...formData, specialite: e.target.value});
+                          }
+                        }}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cours / Spécialité</Label>
-                      <Input placeholder="Spécialité" />
+                      <Label>Établissement / Pays</Label>
+                      <Input placeholder="Nom de l'établissement" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Diplôme</Label>
-                      <Input placeholder="Diplôme obtenu" />
+                      <Label>Date d'obtention</Label>
+                      <Input type="date" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Section 3 - Autres Formations */}
+            {/* Section 3 - Autres formations */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">3 - Autres Formations</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">3 - Autres formations, stages, séminaires</h3>
                 <Button variant="outline" size="sm" onClick={() => addItem(autresFormations, setAutresFormations)}>
                   <Plus className="w-4 h-4 mr-2" /> Ajouter
                 </Button>
@@ -356,7 +375,7 @@ export default function ExpertRegister() {
               {autresFormations.map((formation, index) => (
                 <div key={formation.id} className="p-4 border rounded-lg space-y-4 bg-white">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">Autre formation {index + 1}</span>
+                    <span className="text-sm font-semibold">Formation/Stage {index + 1}</span>
                     {autresFormations.length > 1 && (
                       <Button variant="ghost" size="sm" onClick={() => removeItem(autresFormations, setAutresFormations, formation.id)}>
                         <Trash2 className="w-4 h-4 text-red-500" />
@@ -365,30 +384,30 @@ export default function ExpertRegister() {
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Date & durée</Label>
-                      <Input placeholder="Ex: Janvier 2020 (5 jours)" />
+                      <Label>Intitulé</Label>
+                      <Input placeholder="Titre de la formation" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Université / Institution</Label>
-                      <Input placeholder="Nom de l'institution" />
+                      <Label>Durée</Label>
+                      <Input placeholder="Ex: 3 jours, 2 semaines..." />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cours / Spécialité</Label>
-                      <Input placeholder="Spécialité" />
+                      <Label>Organisme</Label>
+                      <Input placeholder="Nom de l'organisme" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Diplôme</Label>
-                      <Input placeholder="Certificat / Attestation" />
+                      <Label>Date</Label>
+                      <Input type="date" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Section 4 - Expérience Professionnelle */}
+            {/* Section 4 - Expériences professionnelles */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">4 - Expérience Professionnelle</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">4 - Expériences professionnelles</h3>
                 <Button variant="outline" size="sm" onClick={() => addItem(experiences, setExperiences)}>
                   <Plus className="w-4 h-4 mr-2" /> Ajouter
                 </Button>
@@ -406,28 +425,30 @@ export default function ExpertRegister() {
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Date (du - au)</Label>
-                      <Input placeholder="Ex: 01/2020 - 12/2023" />
+                      <Label>Période (De - À)</Label>
+                      <div className="flex gap-2">
+                        <Input type="month" placeholder="De" />
+                        <Input type="month" placeholder="À" />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Organisme</Label>
-                      <Input placeholder="Nom de l'entreprise/organisme" />
+                      <Label>Fonction / Poste</Label>
+                      <Input placeholder="Votre fonction" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label>Poste occupé</Label>
-                      <Input placeholder="Intitulé du poste" />
+                      <Label>Employeur / Organisme</Label>
+                      <Input placeholder="Nom de l'employeur" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label>Activités principales</Label>
-                      <Textarea placeholder="Décrire les activités principales..." rows={3} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Domaine compétence actuel</Label>
-                      <Input placeholder="Domaine" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sous domaine</Label>
-                      <Input placeholder="Sous domaine" />
+                      <Label>Missions principales</Label>
+                      <Textarea 
+                        placeholder="Décrivez vos missions..."
+                        onChange={(e) => {
+                          if (index === 0) {
+                            setFormData({...formData, experience: e.target.value});
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -513,12 +534,18 @@ export default function ExpertRegister() {
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">7 - Connaissance Linguistique</h3>
               <p className="text-xs text-slate-500 italic">1 = Basique | 2 = Bien | 3 = Très bien | 4 = Excellent</p>
               <div className="space-y-4">
-                {['Arabe', 'Français', 'Anglais', 'Autre'].map((langue) => (
+                {['Arabe', 'Français', 'Anglais', 'Autre'].map((langue, idx) => (
                   <div key={langue} className="grid grid-cols-4 gap-4 items-center p-3 bg-slate-50 rounded">
                     <Label className="font-semibold">{langue}</Label>
                     <div className="space-y-1">
                       <Label className="text-xs text-slate-600">Lu</Label>
-                      <Select>
+                      <Select
+                        onValueChange={(value) => {
+                          if (idx === 0) {
+                            setFormData({...formData, langues: `${langue}: Lu-${value}`});
+                          }
+                        }}
+                      >
                         <SelectTrigger className="h-9 bg-white">
                           <SelectValue placeholder="-" />
                         </SelectTrigger>
@@ -568,7 +595,11 @@ export default function ExpertRegister() {
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">8 - Divers</h3>
               <div className="space-y-2">
                 <Label>Informations complémentaires</Label>
-                <Textarea placeholder="Informations complémentaires pertinentes..." rows={4} />
+                <Textarea 
+                  placeholder="Informations complémentaires pertinentes..." 
+                  rows={4}
+                  onChange={(e) => setFormData({...formData, disponibilite: e.target.value})}
+                />
               </div>
             </div>
 
@@ -597,8 +628,12 @@ export default function ExpertRegister() {
               </div>
             </div>
 
-            <Button className="w-full h-12 text-base font-bold" onClick={() => setLocation("/auth/success")}>
-              Soumettre ma candidature
+            <Button 
+              className="w-full h-10 text-base font-bold" 
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? "Envoi en cours..." : "Soumettre ma candidature"}
             </Button>
           </CardContent>
         </Card>

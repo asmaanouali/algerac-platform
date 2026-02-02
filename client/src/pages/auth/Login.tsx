@@ -15,15 +15,15 @@ export default function Login() {
     <div className="min-h-screen flex">
       {/* Left Section - Green Background with Logo - FIXED */}
       <div 
-        className="hidden lg:block lg:w-1/2 bg-[#0a2f2f] text-white fixed left-0 top-0 h-screen overflow-hidden"
+        className="hidden lg:block lg:w-1/2 bg-[#011515] text-white fixed left-0 top-0 h-screen overflow-hidden"
         style={{
-          backgroundImage: "url('public/background.png')",
+          backgroundImage: "url('/background.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
       >
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-[#0a2f2f]/80" />
+        <div className="absolute inset-0 bg-[#011515]/80" />
 
         {/* Centered Content Container */}
         <div className="relative z-10 h-full flex items-center justify-center p-12 lg:p-16">
@@ -31,7 +31,7 @@ export default function Login() {
             {/* Logo Section */}
             <div className="flex items-center gap-4">
               <img 
-                src="public/logoalgerac.png" 
+                src="/logoalgerac.png" 
                 alt="ALGERAC Logo" 
                 className="h-20 w-auto"
               />

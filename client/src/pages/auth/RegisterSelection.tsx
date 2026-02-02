@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Building2, UserRound, ArrowLeft } from "lucide-react";
+import { Building2, UserRound, ArrowLeft  } from "lucide-react";
 
 export default function RegisterSelection() {
   return (
@@ -22,10 +22,10 @@ export default function RegisterSelection() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <Link href="/auth/register/oec">
-            <Card className="hover:border-[#00A63E] cursor-pointer transition-colors group">
+            <Card className="hover:border-primary cursor-pointer transition-colors group">
               <CardContent className="pt-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-[#00A63E]/10 transition-colors">
-                  <Building2 className="w-8 h-8 text-slate-600 group-hover:text-[#00A63E] transition-colors" />
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary/10 transition-colors">
+                  <Building2 className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-lg font-bold">Organisme (OEC)</h3>
@@ -36,10 +36,10 @@ export default function RegisterSelection() {
           </Link>
 
           <Link href="/auth/register/expert">
-            <Card className="hover:border-[#00A63E] cursor-pointer transition-colors group">
+            <Card className="hover:border-primary cursor-pointer transition-colors group">
               <CardContent className="pt-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-[#00A63E]/10 transition-colors">
-                  <UserRound className="w-8 h-8 text-slate-600 group-hover:text-[#00A63E] transition-colors" />
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary/10 transition-colors">
+                  <UserRound className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-lg font-bold">Expert / Évaluateur / Formateur</h3>

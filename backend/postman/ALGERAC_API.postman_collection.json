@@ -1,0 +1,69 @@
+{
+  "info": {
+    "name": "ALGERAC Platform API",
+    "description": "Collection pour tester l'API ALGERAC",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/auth/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "health"]
+        }
+      }
+    },
+    {
+      "name": "Register OEC",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nomOrganisme\": \"Laboratoire National de Test\",\n  \"typeOrganisme\": \"lab\",\n  \"adresseSiege\": \"123 Rue Mohammed V, Alger\",\n  \"telephone\": \"+213 21 123456\",\n  \"email\": \"contact@lnt.dz\",\n  \"nomRepresentant\": \"Ahmed Benali\",\n  \"fonction\": \"Directeur Général\",\n  \"telephoneDirect\": \"+213 555 123456\",\n  \"emailProfessionnel\": \"a.benali@lnt.dz\",\n  \"porteeAccreditation\": \"Analyses chimiques et microbiologiques des eaux et aliments\",\n  \"userType\": \"OEC\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signup/oec",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "signup", "oec"]
+        }
+      }
+    },
+    {
+      "name": "Register Expert",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nom\": \"Benali\",\n  \"prenom\": \"Fatima\",\n  \"email\": \"f.benali@email.dz\",\n  \"telephone\": \"+213 555 987654\",\n  \"specialite\": \"Évaluation ISO 9001 et ISO 14001\",\n  \"experience\": \"15 ans d'expérience en tant qu'auditeur senior dans le domaine du management de la qualité et de l'environnement\",\n  \"diplomes\": \"Master en Management de la Qualité, Certifications ISO 9001 Lead Auditor, ISO 14001 Lead Auditor\",\n  \"langues\": \"Français, Arabe, Anglais\",\n  \"disponibilite\": \"Disponible à temps partiel, du lundi au mercredi\",\n  \"userType\": \"EXPERT\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signup/expert",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "signup", "expert"]
+        }
+      }
+    }
+  ]
+}

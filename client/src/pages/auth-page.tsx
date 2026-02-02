@@ -124,7 +124,7 @@ export default function AuthPage() {
                       <div className="flex items-center justify-between">
                         <FormLabel>Mot de passe</FormLabel>
                         <Button 
-                          variant="link" 
+                          variant="ghost" 
                           className="p-0 h-auto text-xs text-primary"
                           type="button"
                           onClick={() => setIsForgotPassword(true)}
@@ -169,7 +169,7 @@ export default function AuthPage() {
           <CardFooter className="flex flex-col space-y-4 pt-4 border-t bg-slate-50/50 rounded-b-xl">
             <div className="text-sm text-center text-slate-500">
               Vous n'avez pas de compte ?{" "}
-              <Button variant="link" className="p-0 h-auto font-semibold text-primary">
+              <Button variant="ghost" className="p-0 h-auto font-semibold text-primary">
                 Créer un compte
               </Button>
             </div>

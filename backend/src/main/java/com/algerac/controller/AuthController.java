@@ -1,17 +1,25 @@
+
+
 package com.algerac.controller;
 
 import com.algerac.dto.*;
 import com.algerac.model.User;
+import com.algerac.model.PasswordResetToken;
+import com.algerac.repository.PasswordResetTokenRepository;
+import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
+import com.algerac.service.EmailService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-
+import java.time.LocalDateTime;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @RestController
@@ -20,10 +28,75 @@ import java.util.stream.Collectors;
 @Slf4j
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
 public class AuthController {
-    
     private final AuthService authService;
+    private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // === MOT DE PASSE OUBLIE ===
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        var userOpt = userRepository.findByEmail(request.getEmail());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Aucun utilisateur avec cet email."));
+        }
+        var user = userOpt.get();
+        // Générer un code OTP à 6 chiffres
+        String otp = String.format("%06d", new Random().nextInt(1_000_000));
+        // Token unique pour le frontend (UUID ou random)
+        String token = java.util.UUID.randomUUID().toString();
+        // Supprimer les anciens tokens pour cet utilisateur
+        passwordResetTokenRepository.deleteByUser(user);
+        // Stocker le token et OTP (concaténé ou séparé)
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token + ":" + otp)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+        // Envoyer l'OTP par email
+        emailService.sendOtpResetPassword(user, otp);
+        return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email.", token));
+    }
+
+    // === VERIFICATION OTP ===
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        var tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(request.getToken());
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Lien ou code invalide."));
+        }
+        var resetToken = tokenOpt.get();
+        if (resetToken.isExpired()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Code expiré."));
+        }
+        String[] parts = resetToken.getToken().split(":");
+        if (parts.length != 2 || !parts[1].equals(request.getOtp())) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Code incorrect."));
+        }
+        return ResponseEntity.ok(ApiResponse.success("Code vérifié."));
+    }
+
+    // === RESET PASSWORD ===
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        var tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(request.getToken());
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Lien invalide."));
+        }
+        var resetToken = tokenOpt.get();
+        if (resetToken.isExpired()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Lien expiré."));
+        }
+        var user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        passwordResetTokenRepository.delete(resetToken);
+        return ResponseEntity.ok(ApiResponse.success("Mot de passe réinitialisé."));
+    }
     
-    // === NEW: Login endpoint ===
+    // === LOGIN endpoint ===
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
@@ -63,14 +136,14 @@ public class AuthController {
         }
     }
     
-    // === NEW: Logout endpoint ===
+    // === LOGOUT endpoint ===
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpSession session) {
         session.invalidate();
         return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie"));
     }
     
-    // === NEW: Get current user endpoint ===
+    // === GET CURRENT USER endpoint ===
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
@@ -86,7 +159,7 @@ public class AuthController {
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
     
-    // === EXISTING: OEC Registration ===
+    // === OEC REGISTRATION ===
     @PostMapping("/signup/oec")
     public ResponseEntity<ApiResponse> registerOEC(
             @Valid @RequestBody OECSignupRequest request,
@@ -106,6 +179,8 @@ public class AuthController {
         
         try {
             User user = authService.registerOEC(request);
+            emailService.sendOECRegistrationNotification(user);
+            emailService.sendConfirmationToUser(user);
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
@@ -123,13 +198,13 @@ public class AuthController {
         }
     }
     
-    // === EXISTING: Expert Registration ===
+    // === EXPERT REGISTRATION (UPDATED FOR FOR 20) ===
     @PostMapping("/signup/expert")
     public ResponseEntity<ApiResponse> registerExpert(
             @Valid @RequestBody ExpertSignupRequest request,
             BindingResult bindingResult) {
         
-        log.info("Réception d'une demande d'inscription Expert : {} {}", 
+        log.info("Réception d'une demande d'inscription Expert FOR 20 : {} {}", 
                 request.getNom(), request.getPrenom());
         
         if (bindingResult.hasErrors()) {
@@ -143,11 +218,21 @@ public class AuthController {
         }
         
         try {
+            // Créer l'utilisateur dans la base de données
             User user = authService.registerExpert(request);
+            
+            // Envoyer l'email avec le PDF FOR 20
+            emailService.sendExpertRegistrationNotification(user);
+            
+            // Envoyer l'email de confirmation à l'utilisateur
+            emailService.sendConfirmationToUser(user);
+            
+            log.info("Inscription Expert réussie et PDF envoyé pour {} {}", 
+                    user.getNom(), user.getPrenom());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Inscription réussie ! Votre demande est en cours d'examen.",
+                            "Inscription réussie ! Votre formulaire FOR 20 a été généré et envoyé à ALGERAC.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {

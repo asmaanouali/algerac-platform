@@ -71,6 +71,43 @@
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
+        
+        <!-- PDF Generation Dependencies -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        
+        <!-- iText for PDF generation (alternative/complementary) -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itext7-core</artifactId>
+            <version>8.0.3</version>
+            <type>pom</type>
+        </dependency>
+        
+        <!-- JSON Processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- iText PDF Core -->
+<dependency>
+    <groupId>com.itextpdf</groupId>
+    <artifactId>kernel</artifactId>
+    <version>7.2.5</version>
+</dependency>
+<dependency>
+    <groupId>com.itextpdf</groupId>
+    <artifactId>layout</artifactId>
+    <version>7.2.5</version>
+</dependency>
+<dependency>
+    <groupId>com.itextpdf</groupId>
+    <artifactId>io</artifactId>
+    <version>7.2.5</version>
+</dependency>
     </dependencies>
     
     <build>

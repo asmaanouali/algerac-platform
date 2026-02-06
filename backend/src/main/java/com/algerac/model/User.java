@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,6 +15,16 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class User {
+        // Ajouté pour FOR 20 : type de candidature (EXPERT, EVALUATEUR, FORMATEUR)
+        private String userType;
+
+        public String getUserType() {
+            return userType;
+        }
+
+        public void setUserType(String userType) {
+            this.userType = userType;
+        }
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,6 +67,50 @@ public class User {
     private String diplomes;
     private String langues;
     private String disponibilite;
+    
+    // === NOUVEAUX CHAMPS FOR 20 ===
+    
+    // Section 1: Identification
+    private LocalDate dateNaissance;
+    private String nationalite;
+    private String situationFamiliale;
+    @Lob
+    private String photoBase64;
+    
+    // Section 2: Contacts
+    private String telephoneMobile;
+    private String fax;
+    private String adresseDomicile;
+    private String adresseEntreprise;
+    private String contactUrgenceNom;
+    private String contactUrgenceTelephone;
+    private String contactUrgenceMobile;
+    
+    // Section 8: Divers
+    private String informationsComplementaires;
+    
+    // NOUVEAU: Domaine d'expertise
+    private String domaineExpertise;
+    private String sousDomaineExpertise;
+    
+    // Données structurées (JSON)
+    @Column(columnDefinition = "TEXT")
+    private String formationsAcademiquesJson;
+    
+    @Column(columnDefinition = "TEXT")
+    private String autresFormationsJson;
+    
+    @Column(columnDefinition = "TEXT")
+    private String experiencesProfessionnellesJson;
+    
+    @Column(columnDefinition = "TEXT")
+    private String evaluationsAuditsJson;
+    
+    @Column(columnDefinition = "TEXT")
+    private String formationsDispenseesJson;
+    
+    @Column(columnDefinition = "TEXT")
+    private String connaissancesLinguistiquesJson;
     
     // STATUS
     private String status; // "PENDING", "APPROVED", "REJECTED"

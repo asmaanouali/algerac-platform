@@ -29,13 +29,11 @@ export default function ForgotPassword() {
         toast({
           title: "Lien envoyé",
           description: `Un code a été envoyé à ${email}`,
-          icon: <CheckCircle2 className="text-green-600 w-6 h-6" />,
         });
       } else {
         toast({
           title: "Erreur",
           description: data?.message || "Erreur lors de l'envoi du code.",
-          icon: <XCircle className="text-red-600 w-6 h-6" />,
         });
       }
     } catch (err) {
@@ -43,7 +41,6 @@ export default function ForgotPassword() {
       toast({
         title: "Erreur",
         description: "Erreur réseau ou serveur.",
-        icon: <XCircle className="text-red-600 w-6 h-6" />,
       });
     }
   };

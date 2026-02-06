@@ -34,11 +34,13 @@ public class EmailService {
      * Envoie un code OTP pour la réinitialisation du mot de passe
      */
     public void sendOtpResetPassword(User user, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(user.getEmail());
-        message.setSubject("Réinitialisation du mot de passe - ALGERAC");
-        String body = String.format("""
+        log.info("[EMAIL SERVICE] Début sendOtpResetPassword pour {} (OTP: {})", user.getEmail(), otp);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Réinitialisation du mot de passe - ALGERAC");
+            String body = String.format("""
                 Bonjour %s,
 
                 Vous avez demandé la réinitialisation de votre mot de passe.
@@ -51,60 +53,71 @@ public class EmailService {
                 Cordialement,
                 L'équipe ALGERAC
                 """, user.getFullName(), otp);
-        message.setText(body);
-        mailSender.send(message);
+            message.setText(body);
+            mailSender.send(message);
+            log.info("OTP email sent to {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email OTP à {}", user.getEmail(), e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email OTP", e);
+        }
     }
 
     /**
      * Envoie une notification d'inscription OEC avec PDF
      */
     public void sendOECRegistrationNotification(User user) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(notificationEmail);
-        message.setSubject("Nouvelle inscription OEC - " + user.getOrganizationName());
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(notificationEmail);
+            message.setSubject("Nouvelle inscription OEC - " + user.getOrganizationName());
 
-        String emailBody = String.format("""
-            Nouvelle demande d'inscription OEC reçue :
-            
-            === INFORMATIONS ORGANISME ===
-            Nom de l'organisme : %s
-            Type : %s
-            Adresse du siège : %s
-            Téléphone : %s
-            Email : %s
-            
-            === REPRÉSENTANT LÉGAL ===
-            Nom : %s
-            Fonction : %s
-            Téléphone direct : %s
-            Email professionnel : %s
-            
-            === PORTÉE D'ACCRÉDITATION ===
-            %s
-            
-            Date d'inscription : %s
-            Status : %s
-            
-            ---
-            Cette demande nécessite votre approbation.
-            """,
-            user.getOrganizationName(),
-            user.getTypeOrganisme(),
-            user.getAdresseSiege(),
-            user.getPhone(),
-            user.getEmail(),
-            user.getNomRepresentant(),
-            user.getFonction(),
-            user.getTelephoneDirect(),
-            user.getEmailProfessionnel(),
-            user.getPorteeAccreditation() != null ? user.getPorteeAccreditation() : "Non spécifiée",
-            user.getCreatedAt(),
-            user.getStatus()
-        );
+            String emailBody = String.format("""
+                Nouvelle demande d'inscription OEC reçue :
+                
+                === INFORMATIONS ORGANISME ===
+                Nom de l'organisme : %s
+                Type : %s
+                Adresse du siège : %s
+                Téléphone : %s
+                Email : %s
+                
+                === REPRÉSENTANT LÉGAL ===
+                Nom : %s
+                Fonction : %s
+                Téléphone direct : %s
+                Email professionnel : %s
+                
+                === PORTÉE D'ACCRÉDITATION ===
+                %s
+                
+                Date d'inscription : %s
+                Status : %s
+                
+                ---
+                Cette demande nécessite votre approbation.
+                """,
+                user.getOrganizationName(),
+                user.getTypeOrganisme(),
+                user.getAdresseSiege(),
+                user.getPhone(),
+                user.getEmail(),
+                user.getNomRepresentant(),
+                user.getFonction(),
+                user.getTelephoneDirect(),
+                user.getEmailProfessionnel(),
+                user.getPorteeAccreditation() != null ? user.getPorteeAccreditation() : "Non spécifiée",
+                user.getCreatedAt(),
+                user.getStatus()
+            );
 
-        message.setText(emailBody);
-        mailSender.send(message);
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("OEC registration email sent to {}", notificationEmail);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email d'inscription OEC à {}", notificationEmail, e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email d'inscription OEC", e);
+        }
     }
 
     /**
@@ -209,28 +222,34 @@ public class EmailService {
      * Envoie un email de confirmation à l'utilisateur
      */
     public void sendConfirmationToUser(User user) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(user.getEmail());
-        message.setSubject("Confirmation d'inscription - ALGERAC");
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Confirmation d'inscription - ALGERAC");
 
-        String emailBody = String.format("""
-            Bonjour %s,
-            
-            Votre demande d'inscription sur la plateforme ALGERAC a bien été reçue.
-            
-            Votre dossier est actuellement en cours d'examen. Vous recevrez un email de confirmation
-            dès que votre compte sera approuvé par notre équipe.
-            
-            Si vous avez des questions, n'hésitez pas à nous contacter.
-            
-            Cordialement,
-            L'équipe ALGERAC
-            """,
-            user.getFullName()
-        );
+            String emailBody = String.format("""
+                Bonjour %s,
+                
+                Votre demande d'inscription sur la plateforme ALGERAC a bien été reçue.
+                
+                Votre dossier est actuellement en cours d'examen. Vous recevrez un email de confirmation
+                dès que votre compte sera approuvé par notre équipe.
+                
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getFullName()
+            );
 
-        message.setText(emailBody);
-        mailSender.send(message);
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Confirmation email sent to {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de confirmation à {}", user.getEmail(), e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de confirmation", e);
+        }
     }
 }

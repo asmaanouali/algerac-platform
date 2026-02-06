@@ -137,9 +137,9 @@ export default function Login() {
                 </label>
               </div>
               <Link href="/auth/forgot-password">
-                <a className="text-sm text-[#00A63E] hover:text-[#008a35] font-medium">
+                <span className="text-sm text-[#00A63E] hover:text-[#008a35] font-medium">
                   Mot de passe oublié ?
-                </a>
+                </span>
               </Link>
             </div>
 
@@ -148,12 +148,10 @@ export default function Login() {
               className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base"
               asChild
             >
-              <Link href="/oec">
-                <span className="flex items-center justify-center gap-2">
-                  <LogIn className="w-5 h-5" />
-                  Se connecter
-                </span>
-              </Link>
+              <span className="flex items-center justify-center gap-2">
+                <LogIn className="w-5 h-5" />
+                Se connecter
+              </span>
             </Button>
 
             {/* Divider */}
@@ -170,9 +168,7 @@ export default function Login() {
                 className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
                 asChild
               >
-                <Link href="/auth/register">
-                  Créer un compte
-                </Link>
+                <span>Créer un compte</span>
               </Button>
               
             </div>

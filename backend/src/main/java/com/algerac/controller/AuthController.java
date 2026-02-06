@@ -37,6 +37,7 @@ public class AuthController {
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("[FORGOT PASSWORD] Body reçu: email={}", request.getEmail());
         var userOpt = userRepository.findByEmail(request.getEmail());
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Aucun utilisateur avec cet email."));

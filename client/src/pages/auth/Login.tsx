@@ -1,8 +1,9 @@
 import { useState } from "react";
+import AuthLeft from "@/components/layout/AuthLeft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 
 export default function Login() {
@@ -10,67 +11,43 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [, setLocation] = useLocation();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        // Stocker l'utilisateur (optionnel: localStorage/sessionStorage)
+        if (remember) {
+          localStorage.setItem("user", JSON.stringify(data));
+        } else {
+          sessionStorage.setItem("user", JSON.stringify(data));
+        }
+        setLocation("/dashboard"); // Redirige vers dashboard ou autre page
+      } else {
+        setError(data.message || "Erreur de connexion");
+      }
+    } catch (err) {
+      setError("Erreur réseau ou serveur");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Section - Green Background with Logo - FIXED */}
-      <div 
-        className="hidden lg:block lg:w-1/2 bg-[#011515] text-white fixed left-0 top-0 h-screen overflow-hidden"
-        style={{
-          backgroundImage: "url('/background.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-[#011515]/80" />
-
-        {/* Centered Content Container */}
-        <div className="relative z-10 h-full flex items-center justify-center p-12 lg:p-16">
-          <div className="space-y-12 max-w-lg">
-            {/* Logo Section */}
-            <div className="flex items-center gap-4">
-              <img 
-                src="/logoalgerac.png" 
-                alt="ALGERAC Logo" 
-                className="h-20 w-auto"
-              />
-              <div>
-                <h1 className="text-4xl text-white font-bold">ALGERAC</h1>
-                <p className="text-sm text-gray-300">Organisme Algérien d'Accréditation</p>
-              </div>
-            </div>
-
-            {/* Description Text */}
-            <div className="space-y-4">
-              <p className="text-lg leading-relaxed">
-                Garant de la compétence technique et de la confiance.
-                Accédez à notre portail sécurisé pour gérer vos demandes d'accréditation.
-              </p>
-            </div>
-
-            {/* Bottom Section with checkmarks */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="text-gray-200">Normes Internationales</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="text-gray-200">Transparence Totale</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AuthLeft />
 
       {/* Right Section - White Form */}
       <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen">
@@ -82,11 +59,11 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <div className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
             {/* Email Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-900 block">
-                Email ou Identifiant
+                Email
               </label>
               <Input
                 type="text"
@@ -94,6 +71,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                disabled={loading}
               />
             </div>
 
@@ -109,11 +87,13 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-10 bg-white border-gray-300 text-gray-900 pr-10"
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -128,6 +108,7 @@ export default function Login() {
                   checked={remember}
                   onCheckedChange={(checked) => setRemember(checked === true)}
                   className="border-gray-400 data-[state=checked]:bg-[#00A63E] data-[state=checked]:border-[#00A63E]"
+                  disabled={loading}
                 />
                 <label
                   htmlFor="remember"
@@ -143,15 +124,26 @@ export default function Login() {
               </Link>
             </div>
 
+            {/* Error message */}
+            {error && (
+              <div className="text-red-600 text-sm text-center font-medium">
+                {error}
+              </div>
+            )}
+
             {/* Login Button */}
             <Button
-              className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base"
-              asChild
+              className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base flex items-center justify-center gap-2"
+              type="submit"
+              disabled={loading}
             >
-              <span className="flex items-center justify-center gap-2">
-                <LogIn className="w-5 h-5" />
-                Se connecter
-              </span>
+              {loading ? (
+                <span>Connexion...</span>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5" /> Se connecter
+                </>
+              )}
             </Button>
 
             {/* Divider */}
@@ -167,12 +159,14 @@ export default function Login() {
                 variant="outline"
                 className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
                 asChild
+                disabled={loading}
               >
-                <span>Créer un compte</span>
+                <Link href="/auth/register">
+                  <span>Créer un compte</span>
+                </Link>
               </Button>
-              
             </div>
-          </div>
+          </form>
 
           {/* Footer */}
           <div className="text-center pt-8">

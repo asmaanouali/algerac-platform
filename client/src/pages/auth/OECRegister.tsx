@@ -966,20 +966,34 @@ export default function OECRegister() {
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
                 Déclaration et engagements
               </h3>
-              <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
-                <input 
-                  type="checkbox" 
-                  className="mt-1" 
-                  id="agree"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                />
-                <Label htmlFor="agree" className="text-sm leading-relaxed font-medium">
-                  Je déclare avoir pris connaissance des exigences d&apos;accréditation et m&apos;engage à :
-                  informer ALGERAC de toute modification concernant l&apos;organisme, transmettre toutes 
-                  les informations requises, faciliter les observations et évaluations, et respecter les 
-                  exigences réglementaires et normatives. <span className="text-red-500">*</span>
-                </Label>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
+                  <input 
+                    type="checkbox" 
+                    className="mt-1" 
+                    id="agree"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  />
+                  <Label htmlFor="agree" className="text-sm leading-relaxed font-medium">
+                    Je déclare avoir pris connaissance des exigences d&apos;accréditation et m&apos;engage à :
+                    informer ALGERAC de toute modification concernant l&apos;organisme, transmettre toutes 
+                    les informations requises, faciliter les observations et évaluations, et respecter les 
+                    exigences réglementaires et normatives. <span className="text-red-500">*</span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
+                  <input 
+                    type="checkbox" 
+                    className="mt-1" 
+                    id="rgpd"
+                    checked={formData.rgpdConsent || false}
+                    onChange={e => setFormData({ ...formData, rgpdConsent: e.target.checked })}
+                  />
+                  <Label htmlFor="rgpd" className="text-sm leading-relaxed font-medium">
+                    En soumettant ce formulaire, j’autorise ALGERAC à collecter, traiter et exploiter les données fournies dans le cadre de la gestion de ma demande d’accréditation, conformément à la réglementation en vigueur. <span className="text-red-500">*</span>
+                  </Label>
+                </div>
               </div>
             </div>
 

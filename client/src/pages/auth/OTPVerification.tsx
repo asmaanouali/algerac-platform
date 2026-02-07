@@ -183,6 +183,10 @@ export default function OTPVerification() {
             <h2 className="text-3xl font-bold text-gray-900">Vérification</h2>
             <p className="text-gray-600">Code envoyé à {email}</p>
           </div>
+          {/* Cercle avec la clé */}
+          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#E6F7EE] mx-auto mb-2">
+            <KeyRound className="w-8 h-8 text-[#00A63E]" />
+          </div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="flex justify-between gap-2">
               {otp.map((val, i) => (
@@ -204,7 +208,7 @@ export default function OTPVerification() {
               {loading ? "Vérification..." : "Vérifier le code"}
             </Button>
             <div className="text-center">
-              <Button variant="link" className="text-xs text-primary font-bold" type="button" onClick={handleResend} disabled={resending}>
+              <Button variant="link" className="text-xs text-primary" type="button" onClick={handleResend} disabled={resending}>
                 {resending ? "Renvoi en cours..." : "Renvoyer le code"}
               </Button>
             </div>

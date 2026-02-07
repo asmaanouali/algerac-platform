@@ -1172,6 +1172,18 @@ export default function ExpertRegister() {
                     aux règles d&apos;ALGERAC. <span className="text-red-500">*</span>
                   </Label>
                 </div>
+                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
+                  <input 
+                    type="checkbox" 
+                    className="mt-1" 
+                    id="rgpd"
+                    checked={formData.rgpdConsent || false}
+                    onChange={e => setFormData({ ...formData, rgpdConsent: e.target.checked })}
+                  />
+                  <Label htmlFor="rgpd" className="text-sm leading-relaxed font-medium">
+                    En soumettant ce formulaire, j’autorise ALGERAC à collecter, traiter et exploiter les données fournies dans le cadre de l’étude de ma candidature, conformément à la réglementation en vigueur. <span className="text-red-500">*</span>
+                  </Label>
+                </div>
               </div>
             </div>
 

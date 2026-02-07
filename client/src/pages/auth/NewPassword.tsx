@@ -14,34 +14,80 @@ export default function NewPassword() {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (!password || password.length < 8) {
-        toast({
-          title: "Erreur",
-          description: "Le mot de passe doit contenir au moins 8 caractères.",
-          icon: <XCircle className="text-red-600 w-6 h-6" />,
-        });
-        return;
-      }
-      if (password !== confirm) {
-        toast({
-          title: "Erreur",
-          description: "Les mots de passe ne correspondent pas.",
-          icon: <XCircle className="text-red-600 w-6 h-6" />,
-        });
-        return;
-      }
+    
+    if (!password || password.length < 8) {
       toast({
-        title: "Mot de passe changé",
-        description: "Votre mot de passe a été modifié avec succès.",
-        icon: <CheckCircle2 className="text-green-600 w-6 h-6" />,
+        title: "Erreur",
+        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        icon: <XCircle className="text-red-600 w-6 h-6" />,
       });
-      setTimeout(() => setLocation("/"), 1200);
-    }, 1200);
+      return;
+    }
+    if (password !== confirm) {
+      toast({
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas.",
+        icon: <XCircle className="text-red-600 w-6 h-6" />,
+      });
+      return;
+    }
+    
+    setLoading(true);
+    const token = localStorage.getItem("resetToken");
+    
+    if (!token) {
+      toast({
+        title: "Erreur",
+        description: "Session expirée. Veuillez recommencer.",
+        icon: <XCircle className="text-red-600 w-6 h-6" />,
+      });
+      setLoading(false);
+      setTimeout(() => setLocation("/auth/forgot-password"), 1500);
+      return;
+    }
+    
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          token: token,
+          newPassword: password 
+        }),
+        credentials: "include",
+      });
+      
+      const data = await response.json();
+      setLoading(false);
+      
+      if (response.ok) {
+        // Supprimer le token du localStorage
+        localStorage.removeItem("resetToken");
+        toast({
+          title: "Mot de passe changé",
+          description: "Votre mot de passe a été modifié avec succès.",
+          icon: <CheckCircle2 className="text-green-600 w-6 h-6" />,
+        });
+        setTimeout(() => setLocation("/"), 1200);
+      } else {
+        toast({
+          title: "Erreur",
+          description: data?.message || "Erreur lors de la réinitialisation.",
+          icon: <XCircle className="text-red-600 w-6 h-6" />,
+        });
+      }
+    } catch (err) {
+      setLoading(false);
+      toast({
+        title: "Erreur",
+        description: "Erreur réseau ou serveur.",
+        icon: <XCircle className="text-red-600 w-6 h-6" />,
+      });
+    }
   };
 
   return (

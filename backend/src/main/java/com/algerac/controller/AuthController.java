@@ -4,8 +4,6 @@ package com.algerac.controller;
 
 import com.algerac.dto.*;
 import com.algerac.model.User;
-import com.algerac.model.PasswordResetToken;
-import com.algerac.repository.PasswordResetTokenRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
@@ -14,13 +12,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 @RestController
@@ -31,72 +25,45 @@ import java.util.stream.Collectors;
 public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
     // === MOT DE PASSE OUBLIE ===
-    @Transactional
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        log.info("[FORGOT PASSWORD] Body reçu: email={}", request.getEmail());
-        var userOpt = userRepository.findByEmail(request.getEmail());
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Aucun utilisateur avec cet email."));
+        log.info("[CONTROLLER] Forgot password: {}", request.getEmail());
+        try {
+            String token = authService.forgotPassword(request.getEmail());
+            return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email.", token));
+        } catch (RuntimeException e) {
+            log.error("[CONTROLLER] Erreur: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        var user = userOpt.get();
-        // Générer un code OTP à 6 chiffres
-        String otp = String.format("%06d", new Random().nextInt(1_000_000));
-        // Token unique pour le frontend (UUID ou random)
-        String token = java.util.UUID.randomUUID().toString();
-        // Supprimer les anciens tokens pour cet utilisateur
-        passwordResetTokenRepository.deleteByUser(user);
-        // Stocker le token et OTP (concaténé ou séparé)
-        PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(token + ":" + otp)
-                .user(user)
-                .expiryDate(LocalDateTime.now().plusMinutes(15))
-                .build();
-        passwordResetTokenRepository.save(resetToken);
-        // Envoyer l'OTP par email
-        emailService.sendOtpResetPassword(user, otp);
-        return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email.", token));
     }
 
     // === VERIFICATION OTP ===
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        var tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(request.getToken());
-        if (tokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lien ou code invalide."));
+        log.info("[CONTROLLER] Verify OTP - Token: {}, OTP: '{}'", request.getToken(), request.getOtp());
+        try {
+            authService.verifyOtp(request.getToken(), request.getOtp());
+            return ResponseEntity.ok(ApiResponse.success("Code vérifié avec succès."));
+        } catch (RuntimeException e) {
+            log.error("[CONTROLLER] Erreur vérification OTP: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        var resetToken = tokenOpt.get();
-        if (resetToken.isExpired()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Code expiré."));
-        }
-        String[] parts = resetToken.getToken().split(":");
-        if (parts.length != 2 || !parts[1].equals(request.getOtp())) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Code incorrect."));
-        }
-        return ResponseEntity.ok(ApiResponse.success("Code vérifié."));
     }
 
     // === RESET PASSWORD ===
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        var tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(request.getToken());
-        if (tokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lien invalide."));
+        log.info("[CONTROLLER] Reset password pour token: {}", request.getToken());
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("Mot de passe réinitialisé avec succès."));
+        } catch (RuntimeException e) {
+            log.error("[CONTROLLER] Erreur: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        var resetToken = tokenOpt.get();
-        if (resetToken.isExpired()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lien expiré."));
-        }
-        var user = resetToken.getUser();
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-        passwordResetTokenRepository.delete(resetToken);
-        return ResponseEntity.ok(ApiResponse.success("Mot de passe réinitialisé."));
     }
     
     // === LOGIN endpoint ===

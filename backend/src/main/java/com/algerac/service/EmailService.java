@@ -131,6 +131,7 @@ public class EmailService {
             helper.setFrom(fromEmail);
             helper.setTo(notificationEmail);
 
+
             // Déterminer le label à partir du userType uniquement
             String typeLabel = "Expert";
             if (user.getUserType() != null) {
@@ -146,19 +147,23 @@ public class EmailService {
                         typeLabel = "Expert";
                 }
             }
-            helper.setSubject("Nouvelle inscription " + typeLabel + " - " + user.getNom() + " " + user.getPrenom());
+            // Ajout de l'ID d'inscription dans l'objet du mail
+            String subject = String.format("[%s] Nouvelle inscription %s - %s %s", user.getRegistrationId(), typeLabel, user.getNom(), user.getPrenom());
+            helper.setSubject(subject);
 
-            String emailBody = buildExpertEmailBody(user);
-            helper.setText(emailBody, false);
 
-            // Génération et ajout du PDF en pièce jointe
-            byte[] pdfBytes = pdfGenerationService.generateFor20Pdf(user);
-            String filename = String.format("FOR_20_%s_%s_%s.pdf",
+                String emailBody = buildExpertEmailBody(user);
+                helper.setText(emailBody, false);
+
+                // Génération et ajout du PDF en pièce jointe avec l'ID dans le nom
+                byte[] pdfBytes = pdfGenerationService.generateFor20Pdf(user);
+                String filename = String.format("FOR_20_%s_%s_%s_%s.pdf",
+                    user.getRegistrationId(),
                     user.getNom(),
                     user.getPrenom(),
                     DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDateTime.now()));
 
-            helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
+                helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
 
             mailSender.send(mimeMessage);
             log.info("Email avec PDF envoyé pour {} {} ({}).", user.getNom(), user.getPrenom(), typeLabel);
@@ -173,49 +178,9 @@ public class EmailService {
      * Construit le corps de l'email pour l'inscription expert
      */
     private String buildExpertEmailBody(User user) {
-        StringBuilder body = new StringBuilder();
-
-        body.append("Nouvelle demande d'inscription Expert reçue :\n\n");
-
-        // Section 1: Identification
-        body.append("=== IDENTIFICATION ===\n");
-        body.append(String.format("Nom : %s\n", user.getNom()));
-        body.append(String.format("Prénom : %s\n", user.getPrenom()));
-        body.append(String.format("Date de naissance : %s\n", user.getDateNaissance()));
-        body.append(String.format("Nationalité : %s\n", user.getNationalite()));
-        if (user.getSituationFamiliale() != null) {
-            body.append(String.format("Situation familiale : %s\n\n", user.getSituationFamiliale()));
-        }
-
-        // Section 2: Contacts
-        body.append("=== CONTACTS ===\n");
-        body.append(String.format("Email : %s\n", user.getEmail()));
-        body.append(String.format("Téléphone : %s\n", user.getPhone()));
-        if (user.getTelephoneMobile() != null) {
-            body.append(String.format("Mobile : %s\n", user.getTelephoneMobile()));
-        }
-        if (user.getAdresseDomicile() != null) {
-            body.append(String.format("Adresse : %s\n", user.getAdresseDomicile()));
-        }
-        body.append("\n");
-
-        // Section 3: Domaine d'expertise
-        body.append("=== DOMAINE D'EXPERTISE ===\n");
-        body.append(String.format("Domaine : %s\n", user.getDomaineExpertise()));
-        if (user.getSousDomaineExpertise() != null) {
-            body.append(String.format("Sous-domaine : %s\n", user.getSousDomaineExpertise()));
-        }
-        body.append("\n");
-
-        // Métadonnées
-        body.append(String.format("Date d'inscription : %s\n", user.getCreatedAt()));
-        body.append(String.format("Status : %s\n\n", user.getStatus()));
-
-        body.append("---\n");
-        body.append("Cette demande nécessite votre approbation.\n");
-        body.append("Le formulaire FOR 20 complet est en pièce jointe de cet email.\n");
-
-        return body.toString();
+        return "Une nouvelle demande d'inscription a été reçue.\n\n" +
+               "Cette demande nécessite votre approbation.\n" +
+               "Le formulaire FOR 20 complet est en pièce jointe de cet email.";
     }
 
     /**

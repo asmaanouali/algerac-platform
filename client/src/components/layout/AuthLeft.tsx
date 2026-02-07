@@ -65,7 +65,7 @@ export default function AuthLeft({ children, bottom }: AuthLeftProps) {
         </div>
         {/* Email & Téléphone tout en bas, hors du container principal */}
         <div className="absolute bottom-4 left-0 w-full text-sm text-gray-300 text-center">
-          <div>Email : <a href="mailto:contact@algerac.dz" className="hover:text-white no-underline">contact@algerac.dz</a></div>
+          <div>Email : <a href="mailto:support@algerac.dz" className="hover:text-white no-underline">support@algerac.dz</a></div>
           <div>Téléphone : <a href="tel:+21321790039" className="hover:text-white no-underline">+213 (0) 21 79 00 39</a></div>
         </div>
       </div>

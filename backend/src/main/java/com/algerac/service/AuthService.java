@@ -2,8 +2,10 @@ package com.algerac.service;
 
 import com.algerac.dto.ExpertSignupRequest;
 import com.algerac.dto.OECSignupRequest;
+import com.algerac.model.PasswordResetToken;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
+import com.algerac.repository.PasswordResetTokenRepository;
 import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,32 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+
+    private static final String EXPERT_PREFIX = "EXP";
+    private static final String EVALUATEUR_PREFIX = "EVA";
+    private static final String FORMATEUR_PREFIX = "FOR";
+
+    /**
+     * Génère un ID séquentiel unique par rôle (ex: EXP-0001)
+     */
+    private String generateRegistrationId(String userType) {
+        String prefix;
+        switch (userType != null ? userType.toUpperCase() : "") {
+            case "EVALUATEUR":
+                prefix = EVALUATEUR_PREFIX;
+                break;
+            case "FORMATEUR":
+                prefix = FORMATEUR_PREFIX;
+                break;
+            case "EXPERT":
+            default:
+                prefix = EXPERT_PREFIX;
+        }
+        // Compter le nombre d'utilisateurs existants pour ce rôle
+        long count = userRepository.countByUserTypeIgnoreCase(userType);
+        return String.format("%s-%04d", prefix, count + 1);
+    }
     
     @Transactional
     public User registerOEC(OECSignupRequest request) {
@@ -71,6 +100,7 @@ public class AuthService {
         
         String fullName = request.getPrenom() + " " + request.getNom();
         
+        String registrationId = generateRegistrationId(request.getUserType());
         User user = User.builder()
             .email(request.getEmail())
             .password(passwordEncoder.encode("temp_password_" + System.currentTimeMillis())) // Temporary
@@ -99,6 +129,8 @@ public class AuthService {
             .informationsComplementaires(request.getInformationsComplementaires())
             // Ajout userType
             .userType(request.getUserType())
+            // Nouvel ID d'inscription
+            .registrationId(registrationId)
             // Status
             .status("PENDING")
             .createdAt(LocalDateTime.now())
@@ -170,6 +202,131 @@ public class AuthService {
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElse(null);
+    }
+
+    /**
+     * Initie la procédure de récupération du mot de passe
+     * Génère un OTP et l'envoie par email
+     */
+    @Transactional
+    public String forgotPassword(String email) {
+        log.info("[AUTH SERVICE] Forgot password pour: {}", email);
+        
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Aucun utilisateur avec cet email.");
+        }
+        
+        User user = userOpt.get();
+        
+        // Générer un code OTP à 6 chiffres
+        String otp = String.format("%06d", new Random().nextInt(1_000_000));
+        log.info("[AUTH SERVICE] OTP généré: {}", otp);
+        
+        // Token unique pour le frontend (UUID)
+        String token = java.util.UUID.randomUUID().toString();
+        
+        // Supprimer les anciens tokens pour cet utilisateur
+        passwordResetTokenRepository.deleteByUser(user);
+        
+        // Stocker le token et OTP (format: token:otp)
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token + ":" + otp)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+        
+        // Envoyer l'OTP par email
+        try {
+            emailService.sendOtpResetPassword(user, otp);
+            log.info("[AUTH SERVICE] Email OTP envoyé avec succès");
+        } catch (Exception e) {
+            log.error("[AUTH SERVICE] Erreur envoi email: {}", e.getMessage());
+            throw new RuntimeException("Erreur lors de l'envoi de l'email.");
+        }
+        
+        return token;
+    }
+
+    /**
+     * Vérifie l'OTP saisi par l'utilisateur
+     */
+    @Transactional(readOnly = true)
+    public void verifyOtp(String token, String otp) {
+        log.info("[AUTH SERVICE] Vérification OTP pour token: {}", token);
+        log.info("[AUTH SERVICE] OTP reçu brut: '{}'", otp);
+        
+        // Nettoyer l'OTP (enlever espaces, etc.)
+        String cleanedOtp = otp != null ? otp.trim() : "";
+        log.info("[AUTH SERVICE] OTP après nettoyage: '{}'", cleanedOtp);
+        
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
+        if (tokenOpt.isEmpty()) {
+            log.warn("[AUTH SERVICE] Token introuvable: {}", token);
+            throw new RuntimeException("Lien ou code invalide.");
+        }
+        
+        PasswordResetToken resetToken = tokenOpt.get();
+        log.info("[AUTH SERVICE] Token complet trouvé en base: '{}'", resetToken.getToken());
+        
+        // Vérifier l'expiration
+        if (resetToken.isExpired()) {
+            log.warn("[AUTH SERVICE] Token expiré: {}", resetToken.getExpiryDate());
+            throw new RuntimeException("Code expiré. Veuillez redemander un nouveau code.");
+        }
+        
+        // Extraire et vérifier l'OTP
+        String[] parts = resetToken.getToken().split(":");
+        log.info("[AUTH SERVICE] Parties du token: length={}, parts[0]='{}'", parts.length, parts.length > 0 ? parts[0] : "N/A");
+        
+        if (parts.length != 2) {
+            log.error("[AUTH SERVICE] Format de token invalide. Token: '{}'", resetToken.getToken());
+            throw new RuntimeException("Format de token invalide.");
+        }
+        
+        String storedOtp = parts[1].trim();
+        log.info("[AUTH SERVICE] OTP stocké: '{}' (length={})", storedOtp, storedOtp.length());
+        log.info("[AUTH SERVICE] OTP reçu: '{}' (length={})", cleanedOtp, cleanedOtp.length());
+        log.info("[AUTH SERVICE] Comparaison equals: {}", storedOtp.equals(cleanedOtp));
+        
+        if (!storedOtp.equals(cleanedOtp)) {
+            log.warn("[AUTH SERVICE] OTP incorrect. Attendu: '{}', Reçu: '{}'", storedOtp, cleanedOtp);
+            throw new RuntimeException("Code incorrect.");
+        }
+        
+        log.info("[AUTH SERVICE] ✅ OTP vérifié avec succès");
+    }
+
+    /**
+     * Réinitialise le mot de passe après vérification de l'OTP
+     */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        log.info("[AUTH SERVICE] Reset password pour token: {}", token);
+        
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
+        if (tokenOpt.isEmpty()) {
+            log.warn("[AUTH SERVICE] Token introuvable");
+            throw new RuntimeException("Lien invalide.");
+        }
+        
+        PasswordResetToken resetToken = tokenOpt.get();
+        
+        // Vérifier l'expiration
+        if (resetToken.isExpired()) {
+            log.warn("[AUTH SERVICE] Token expiré");
+            throw new RuntimeException("Lien expiré. Veuillez recommencer la procédure.");
+        }
+        
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        // Supprimer le token utilisé
+        passwordResetTokenRepository.delete(resetToken);
+        
+        log.info("[AUTH SERVICE] Mot de passe réinitialisé pour: {}", user.getEmail());
     }
     
 }

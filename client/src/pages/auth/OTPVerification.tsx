@@ -34,12 +34,45 @@ export default function OTPVerification() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    
+    const otpCode = otp.join("");
+    const token = localStorage.getItem("resetToken");
+    
+    if (!token) {
+      toast({
+        title: "Erreur",
+        description: (
+          <span className="flex items-center gap-2">
+            <XCircle className="text-red-600 w-6 h-6" />
+            Session expirée. Veuillez recommencer.
+          </span>
+        )
+      });
       setLoading(false);
-      if (otp.join("") === "123456") { // Simulate correct code
+      setTimeout(() => setLocation("/auth/forgot-password"), 1500);
+      return;
+    }
+    
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          token: token,
+          otp: otpCode 
+        }),
+        credentials: "include",
+      });
+      
+      const data = await response.json();
+      setLoading(false);
+      
+      if (response.ok) {
         toast({
           title: "Succès",
           description: (
@@ -56,28 +89,67 @@ export default function OTPVerification() {
           description: (
             <span className="flex items-center gap-2">
               <XCircle className="text-red-600 w-6 h-6" />
-              Code incorrect. Veuillez réessayer.
+              {data?.message || "Code incorrect. Veuillez réessayer."}
             </span>
           )
         });
       }
-    }, 1200);
-  };
-
-  const handleResend = () => {
-    setResending(true);
-    setTimeout(() => {
-      setResending(false);
+    } catch (err) {
+      setLoading(false);
       toast({
-        title: "Code renvoyé",
+        title: "Erreur",
         description: (
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="text-green-600 w-6 h-6" />
-            {`Un nouveau code a été envoyé à ${email}`}
+            <XCircle className="text-red-600 w-6 h-6" />
+            Erreur réseau ou serveur.
           </span>
         )
       });
-    }, 1200);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+      const data = await response.json();
+      setResending(false);
+      
+      if (response.ok) {
+        // Mettre à jour le token
+        const token = data.data;
+        if (token) {
+          localStorage.setItem("resetToken", token);
+        }
+        toast({
+          title: "Code renvoyé",
+          description: (
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="text-green-600 w-6 h-6" />
+              {`Un nouveau code a été envoyé à ${email}`}
+            </span>
+          )
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: data?.message || "Erreur lors du renvoi du code.",
+        });
+      }
+    } catch (err) {
+      setResending(false);
+      toast({
+        title: "Erreur",
+        description: "Erreur réseau ou serveur.",
+      });
+    }
   };
 
   return (

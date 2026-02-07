@@ -260,7 +260,7 @@ export default function OECRegister() {
       fd.append("reconnaissances", JSON.stringify(reconnaissances));
       fd.append("conseilDetails", JSON.stringify(conseilDetails));
 
-      const response = await fetch("http://localhost:8080/api/auth/signup/oec", {
+      const response = await fetch("http://localhost:8082/api/auth/signup/oec", {
         method: "POST",
         body: fd,
       });

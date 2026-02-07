@@ -29,8 +29,13 @@ export default function ForgotPassword() {
       const data = await response.json();
       setLoading(false);
       if (response.ok) {
+        // Stocker le token pour la vérification OTP
+        const token = data.data; // Le token est dans data.data selon ApiResponse
+        if (token) {
+          localStorage.setItem("resetToken", token);
+        }
         toast({
-          title: "Lien envoyé",
+          title: "Code envoyé",
           description: `Un code a été envoyé à ${email}`,
         });
         setTimeout(() => setLocation("/auth/verify-otp?email=" + encodeURIComponent(email)), 1200);

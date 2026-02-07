@@ -367,7 +367,7 @@ export default function ExpertRegister() {
         connaissancesLinguistiques: languesFiltered
       };
 
-      const response = await fetch("http://localhost:8080/api/auth/signup/expert", {
+      const response = await fetch("http://localhost:8082/api/auth/signup/expert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -406,25 +406,25 @@ export default function ExpertRegister() {
 
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold">Candidature Expert / Évaluateur / Formateur</h2>
-          <p className="text-slate-600">Formulaire FOR 20 - Curriculum Vitae</p>
+          <p className="text-slate-600">Devenez collaborateur d'ALGERAC</p>
         </div>
 
         {/* Sélection du type de candidature */}
         <div className="w-full flex flex-col md:flex-row items-center justify-center gap-4 mb-4">
           <Label htmlFor="userType" className="font-semibold">Je candidate en tant que :</Label>
           <Select
-            value={formData.userType}
-            onValueChange={(value) => setFormData({ ...formData, userType: value })}
-          >
-            <SelectTrigger className="w-48 bg-white" id="userType">
-              <SelectValue placeholder="Choisir un rôle" />
-            </SelectTrigger>
-            <SelectContent>
-              {userTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  value={formData.userType}
+  onValueChange={(value) => setFormData({ ...formData, userType: value })}
+>
+  <SelectTrigger className="w-48 bg-white" id="userType">
+    <SelectValue placeholder="Choisir un rôle" />
+  </SelectTrigger>
+  <SelectContent className="bg-white">
+    {userTypes.map((type) => (
+      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
         </div>
 
         <Card className="border-none shadow-xl">

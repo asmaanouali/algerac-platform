@@ -15,16 +15,28 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class User {
-        // Ajouté pour FOR 20 : type de candidature (EXPERT, EVALUATEUR, FORMATEUR)
-        private String userType;
+    // Ajouté pour FOR 20 : type de candidature (EXPERT, EVALUATEUR, FORMATEUR)
+    private String userType;
 
-        public String getUserType() {
-            return userType;
-        }
+    // ID unique d'inscription (ex: EXP-0001, EVA-0002, FOR-0003)
+    @Column(unique = true)
+    private String registrationId;
 
-        public void setUserType(String userType) {
-            this.userType = userType;
-        }
+    public String getUserType() {
+        return userType;
+    }
+
+    public void setUserType(String userType) {
+        this.userType = userType;
+    }
+
+    public String getRegistrationId() {
+        return registrationId;
+    }
+
+    public void setRegistrationId(String registrationId) {
+        this.registrationId = registrationId;
+    }
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

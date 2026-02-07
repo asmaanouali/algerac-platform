@@ -120,33 +120,29 @@ public class PdfGenerationService {
                 .setMarginTop(10);
         document.add(sectionTitle);
         
-        // Tableau d'identification
-        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 50, 25}));
+        // Tableau d'identification (2 colonnes: label et valeur)
+        Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}));
         table.setWidth(UnitValue.createPercentValue(100));
         
-        // Ligne 1
-        table.addCell(createCell("Nom:", boldFont));
-        table.addCell(createCell(user.getNom() + " " + user.getPrenom(), font));
-        table.addCell(createCell("Photo", font));
+        table.addCell(createCell("ID d'inscription:", boldFont));
+        table.addCell(createCell(user.getRegistrationId() != null ? user.getRegistrationId() : "", font));
         
-        // Ligne 2
+        table.addCell(createCell("Nom:", boldFont));
+        table.addCell(createCell(user.getNom() != null ? user.getNom() : "", font));
+        
+        table.addCell(createCell("Prénom:", boldFont));
+        table.addCell(createCell(user.getPrenom() != null ? user.getPrenom() : "", font));
+        
         table.addCell(createCell("Date de naissance:", boldFont));
         table.addCell(createCell(user.getDateNaissance() != null ? user.getDateNaissance().toString() : "", font));
+        
         table.addCell(createCell("Nationalité:", boldFont));
-        
-        // Ligne 3
-        table.addCell(createCell("", font));
         table.addCell(createCell(user.getNationalite() != null ? user.getNationalite() : "", font));
-        table.addCell(createCell("", font));
         
-        // Ligne 4
         table.addCell(createCell("Situation familiale:", boldFont));
         table.addCell(createCell(user.getSituationFamiliale() != null ? user.getSituationFamiliale() : "", font));
-        table.addCell(createCell("Date d'élaboration:", boldFont));
         
-        // Ligne 5
-        table.addCell(createCell("", font));
-        table.addCell(createCell("", font));
+        table.addCell(createCell("Date d'élaboration:", boldFont));
         table.addCell(createCell(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), font));
         
         document.add(table);
@@ -206,7 +202,7 @@ public class PdfGenerationService {
         document.add(urgenceTable);
     }
     
-    @SuppressWarnings("unchecked")
+
     private void addFormationsAcademiquesSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("3 - FORMATION ACADÉMIQUE")
                 .setFont(boldFont)

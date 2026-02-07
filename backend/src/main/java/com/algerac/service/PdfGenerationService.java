@@ -501,4 +501,175 @@ public class PdfGenerationService {
                 .add(new Paragraph(content != null ? content : "").setFont(font).setFontSize(9))
                 .setPadding(5);
     }
+    
+    /**
+     * Génère un PDF DOC1 pour les OEC (Organismes d'Évaluation de la Conformité)
+     */
+    public byte[] generateDoc1Pdf(User user) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            // Configuration de la police
+            PdfFont font = PdfFontFactory.createFont("Helvetica");
+            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold");
+            
+            // En-tête du document
+            addDoc1Header(document, boldFont);
+            
+            // Informations de l'organisme
+            addOrganismeInfoSection(document, user, font, boldFont);
+            
+            // Représentant légal
+            addRepresentantInfoSection(document, user, font, boldFont);
+            
+            // Portée d'accréditation
+            addPorteeAccreditationSection(document, user, font, boldFont);
+            
+            // Pied de page
+            addFooter(document, font);
+            
+            document.close();
+            
+            log.info("PDF DOC1 généré avec succès pour {}", user.getOrganizationName());
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du PDF DOC1", e);
+            throw new RuntimeException("Erreur lors de la génération du PDF DOC1", e);
+        }
+    }
+    
+    private void addDoc1Header(Document document, PdfFont boldFont) {
+        // Logo/Titre ALGERAC
+        Paragraph logo = new Paragraph("ALGERAC")
+                .setFont(boldFont)
+                .setFontSize(18)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setBold();
+        document.add(logo);
+        
+        Paragraph subtitle = new Paragraph("Association Algérienne pour l'Accréditation")
+                .setFont(boldFont)
+                .setFontSize(12)
+                .setTextAlignment(TextAlignment.CENTER);
+        document.add(subtitle);
+        
+        document.add(new Paragraph("\n"));
+        
+        // Titre du document
+        Paragraph title = new Paragraph("DOC 1 - DEMANDE D'ACCRÉDITATION")
+                .setFont(boldFont)
+                .setFontSize(16)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setBold();
+        document.add(title);
+        
+        Paragraph subtitle2 = new Paragraph("Organisme d'Évaluation de la Conformité")
+                .setFont(boldFont)
+                .setFontSize(12)
+                .setTextAlignment(TextAlignment.CENTER);
+        document.add(subtitle2);
+        
+        document.add(new Paragraph("\n\n"));
+    }
+    
+    private void addOrganismeInfoSection(Document document, User user, PdfFont font, PdfFont boldFont) {
+        Paragraph sectionTitle = new Paragraph("INFORMATIONS SUR L'ORGANISME")
+                .setFont(boldFont)
+                .setFontSize(14)
+                .setBold();
+        document.add(sectionTitle);
+        
+        document.add(new Paragraph("\n"));
+        
+        // Tableau des informations de l'organisme
+        Table table = new Table(UnitValue.createPercentArray(new float[]{30, 70}))
+                .useAllAvailableWidth();
+        
+        table.addCell(createCell("Nom de l'organisme :", boldFont));
+        table.addCell(createCell(user.getOrganizationName() != null ? user.getOrganizationName() : "", font));
+        
+        table.addCell(createCell("Type d'organisme :", boldFont));
+        table.addCell(createCell(user.getTypeOrganisme() != null ? user.getTypeOrganisme() : "", font));
+        
+        table.addCell(createCell("Adresse du siège :", boldFont));
+        table.addCell(createCell(user.getAdresseSiege() != null ? user.getAdresseSiege() : "", font));
+        
+        table.addCell(createCell("Téléphone :", boldFont));
+        table.addCell(createCell(user.getPhone() != null ? user.getPhone() : "", font));
+        
+        table.addCell(createCell("Email :", boldFont));
+        table.addCell(createCell(user.getEmail() != null ? user.getEmail() : "", font));
+        
+        document.add(table);
+        document.add(new Paragraph("\n\n"));
+    }
+    
+    private void addRepresentantInfoSection(Document document, User user, PdfFont font, PdfFont boldFont) {
+        Paragraph sectionTitle = new Paragraph("REPRÉSENTANT LÉGAL")
+                .setFont(boldFont)
+                .setFontSize(14)
+                .setBold();
+        document.add(sectionTitle);
+        
+        document.add(new Paragraph("\n"));
+        
+        // Tableau des informations du représentant
+        Table table = new Table(UnitValue.createPercentArray(new float[]{30, 70}))
+                .useAllAvailableWidth();
+        
+        table.addCell(createCell("Nom du représentant :", boldFont));
+        table.addCell(createCell(user.getNomRepresentant() != null ? user.getNomRepresentant() : "", font));
+        
+        table.addCell(createCell("Fonction :", boldFont));
+        table.addCell(createCell(user.getFonction() != null ? user.getFonction() : "", font));
+        
+        table.addCell(createCell("Téléphone direct :", boldFont));
+        table.addCell(createCell(user.getTelephoneDirect() != null ? user.getTelephoneDirect() : "", font));
+        
+        table.addCell(createCell("Email professionnel :", boldFont));
+        table.addCell(createCell(user.getEmailProfessionnel() != null ? user.getEmailProfessionnel() : "", font));
+        
+        document.add(table);
+        document.add(new Paragraph("\n\n"));
+    }
+    
+    private void addPorteeAccreditationSection(Document document, User user, PdfFont font, PdfFont boldFont) {
+        Paragraph sectionTitle = new Paragraph("PORTÉE D'ACCRÉDITATION DEMANDÉE")
+                .setFont(boldFont)
+                .setFontSize(14)
+                .setBold();
+        document.add(sectionTitle);
+        
+        document.add(new Paragraph("\n"));
+        
+        Paragraph portee = new Paragraph(user.getPorteeAccreditation() != null 
+                ? user.getPorteeAccreditation() 
+                : "Non spécifiée")
+                .setFont(font)
+                .setFontSize(11);
+        document.add(portee);
+        
+        document.add(new Paragraph("\n\n"));
+        
+        // Date de la demande
+        Paragraph dateDemande = new Paragraph("Date de la demande : " + 
+                (user.getCreatedAt() != null 
+                    ? user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    : LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
+                .setFont(font)
+                .setFontSize(10);
+        document.add(dateDemande);
+        
+        document.add(new Paragraph("\n"));
+        
+        // Adresse ALGERAC
+        Paragraph address = new Paragraph(ALGERAC_ADDRESS)
+                .setFont(font)
+                .setFontSize(8)
+                .setTextAlignment(TextAlignment.CENTER);
+        document.add(address);
+    }
 }

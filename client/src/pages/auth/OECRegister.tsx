@@ -244,25 +244,25 @@ export default function OECRegister() {
     setApiError("");
 
     try {
-      const fd = new FormData();
-      Object.entries(formData).forEach(([k, v]) => {
-        if (v instanceof File) {
-          fd.append(k, v);
-        } else if (Array.isArray(v)) {
-          fd.append(k, JSON.stringify(v));
-        } else if (typeof v === "boolean") {
-          fd.append(k, v ? "true" : "false");
-        } else if (v !== null && v !== undefined) {
-          fd.append(k, v as string);
-        }
-      });
-      fd.append("userType", "OEC");
-      fd.append("reconnaissances", JSON.stringify(reconnaissances));
-      fd.append("conseilDetails", JSON.stringify(conseilDetails));
+      // Préparer le payload JSON pour le backend
+      const payload = {
+        nomOrganisme: formData.nomOrganisme,
+        typeOrganisme: formData.statutJuridique || "Non spécifié",
+        adresseSiege: formData.adresseSiege,
+        telephone: formData.telephone,
+        email: formData.email,
+        nomRepresentant: formData.contactNom || formData.signataireNom,
+        fonction: formData.contactFonction || formData.signataireFonction,
+        telephoneDirect: formData.contactTelephone || formData.telephone,
+        emailProfessionnel: formData.contactEmail || formData.email,
+        porteeAccreditation: formData.activitePrincipale || formData.activites.join(", "),
+        userType: "OEC"
+      };
 
       const response = await fetch("http://localhost:8082/api/auth/signup/oec", {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

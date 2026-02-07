@@ -82,13 +82,6 @@ public class AuthService {
         user = userRepository.save(user);
         log.info("Nouvel OEC enregistré : {}", user.getOrganizationName());
         
-        try {
-            emailService.sendOECRegistrationNotification(user);
-            emailService.sendConfirmationToUser(user);
-        } catch (Exception e) {
-            log.error("Erreur lors de l'envoi des emails", e);
-        }
-        
         return user;
     }
     

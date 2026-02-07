@@ -14,6 +14,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
@@ -65,59 +66,47 @@ public class EmailService {
     /**
      * Envoie une notification d'inscription OEC avec PDF
      */
+    /**
+     * Envoie une notification d'inscription OEC avec PDF DOC1 en pièce jointe
+     */
     public void sendOECRegistrationNotification(User user) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(notificationEmail);
-            message.setSubject("Nouvelle inscription OEC - " + user.getOrganizationName());
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            String emailBody = String.format("""
-                Nouvelle demande d'inscription OEC reçue :
-                
-                === INFORMATIONS ORGANISME ===
-                Nom de l'organisme : %s
-                Type : %s
-                Adresse du siège : %s
-                Téléphone : %s
-                Email : %s
-                
-                === REPRÉSENTANT LÉGAL ===
-                Nom : %s
-                Fonction : %s
-                Téléphone direct : %s
-                Email professionnel : %s
-                
-                === PORTÉE D'ACCRÉDITATION ===
-                %s
-                
-                Date d'inscription : %s
-                Status : %s
-                
-                ---
-                Cette demande nécessite votre approbation.
-                """,
-                user.getOrganizationName(),
-                user.getTypeOrganisme(),
-                user.getAdresseSiege(),
-                user.getPhone(),
-                user.getEmail(),
-                user.getNomRepresentant(),
-                user.getFonction(),
-                user.getTelephoneDirect(),
-                user.getEmailProfessionnel(),
-                user.getPorteeAccreditation() != null ? user.getPorteeAccreditation() : "Non spécifiée",
-                user.getCreatedAt(),
-                user.getStatus()
-            );
+            helper.setFrom(fromEmail);
+            helper.setTo(notificationEmail);
+            
+            String subject = String.format("[OEC] Nouvelle inscription - %s", user.getOrganizationName());
+            helper.setSubject(subject);
 
-            message.setText(emailBody);
-            mailSender.send(message);
-            log.info("OEC registration email sent to {}", notificationEmail);
-        } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de l'email d'inscription OEC à {}", notificationEmail, e);
-            throw new RuntimeException("Erreur lors de l'envoi de l'email d'inscription OEC", e);
+            String emailBody = buildOECEmailBody(user);
+            helper.setText(emailBody, false);
+
+            // Génération et ajout du PDF DOC1 en pièce jointe
+            byte[] pdfBytes = pdfGenerationService.generateDoc1Pdf(user);
+            String filename = String.format("DOC1_%s_%s.pdf",
+                user.getOrganizationName().replaceAll("[^a-zA-Z0-9]", "_"),
+                DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now()));
+
+            helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
+
+            mailSender.send(mimeMessage);
+            log.info("Email OEC avec PDF DOC1 envoyé pour {}", user.getOrganizationName());
+
+        } catch (MessagingException e) {
+            log.error("Erreur lors de l'envoi de l'email OEC avec PDF", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email OEC", e);
         }
+    }
+
+    /**
+     * Construit le corps de l'email pour l'inscription OEC
+     */
+    private String buildOECEmailBody(User user) {
+        return "Une nouvelle demande d'inscription OEC a été reçue.\n\n" +
+               "Cette demande nécessite votre approbation.\n" +
+               "Le formulaire DOC 1 complet est en pièce jointe de cet email.";
     }
 
     /**

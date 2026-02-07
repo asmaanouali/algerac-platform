@@ -129,13 +129,13 @@ public class AuthController {
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
     
-    // === OEC REGISTRATION ===
+    // === OEC REGISTRATION (UPDATED FOR DOC 1) ===
     @PostMapping("/signup/oec")
     public ResponseEntity<ApiResponse> registerOEC(
             @Valid @RequestBody OECSignupRequest request,
             BindingResult bindingResult) {
         
-        log.info("Réception d'une demande d'inscription OEC : {}", request.getNomOrganisme());
+        log.info("Réception d'une demande d'inscription OEC DOC 1 : {}", request.getNomOrganisme());
         
         if (bindingResult.hasErrors()) {
             String errors = bindingResult.getAllErrors().stream()
@@ -148,13 +148,21 @@ public class AuthController {
         }
         
         try {
+            // Créer l'utilisateur dans la base de données
             User user = authService.registerOEC(request);
+            
+            // Envoyer l'email avec le PDF DOC1
             emailService.sendOECRegistrationNotification(user);
+            
+            // Envoyer l'email de confirmation à l'utilisateur
             emailService.sendConfirmationToUser(user);
+            
+            log.info("Inscription OEC réussie et PDF DOC1 envoyé pour {}", 
+                    user.getOrganizationName());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Inscription réussie ! Votre demande est en cours d'examen.",
+                            "Inscription réussie ! Votre formulaire DOC 1 a été généré et envoyé à ALGERAC.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {

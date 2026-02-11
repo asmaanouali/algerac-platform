@@ -5,6 +5,7 @@
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status) VALUES
 ('admin@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Salah Nacef', 'ADMIN', 'ALGERAC Admin', '+213 21 123456', NOW(), 'APPROVED'),
 ('amine.belkacemi@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Amine Belkacemi', 'RA', 'ALGERAC RA', '+213 21 123457', NOW(), 'APPROVED'),
+('dt@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Ahmed Directeur Technique', 'DT', 'ALGERAC DT', '+213 21 123458', NOW(), 'APPROVED'),
 ('biotest@example.com', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Laboratoire BioTest', 'OEC', 'Laboratoire BioTest', '+213 21 789456', NOW(), 'APPROVED');
 
 -- Insert test accreditation requests

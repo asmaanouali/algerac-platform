@@ -11,7 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === ENUMS ===
-export const userTypes = ["admin", "ra", "oec", "expert"] as const;
+export const userTypes = ["admin", "ra", "dt", "oec", "expert"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
 export const requestStatuses = [
   "draft",

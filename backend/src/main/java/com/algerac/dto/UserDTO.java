@@ -43,7 +43,7 @@ public class UserDTO {
                 .prenom(user.getPrenom())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .role(user.getRole() != null ? user.getRole().name() : null)
+                .role(user.getRoleLowercase())
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt());
         

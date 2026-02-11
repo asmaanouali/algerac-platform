@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/use-auth";  // Add this import
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/auth/Login";
 import RegisterSelection from "@/pages/auth/RegisterSelection";
@@ -15,6 +16,8 @@ import RegistrationSuccess from "@/pages/auth/RegistrationSuccess";
 import OECDashboard from "@/pages/oec/Dashboard";
 import RADashboard from "@/pages/ra/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
+import DashboardPage from "@/pages/dashboard-page";
+import CandidaturesPage from "@/pages/dt/CandidaturesPage";
 
 function Router() {
   return (
@@ -32,6 +35,9 @@ function Router() {
       <Route path="/ra" component={RADashboard} />
       <Route path="/admin" component={AdminDashboard} />
       
+      <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/candidatures" component={CandidaturesPage} />
+      
       <Route component={NotFound} />
     </Switch>
   );
@@ -41,8 +47,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <AuthProvider>  {/* Add this wrapper */}
+          <Toaster />
+          <Router />
+        </AuthProvider>  {/* Close it here */}
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -14,7 +14,9 @@ import {
   Users,
   Database,
   CalendarDays,
-  Briefcase
+  Briefcase,
+  UserCheck,
+  FileCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +26,8 @@ export function Sidebar() {
   
   if (!user) return null;
 
-  const role = user.role;
+  const fullName = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
+  const role = (user as any).role || (user as any).typeRole || (user as any).roleId; // Adjust based on your actual property name
 
   const navItems = {
     oec: [
@@ -45,6 +48,13 @@ export function Sidebar() {
       { href: "/dossiers", label: "Dossiers", icon: Files },
       { href: "/planning", label: "Planning", icon: CalendarDays },
       { href: "/evaluators", label: "Évaluateurs", icon: Users },
+    ],
+    dt: [
+      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/candidatures", label: "Candidatures", icon: Users },
+      { href: "/experts", label: "Experts Certifiés", icon: UserCheck },
+      { href: "/evaluation", label: "Évaluation", icon: FileCheck },
+      { href: "/rapports", label: "Rapports", icon: FileText },
     ],
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -88,11 +98,11 @@ export function Sidebar() {
       <div className="p-4 border-t bg-slate-50">
         <div className="flex items-center gap-3 mb-4 px-2">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-            {user.fullName.charAt(0)}
+            {fullName.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-slate-900">{user.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate capitalize">{user.role}</p>
+            <p className="text-sm font-medium truncate text-slate-900">{fullName}</p>
+            <p className="text-xs text-muted-foreground truncate capitalize">{role}</p>
           </div>
         </div>
         <Button 

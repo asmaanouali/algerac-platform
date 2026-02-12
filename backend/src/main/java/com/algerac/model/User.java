@@ -125,8 +125,11 @@ public class User {
     private String connaissancesLinguistiquesJson;
     
     // STATUS
-    private String status; // "PENDING", "APPROVED", "REJECTED"
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status; // PENDING, APPROVED, REJECTED
     private LocalDateTime dateApprobation;
+    private String rejectionReason; // Motif de refus si rejeté
     
     @PrePersist
     protected void onCreate() {
@@ -134,7 +137,7 @@ public class User {
             createdAt = LocalDateTime.now();
         }
         if (status == null) {
-            status = "PENDING";
+            status = UserStatus.PENDING;
         }
         // Auto-fill fullName if not set
         if (fullName == null) {

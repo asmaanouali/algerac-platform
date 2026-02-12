@@ -16,7 +16,9 @@ import {
   CalendarDays,
   Briefcase,
   UserCheck,
-  FileCheck
+  FileCheck,
+  Building2,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,8 +28,8 @@ export function Sidebar() {
   
   if (!user) return null;
 
-  const fullName = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
-  const role = (user as any).role || (user as any).typeRole || (user as any).roleId; // Adjust based on your actual property name
+  const fullName = user.fullName || `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
+  const role = (user as any).role || (user as any).typeRole || (user as any).roleId;
 
   const navItems = {
     oec: [
@@ -51,7 +53,7 @@ export function Sidebar() {
     ],
     dt: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { href: "/candidatures", label: "Candidatures", icon: Users },
+      { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/experts", label: "Experts Certifiés", icon: UserCheck },
       { href: "/evaluation", label: "Évaluation", icon: FileCheck },
       { href: "/rapports", label: "Rapports", icon: FileText },
@@ -59,6 +61,7 @@ export function Sidebar() {
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
+      { href: "/admin/utilisateurs-pending", label: "OEC en Attente", icon: UserPlus },
       { href: "/roles", label: "Rôles", icon: User },
       { href: "/system", label: "Système", icon: Database },
       { href: "/security", label: "Sécurité", icon: ShieldAlert },
@@ -68,18 +71,16 @@ export function Sidebar() {
   const currentNav = navItems[role as keyof typeof navItems] || [];
 
   return (
-    <div className="w-64 bg-white border-r h-screen flex flex-col fixed left-0 top-0 z-30 shadow-lg">
+    <div className="hidden md:flex w-64 bg-white border-r h-screen flex-col fixed left-0 top-0 z-30 shadow-lg">
       <div className="p-6 border-b flex items-center justify-center">
-        <div className="flex items-center gap-2 font-display text-2xl font-bold text-primary">
-          <div className="w-8 h-8 rounded bg-primary text-white flex items-center justify-center">A</div>
+        <div className="flex items-center gap-3 font-display text-2xl font-bold text-primary">
+          <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
           ALGERAC
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">
-          Menu Principal
-        </div>
+      
         {currentNav.map((item) => (
           <Link key={item.href} href={item.href}>
             <div
@@ -95,18 +96,9 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="p-4 border-t bg-slate-50">
-        <div className="flex items-center gap-3 mb-4 px-2">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-            {fullName.charAt(0)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-slate-900">{fullName}</p>
-            <p className="text-xs text-muted-foreground truncate capitalize">{role}</p>
-          </div>
-        </div>
+      <div className="p-4 border-t">
         <Button 
-          variant="outline" 
+          variant="ghost" 
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={() => logoutMutation.mutate()}
         >

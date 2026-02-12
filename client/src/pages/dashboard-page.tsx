@@ -1,5 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
+import { DTNavbar } from "@/components/dt-navbar";
+import DTDashboard from "@/pages/dt/Dashboard";
 import { useAdminStats, useRaStats } from "@/hooks/use-stats";
 import { useRequests } from "@/hooks/use-requests";
 import { StatCard } from "@/components/stat-card";
@@ -349,31 +351,36 @@ export default function DashboardPage() {
       </Card>
 
       {/* Actions Rapides */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-          <CardContent className="p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-3 text-primary" />
-            <h3 className="font-semibold mb-2">Voir les Candidatures</h3>
-            <p className="text-sm text-muted-foreground">Gérer les nouvelles demandes</p>
+          <CardContent className="p-4 md:p-6 text-center">
+            <Users className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 text-primary" />
+            <h3 className="font-semibold mb-2 text-sm md:text-base">Voir les Candidatures</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">Gérer les nouvelles demandes</p>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-          <CardContent className="p-6 text-center">
-            <UserCheck className="w-12 h-12 mx-auto mb-3 text-primary" />
-            <h3 className="font-semibold mb-2">Experts Certifiés</h3>
-            <p className="text-sm text-muted-foreground">Liste des experts actifs</p>
+          <CardContent className="p-4 md:p-6 text-center">
+            <UserCheck className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 text-primary" />
+            <h3 className="font-semibold mb-2 text-sm md:text-base">Experts Certifiés</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">Liste des experts actifs</p>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-          <CardContent className="p-6 text-center">
-            <FileCheck className="w-12 h-12 mx-auto mb-3 text-primary" />
-            <h3 className="font-semibold mb-2">Rapports</h3>
-            <p className="text-sm text-muted-foreground">Statistiques et analyses</p>
+          <CardContent className="p-4 md:p-6 text-center">
+            <FileCheck className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 text-primary" />
+            <h3 className="font-semibold mb-2 text-sm md:text-base">Rapports</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">Statistiques et analyses</p>
           </CardContent>
         </Card>
       </div>
     </div>
   );
+
+  // Structure spéciale pour le DT avec navbar séparée
+  if (user.role === 'dt') {
+    return <DTDashboard />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -402,7 +409,6 @@ export default function DashboardPage() {
 
         {user.role === 'oec' && renderOecDashboard()}
         {user.role === 'ra' && renderRaDashboard()}
-        {user.role === 'dt' && renderDtDashboard()}
         {user.role === 'admin' && renderAdminDashboard()}
         {!['oec', 'ra', 'dt', 'admin'].includes(user.role) && (
           <div className="text-center py-12">

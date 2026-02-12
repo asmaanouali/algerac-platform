@@ -1,64 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Sidebar } from "@/components/layout-sidebar";
 import { LayoutDashboard, Users, Shield, Server, Bell, Database, LogOut, Search, Filter, MoreHorizontal, UserPlus, Download } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AdminDashboard() {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full bg-slate-900 text-slate-100">
-        <Sidebar className="border-r border-slate-800 bg-slate-950">
-          <SidebarHeader className="p-4 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">A</div>
-              <div>
-                <p className="text-sm font-bold text-blue-400 leading-none">ALGERAC</p>
-                <p className="text-[10px] text-slate-500 uppercase tracking-tighter">Administration</p>
-              </div>
-            </div>
-          </SidebarHeader>
-          <SidebarContent className="p-2">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton isActive className="bg-slate-800 text-white">
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>Tableau de Bord</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton className="text-slate-400 hover:text-white">
-                      <Users className="w-4 h-4" />
-                      <span>Utilisateurs</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton className="text-slate-400 hover:text-white">
-                      <Shield className="w-4 h-4" />
-                      <span>Rôles & Permissions</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton className="text-slate-400 hover:text-white">
-                      <Server className="w-4 h-4" />
-                      <span>Système</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <div className="mt-auto p-4 border-t border-slate-800">
-            <Button variant="ghost" className="w-full justify-start gap-2 text-slate-400 hover:text-white" asChild>
-              <Link href="/"><LogOut className="w-4 h-4" /> Déconnexion</Link>
-            </Button>
-          </div>
-        </Sidebar>
-
-        <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-screen w-full bg-slate-50">
+      <Sidebar />
+      
+      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
           <header className="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
             <h1 className="text-lg font-semibold">Gestion des Utilisateurs</h1>
             <div className="flex items-center gap-4">
@@ -203,6 +155,5 @@ export default function AdminDashboard() {
           </main>
         </div>
       </div>
-    </SidebarProvider>
   );
 }

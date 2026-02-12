@@ -18,6 +18,8 @@ import RADashboard from "@/pages/ra/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DashboardPage from "@/pages/dashboard-page";
 import CandidaturesPage from "@/pages/dt/CandidaturesPage";
+import CandidaturesOECPage from "@/pages/dt/CandidaturesOECPage";
+import UtilisateursPendingPage from "@/pages/admin/UtilisateursPendingPage";
 
 function Router() {
   return (
@@ -37,6 +39,8 @@ function Router() {
       
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/candidatures" component={CandidaturesPage} />
+      <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
+      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
       
       <Route component={NotFound} />
     </Switch>

@@ -18,6 +18,7 @@ public class UserDTO {
     private Long id;
     private String nom;
     private String prenom;
+    private String fullName;
     private String email;
     private String phone;
     private String role;
@@ -37,14 +38,25 @@ public class UserDTO {
      * Convertit un User en UserDTO
      */
     public static UserDTO fromUser(User user) {
+        // Calculer le fullName
+        String fullName = null;
+        if (user.getNom() != null && user.getPrenom() != null) {
+            fullName = user.getPrenom() + " " + user.getNom();
+        } else if (user.getOrganizationName() != null) {
+            fullName = user.getOrganizationName();
+        } else if (user.getFullName() != null) {
+            fullName = user.getFullName();
+        }
+        
         UserDTOBuilder builder = UserDTO.builder()
                 .id(user.getId())
                 .nom(user.getNom())
                 .prenom(user.getPrenom())
+                .fullName(fullName)
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .role(user.getRoleLowercase())
-                .status(user.getStatus())
+                .status(user.getStatus() != null ? user.getStatus().name() : null)
                 .createdAt(user.getCreatedAt());
         
         // Champs spécifiques aux experts
@@ -63,15 +75,5 @@ public class UserDTO {
         }
         
         return builder.build();
-    }
-    
-    /**
-     * Obtient le nom complet
-     */
-    public String getFullName() {
-        if (nom != null && prenom != null) {
-            return prenom + " " + nom;
-        }
-        return organizationName;
     }
 }

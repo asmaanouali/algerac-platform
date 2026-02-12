@@ -1,49 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthLeft from "@/components/layout/AuthLeft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [, setLocation] = useLocation();
+  const { loginMutation } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        // Stocker l'utilisateur (optionnel: localStorage/sessionStorage)
-        if (remember) {
-          localStorage.setItem("user", JSON.stringify(data));
-        } else {
-          sessionStorage.setItem("user", JSON.stringify(data));
-        }
-        setLocation("/dashboard"); // Redirige vers dashboard ou autre page
-      } else {
-        setError(data.message || "Erreur de connexion");
-      }
-    } catch (err) {
-      setError("Erreur réseau ou serveur");
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate({ email, password });
   };
+
+  // Redirection après succès du login
+  useEffect(() => {
+    if (loginMutation.isSuccess) {
+      setLocation("/dashboard");
+    }
+  }, [loginMutation.isSuccess, setLocation]);
 
   return (
     <div className="min-h-screen flex">
@@ -71,7 +53,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
-                disabled={loading}
+                disabled={loginMutation.isPending}
               />
             </div>
 
@@ -87,7 +69,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-10 bg-white border-gray-300 text-gray-900 pr-10"
-                  disabled={loading}
+                  disabled={loginMutation.isPending}
                 />
                 <button
                   type="button"
@@ -108,7 +90,7 @@ export default function Login() {
                   checked={remember}
                   onCheckedChange={(checked) => setRemember(checked === true)}
                   className="border-gray-400 data-[state=checked]:bg-[#00A63E] data-[state=checked]:border-[#00A63E]"
-                  disabled={loading}
+                  disabled={loginMutation.isPending}
                 />
                 <label
                   htmlFor="remember"
@@ -125,9 +107,9 @@ export default function Login() {
             </div>
 
             {/* Error message */}
-            {error && (
+            {loginMutation.isError && (
               <div className="text-red-600 text-sm text-center font-medium">
-                {error}
+                {loginMutation.error?.message || "Erreur de connexion"}
               </div>
             )}
 
@@ -135,9 +117,9 @@ export default function Login() {
             <Button
               className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base flex items-center justify-center gap-2"
               type="submit"
-              disabled={loading}
+              disabled={loginMutation.isPending}
             >
-              {loading ? (
+              {loginMutation.isPending ? (
                 <span>Connexion...</span>
               ) : (
                 <>
@@ -159,7 +141,7 @@ export default function Login() {
                 variant="outline"
                 className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
                 asChild
-                disabled={loading}
+                disabled={loginMutation.isPending}
               >
                 <Link href="/auth/register">
                   <span>Créer un compte</span>

@@ -5,6 +5,7 @@ import com.algerac.dto.OECSignupRequest;
 import com.algerac.model.PasswordResetToken;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
+import com.algerac.model.UserStatus;
 import com.algerac.repository.PasswordResetTokenRepository;
 import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -75,7 +76,7 @@ public class AuthService {
                 .telephoneDirect(request.getTelephoneDirect())
                 .emailProfessionnel(request.getEmailProfessionnel())
                 .porteeAccreditation(request.getPorteeAccreditation())
-                .status("PENDING")
+                .status(UserStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
         
@@ -125,7 +126,7 @@ public class AuthService {
             // Nouvel ID d'inscription
             .registrationId(registrationId)
             // Status
-            .status("PENDING")
+            .status(UserStatus.PENDING)
             .createdAt(LocalDateTime.now())
             .build();
         
@@ -185,7 +186,7 @@ public class AuthService {
             return null;
         }
         
-        if (!"APPROVED".equals(user.getStatus())) {
+        if (user.getStatus() != UserStatus.APPROVED) {
             throw new RuntimeException("Votre compte n'est pas encore approuvé");
         }
         

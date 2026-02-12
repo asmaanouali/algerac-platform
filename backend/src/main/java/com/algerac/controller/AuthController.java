@@ -3,10 +3,12 @@
 package com.algerac.controller;
 
 import com.algerac.dto.*;
+import com.algerac.model.OECApplication;
 import com.algerac.model.User;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
+import com.algerac.service.OECApplicationService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final OECApplicationService oecApplicationService;
 
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")
@@ -129,13 +132,13 @@ public class AuthController {
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
     
-    // === OEC REGISTRATION (UPDATED FOR DOC 1) ===
+    // === OEC REGISTRATION (UPDATED - Creates PENDING User) ===
     @PostMapping("/signup/oec")
     public ResponseEntity<ApiResponse> registerOEC(
             @Valid @RequestBody OECSignupRequest request,
             BindingResult bindingResult) {
         
-        log.info("Réception d'une demande d'inscription OEC DOC 1 : {}", request.getNomOrganisme());
+        log.info("Réception d'une demande d'inscription OEC : {}", request.getNomOrganisme());
         
         if (bindingResult.hasErrors()) {
             String errors = bindingResult.getAllErrors().stream()
@@ -148,35 +151,32 @@ public class AuthController {
         }
         
         try {
-            // Créer l'utilisateur dans la base de données
+            // Créer un User PENDING au lieu de OECApplication
             User user = authService.registerOEC(request);
             
-            // Envoyer l'email avec le PDF DOC1
+            // Envoyer l'email avec le PDF DOC1 à ALGERAC
             emailService.sendOECRegistrationNotification(user);
             
-            // Envoyer l'email de confirmation à l'utilisateur
-            emailService.sendConfirmationToUser(user);
-            
-            log.info("Inscription OEC réussie et PDF DOC1 envoyé pour {}", 
-                    user.getOrganizationName());
+            log.info("Candidature OEC créée avec succès (User PENDING) - ID: {}, Organisme: {}", 
+                    user.getId(), user.getOrganizationName());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Inscription réussie ! Votre formulaire DOC 1 a été généré et envoyé à ALGERAC.",
+                            "Votre demande d'accréditation a bien été enregistrée. Vous recevrez un email dès qu'elle sera examinée par la Direction Technique.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {
-            log.error("Erreur lors de l'inscription OEC : {}", e.getMessage());
+            log.error("Erreur lors de la création de la candidature OEC : {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            log.error("Erreur inattendue lors de l'inscription OEC", e);
+            log.error("Erreur inattendue lors de la création de la candidature OEC", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Une erreur est survenue. Veuillez réessayer."));
         }
     }
     
-    // === EXPERT REGISTRATION (UPDATED FOR FOR 20) ===
+    // === EXPERT REGISTRATION (UPDATED - Creates PENDING User) ===
     @PostMapping("/signup/expert")
     public ResponseEntity<ApiResponse> registerExpert(
             @Valid @RequestBody ExpertSignupRequest request,
@@ -196,21 +196,22 @@ public class AuthController {
         }
         
         try {
-            // Créer l'utilisateur dans la base de données
+            // Créer un User PENDING (déjà implémenté dans authService.registerExpert)
+            // Le status sera automatiquement PENDING grâce au @PrePersist
             User user = authService.registerExpert(request);
             
-            // Envoyer l'email avec le PDF FOR 20
+            // Envoyer l'email avec le PDF FOR 20 à ALGERAC
             emailService.sendExpertRegistrationNotification(user);
             
-            // Envoyer l'email de confirmation à l'utilisateur
+            // Envoyer l'email de confirmation au candidat
             emailService.sendConfirmationToUser(user);
             
-            log.info("Inscription Expert réussie et PDF envoyé pour {} {}", 
-                    user.getNom(), user.getPrenom());
+            log.info("Candidature Expert créée avec succès (User PENDING) - ID: {}, Nom: {} {}", 
+                    user.getId(), user.getNom(), user.getPrenom());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Inscription réussie ! Votre formulaire FOR 20 a été généré et envoyé à ALGERAC.",
+                            "Votre candidature a bien été enregistrée. Vous recevrez un email dès qu'elle sera examinée par la Direction Technique.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {

@@ -244,7 +244,6 @@ public class PdfGenerationService {
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void addAutresFormationsSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("3 BIS - AUTRES FORMATIONS")
                 .setFont(boldFont)
@@ -282,7 +281,6 @@ public class PdfGenerationService {
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void addExperienceProfessionnelleSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("4 - EXPÉRIENCE PROFESSIONNELLE")
                 .setFont(boldFont)
@@ -332,7 +330,6 @@ public class PdfGenerationService {
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void addEvaluationsAuditsSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("5 - ÉVALUATION OU AUDIT DE SM RÉALISÉS")
                 .setFont(boldFont)
@@ -372,7 +369,6 @@ public class PdfGenerationService {
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void addFormationsDispenseesSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("6 - FORMATIONS DISPENSÉES")
                 .setFont(boldFont)
@@ -408,7 +404,6 @@ public class PdfGenerationService {
         }
     }
     
-    @SuppressWarnings("unchecked")
     private void addConnaissancesLinguistiquesSection(Document document, User user, PdfFont font, PdfFont boldFont) {
         Paragraph sectionTitle = new Paragraph("7 - CONNAISSANCE LINGUISTIQUE")
                 .setFont(boldFont)

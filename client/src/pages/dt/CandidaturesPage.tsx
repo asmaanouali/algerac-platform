@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Eye, CheckCircle, XCircle, Clock, FileText, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DTNavbar } from "@/components/dt-navbar";
 
 // Type pour les candidatures
 interface Candidature {
@@ -133,239 +134,249 @@ export default function CandidaturesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Candidatures Experts</h1>
-          <p className="text-muted-foreground mt-1">Gérer les demandes d'inscription</p>
-        </div>
-        <Button>
-          <FileText className="w-4 h-4 mr-2" />
-          Exporter
-        </Button>
-      </div>
-
-      {/* Filtres */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par nom, ID, domaine..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+      <div className="flex-1 flex flex-col w-full md:ml-64 max-w-full overflow-hidden">
+        <DTNavbar />
+        
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Candidatures Experts</h1>
+              <p className="text-muted-foreground mt-1 text-sm md:text-base">Gérer les demandes d'inscription</p>
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="PENDING">En attente</SelectItem>
-                <SelectItem value="APPROVED">Approuvé</SelectItem>
-                <SelectItem value="REJECTED">Rejeté</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="EXPERT">Expert</SelectItem>
-                <SelectItem value="EVALUATEUR">Évaluateur</SelectItem>
-                <SelectItem value="FORMATEUR">Formateur</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button className="shrink-0">
+              <FileText className="w-4 h-4 mr-2" />
+              Exporter
+            </Button>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Statistiques rapides */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">{candidatures.filter(c => c.status === "PENDING").length}</p>
-              <p className="text-sm text-muted-foreground">En attente</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{candidatures.filter(c => c.status === "APPROVED").length}</p>
-              <p className="text-sm text-muted-foreground">Approuvés</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-red-600">{candidatures.filter(c => c.status === "REJECTED").length}</p>
-              <p className="text-sm text-muted-foreground">Rejetés</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{candidatures.length}</p>
-              <p className="text-sm text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Filtres */}
+          <Card className="mb-6 w-full">
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher par nom, ID, domaine..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="PENDING">En attente</SelectItem>
+                    <SelectItem value="APPROVED">Approuvé</SelectItem>
+                    <SelectItem value="REJECTED">Rejeté</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="EXPERT">Expert</SelectItem>
+                    <SelectItem value="EVALUATEUR">Évaluateur</SelectItem>
+                    <SelectItem value="FORMATEUR">Formateur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Table des candidatures */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des Candidatures ({filteredCandidatures.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Candidat</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Domaine d'Expertise</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCandidatures.map((candidature) => (
-                <TableRow key={candidature.id}>
-                  <TableCell className="font-mono text-sm">{candidature.registrationId}</TableCell>
-                  <TableCell>
+          {/* Statistiques rapides */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-600">{candidatures.filter(c => c.status === "PENDING").length}</p>
+                  <p className="text-sm text-muted-foreground">En attente</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{candidatures.filter(c => c.status === "APPROVED").length}</p>
+                  <p className="text-sm text-muted-foreground">Approuvés</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-600">{candidatures.filter(c => c.status === "REJECTED").length}</p>
+                  <p className="text-sm text-muted-foreground">Rejetés</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">{candidatures.length}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Table des candidatures */}
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>Liste des Candidatures ({filteredCandidatures.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 sm:p-6">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[90px] sm:w-[100px]">ID</TableHead>
+                    <TableHead className="min-w-[160px] sm:min-w-[200px]">Candidat</TableHead>
+                    <TableHead className="w-[100px] sm:w-[120px]">Type</TableHead>
+                    <TableHead className="min-w-[200px] sm:min-w-[250px] max-w-[300px] sm:max-w-[350px]">Domaine</TableHead>
+                    <TableHead className="w-[90px] sm:w-[100px]">Date</TableHead>
+                    <TableHead className="w-[90px] sm:w-[100px]">Statut</TableHead>
+                    <TableHead className="w-[120px] sm:w-[140px] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCandidatures.map((candidature) => (
+                    <TableRow key={candidature.id}>
+                      <TableCell className="font-mono text-sm whitespace-nowrap">{candidature.registrationId}</TableCell>
+                      <TableCell>
+                        <div className="min-w-[180px]">
+                          <p className="font-medium whitespace-nowrap">{candidature.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{candidature.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getTypeBadge(candidature.userType)}</TableCell>
+                      <TableCell>
+                        <div className="max-w-[350px] truncate" title={candidature.domaineExpertise}>
+                          {candidature.domaineExpertise}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(candidature.dateInscription).toLocaleDateString('fr-FR')}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(candidature.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setSelectedCandidature(candidature)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {candidature.status === "PENDING" && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApprove(candidature)}
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleReject(candidature)}
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dialog de détails */}
+          <Dialog open={!!selectedCandidature} onOpenChange={() => setSelectedCandidature(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Détails de la Candidature</DialogTitle>
+                <DialogDescription>
+                  {selectedCandidature?.registrationId} - {selectedCandidature?.fullName}
+                </DialogDescription>
+              </DialogHeader>
+              {selectedCandidature && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="font-medium">{candidature.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{candidature.email}</p>
+                      <label className="text-sm font-medium text-muted-foreground">Nom complet</label>
+                      <p className="text-sm font-semibold">{selectedCandidature.fullName}</p>
                     </div>
-                  </TableCell>
-                  <TableCell>{getTypeBadge(candidature.userType)}</TableCell>
-                  <TableCell className="max-w-xs truncate">{candidature.domaineExpertise}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(candidature.dateInscription).toLocaleDateString('fr-FR')}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(candidature.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setSelectedCandidature(candidature)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {candidature.status === "PENDING" && (
-                        <>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            onClick={() => handleApprove(candidature)}
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleReject(candidature)}
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Type</label>
+                      <p className="text-sm">{getTypeBadge(selectedCandidature.userType)}</p>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Dialog de détails */}
-      <Dialog open={!!selectedCandidature} onOpenChange={() => setSelectedCandidature(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Détails de la Candidature</DialogTitle>
-            <DialogDescription>
-              {selectedCandidature?.registrationId} - {selectedCandidature?.fullName}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedCandidature && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Nom complet</label>
-                  <p className="text-sm font-semibold">{selectedCandidature.fullName}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Type</label>
-                  <p className="text-sm">{getTypeBadge(selectedCandidature.userType)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-sm">{selectedCandidature.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Téléphone</label>
-                  <p className="text-sm">{selectedCandidature.telephone}</p>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-muted-foreground">Domaine d'expertise</label>
-                  <p className="text-sm">{selectedCandidature.domaineExpertise}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Date d'inscription</label>
-                  <p className="text-sm">{new Date(selectedCandidature.dateInscription).toLocaleDateString('fr-FR')}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Statut</label>
-                  <p className="text-sm">{getStatusBadge(selectedCandidature.status)}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 pt-4 border-t">
-                <Button variant="outline" className="flex-1">
-                  <Download className="w-4 h-4 mr-2" />
-                  Télécharger le CV
-                </Button>
-                {selectedCandidature.status === "PENDING" && (
-                  <>
-                    <Button 
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                      onClick={() => handleApprove(selectedCandidature)}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Approuver
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Email</label>
+                      <p className="text-sm">{selectedCandidature.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Téléphone</label>
+                      <p className="text-sm">{selectedCandidature.telephone}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium text-muted-foreground">Domaine d'expertise</label>
+                      <p className="text-sm">{selectedCandidature.domaineExpertise}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Date d'inscription</label>
+                      <p className="text-sm">{new Date(selectedCandidature.dateInscription).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Statut</label>
+                      <p className="text-sm">{getStatusBadge(selectedCandidature.status)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 pt-4 border-t">
+                    <Button variant="outline" className="flex-1">
+                      <Download className="w-4 h-4 mr-2" />
+                      Télécharger le CV
                     </Button>
-                    <Button 
-                      variant="destructive" 
-                      className="flex-1"
-                      onClick={() => handleReject(selectedCandidature)}
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Rejeter
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      </main>
+                    {selectedCandidature.status === "PENDING" && (
+                      <>
+                        <Button 
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleApprove(selectedCandidature)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approuver
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          className="flex-1"
+                          onClick={() => handleReject(selectedCandidature)}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Rejeter
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </main>
+      </div>
     </div>
   );
 }

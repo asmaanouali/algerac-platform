@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Users, FileCheck, Clock, UserCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { DTNavbar } from "@/components/dt-navbar";
+import { Navbar } from "@/components/navbar";
 
 export default function DTDashboard() {
   const { user } = useAuth();
@@ -13,12 +13,12 @@ export default function DTDashboard() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64">
-        <DTNavbar />
+        <Navbar />
         
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900">Tableau de Bord Technique</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Tableau de Bord Technique</h1>
             <p className="text-muted-foreground mt-1">
               Vue d'ensemble des activités d'accréditation et de la performance.
             </p>
@@ -59,35 +59,8 @@ export default function DTDashboard() {
                 <CardTitle>Activités Récentes</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <div>
-                      <p className="font-medium">Nouvelle candidature Expert</p>
-                      <p className="text-sm text-muted-foreground">Mohamed Benali - ISO 9001</p>
-                    </div>
-                    <Button variant="outline" size="sm">Voir</Button>
-                  </div>
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <div>
-                      <p className="font-medium">Dossier validé</p>
-                      <p className="text-sm text-muted-foreground">Sarah Amrani - Évaluateur ISO 14001</p>
-                    </div>
-                    <span className="text-xs text-green-600 font-medium">✓ Approuvé</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <div>
-                      <p className="font-medium">Candidature Formateur</p>
-                      <p className="text-sm text-muted-foreground">Karim Ziani - Formation ISO 45001</p>
-                    </div>
-                    <Button variant="outline" size="sm">Évaluer</Button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Renouvellement Expert</p>
-                      <p className="text-sm text-muted-foreground">Fatima Larbi - ISO 27001</p>
-                    </div>
-                    <span className="text-xs text-orange-600 font-medium">⏳ En attente</span>
-                  </div>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Les activités récentes seront affichées ici</p>
                 </div>
               </CardContent>
             </Card>

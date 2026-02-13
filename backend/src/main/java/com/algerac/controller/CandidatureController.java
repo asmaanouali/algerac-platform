@@ -90,6 +90,115 @@ public class CandidatureController {
             return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
         }
     }
+    
+    /**
+     * Récupère toutes les candidatures OEC en attente (PENDING)
+     * Accessible par DT
+     */
+    @GetMapping("/oec/pending")
+    public ResponseEntity<?> getPendingOECCandidatures(HttpSession session) {
+        try {
+            // Vérifier l'authentification
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                log.warn("Tentative d'accès non autorisé à /api/candidatures/oec/pending");
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            log.info("GET /api/candidatures/oec/pending - Récupération des candidatures OEC en attente par userId: {}", userId);
+            
+            List<User> pendingOECs = candidatureService.getPendingOECCandidatures();
+            log.info("Nombre de candidatures OEC en attente : {}", pendingOECs.size());
+            
+            return ResponseEntity.ok(pendingOECs);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des candidatures OEC en attente", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Récupère toutes les candidatures OEC (tous statuts)
+     * Accessible par DT
+     */
+    @GetMapping("/oec/all")
+    public ResponseEntity<?> getAllOECCandidatures(HttpSession session) {
+        try {
+            // Vérifier l'authentification
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            log.info("GET /api/candidatures/oec/all - Récupération de toutes les candidatures OEC");
+            List<User> allOECs = candidatureService.getAllOECCandidatures();
+            return ResponseEntity.ok(allOECs);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des candidatures OEC", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Récupère les candidatures OEC approuvées en attente de création de compte
+     * Accessible par Admin
+     */
+    @GetMapping("/oec/approved")
+    public ResponseEntity<?> getApprovedOECCandidatures(HttpSession session) {
+        try {
+            // Vérifier l'authentification
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            log.info("GET /api/candidatures/oec/approved - Récupération des OEC approuvés en attente de compte");
+            List<User> approvedOECs = candidatureService.getApprovedOECCandidatures();
+            return ResponseEntity.ok(approvedOECs);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des OEC approuvés", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Crée un compte pour un OEC approuvé
+     * Accessible par Admin
+     */
+    @PostMapping("/oec/{id}/create-account")
+    public ResponseEntity<?> createOECAccount(@PathVariable Long id, HttpSession session) {
+        try {
+            // Vérifier l'authentification
+            Long adminUserId = (Long) session.getAttribute("userId");
+            if (adminUserId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+            
+            log.info("POST /api/candidatures/oec/{}/create-account - Création de compte par admin {}", id, adminUserId);
+            
+            String generatedPassword = candidatureService.createOECAccount(id, adminUserId);
+            log.info("Compte OEC créé avec succès pour l'utilisateur {}", id);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Le compte OEC a été créé avec succès. Les identifiants ont été envoyés par email.");
+            response.put("generatedPassword", generatedPassword); // Pour référence admin
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la création du compte OEC {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors de la création du compte OEC", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
 
     /**
      * Approuve une candidature

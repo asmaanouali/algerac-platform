@@ -12,6 +12,7 @@ import { z } from "zod";
 
 // === ENUMS ===
 export const userTypes = ["admin", "ra", "dt", "oec", "expert"] as const;
+export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
 export const requestStatuses = [
   "draft",
@@ -31,6 +32,7 @@ export const users = pgTable("users", {
 
   nom: text("nom"),
   prenom: text("prenom"),
+  fullName: text("full_name"),
 
   email: text("email").notNull().unique(),
   emailProfessionnel: text("email_professionnel"),
@@ -55,6 +57,7 @@ export const users = pgTable("users", {
 
   status: text("status"),
   userType: text("user_type", { enum: userTypes }),
+  role: text("role", { enum: userRoles }),
 
   dateInscription: timestamp("date_inscription", { withTimezone: true }),
   dateApprobation: timestamp("date_approbation", { withTimezone: true }),

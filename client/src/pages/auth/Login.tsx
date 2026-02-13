@@ -106,12 +106,6 @@ export default function Login() {
               </Link>
             </div>
 
-            {/* Error message */}
-            {loginMutation.isError && (
-              <div className="text-red-600 text-sm text-center font-medium">
-                {loginMutation.error?.message || "Erreur de connexion"}
-              </div>
-            )}
 
             {/* Login Button */}
             <Button

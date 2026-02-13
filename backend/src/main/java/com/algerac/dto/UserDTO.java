@@ -22,7 +22,10 @@ public class UserDTO {
     private String email;
     private String phone;
     private String role;
+    private String userType;
     private String status;
+    private String fonction;
+    private String telephone;
     private LocalDate dateNaissance;
     private String nationalite;
     private String domaineExpertise;
@@ -33,6 +36,7 @@ public class UserDTO {
     private String typeOrganisme;
     
     private LocalDateTime createdAt;
+    private String dateInscription;
     
     /**
      * Convertit un User en UserDTO
@@ -48,6 +52,9 @@ public class UserDTO {
             fullName = user.getFullName();
         }
         
+        // Formater la date d'inscription
+        String dateInscription = user.getCreatedAt() != null ? user.getCreatedAt().toString() : null;
+        
         UserDTOBuilder builder = UserDTO.builder()
                 .id(user.getId())
                 .nom(user.getNom())
@@ -55,9 +62,13 @@ public class UserDTO {
                 .fullName(fullName)
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .telephone(user.getPhone())
                 .role(user.getRoleLowercase())
+                .userType(user.getUserType())
+                .fonction(user.getFonction())
                 .status(user.getStatus() != null ? user.getStatus().name() : null)
-                .createdAt(user.getCreatedAt());
+                .createdAt(user.getCreatedAt())
+                .dateInscription(dateInscription);
         
         // Champs spécifiques aux experts
         if ("EXPERT".equals(user.getRole()) || "EVALUATEUR".equals(user.getRole()) || 

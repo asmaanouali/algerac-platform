@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Eye, CheckCircle, XCircle, Clock, FileText, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { DTNavbar } from "@/components/dt-navbar";
+import { Navbar } from "@/components/navbar";
+import { useToast } from "@/hooks/use-toast";
 
 // Type pour les candidatures
 interface Candidature {
@@ -24,69 +25,46 @@ interface Candidature {
 }
 
 export default function CandidaturesPage() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [selectedCandidature, setSelectedCandidature] = useState<Candidature | null>(null);
+  const [candidatures, setCandidatures] = useState<Candidature[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Données mockées - à remplacer par un appel API
-  const candidatures: Candidature[] = [
-    {
-      id: "1",
-      registrationId: "EXP-0012",
-      fullName: "Mohamed Benali",
-      userType: "EXPERT",
-      domaineExpertise: "ISO 9001 - Système de Management de la Qualité",
-      email: "m.benali@email.com",
-      telephone: "0555123456",
-      dateInscription: "2026-02-08",
-      status: "PENDING"
-    },
-    {
-      id: "2",
-      registrationId: "EVA-0008",
-      fullName: "Sarah Amrani",
-      userType: "EVALUATEUR",
-      domaineExpertise: "ISO 14001 - Management Environnemental",
-      email: "s.amrani@email.com",
-      telephone: "0661234567",
-      dateInscription: "2026-02-07",
-      status: "APPROVED"
-    },
-    {
-      id: "3",
-      registrationId: "FOR-0005",
-      fullName: "Karim Ziani",
-      userType: "FORMATEUR",
-      domaineExpertise: "ISO 45001 - Santé et Sécurité au Travail",
-      email: "k.ziani@email.com",
-      telephone: "0771234567",
-      dateInscription: "2026-02-06",
-      status: "PENDING"
-    },
-    {
-      id: "4",
-      registrationId: "EXP-0013",
-      fullName: "Fatima Larbi",
-      userType: "EXPERT",
-      domaineExpertise: "ISO 27001 - Sécurité de l'Information",
-      email: "f.larbi@email.com",
-      telephone: "0551234567",
-      dateInscription: "2026-02-05",
-      status: "REJECTED"
-    },
-    {
-      id: "5",
-      registrationId: "EXP-0014",
-      fullName: "Ahmed Kaddour",
-      userType: "EXPERT",
-      domaineExpertise: "ISO 50001 - Management de l'Énergie",
-      email: "a.kaddour@email.com",
-      telephone: "0661234568",
-      dateInscription: "2026-02-04",
-      status: "PENDING"
-    },
-  ];
+  useEffect(() => {
+    fetchCandidatures();
+  }, []);
+
+  const fetchCandidatures = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:8082/api/candidatures/experts", {
+        credentials: "include"
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCandidatures(data);
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les candidatures",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des candidatures:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,21 +101,73 @@ export default function CandidaturesPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleApprove = (candidature: Candidature) => {
-    console.log("Approuver:", candidature);
-    // TODO: Appel API pour approuver
+  const handleApprove = async (candidature: Candidature) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/approve`, {
+        method: "POST",
+        credentials: "include"
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Succès",
+          description: "Candidature approuvée avec succès"
+        });
+        fetchCandidatures();
+        setSelectedCandidature(null);
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'approuver la candidature",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleReject = (candidature: Candidature) => {
-    console.log("Rejeter:", candidature);
-    // TODO: Appel API pour rejeter
+  const handleReject = async (candidature: Candidature) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/reject`, {
+        method: "POST",
+        credentials: "include"
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Succès",
+          description: "Candidature rejetée"
+        });
+        fetchCandidatures();
+        setSelectedCandidature(null);
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de rejeter la candidature",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64 max-w-full overflow-hidden">
-        <DTNavbar />
+        <Navbar />
         
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -232,6 +262,15 @@ export default function CandidaturesPage() {
               <CardTitle>Liste des Candidatures ({filteredCandidatures.length})</CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-muted-foreground">Chargement...</p>
+                </div>
+              ) : filteredCandidatures.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-muted-foreground">Aucune candidature trouvée</p>
+                </div>
+              ) : (
               <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <Table>
                 <TableHeader>
@@ -301,6 +340,7 @@ export default function CandidaturesPage() {
                 </TableBody>
               </Table>
               </div>
+              )}
             </CardContent>
           </Card>
 

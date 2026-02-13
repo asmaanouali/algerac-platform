@@ -19,8 +19,22 @@ export function useLogin() {
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (credentials: LoginRequest) => {
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
-      return await res.json();
+      try {
+        const res = await apiRequest("POST", "/api/auth/login", credentials);
+        return await res.json();
+      } catch (err: any) {
+        // Essayer d'extraire le message d'erreur du backend
+        let msg = err.message;
+        try {
+          // Cherche un JSON dans le message d'erreur
+          const match = msg.match(/\{.*\}/);
+          if (match) {
+            const json = JSON.parse(match[0]);
+            msg = json.error || json.message || msg;
+          }
+        } catch {}
+        throw new Error(msg);
+      }
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/auth/me"], user);
@@ -51,6 +65,8 @@ export function useLogout() {
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
+      // Redirection vers la page de connexion
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({

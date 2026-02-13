@@ -25,20 +25,10 @@ public class SecurityConfig {
                 corsConfig.setAllowCredentials(true);
                 return corsConfig;
             }))
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/api/auth/login",
-                    "/api/auth/signup/**",
-                    "/api/auth/health",
-                    "/api/auth/forgot-password",
-                    "/api/auth/verify-otp",
-                    "/api/auth/reset-password"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .permitAll()
+                .anyRequest().permitAll()
             );
         
         return http.build();

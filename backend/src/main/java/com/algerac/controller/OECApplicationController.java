@@ -19,7 +19,6 @@ import java.util.List;
 @RequestMapping("/api/oec-applications")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
 public class OECApplicationController {
     
     private final OECApplicationService oecApplicationService;

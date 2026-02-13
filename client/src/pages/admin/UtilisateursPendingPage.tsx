@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { 
   Search, 
   Eye, 
@@ -16,27 +17,32 @@ import {
   Phone,
   User,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 
 interface PendingOECApplication {
   id: number;
-  nomOrganisme: string;
+  organizationName: string;
   typeOrganisme: string;
   adresseSiege: string;
-  telephone: string;
+  phone: string;
   email: string;
   nomRepresentant: string;
   fonction: string;
   porteeAccreditation: string;
   status: string;
   createdAt: string;
-  reviewedByDtAt?: string;
+  dateApprobation?: string;
 }
 
 export default function UtilisateursPendingPage() {
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [applications, setApplications] = useState<PendingOECApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,20 +51,28 @@ export default function UtilisateursPendingPage() {
   const [showCreateAccountDialog, setShowCreateAccountDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Données du compte à créer
-  const [accountData, setAccountData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: ""
-  });
-
   useEffect(() => {
-    fetchPendingApplications();
-  }, []);
+    if (user && !authLoading) {
+      fetchPendingApplications();
+    }
+  }, [user, authLoading]);
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    setLocation("/");
+    return null;
+  }
 
   const fetchPendingApplications = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/oec-applications/approved-for-admin", {
+      const response = await fetch("http://localhost:8082/api/candidatures/oec/approved", {
         credentials: "include"
       });
       if (response.ok) {
@@ -86,52 +100,33 @@ export default function UtilisateursPendingPage() {
   const handleCreateAccount = async () => {
     if (!selectedApplication) return;
 
-    // Validation
-    if (!accountData.email || !accountData.password || !accountData.confirmPassword) {
-      toast({
-        title: "Attention",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (accountData.password !== accountData.confirmPassword) {
-      toast({
-        title: "Attention",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (accountData.password.length < 6) {
-      toast({
-        title: "Attention",
-        description: "Le mot de passe doit contenir au moins 6 caractères",
-        variant: "destructive"
-      });
+    // Plus besoin de validation car le backend génère le mot de passe
+    if (!confirm("Confirmer la création du compte pour cet OEC ? Un email avec les identifiants sera envoyé.")) {
       return;
     }
 
     setActionLoading(true);
     try {
-      // TODO: Créer l'utilisateur OEC via l'API
-      // Pour l'instant, on marque juste la candidature comme traitée
-      const response = await fetch(`http://localhost:8082/api/oec-applications/${selectedApplication.id}/mark-account-created`, {
+      const response = await fetch(`http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`, {
         method: "POST",
         credentials: "include"
       });
 
       if (response.ok) {
+        const result = await response.json();
         toast({
           title: "Succès",
-          description: "Le compte OEC a été créé avec succès",
+          description: "Le compte OEC a été créé avec succès. Les identifiants ont été envoyés par email.",
         });
+        
+        // Afficher le mot de passe généré pour référence
+        if (result.generatedPassword) {
+          console.log("Mot de passe généré :", result.generatedPassword);
+        }
+        
         fetchPendingApplications();
         setShowCreateAccountDialog(false);
         setShowDetailsDialog(false);
-        setAccountData({ email: "", password: "", confirmPassword: "" });
       } else {
         const error = await response.json();
         toast({
@@ -154,17 +149,12 @@ export default function UtilisateursPendingPage() {
 
   const openCreateAccountDialog = (app: PendingOECApplication) => {
     setSelectedApplication(app);
-    setAccountData({
-      email: app.email,
-      password: "",
-      confirmPassword: ""
-    });
     setShowCreateAccountDialog(true);
   };
 
   const filteredApplications = applications.filter(app => {
     const matchesSearch = 
-      app.nomOrganisme.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -174,11 +164,13 @@ export default function UtilisateursPendingPage() {
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-y-auto">
+      <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
+        <Navbar />
+        <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Utilisateurs OEC en Attente</h1>
+              <h1 className="text-2xl font-bold">Utilisateurs OEC en Attente</h1>
               <p className="text-muted-foreground">
                 Candidatures OEC approuvées par le DT nécessitant la création d'un compte
               </p>
@@ -254,13 +246,13 @@ export default function UtilisateursPendingPage() {
                       <TableCell className="font-medium">#{app.id}</TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{app.nomOrganisme}</p>
+                          <p className="font-medium">{app.organizationName}</p>
                           <p className="text-sm text-muted-foreground">{app.typeOrganisme}</p>
                         </div>
                       </TableCell>
                       <TableCell>{app.nomRepresentant || "N/A"}</TableCell>
                       <TableCell>{app.email}</TableCell>
-                      <TableCell>{app.reviewedByDtAt || app.createdAt}</TableCell>
+                      <TableCell>{app.dateApprobation || app.createdAt}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button 
                           variant="ghost" 
@@ -299,7 +291,7 @@ export default function UtilisateursPendingPage() {
           <DialogHeader>
             <DialogTitle>Détails de la candidature #{selectedApplication?.id}</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.nomOrganisme}
+              {selectedApplication?.organizationName}
             </DialogDescription>
           </DialogHeader>
           
@@ -308,7 +300,7 @@ export default function UtilisateursPendingPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Organisme</Label>
-                  <p className="font-medium">{selectedApplication.nomOrganisme}</p>
+                  <p className="font-medium">{selectedApplication.organizationName}</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -333,7 +325,7 @@ export default function UtilisateursPendingPage() {
                   <Label className="text-muted-foreground">Téléphone</Label>
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {selectedApplication.telephone || "Non renseigné"}
+                    {selectedApplication.phone || "Non renseigné"}
                   </p>
                 </div>
                 
@@ -367,7 +359,7 @@ export default function UtilisateursPendingPage() {
                   <Label className="text-muted-foreground">Approuvé le</Label>
                   <p className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    {selectedApplication.reviewedByDtAt || "N/A"}
+                    {selectedApplication.dateApprobation || "N/A"}
                   </p>
                 </div>
               </div>
@@ -395,45 +387,23 @@ export default function UtilisateursPendingPage() {
           <DialogHeader>
             <DialogTitle>Créer un compte OEC</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.nomOrganisme}
+              {selectedApplication?.organizationName}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Note :</strong> Un email sera envoyé à l'organisme avec ses identifiants de connexion.
+                <strong>Confirmation :</strong> Un mot de passe sera généré automatiquement et envoyé par email à l'organisme avec ses identifiants de connexion.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Email de connexion <span className="text-red-500">*</span></Label>
+              <Label>Email de l'organisme</Label>
               <Input 
                 type="email"
-                placeholder="email@exemple.dz"
-                value={accountData.email}
-                onChange={(e) => setAccountData({...accountData, email: e.target.value})}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Mot de passe <span className="text-red-500">*</span></Label>
-              <Input 
-                type="password"
-                placeholder="••••••••"
-                value={accountData.password}
-                onChange={(e) => setAccountData({...accountData, password: e.target.value})}
-              />
-              <p className="text-xs text-muted-foreground">Minimum 6 caractères</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Confirmer le mot de passe <span className="text-red-500">*</span></Label>
-              <Input 
-                type="password"
-                placeholder="••••••••"
-                value={accountData.confirmPassword}
-                onChange={(e) => setAccountData({...accountData, confirmPassword: e.target.value})}
+                disabled
+                value={selectedApplication?.email || ""}
               />
             </div>
           </div>
@@ -443,7 +413,6 @@ export default function UtilisateursPendingPage() {
               variant="outline" 
               onClick={() => {
                 setShowCreateAccountDialog(false);
-                setAccountData({ email: "", password: "", confirmPassword: "" });
               }}
               disabled={actionLoading}
             >
@@ -455,11 +424,12 @@ export default function UtilisateursPendingPage() {
               disabled={actionLoading}
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              Créer le compte
+              {actionLoading ? "Création en cours..." : "Créer le compte"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </div>
       </div>
     </div>
   );

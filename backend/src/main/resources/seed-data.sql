@@ -3,17 +3,18 @@
 
 -- Insert test users (passwords are BCrypt hashed 'password123')
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status) VALUES
-('admin@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Salah Nacef', 'ADMIN', 'ALGERAC Admin', '+213 21 123456', NOW(), 'APPROVED'),
-('amine.belkacemi@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Amine Belkacemi', 'RA', 'ALGERAC RA', '+213 21 123457', NOW(), 'APPROVED'),
-('dt@algerac.dz', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Ahmed Directeur Technique', 'DT', 'ALGERAC DT', '+213 21 123458', NOW(), 'APPROVED'),
-('biotest@example.com', '$2a$10$xN/Dq7KT5IEWmjyR0u5HJeYYC9H7W1qqNq5oQc.n0vO5cU8hKXxhG', 'Laboratoire BioTest', 'OEC', 'Laboratoire BioTest', '+213 21 789456', NOW(), 'APPROVED');
+('orginag65msf@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'DT Test', 'DT', 'ALGERAC DT', '0555123456', NOW(), 'APPROVED'),
+('asmaa9nouali@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Admin Test', 'ADMIN', 'ALGERAC Admin', '0555123456', NOW(), 'APPROVED'),
+('sumsum88.sum23@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Chef Département', 'CD', 'ALGERAC Direction', '0555111111', NOW(), 'APPROVED'),
+('gr.asmaa98@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Responsable Accréditation 1', 'RA', 'ALGERAC RA', '0555222222', NOW(), 'APPROVED'),
+('zenmal695@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Responsable Accréditation 2', 'RA', 'ALGERAC RA', '0555333333', NOW(), 'APPROVED'),
+('lynakdr724@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'OEC Test', 'OEC', 'Laboratoire Central', '0555444444', NOW(), 'APPROVED')
+ON CONFLICT (email) DO NOTHING;
 
 -- Insert test accreditation requests
-INSERT INTO accreditation_requests (reference_number, oec_id, type, domain, status, progress, submission_date, next_action_date, created_at) VALUES
-('D-2024-001', 3, 'INITIAL', 'Laboratoire Central d''Analyses', 'RECEIVABILITY', 15, '2024-12-01', '2025-06-01', NOW()),
-('D-2024-045', 3, 'SURVEILLANCE', 'Certif-Tech Algérie', 'PLANNING', 45, '2024-11-15', '2025-05-15', NOW()),
-('D-2023-120', 3, 'RENOUVELLEMENT', 'BioQualité Std', 'EVALUATION', 70, '2023-10-10', '2025-04-01', NOW());
+INSERT INTO accreditation_requests (oec_id, type, domain, description, status, progress, submission_date, created_at) VALUES
+((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'INITIAL', 'Laboratoire d''essais', 'Demande initiale pour accréditation laboratoire', 'PAYMENT_COMPLETED', 20, NOW() - INTERVAL '2 days', NOW() - INTERVAL '3 days'),
+((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'RENOUVELLEMENT', 'Inspection', 'Renouvellement accréditation inspection', 'PAYMENT_COMPLETED', 20, NOW() - INTERVAL '1 day', NOW() - INTERVAL '2 days'),
+((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'EXTENSION', 'Certification', 'Extension de portée pour certification', 'PAYMENT_COMPLETED', 20, NOW(), NOW() - INTERVAL '1 day')
+ON CONFLICT DO NOTHING;
 
--- Verification
-SELECT 'Users created:' as message, COUNT(*) as count FROM users;
-SELECT 'Requests created:' as message, COUNT(*) as count FROM accreditation_requests;

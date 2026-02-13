@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { 
   Search, 
   Filter, 
@@ -24,25 +25,30 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
+import { Loader2 } from "lucide-react";
 
 interface OECApplication {
   id: number;
-  nomOrganisme: string;
+  organizationName: string;
   typeOrganisme: string;
   adresseSiege: string;
-  telephone: string;
+  phone: string;
   email: string;
   nomRepresentant: string;
   fonction: string;
   porteeAccreditation: string;
-  status: "PENDING_DT" | "APPROVED_BY_DT" | "REJECTED_BY_DT" | "ACCOUNT_CREATED";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   rejectionReason?: string;
   createdAt: string;
-  reviewedByDtAt?: string;
+  dateApprobation?: string;
 }
 
 export default function CandidaturesOECPage() {
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [applications, setApplications] = useState<OECApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,12 +60,27 @@ export default function CandidaturesOECPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchApplications();
-  }, []);
+    if (user && !authLoading) {
+      fetchApplications();
+    }
+  }, [user, authLoading]);
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    setLocation("/");
+    return null;
+  }
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/oec-applications/all", {
+      const response = await fetch("http://localhost:8082/api/candidatures/oec/all", {
         credentials: "include"
       });
       if (response.ok) {
@@ -89,7 +110,7 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/oec-applications/${id}/approve`, {
+      const response = await fetch(`http://localhost:8082/api/candidatures/${id}/approve`, {
         method: "POST",
         credentials: "include"
       });
@@ -135,7 +156,7 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/oec-applications/${selectedApplication.id}/reject`, {
+      const response = await fetch(`http://localhost:8082/api/candidatures/${selectedApplication.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -173,38 +194,38 @@ export default function CandidaturesOECPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "PENDING_DT":
+      case "PENDING":
         return <Badge className="bg-yellow-500">En attente</Badge>;
-      case "APPROVED_BY_DT":
+      case "APPROVED":
         return <Badge className="bg-green-500">Approuvé</Badge>;
-      case "REJECTED_BY_DT":
+      case "REJECTED":
         return <Badge className="bg-red-500">Rejeté</Badge>;
-      case "ACCOUNT_CREATED":
-        return <Badge className="bg-blue-500">Compte créé</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
   };
 
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = 
-      app.nomOrganisme.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = filterStatus === "all" || app.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const matchesSearch = 
+    app.organizationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase());
+  
+  const matchesStatus = filterStatus === "all" || app.status === filterStatus;
+  
+  return matchesSearch && matchesStatus;
+});
 
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-y-auto">
+      <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
+        <Navbar />
+        <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Candidatures OEC</h1>
+              <h1 className="text-2xl font-bold">Candidatures OEC</h1>
               <p className="text-muted-foreground">Gestion des demandes d'accréditation des organismes</p>
             </div>
           </div>
@@ -237,10 +258,9 @@ export default function CandidaturesOECPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="PENDING_DT">En attente</SelectItem>
-                  <SelectItem value="APPROVED_BY_DT">Approuvé</SelectItem>
-                  <SelectItem value="REJECTED_BY_DT">Rejeté</SelectItem>
-                  <SelectItem value="ACCOUNT_CREATED">Compte créé</SelectItem>
+                  <SelectItem value="PENDING">En attente</SelectItem>
+                  <SelectItem value="APPROVED">Approuvé</SelectItem>
+                  <SelectItem value="REJECTED">Rejeté</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,7 +288,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">En attente</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "PENDING_DT").length}
+                  {applications.filter(a => a.status === "PENDING").length}
                 </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -282,7 +302,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Approuvés</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "APPROVED_BY_DT").length}
+                  {applications.filter(a => a.status === "APPROVED").length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -296,7 +316,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Rejetés</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "REJECTED_BY_DT").length}
+                  {applications.filter(a => a.status === "REJECTED").length}
                 </p>
               </div>
               <XCircle className="w-8 h-8 text-red-500" />
@@ -335,7 +355,7 @@ export default function CandidaturesOECPage() {
                       <TableCell className="font-medium">#{app.id}</TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{app.nomOrganisme}</p>
+                          <p className="font-medium">{app.organizationName}</p>
                           <p className="text-sm text-muted-foreground">{app.typeOrganisme}</p>
                         </div>
                       </TableCell>
@@ -372,7 +392,7 @@ export default function CandidaturesOECPage() {
           <DialogHeader>
             <DialogTitle>Détails de la candidature #{selectedApplication?.id}</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.nomOrganisme}
+              {selectedApplication?.organizationName}
             </DialogDescription>
           </DialogHeader>
           
@@ -381,7 +401,7 @@ export default function CandidaturesOECPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Organisme</Label>
-                  <p className="font-medium">{selectedApplication.nomOrganisme}</p>
+                  <p className="font-medium">{selectedApplication.organizationName}</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -406,7 +426,7 @@ export default function CandidaturesOECPage() {
                   <Label className="text-muted-foreground">Téléphone</Label>
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {selectedApplication.telephone || "Non renseigné"}
+                    {selectedApplication.phone || "Non renseigné"}
                   </p>
                 </div>
                 
@@ -451,7 +471,7 @@ export default function CandidaturesOECPage() {
                 )}
               </div>
               
-              {selectedApplication.status === "PENDING_DT" && (
+              {selectedApplication.status === "PENDING" && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button 
                     variant="default" 
@@ -522,6 +542,7 @@ export default function CandidaturesOECPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </div>
       </div>
     </div>
   );

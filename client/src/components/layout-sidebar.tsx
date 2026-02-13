@@ -34,11 +34,11 @@ export function Sidebar() {
   const navItems = {
     oec: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { href: "/requests/new", label: "Nouvelle Demande", icon: FileText },
+      { href: "/oec/new-request", label: "Nouvelle Demande", icon: FileText },
       { href: "/requests", label: "Mes Demandes", icon: Files },
       { href: "/documents", label: "Mes Documents", icon: Briefcase },
       { href: "/actions", label: "Écarts & Actions", icon: AlertCircle },
-      { href: "/billing", label: "Facturation", icon: CreditCard },
+      { href: "/oec/payments", label: "Facturation", icon: CreditCard },
       { href: "/certificates", label: "Mes Certificats", icon: Award },
       { href: "/profile", label: "Profil OEC", icon: User },
     ],
@@ -54,17 +54,15 @@ export function Sidebar() {
     dt: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
-      { href: "/experts", label: "Experts Certifiés", icon: UserCheck },
-      { href: "/evaluation", label: "Évaluation", icon: FileCheck },
-      { href: "/rapports", label: "Rapports", icon: FileText },
+    ],
+    cd: [
+      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/cd/accreditations", label: "Accréditations", icon: FileCheck },
     ],
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
       { href: "/admin/utilisateurs-pending", label: "OEC en Attente", icon: UserPlus },
-      { href: "/roles", label: "Rôles", icon: User },
-      { href: "/system", label: "Système", icon: Database },
-      { href: "/security", label: "Sécurité", icon: ShieldAlert },
     ]
   };
 

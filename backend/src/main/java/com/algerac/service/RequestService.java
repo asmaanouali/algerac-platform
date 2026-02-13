@@ -1,9 +1,10 @@
 package com.algerac.service;
 
+import com.algerac.dto.AssignRequestDTO;
 import com.algerac.dto.CreateRequestDTO;
-import com.algerac.model.AccreditationRequest;
-import com.algerac.model.RequestStatus;
-import com.algerac.model.User;
+import com.algerac.dto.NewRequestDTO;
+import com.algerac.dto.ReceivabilityDecisionDTO;
+import com.algerac.model.*;
 import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class RequestService {
     
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     
     public List<AccreditationRequest> getAllRequests() {
         return requestRepository.findAll();
@@ -32,8 +34,210 @@ public class RequestService {
         return requestRepository.findByOec_Id(oecId);
     }
     
+    public List<AccreditationRequest> getRequestsByStatus(RequestStatus status) {
+        return requestRepository.findByStatus(status);
+    }
+    
+    public List<AccreditationRequest> getRequestsAssignedToRa(Long raId) {
+        return requestRepository.findByAssignedToRa_Id(raId);
+    }
+    
     public Optional<AccreditationRequest> getRequest(Long id) {
         return requestRepository.findById(id);
+    }
+    
+    /**
+     * Création d'une nouvelle demande par un OEC
+     */
+    @Transactional
+    public AccreditationRequest createNewRequest(NewRequestDTO dto, User currentUser) {
+        if (currentUser.getRole() != UserRole.OEC) {
+            throw new RuntimeException("Seuls les OEC peuvent créer des demandes");
+        }
+        
+        AccreditationRequest request = AccreditationRequest.builder()
+                .oec(currentUser)
+                .type(dto.getType())
+                .domain(dto.getDomain())
+                .description(dto.getDescription())
+                .status(RequestStatus.DRAFT)
+                .progress(0)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        request = requestRepository.save(request);
+        log.info("Nouvelle demande créée en brouillon par l'OEC {}", currentUser.getOrganizationName());
+        
+        return request;
+    }
+    
+    /**
+     * Soumission de la demande par l'OEC (après remplissage du formulaire)
+     */
+    @Transactional
+    public AccreditationRequest submitRequest(Long requestId, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (!request.getOec().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à soumettre cette demande");
+        }
+        
+        if (request.getStatus() != RequestStatus.DRAFT) {
+            throw new RuntimeException("Cette demande a déjà été soumise");
+        }
+        
+        request.setStatus(RequestStatus.SUBMITTED);
+        request.setSubmissionDate(LocalDateTime.now());
+        request.setProgress(10);
+        
+        // Après soumission, la demande passe en attente de paiement
+        request.setStatus(RequestStatus.PENDING_PAYMENT);
+        
+        request = requestRepository.save(request);
+        log.info("Demande {} soumise par l'OEC {}", request.getId(), currentUser.getOrganizationName());
+        
+        return request;
+    }
+    
+    /**
+     * Assignation d'une demande à un RA par le CD (sans numéro de référence)
+     */
+    @Transactional
+    public AccreditationRequest assignRequestToRA(Long requestId, AssignRequestDTO dto, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls les chefs de département peuvent assigner des demandes");
+        }
+        
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (request.getStatus() != RequestStatus.PAYMENT_COMPLETED) {
+            throw new RuntimeException("Le paiement doit être complété avant l'assignation");
+        }
+        
+        User ra = userRepository.findById(dto.getRaId())
+                .orElseThrow(() -> new RuntimeException("RA non trouvé"));
+        
+        if (ra.getRole() != UserRole.RA) {
+            throw new RuntimeException("L'utilisateur sélectionné n'est pas un RA");
+        }
+        
+        request.setAssignedToRa(ra);
+        request.setAssignmentDate(LocalDateTime.now());
+        request.setStatus(RequestStatus.ASSIGNED_TO_RA);
+        request.setProgress(25);
+        
+        request = requestRepository.save(request);
+        log.info("Demande ID {} assignée au RA {} par {}", 
+                request.getId(), ra.getFullName(), currentUser.getFullName());
+        
+        // Notifier le RA
+        notificationService.notifyRAAssignment(request);
+        
+        return request;
+    }
+    
+    /**
+     * Attribution d'un numéro de référence par le RA
+     */
+    @Transactional
+    public AccreditationRequest setReferenceNumberByRA(Long requestId, String referenceNumber, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls les RAs peuvent attribuer des numéros de référence");
+        }
+        
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (request.getStatus() != RequestStatus.ASSIGNED_TO_RA) {
+            throw new RuntimeException("La demande doit être assignée à un RA");
+        }
+        
+        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous ne pouvez attribuer un numéro qu'aux demandes qui vous sont assignées");
+        }
+        
+        if (request.getReferenceNumber() != null && !request.getReferenceNumber().isEmpty()) {
+            throw new RuntimeException("Cette demande a déjà un numéro de référence");
+        }
+        
+        // Vérifier que le numéro n'existe pas déjà
+        if (requestRepository.findByReferenceNumber(referenceNumber).isPresent()) {
+            throw new RuntimeException("Ce numéro de référence existe déjà");
+        }
+        
+        request.setReferenceNumber(referenceNumber);
+        request.setProgress(30);
+        
+        request = requestRepository.save(request);
+        log.info("Numéro de référence {} attribué à la demande ID {} par le RA {}", 
+                referenceNumber, request.getId(), currentUser.getFullName());
+        
+        return request;
+    }
+    
+    /**
+     * Début de l'étude de recevabilité par le RA
+     */
+    @Transactional
+    public AccreditationRequest startReceivabilityStudy(Long requestId, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Cette demande ne vous est pas assignée");
+        }
+        
+        if (request.getStatus() != RequestStatus.ASSIGNED_TO_RA) {
+            throw new RuntimeException("La demande n'est pas au bon statut pour commencer l'étude");
+        }
+        
+        request.setStatus(RequestStatus.RECEIVABILITY_STUDY);
+        request.setProgress(40);
+        
+        request = requestRepository.save(request);
+        log.info("Étude de recevabilité commencée pour la demande {} par {}", 
+                request.getReferenceNumber(), currentUser.getFullName());
+        
+        return request;
+    }
+    
+    /**
+     * Décision de recevabilité par le RA
+     */
+    @Transactional
+    public AccreditationRequest makeReceivabilityDecision(Long requestId, ReceivabilityDecisionDTO dto, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à prendre cette décision");
+        }
+        
+        if (request.getStatus() != RequestStatus.RECEIVABILITY_STUDY) {
+            throw new RuntimeException("La demande n'est pas en étude de recevabilité");
+        }
+        
+        request.setReceivabilityComments(dto.getComments());
+        request.setReceivabilityDecisionDate(LocalDateTime.now());
+        
+        if (dto.getIsReceivable()) {
+            request.setStatus(RequestStatus.RECEIVABLE);
+            request.setProgress(60);
+        } else {
+            request.setStatus(RequestStatus.NOT_RECEIVABLE);
+            request.setProgress(100);
+        }
+        
+        request = requestRepository.save(request);
+        log.info("Décision de recevabilité prise pour la demande {} : {}", 
+                request.getReferenceNumber(), dto.getIsReceivable() ? "RECEVABLE" : "NON RECEVABLE");
+        
+        // Notifier l'OEC
+        notificationService.notifyOECReceivabilityDecision(request, dto.getIsReceivable());
+        
+        return request;
     }
     
     @Transactional

@@ -108,6 +108,46 @@ public class EmailService {
                "Cette demande nécessite votre approbation.\n" +
                "Le formulaire DOC 1 complet est en pièce jointe de cet email.";
     }
+    
+    /**
+     * Envoie un email de rejet de demande à l'OEC
+     */
+    public void sendRejectionEmail(com.algerac.model.AccreditationRequest request, String reason) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(request.getOec().getEmail());
+            message.setSubject("Demande non recevable - " + request.getReferenceNumber());
+            
+            String body = String.format("""
+                Bonjour %s,
+
+                Nous vous informons que votre demande d'accréditation %s a été déclarée non recevable.
+
+                Raison du rejet : %s
+
+                Veuillez vous connecter à votre compte sur la plateforme ALGERAC pour consulter les détails 
+                et prendre les mesures nécessaires pour régulariser votre dossier.
+
+                Pour toute question, n'hésitez pas à nous contacter.
+
+                Cordialement,
+                L'équipe ALGERAC
+                """, 
+                request.getOec().getOrganizationName(),
+                request.getReferenceNumber(),
+                reason
+            );
+            
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Email de rejet envoyé à {} pour la demande {}", 
+                    request.getOec().getEmail(), request.getReferenceNumber());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de rejet", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+        }
+    }
 
     /**
      * Envoie une notification d'inscription Expert avec PDF FOR 20 en pièce jointe
@@ -187,12 +227,12 @@ public class EmailService {
             
             Une nouvelle candidature %s a été reçue :
             
-            📋 ID : %s
-            👤 Nom complet : %s %s
-            📧 Email : %s
-            📱 Téléphone : %s
-            🎯 Domaine d'expertise : %s
-            📅 Date de candidature : %s
+             ID : %s
+             Nom complet : %s %s
+             Email : %s
+             Téléphone : %s
+             Domaine d'expertise : %s
+             Date de candidature : %s
             
             Le formulaire FOR 20 complet est disponible en pièce jointe.
             
@@ -264,16 +304,16 @@ public class EmailService {
                 
                 Une nouvelle demande d'inscription OEC a été reçue et nécessite votre approbation :
                 
-                📋 ID de la demande : #%d
-                🏢 Organisme : %s
-                📧 Email : %s
-                📱 Téléphone : %s
-                👤 Représentant : %s
-                📅 Date de candidature : %s
+                ID de la demande : #%d
+                Organisme : %s
+                Email : %s
+                Téléphone : %s
+                Représentant : %s
+                Date de candidature : %s
                 
                 Veuillez consulter cette demande sur la plateforme pour l'approuver ou la refuser.
                 
-                🔗 Lien : http://localhost:5173/dt/candidatures-oec
+                Lien : http://localhost:5173/dt/candidatures-oec
                 
                 Cordialement,
                 Système ALGERAC
@@ -310,8 +350,8 @@ public class EmailService {
                 
                 Votre demande d'accréditation OEC pour l'organisme "%s" a bien été reçue.
                 
-                📋 Numéro de demande : #%d
-                📅 Date de dépôt : %s
+                 Numéro de demande : #%d
+                 Date de dépôt : %s
                 
                 Votre dossier est actuellement en cours d'examen par notre équipe technique.
                 Vous recevrez une notification par email dès qu'une décision sera prise concernant votre candidature.
@@ -353,7 +393,7 @@ public class EmailService {
                 Après étude de votre dossier, nous sommes au regret de vous informer que votre demande 
                 n'a pas pu être acceptée pour le(s) motif(s) suivant(s) :
                 
-                📋 Motif de refus :
+                 Motif de refus :
                 %s
                 
                 Si vous souhaitez obtenir des informations complémentaires ou déposer une nouvelle demande 
@@ -390,16 +430,16 @@ public class EmailService {
                 
                 Une candidature OEC a été approuvée par le DT et nécessite la création d'un compte utilisateur :
                 
-                📋 ID de la demande : #%d
-                🏢 Organisme : %s
-                📧 Email : %s
-                📱 Téléphone : %s
-                👤 Représentant : %s
-                ✅ Approuvé le : %s
+                 ID de la demande : #%d
+                 Organisme : %s
+                 Email : %s
+                 Téléphone : %s
+                 Représentant : %s
+                 Approuvé le : %s
                 
                 Veuillez créer le compte utilisateur pour cet organisme sur la plateforme.
                 
-                🔗 Lien : http://localhost:5173/admin/utilisateurs-pending
+                Lien : http://localhost:5173/admin/utilisateurs-pending
                 
                 Cordialement,
                 Système ALGERAC
@@ -429,7 +469,7 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
-            message.setSubject("✅ Candidature approuvée - ALGERAC");
+            message.setSubject("Candidature approuvée - ALGERAC");
             
             String userTypeLabel = getUserTypeLabel(user);
             String emailBody = String.format("""
@@ -437,15 +477,15 @@ public class EmailService {
                 
                 Nous avons le plaisir de vous informer que votre candidature en tant que %s a été approuvée par notre Direction Technique.
                 
-                📋 Détails de votre candidature :
+                 Détails de votre candidature :
                    • Type : %s
                    • Email : %s
                    • Date de soumission : %s
                    • Date d'approbation : %s
                 
-                ✅ Votre compte est maintenant actif. Vous pouvez vous connecter à la plateforme ALGERAC avec vos identifiants.
+                Votre compte est maintenant actif. Vous pouvez vous connecter à la plateforme ALGERAC avec vos identifiants.
                 
-                🔗 Se connecter : http://localhost:5173/auth/login
+                Se connecter : http://localhost:5173/auth/login
                 
                 Bienvenue dans l'équipe ALGERAC !
                 
@@ -477,7 +517,7 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
-            message.setSubject("❌ Candidature non retenue - ALGERAC");
+            message.setSubject("Candidature non retenue - ALGERAC");
             
             String userTypeLabel = getUserTypeLabel(user);
             String emailBody = String.format("""
@@ -487,12 +527,12 @@ public class EmailService {
                 
                 Après examen attentif de votre candidature par notre Direction Technique, nous sommes au regret de vous informer que celle-ci n'a pas été retenue.
                 
-                📋 Détails de votre candidature :
+                Détails de votre candidature :
                    • Type : %s
                    • Email : %s
                    • Date de soumission : %s
                 
-                📝 Motif du refus :
+                Motif du refus :
                 %s
                 
                 Nous vous encourageons à réexaminer les critères requis et à soumettre une nouvelle candidature ultérieurement si vous le souhaitez.
@@ -536,5 +576,100 @@ public class EmailService {
             return user.getUserType();
         }
         return "Candidat";
+    }
+    
+    /**
+     * Envoie une notification à l'admin qu'un OEC a été approuvé et nécessite la création de compte
+     */
+    public void sendOECApprovedNotificationToAdmin(User user) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(notificationEmail);
+            message.setSubject(String.format("[OEC] Candidature approuvée - Création de compte requise pour %s", user.getOrganizationName()));
+            
+            String emailBody = String.format("""
+                Bonjour Administrateur,
+                
+                Une candidature OEC a été approuvée par la Direction Technique et nécessite maintenant la création d'un compte utilisateur :
+                
+                ID de l'utilisateur : #%d
+                Organisme : %s
+                Email : %s
+                Téléphone : %s
+                Représentant : %s
+                Approuvé le : %s
+                
+                Veuillez vous connecter à la plateforme pour créer le compte utilisateur pour cet organisme.
+                Les identifiants seront générés automatiquement et envoyés à l'OEC par email.
+                
+                Lien : http://localhost:5173/admin/oec-pending
+                
+                Cordialement,
+                Système ALGERAC
+                """,
+                user.getId(),
+                user.getOrganizationName(),
+                user.getEmail(),
+                user.getPhone() != null ? user.getPhone() : "Non renseigné",
+                user.getNomRepresentant() != null ? user.getNomRepresentant() : "Non renseigné",
+                user.getDateApprobation() != null ? user.getDateApprobation().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm")) : "Maintenant"
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de notification Admin envoyé pour l'OEC #{}", user.getId());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email à l'admin", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email à l'admin", e);
+        }
+    }
+    
+    /**
+     * Envoie les identifiants de connexion à l'OEC après création du compte par l'admin
+     */
+    public void sendOECAccountCredentials(User user, String generatedPassword) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Votre compte ALGERAC a été créé - Identifiants de connexion");
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Nous avons le plaisir de vous informer que votre demande d'accréditation pour l'organisme "%s" a été approuvée.
+                
+                Votre compte sur la plateforme ALGERAC est maintenant actif !
+                
+                Vos identifiants de connexion :
+                   • Email : %s
+                   • Mot de passe : %s
+                
+                Pour des raisons de sécurité, nous vous recommandons fortement de :
+                   1. Vous connecter dès que possible
+                   2. Changer votre mot de passe après la première connexion
+                
+                Se connecter à la plateforme : http://localhost:5173/auth/login
+                
+                Si vous n'êtes pas à l'origine de cette demande ou si vous avez des questions, veuillez nous contacter immédiatement.
+                
+                Bienvenue sur ALGERAC !
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getOrganizationName(),
+                user.getEmail(),
+                generatedPassword
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email avec identifiants envoyé à l'OEC : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email avec identifiants à l'OEC", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email avec identifiants", e);
+        }
     }
 }

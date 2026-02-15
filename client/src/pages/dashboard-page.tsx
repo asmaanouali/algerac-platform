@@ -5,6 +5,14 @@ import RADashboard from "@/pages/ra/Dashboard";
 import OECDashboard from "@/pages/oec/Dashboard";
 import DTDashboard from "@/pages/dt/Dashboard";
 import CDDashboard from "@/pages/cd/Dashboard";
+import DAGDashboard from "@/pages/dag/Dashboard";
+import ExpertDashboard from "@/pages/exp/Dashboard";
+import REEDashboard from "@/pages/ree/Dashboard";
+import ETDashboard from "@/pages/et/Dashboard";
+import EQDashboard from "@/pages/eq/Dashboard";
+import CASMemberDashboard from "@/pages/cas/MemberDashboard";
+import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
+import DGDashboard from "@/pages/dg/Dashboard";
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -37,6 +45,22 @@ export default function DashboardPage() {
       return <OECDashboard />;
     case 'DT':
       return <DTDashboard />;
+    case 'DAG':
+      return <DAGDashboard />;
+    case 'EXPERT':
+      return <ExpertDashboard />;
+    case 'REE':
+      return <REEDashboard />;
+    case 'ET':
+      return <ETDashboard />;
+    case 'EQ':
+      return <EQDashboard />;
+    case 'CAS_MEMBER':
+      return <CASMemberDashboard />;
+    case 'CAS_PRESIDENT':
+      return <CASPresidentDashboard />;
+    case 'DG':
+      return <DGDashboard />;
     default:
       return (
         <div className="flex h-screen items-center justify-center">

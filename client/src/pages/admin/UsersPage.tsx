@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { AddUserDialog } from "@/components/AddUserDialog";
+
 
 interface User {
   id: number;
@@ -33,9 +35,9 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterDept, setFilterDept] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("APPROVED"); // Par défaut, afficher seulement les utilisateurs actifs
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -167,9 +169,8 @@ export default function UsersPage() {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === "all" || user.status === filterStatus;
-    const matchesRole = filterDept === "all" || user.userType === filterDept;
     
-    return matchesSearch && matchesStatus && matchesRole;
+    return matchesSearch && matchesStatus;
   });
 
   const toggleUserSelection = (userId: number) => {
@@ -201,11 +202,35 @@ export default function UsersPage() {
               <p className="text-slate-500 mt-1 text-base">Gérez les comptes, rôles et permissions des utilisateurs du système.</p>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" size="default" className="border-slate-200 shadow-sm">
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="border-slate-200 shadow-sm"
+                onClick={() => {
+                  // Export logic - à implémenter
+                  const csv = [
+                    ['Nom', 'Prénom', 'Email', 'Rôle', 'Statut', 'Téléphone'].join(','),
+                    ...filteredUsers.map(u => [
+                      u.nom, u.prenom, u.email, u.role || u.userType, u.status, u.telephone || ''
+                    ].join(','))
+                  ].join('\\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `utilisateurs_${new Date().toISOString().split('T')[0]}.csv`;
+                  a.click();
+                  toast({ title: "Export réussi", description: "Le fichier a été téléchargé" });
+                }}
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Exporter
               </Button>
-              <Button size="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm">
+              <Button 
+                size="default" 
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm"
+                onClick={() => setShowAddUserDialog(true)}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Nouvel Utilisateur
               </Button>
@@ -234,19 +259,6 @@ export default function UsersPage() {
                 <SelectItem value="REJECTED">Inactif</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterDept} onValueChange={setFilterDept}>
-              <SelectTrigger className="w-[180px] rounded-lg border-slate-200">
-                <SelectValue placeholder="Tous les depts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les depts</SelectItem>
-                <SelectItem value="ADMIN">Administration</SelectItem>
-                <SelectItem value="DT">Technique</SelectItem>
-                <SelectItem value="RA">Accréditation</SelectItem>
-                <SelectItem value="OEC">Organisme</SelectItem>
-                <SelectItem value="EXPERT">Expertise</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Table */}
@@ -264,7 +276,6 @@ export default function UsersPage() {
                       </TableHead>
                       <TableHead className="font-bold text-slate-500 uppercase text-xs">Utilisateur</TableHead>
                       <TableHead className="font-bold text-slate-500 uppercase text-xs">Rôle</TableHead>
-                      <TableHead className="font-bold text-slate-500 uppercase text-xs">Département</TableHead>
                       <TableHead className="font-bold text-slate-500 uppercase text-xs">Statut</TableHead>
                       <TableHead className="font-bold text-slate-500 uppercase text-xs">Dernière Connexion</TableHead>
                       <TableHead className="text-right font-bold text-slate-500 uppercase text-xs">Actions</TableHead>
@@ -273,13 +284,13 @@ export default function UsersPage() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-slate-400">
+                        <TableCell colSpan={6} className="text-center py-8 text-slate-400">
                           Chargement des utilisateurs...
                         </TableCell>
                       </TableRow>
                     ) : filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-slate-400">
+                        <TableCell colSpan={6} className="text-center py-8 text-slate-400">
                           Aucun utilisateur trouvé
                         </TableCell>
                       </TableRow>
@@ -308,9 +319,6 @@ export default function UsersPage() {
                           <TableCell>
                             {getRoleBadge(user.role || user.userType)}
                           </TableCell>
-                          <TableCell className="text-slate-600">
-                            {getDepartment(user.userType, user.fonction)}
-                          </TableCell>
                           <TableCell>
                             {getStatusBadge(user.status)}
                           </TableCell>
@@ -337,6 +345,12 @@ export default function UsersPage() {
           </Card>
         </main>
       </div>
+
+      <AddUserDialog
+        open={showAddUserDialog}
+        onOpenChange={setShowAddUserDialog}
+        onSuccess={fetchUsers}
+      />
     </div>
   );
 }

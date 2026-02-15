@@ -12,6 +12,8 @@ import { Loader2, FileText, UserPlus, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 
 interface AccreditationRequest {
   id: number;
@@ -139,14 +141,24 @@ export default function CDDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50/50">
+        <Sidebar />
+        <div className="md:ml-64">
+          <Navbar />
+          <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="min-h-screen bg-gray-50/50">
+      <Sidebar />
+      <div className="md:ml-64">
+        <Navbar />
+        <main className="p-8">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard - Chef de Département</h1>
@@ -299,6 +311,8 @@ export default function CDDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </main>
+      </div>
     </div>
   );
 }

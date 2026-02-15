@@ -59,9 +59,9 @@ public class CandidatureService {
             log.info("Candidature OEC approuvée - notification admin pour création de compte");
             emailService.sendOECApprovedNotificationToAdmin(user);
         } else {
-            // Pour les experts : envoyer email de confirmation directement
-            log.info("Candidature Expert approuvée - envoi email de confirmation");
-            emailService.sendCandidatureApprovedEmail(user);
+            // Pour les experts/évaluateurs/formateurs : notifier l'admin pour créer le compte
+            log.info("Candidature {} approuvée - notification admin pour création de compte", user.getUserType());
+            emailService.sendOECApprovedNotificationToAdmin(user); // Utilise le même email pour l'instant
         }
         
         return savedUser;
@@ -84,8 +84,12 @@ public class CandidatureService {
         
         User savedUser = userRepository.save(user);
         
-        // Envoyer email de rejet avec motif
-        emailService.sendCandidatureRejectedEmail(user, rejectionReason);
+        // Envoyer email de rejet avec motif selon le type
+        if (user.getRole() == UserRole.OEC) {
+            emailService.sendOECRejectionByDT(user, rejectionReason);
+        } else {
+            emailService.sendExpertRejectionByGesCompetences(user, rejectionReason);
+        }
         
         return savedUser;
     }

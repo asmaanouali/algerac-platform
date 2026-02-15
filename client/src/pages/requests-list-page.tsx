@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { useRequests } from "@/hooks/use-requests";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,11 @@ export default function RequestsListPage() {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="min-h-screen bg-gray-50/50">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+      <div className="md:ml-64">
+        <Navbar />
+        <main className="p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-900">
@@ -119,7 +122,8 @@ export default function RequestsListPage() {
             </TableBody>
           </Table>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

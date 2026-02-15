@@ -153,8 +153,14 @@ public class AuthController {
             // Créer un User PENDING au lieu de OECApplication
             User user = authService.registerOEC(request);
             
-            // Envoyer l'email avec le PDF DOC1 à ALGERAC
+            // Envoyer email de confirmation à l'OEC
+            emailService.sendOECRegistrationConfirmation(user);
+            
+            // Envoyer l'email avec le PDF DOC1 à ALGERAC (notification email existant)
             emailService.sendOECRegistrationNotification(user);
+            
+            // Envoyer notification au DT
+            emailService.sendDTNewOECNotification(user);
             
             log.info("Candidature OEC créée avec succès (User PENDING) - ID: {}, Organisme: {}", 
                     user.getId(), user.getOrganizationName());
@@ -199,18 +205,21 @@ public class AuthController {
             // Le status sera automatiquement PENDING grâce au @PrePersist
             User user = authService.registerExpert(request);
             
-            // Envoyer l'email avec le PDF FOR 20 à ALGERAC
+            // Envoyer email de confirmation au candidat
+            emailService.sendExpertRegistrationConfirmation(user);
+            
+            // Envoyer l'email avec le PDF FOR 20 à ALGERAC (notification email existant)
             emailService.sendExpertRegistrationNotification(user);
             
-            // Envoyer l'email de confirmation au candidat
-            emailService.sendConfirmationToUser(user);
+            // Envoyer notification au gestionnaire de compétences
+            emailService.sendGesCompetencesNotification(user);
             
             log.info("Candidature Expert créée avec succès (User PENDING) - ID: {}, Nom: {} {}", 
                     user.getId(), user.getNom(), user.getPrenom());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Votre candidature a bien été enregistrée. Vous recevrez un email dès qu'elle sera examinée par la Direction Technique.",
+                            "Votre candidature a bien été enregistrée. Vous recevrez un email dès qu'elle sera examinée.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {

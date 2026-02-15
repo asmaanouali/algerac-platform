@@ -34,11 +34,9 @@ public class Convention {
     @Column(nullable = false)
     private ConventionStatus status; // DRAFT, SENT_TO_OEC, VALIDATED_BY_OEC, REJECTED_BY_OEC
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String content; // Contenu de la convention
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String termsAndConditions; // Termes et conditions
     

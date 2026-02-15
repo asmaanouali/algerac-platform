@@ -42,11 +42,9 @@ public class Quotation {
     @Column(nullable = false)
     private BigDecimal amount; // Montant du devis
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String details; // Détails du devis
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String dagComments; // Commentaires du DAG
     

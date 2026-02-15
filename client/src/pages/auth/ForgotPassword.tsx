@@ -42,7 +42,8 @@ export default function ForgotPassword() {
       } else {
         toast({
           title: "Erreur",
-          description: data?.message || "Erreur lors de l'envoi du code.",
+          description: data?.message || "Aucun compte avec cet email",
+          variant: "destructive"
         });
       }
     } catch (err) {

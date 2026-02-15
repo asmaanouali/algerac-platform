@@ -1,7 +1,9 @@
 package com.algerac.service;
 
 import com.algerac.model.AccreditationRequest;
+import com.algerac.model.CASDecisionType;
 import com.algerac.model.Notification;
+import com.algerac.model.TeamMember;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.repository.NotificationRepository;
@@ -223,5 +225,474 @@ public class NotificationService {
         
         notificationRepository.save(notification);
         log.info("Notification de validation de devis par OEC envoyée au RA {}", ra.getFullName());
+    }
+    
+    @Transactional
+    public void notifyRANewCorrections(AccreditationRequest request) {
+        User ra = request.getAssignedToRa();
+        if (ra == null) return;
+        
+        Notification notification = Notification.builder()
+                .user(ra)
+                .title("Corrections soumises par l'OEC")
+                .message(String.format("L'OEC %s a soumis des corrections pour la demande %s. " +
+                        "Veuillez réévaluer la recevabilité.",
+                        request.getOec().getOrganizationName(),
+                        request.getReferenceNumber()))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        notificationRepository.save(notification);
+        log.info("Notification envoyée au RA {} pour corrections de la demande {}", 
+                ra.getFullName(), request.getReferenceNumber());
+    }
+    
+    // ===== NOTIFICATIONS VISITE PRÉLIMINAIRE =====
+    
+    @Transactional
+    public void notifyOECPreliminaryVisitProposed(AccreditationRequest request) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Visite préliminaire proposée")
+                .message(String.format("Une visite préliminaire est proposée pour votre demande %s. " +
+                        "Veuillez indiquer si vous acceptez cette visite.",
+                        request.getReferenceNumber()))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDPreliminaryVisitResponse(AccreditationRequest request, Boolean accepted) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Réponse visite préliminaire")
+                    .message(String.format("L'OEC a %s la visite préliminaire pour la demande %s.",
+                            accepted ? "accepté" : "refusé",
+                            request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyOECPreliminaryVisitScheduled(AccreditationRequest request, LocalDateTime date) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Visite préliminaire programmée")
+                .message(String.format("La visite préliminaire pour votre demande %s est programmée le %s.",
+                        request.getReferenceNumber(), date.toString()))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECPreliminaryVisitReport(AccreditationRequest request, Boolean hasBlockingElements) {
+        String title = hasBlockingElements ? "Obstacles identifiés lors de la visite" : "Rapport de visite disponible";
+        String message = hasBlockingElements 
+                ? String.format("Des obstacles bloquants ont été identifiés lors de la visite préliminaire pour %s. " +
+                        "Veuillez les lever pour continuer le processus.", request.getReferenceNumber())
+                : String.format("Le rapport de visite préliminaire pour %s est disponible.", request.getReferenceNumber());
+        
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title(title)
+                .message(message)
+                .type(hasBlockingElements ? "warning" : "info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDObstaclesLifted(AccreditationRequest request) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Obstacles levés")
+                    .message(String.format("L'OEC a levé les obstacles pour la demande %s. " +
+                            "Vous pouvez continuer le processus.", request.getReferenceNumber()))
+                    .type("success")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    // ===== NOTIFICATIONS ÉQUIPE D'ÉVALUATION =====
+    
+    @Transactional
+    public void notifyExpertTeamDesignation(User expert, AccreditationRequest request) {
+        Notification notification = Notification.builder()
+                .user(expert)
+                .title("Désignation équipe d'évaluation")
+                .message(String.format("Vous avez été désigné pour faire partie de l'équipe d'évaluation " +
+                        "pour la demande %s. Veuillez signer les engagements de confidentialité.",
+                        request.getReferenceNumber()))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDAgreementSigned(TeamMember member, Boolean hasConflict) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Engagements signés")
+                    .message(String.format("%s a signé les engagements. Conflit d'intérêt: %s",
+                            member.getExpert().getFullName(),
+                            hasConflict ? "OUI" : "NON"))
+                    .type(hasConflict ? "warning" : "success")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyOECTeamComposition(AccreditationRequest request) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Composition de l'équipe d'évaluation")
+                .message(String.format("La composition de l'équipe d'évaluation pour %s est disponible. " +
+                        "Veuillez la valider sous 3 jours.", request.getReferenceNumber()))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDTeamResponse(AccreditationRequest request, Boolean validated, String reason) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            String message = validated 
+                    ? String.format("L'OEC a validé l'équipe d'évaluation pour %s.", request.getReferenceNumber())
+                    : String.format("L'OEC a récusé des membres de l'équipe pour %s. Motif: %s",
+                            request.getReferenceNumber(), reason);
+            
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title(validated ? "Équipe validée" : "Récusation de membres")
+                    .message(message)
+                    .type(validated ? "success" : "warning")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyOECRecusationDecision(AccreditationRequest request, Boolean accepted, String reason) {
+        String message = accepted
+                ? String.format("Votre récusation pour %s a été acceptée. Les membres seront remplacés.",
+                        request.getReferenceNumber())
+                : String.format("Votre récusation pour %s a été rejetée. Motif: %s",
+                        request.getReferenceNumber(), reason);
+        
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Décision sur récusation")
+                .message(message)
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    // ===== NOTIFICATIONS ÉCARTS ET PLANS D'ACTIONS =====
+    
+    @Transactional
+    public void notifyOECActionPlansRequired(AccreditationRequest request, int gapCount) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Plans d'actions requis")
+                .message(String.format("%d écart(s) ont été identifiés pour %s. " +
+                        "Veuillez soumettre vos plans d'actions sous 10 jours.",
+                        gapCount, request.getReferenceNumber()))
+                .type("warning")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyTeamActionPlanSubmitted(AccreditationRequest request, String gapCode) {
+        // Notifier l'équipe d'évaluation (REE et membres)
+        // À implémenter selon la structure de l'équipe
+    }
+    
+    @Transactional
+    public void notifyOECActionPlanAccepted(AccreditationRequest request, String gapCode) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Plan d'action accepté")
+                .message(String.format("Votre plan d'action pour l'écart %s de %s a été accepté. " +
+                        "Veuillez procéder à la mise en œuvre.",
+                        gapCode, request.getReferenceNumber()))
+                .type("success")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECActionPlanRejected(AccreditationRequest request, String gapCode, String reason) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Plan d'action rejeté")
+                .message(String.format("Votre plan d'action pour l'écart %s de %s a été rejeté. " +
+                        "Motif: %s. Veuillez proposer un nouveau plan.",
+                        gapCode, request.getReferenceNumber(), reason))
+                .type("error")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyTeamEvidenceSubmitted(AccreditationRequest request, String gapCode) {
+        // Notifier l'équipe que l'OEC a fourni des preuves
+    }
+    
+    @Transactional
+    public void notifyOECEvidenceInsufficient(AccreditationRequest request, String gapCode) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Preuves insuffisantes")
+                .message(String.format("Les preuves fournies pour l'écart %s de %s sont insuffisantes. " +
+                        "Veuillez fournir des compléments.",
+                        gapCode, request.getReferenceNumber()))
+                .type("warning")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDComplementaryEvalDecision(AccreditationRequest request, String gapCode) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Décision évaluation complémentaire")
+                    .message(String.format("L'écart critique %s de %s nécessite une décision " +
+                            "sur une éventuelle évaluation complémentaire.",
+                            gapCode, request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    // ===== NOTIFICATIONS RAPPORT ET CAS =====
+    
+    @Transactional
+    public void notifyCDReportSubmitted(AccreditationRequest request, String reportNumber) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Rapport soumis pour validation")
+                    .message(String.format("Le rapport %s pour %s est disponible pour validation.",
+                            reportNumber, request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyREECorrectionsNeeded(AccreditationRequest request, String corrections) {
+        // Notifier le REE des corrections demandées
+    }
+    
+    @Transactional
+    public void notifyCDReportCorrected(AccreditationRequest request, String reportNumber) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Rapport corrigé")
+                    .message(String.format("Le rapport %s pour %s a été corrigé et resoumis.",
+                            reportNumber, request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyCASMembersScheduled(AccreditationRequest request, LocalDateTime meetingDate) {
+        // Notifier tous les membres du CAS de la réunion programmée
+        List<User> casMembers = userRepository.findByRole(UserRole.CD);
+        casMembers.addAll(userRepository.findByRole(UserRole.DT));
+        
+        for (User member : casMembers) {
+            Notification notification = Notification.builder()
+                    .user(member)
+                    .title("Réunion CAS programmée")
+                    .message(String.format("Une réunion CAS est programmée le %s pour la demande %s.",
+                            meetingDate.toString(), request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+    
+    // ===== NOTIFICATIONS DÉCISIONS CAS =====
+    
+    @Transactional
+    public void notifyOECAccreditationGranted(AccreditationRequest request, CASDecisionType type, String scope) {
+        String title = "Accréditation accordée!";
+        String message = String.format("Félicitations! Votre demande %s a été approuvée par le CAS. " +
+                "Type: %s. Portée: %s",
+                request.getReferenceNumber(), type, scope);
+        
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title(title)
+                .message(message)
+                .type("success")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECAccreditationRefused(AccreditationRequest request, String reason) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Accréditation refusée")
+                .message(String.format("Votre demande %s a été refusée par le CAS. Motif: %s. " +
+                        "Vous avez un droit de recours.",
+                        request.getReferenceNumber(), reason))
+                .type("error")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECAccreditationPostponed(AccreditationRequest request, String reason) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Décision ajournée")
+                .message(String.format("La décision pour %s a été ajournée. " +
+                        "Compléments requis: %s",
+                        request.getReferenceNumber(), reason))
+                .type("warning")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECAccreditationMaintained(AccreditationRequest request) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Accréditation maintenue")
+                .message(String.format("Votre accréditation pour %s a été maintenue suite à la surveillance.",
+                        request.getReferenceNumber()))
+                .type("success")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECAccreditationSuspended(AccreditationRequest request, String reason) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Accréditation suspendue")
+                .message(String.format("Votre accréditation pour %s a été suspendue. Motif: %s",
+                        request.getReferenceNumber(), reason))
+                .type("error")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECAccreditationWithdrawn(AccreditationRequest request, String reason) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Accréditation retirée")
+                .message(String.format("Votre accréditation pour %s a été retirée. Motif: %s",
+                        request.getReferenceNumber(), reason))
+                .type("error")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECScopeReduced(AccreditationRequest request, String newScope) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Portée réduite")
+                .message(String.format("La portée de votre accréditation %s a été réduite. " +
+                        "Nouvelle portée: %s",
+                        request.getReferenceNumber(), newScope))
+                .type("warning")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyOECCertificateIssued(AccreditationRequest request, String certificateUrl) {
+        Notification notification = Notification.builder()
+                .user(request.getOec())
+                .title("Certificat délivré")
+                .message(String.format("Votre certificat d'accréditation pour %s est disponible.",
+                        request.getReferenceNumber()))
+                .type("success")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
     }
 }

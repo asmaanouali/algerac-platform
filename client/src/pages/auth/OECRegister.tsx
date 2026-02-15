@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Plus, Trash2, FileText, Upload, AlertCircle } from "lucide-react";
 
@@ -224,8 +225,8 @@ export default function OECRegister() {
   };
 
   const handleSubmit = async () => {
-    if (!agreedToTerms) {
-      setApiError("Vous devez accepter les exigences d'accréditation.");
+    if (!agreedToTerms || !formData.rgpdConsent) {
+      setApiError("Vous devez cocher les deux engagements pour continuer.");
       return;
     }
 
@@ -313,13 +314,14 @@ export default function OECRegister() {
         )}
 
         <Card className="shadow-xl border-0">
-          <CardContent className="p-8 md:p-12 space-y-10">
-            
-            {/* Section 1 - Informations générales */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                1 - Informations générales
-              </h3>
+          <CardContent className="p-8 md:p-12">
+            <Accordion type="multiple" defaultValue={["section-1"]} className="space-y-4">
+              {/* Section 1 - Informations générales */}
+              <AccordionItem value="section-1">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  1 - Informations générales
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -381,13 +383,15 @@ export default function OECRegister() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 2 - Identification de l'organisme */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                2 - Identification de l&apos;organisme
-              </h3>
+              {/* Section 2 - Identification de l'organisme */}
+              <AccordionItem value="section-2">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  2 - Identification de l&apos;organisme
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
@@ -443,13 +447,15 @@ export default function OECRegister() {
                   />
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 3 - Coordonnées */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                3 - Coordonnées
-              </h3>
+              {/* Section 3 - Coordonnées */}
+              <AccordionItem value="section-3">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  3 - Coordonnées
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
@@ -521,13 +527,15 @@ export default function OECRegister() {
                   />
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 4 - Appartenance à un groupe */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                4 - Appartenance à un groupe
-              </h3>
+              {/* Section 4 - Appartenance à un groupe */}
+              <AccordionItem value="section-4">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  4 - Appartenance à un groupe
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded">
                 <input 
@@ -582,13 +590,15 @@ export default function OECRegister() {
                   </div>
                 </div>
               )}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 5 - Personne à contacter */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                5 - Personne à contacter
-              </h3>
+              {/* Section 5 - Personne à contacter */}
+              <AccordionItem value="section-5">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  5 - Personne à contacter
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -658,13 +668,15 @@ export default function OECRegister() {
                   )}
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 6 - Informations sur l'activité */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                6 - Informations sur l&apos;activité
-              </h3>
+              {/* Section 6 - Informations sur l'activité */}
+              <AccordionItem value="section-6">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  6 - Informations sur l&apos;activité
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
@@ -707,13 +719,15 @@ export default function OECRegister() {
                   />
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 7 - Responsables */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                7 - Responsables
-              </h3>
+              {/* Section 7 - Responsables */}
+              <AccordionItem value="section-7">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  7 - Responsables
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200 space-y-4">
                 <h4 className="text-sm font-semibold text-green-800">Responsable Technique</h4>
@@ -780,13 +794,15 @@ export default function OECRegister() {
                   </div>
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 8 - Recours au conseil */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                8 - Recours au conseil
-              </h3>
+              {/* Section 8 - Recours au conseil */}
+              <AccordionItem value="section-8">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  8 - Recours au conseil
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded">
                 <input 
@@ -817,13 +833,15 @@ export default function OECRegister() {
                   </div>
                 </div>
               )}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 9 - Reconnaissances */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                9 - Reconnaissances
-              </h3>
+              {/* Section 9 - Reconnaissances */}
+              <AccordionItem value="section-9">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  9 - Reconnaissances
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-600">
@@ -890,13 +908,15 @@ export default function OECRegister() {
                   <p>Aucune reconnaissance ajoutée</p>
                 </div>
               )}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 10 - Documents requis */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                10 - Documents requis
-              </h3>
+              {/* Section 10 - Documents requis */}
+              <AccordionItem value="section-10">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  10 - Documents requis
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="space-y-4">
                 {[
@@ -933,13 +953,15 @@ export default function OECRegister() {
                   </div>
                 ))}
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 11 - Signature */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                11 - Signature
-              </h3>
+              {/* Section 11 - Signature */}
+              <AccordionItem value="section-11">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  11 - Signature
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -959,10 +981,12 @@ export default function OECRegister() {
                   />
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Engagements */}
-            <div className="space-y-6">
+            <div className="pt-8 space-y-6">
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
                 Déclaration et engagements
               </h3>
@@ -1000,7 +1024,7 @@ export default function OECRegister() {
             <Button 
               className="w-full h-12 text-base font-bold" 
               onClick={handleSubmit}
-              disabled={loading || !agreedToTerms}
+              disabled={loading || !agreedToTerms || !formData.rgpdConsent}
               style={{ backgroundColor: '#00A63E' }}
             >
               {loading ? "Envoi en cours..." : "Soumettre la demande"}

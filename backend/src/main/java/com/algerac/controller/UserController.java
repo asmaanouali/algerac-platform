@@ -4,12 +4,14 @@ import com.algerac.dto.ApiResponse;
 import com.algerac.dto.UserDTO;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
+import com.algerac.model.UserStatus;
 import com.algerac.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class UserController {
     
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     
     /**
      * Récupérer tous les utilisateurs (pour l'admin)
@@ -123,5 +126,63 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Erreur lors de la récupération des utilisateurs"));
         }
+    }
+    
+    /**
+     * Créer un nouvel utilisateur (admin uniquement)
+     */
+    @PostMapping("/create")
+    public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request, HttpSession session) {
+        // Vérifier l'authentification et les droits admin
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Non authentifié"));
+        }
+        
+        try {
+            // Vérifier si l'email existe déjà
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Un utilisateur avec cet email existe déjà"));
+            }
+            
+            // Créer le nouvel utilisateur
+            User newUser = User.builder()
+                    .nom(request.getNom())
+                    .prenom(request.getPrenom())
+                    .email(request.getEmail())
+                    .telephone(request.getTelephone())
+                    .role(UserRole.valueOf(request.getRole()))
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .status(UserStatus.APPROVED)
+                    .build();
+            
+            User savedUser = userRepository.save(newUser);
+            log.info("Nouvel utilisateur créé par admin: {} - {}", savedUser.getEmail(), savedUser.getRole());
+            
+            return ResponseEntity.ok(UserDTO.fromUser(savedUser));
+        } catch (IllegalArgumentException e) {
+            log.error("Rôle invalide: {}", request.getRole());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Rôle invalide: " + request.getRole()));
+        } catch (Exception e) {
+            log.error("Erreur lors de la création de l'utilisateur", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Erreur lors de la création de l'utilisateur"));
+        }
+    }
+    
+    /**
+     * Classe interne pour la requête de création d'utilisateur
+     */
+    @lombok.Data
+    public static class CreateUserRequest {
+        private String nom;
+        private String prenom;
+        private String email;
+        private String telephone;
+        private String role;
+        private String password;
     }
 }

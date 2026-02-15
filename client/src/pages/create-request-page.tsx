@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { useCreateRequest } from "@/hooks/use-requests";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,9 +69,11 @@ export default function CreateRequestPage() {
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="min-h-screen bg-gray-50/50">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+      <div className="md:ml-64">
+        <Navbar />
+        <main className="p-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
@@ -244,7 +247,8 @@ export default function CreateRequestPage() {
             </CardFooter>
           </Card>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

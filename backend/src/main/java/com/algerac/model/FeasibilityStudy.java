@@ -31,19 +31,15 @@ public class FeasibilityStudy {
     @Column(nullable = false)
     private FeasibilityDecision decision; // PENDING, RECEIVABLE, NOT_RECEIVABLE
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String comments; // Commentaires du RA
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String technicalAnalysis; // Analyse technique simplifiée
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String complianceCheck; // Vérification de conformité
     
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String rejectionReason; // Raison de rejet si non recevable
     

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Plus, Trash2, FileText, Upload, Calendar, AlertCircle } from "lucide-react";
 
@@ -334,8 +335,8 @@ export default function ExpertRegister() {
   // Fonction de soumission
   const handleSubmit = async () => {
     // Validation
-    if (!agreedToTerms) {
-      setApiError("Vous devez accepter les conditions d'inscription.");
+    if (!agreedToTerms || !formData.rgpdConsent) {
+      setApiError("Vous devez cocher les deux engagements pour continuer.");
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -428,7 +429,7 @@ export default function ExpertRegister() {
         </div>
 
         <Card className="border-none shadow-xl">
-          <CardContent className="p-8 space-y-10">
+          <CardContent className="p-8 md:p-12">
             
             {apiError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-start gap-2">
@@ -437,11 +438,13 @@ export default function ExpertRegister() {
               </div>
             )}
 
-            {/* Section 1 - Identification */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                1 - Identification
-              </h3>
+            <Accordion type="multiple" defaultValue={["section-1"]} className="space-y-4">
+              {/* Section 1 - Identification */}
+              <AccordionItem value="section-1">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  1 - Identification
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Nom <span className="text-red-500">*</span></Label>
@@ -526,13 +529,15 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 2 - Contacts */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                2 - Contacts
-              </h3>
+              {/* Section 2 - Contacts */}
+              <AccordionItem value="section-2">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  2 - Contacts
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Email <span className="text-red-500">*</span></Label>
@@ -624,18 +629,25 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 3 - Formations académiques */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">
-                  3 - Formation(s) académique(s)
-                </h3>
-                <Button variant="outline" size="sm" onClick={addFormationAcademique}>
-                  <Plus className="w-4 h-4 mr-2" /> Ajouter
-                </Button>
-              </div>
+              {/* Section 3 - Formations académiques */}
+              <AccordionItem value="section-3">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-3">
+                    <span>3 - Formation(s) académique(s)</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); addFormationAcademique(); }}
+                      type="button"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <p className="text-xs text-slate-500 italic">
                 Par ordre chronologique : du plus récent au plus ancien
               </p>
@@ -713,18 +725,25 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               ))}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 3bis - Autres formations */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">
-                  3 - Autres formations
-                </h3>
-                <Button variant="outline" size="sm" onClick={addAutreFormation}>
-                  <Plus className="w-4 h-4 mr-2" /> Ajouter
-                </Button>
-              </div>
+              {/* Section 3bis - Autres formations */}
+              <AccordionItem value="section-3bis">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-3">
+                    <span>3 - Autres formations</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); addAutreFormation(); }}
+                      type="button"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               {autresFormations.map((formation, index) => (
                 <div key={formation.id} className="p-4 border rounded-lg space-y-4 bg-white">
                   <div className="flex items-center justify-between">
@@ -799,18 +818,25 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               ))}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 4 - Expérience professionnelle */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">
-                  4 - Expérience professionnelle
-                </h3>
-                <Button variant="outline" size="sm" onClick={addExperience}>
-                  <Plus className="w-4 h-4 mr-2" /> Ajouter
-                </Button>
-              </div>
+              {/* Section 4 - Expérience professionnelle */}
+              <AccordionItem value="section-4">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-3">
+                    <span>4 - Expérience professionnelle</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); addExperience(); }}
+                      type="button"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <p className="text-xs text-slate-500 italic">
                 Par ordre chronologique : du plus récent au plus ancien
               </p>
@@ -889,18 +915,25 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               ))}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 5 - Évaluation ou Audit de SM réalisés */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">
-                  5 - Évaluation ou Audit de SM réalisés
-                </h3>
-                <Button variant="outline" size="sm" onClick={addEvaluation}>
-                  <Plus className="w-4 h-4 mr-2" /> Ajouter
-                </Button>
-              </div>
+              {/* Section 5 - Évaluation ou Audit de SM réalisés */}
+              <AccordionItem value="section-5">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-3">
+                    <span>5 - Évaluation ou Audit de SM réalisés</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); addEvaluation(); }}
+                      type="button"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <p className="text-xs text-slate-500 italic">
                 Par ordre chronologique : du plus récent au plus ancien
               </p>
@@ -954,18 +987,25 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               ))}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 6 - Formations dispensées */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2 flex-1">
-                  6 - Formations dispensées ayant un lien avec les activités d&apos;évaluation
-                </h3>
-                <Button variant="outline" size="sm" onClick={addFormationDispensee}>
-                  <Plus className="w-4 h-4 mr-2" /> Ajouter
-                </Button>
-              </div>
+              {/* Section 6 - Formations dispensées */}
+              <AccordionItem value="section-6">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  <div className="flex items-center justify-between w-full pr-3">
+                    <span>6 - Formations dispensées ayant un lien avec les activités d&apos;évaluation</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); addFormationDispensee(); }}
+                      type="button"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter
+                    </Button>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <p className="text-xs text-slate-500 italic">
                 Par ordre chronologique : du plus récent au plus ancien
               </p>
@@ -1011,13 +1051,15 @@ export default function ExpertRegister() {
                   </div>
                 </div>
               ))}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 7 - Connaissance Linguistique */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                7 - Connaissance Linguistique
-              </h3>
+              {/* Section 7 - Connaissance Linguistique */}
+              <AccordionItem value="section-7">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  7 - Connaissance Linguistique
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               <p className="text-xs text-slate-500 italic">
                 1 = Basique | 2 = Bien | 3 = Très bien | 4 = Excellent
               </p>
@@ -1079,13 +1121,15 @@ export default function ExpertRegister() {
                   </div>
                 ))}
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Section 8 - Divers & Domaine d'expertise */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                8 - Divers & Domaine d&apos;expertise
-              </h3>
+              {/* Section 8 - Divers & Domaine d'expertise */}
+              <AccordionItem value="section-8">
+                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
+                  8 - Divers & Domaine d&apos;expertise
+                </AccordionTrigger>
+                <AccordionContent className="space-y-6 pt-4">
               
               {/* NOUVEAU: Domaine d'expertise */}
               <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg space-y-4">
@@ -1127,10 +1171,12 @@ export default function ExpertRegister() {
                   onChange={(e) => setFormData({...formData, informationsComplementaires: e.target.value})}
                 />
               </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Documents & Engagements */}
-            <div className="space-y-6">
+            <div className="pt-8 space-y-6">
               <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
                 Documents & Engagements
               </h3>
@@ -1190,7 +1236,7 @@ export default function ExpertRegister() {
             <Button 
               className="w-full h-12 text-base font-bold" 
               onClick={handleSubmit}
-              disabled={loading || !agreedToTerms}
+              disabled={loading || !agreedToTerms || !formData.rgpdConsent}
               style={{ backgroundColor: '#00A63E' }}
             >
               {loading ? "Envoi en cours..." : "Soumettre ma candidature"}

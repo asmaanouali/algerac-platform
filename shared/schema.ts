@@ -15,15 +15,95 @@ export const userTypes = ["admin", "ra", "dt", "oec", "expert"] as const;
 export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
 export const requestStatuses = [
+  // Phase initiale
   "draft",
   "submitted",
-  "receivability",
-  "planning",
-  "evaluation",
-  "review",
-  "decision",
+  "pending_payment",
+  "payment_completed",
+  "assigned_to_ra",
+  
+  // Phase recevabilité
+  "receivability_study",
+  "receivable",
+  "not_receivable",
+  "receivability_correction",
+  "receivability_resubmitted",
+  
+  // Visite préliminaire (optionnel)
+  "preliminary_visit_proposed",
+  "preliminary_visit_accepted",
+  "preliminary_visit_declined",
+  "preliminary_visit_scheduled",
+  "preliminary_visit_completed",
+  "preliminary_visit_report_pending",
+  "process_suspended_obstacles",
+  
+  // Contractualisation
+  "quotation_preparation",
+  "quotation_sent_to_dag",
+  "quotation_approved_by_dag",
+  "quotation_sent_to_dept",
+  "quotation_received_from_dept",
+  "quotation_sent_to_oec",
+  "quotation_validated",
+  "quotation_expired",
+  
+  // Constitution équipe
+  "team_designation",
+  "team_sent_to_oec",
+  "team_recused",
+  "team_validated",
+  
+  // Revue documentaire
+  "documentary_review",
+  "documentary_review_deficiencies",
+  "awaiting_oec_doc_response",
+  "documentary_review_completed",
+  
+  // Préparation évaluation
+  "evaluation_plan_preparation",
+  "evaluation_plan_validation",
+  "evaluation_planned",
+  
+  // Évaluation
+  "evaluation_in_progress",
+  "evaluation_completed",
+  
+  // Traitement écarts
+  "awaiting_action_plans",
+  "action_plans_evaluation",
+  "action_plans_implementation",
+  "complementary_evaluation_needed",
+  "complementary_evaluation_planned",
+  "complementary_evaluation_progress",
+  "gaps_resolved",
+  
+  // Rapport
+  "report_drafting",
+  "report_validation",
+  "report_validated",
+  
+  // Décision CAS
+  "cas_preparation",
+  "cas_scheduled",
+  "cas_decision_grant",
+  "cas_decision_refusal",
+  "cas_decision_postponement",
+  
+  // Post-décision
+  "certificate_preparation",
+  "certificate_issued",
+  
+  // Statuts finaux
   "active",
   "suspended",
+  "withdrawn",
+  "closed",
+  
+  // Surveillance
+  "surveillance_scheduled",
+  "surveillance_in_progress",
+  "surveillance_completed",
 ] as const;
 
 // === USERS (ALIGNÉ À LA BASE) ===
@@ -72,8 +152,41 @@ export const accreditationRequests = pgTable("accreditation_requests", {
   domain: text("domain").notNull(),
   status: text("status", { enum: requestStatuses }).notNull().default("draft"),
   progress: integer("progress").default(0),
+  
+  // Workflow
+  assignedToRaId: bigint("assigned_to_ra_id", { mode: "number" }),
+  assignmentDate: timestamp("assignment_date"),
+  
+  // Recevabilité
+  receivabilityComments: text("receivability_comments"),
+  receivabilityDecisionDate: timestamp("receivability_decision_date"),
+  isReceivable: boolean("is_receivable"),
+  receivabilityCorrectionNeeded: text("receivability_correction_needed"),
+  correctionDeadline: timestamp("correction_deadline"),
+  correctionSubmittedDate: timestamp("correction_submitted_date"),
+  receivabilityAttempts: integer("receivability_attempts"),
+  
+  // Visite préliminaire
+  preliminaryVisitRequired: boolean("preliminary_visit_required"),
+  preliminaryVisitAccepted: boolean("preliminary_visit_accepted"),
+  preliminaryVisitDate: timestamp("preliminary_visit_date"),
+  
+  // Workflow tracking
+  currentPhase: text("current_phase"),
+  currentStep: text("current_step"),
+  nextAction: text("next_action"),
+  pendingWith: text("pending_with"),
+  
+  // Dates importantes
   submissionDate: timestamp("submission_date"),
   nextActionDate: timestamp("next_action_date"),
+  evaluationStartDate: timestamp("evaluation_start_date"),
+  evaluationEndDate: timestamp("evaluation_end_date"),
+  casDecisionDate: timestamp("cas_decision_date"),
+  certificateIssueDate: timestamp("certificate_issue_date"),
+  certificateExpirationDate: timestamp("certificate_expiration_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // === DOCUMENTS ===

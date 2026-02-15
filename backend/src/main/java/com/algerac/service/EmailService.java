@@ -672,4 +672,302 @@ public class EmailService {
             throw new RuntimeException("Erreur lors de l'envoi de l'email avec identifiants", e);
         }
     }
+    
+    /**
+     * Envoie un email de confirmation à l'OEC après soumission de sa demande
+     */
+    public void sendOECRegistrationConfirmation(User user) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Confirmation de réception - Demande d'accréditation OEC");
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Nous avons bien reçu votre demande d'accréditation pour l'organisme "%s".
+                
+                Votre demande est actuellement en cours d'examen par notre Direction Technique.
+                Vous serez informé(e) par email de l'évolution de votre dossier.
+                
+                Informations de votre demande :
+                   • Organisme : %s
+                   • Email : %s
+                   • Date de soumission : %s
+                
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getOrganizationName(),
+                user.getOrganizationName(),
+                user.getEmail(),
+                user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de confirmation OEC envoyé à : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de confirmation OEC", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de confirmation", e);
+        }
+    }
+    
+    /**
+     * Envoie une notification au DT qu'une nouvelle demande OEC a été soumise
+     */
+    public void sendDTNewOECNotification(User user) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo("orginag65msf@gmail.com"); // Email du DT
+            message.setSubject("Nouvelle demande d'accréditation OEC - " + user.getOrganizationName());
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Une nouvelle demande d'accréditation OEC a été soumise et nécessite votre examen.
+                
+                Informations de la demande :
+                   • ID : #%d
+                   • Organisme : %s
+                   • Représentant : %s
+                   • Email : %s
+                   • Téléphone : %s
+                   • Date de soumission : %s
+                
+                Veuillez vous connecter à la plateforme pour examiner la demande et le document DOC1 :
+                http://localhost:5173/dt/candidatures-oec
+                
+                Cordialement,
+                Système ALGERAC
+                """,
+                user.getId(),
+                user.getOrganizationName(),
+                user.getNomRepresentant() != null ? user.getNomRepresentant() : "Non renseigné",
+                user.getEmail(),
+                user.getPhone() != null ? user.getPhone() : "Non renseigné",
+                user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de notification DT envoyé pour la demande OEC #{}", user.getId());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email au DT", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email au DT", e);
+        }
+    }
+    
+    /**
+     * Envoie un email de rejet à l'OEC lorsque le DT rejette sa demande
+     */
+    public void sendOECRejectionByDT(User user, String rejectionReason) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Demande d'accréditation non retenue - " + user.getOrganizationName());
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Nous vous informons que votre demande d'accréditation pour l'organisme "%s" n'a pas été retenue par notre Direction Technique.
+                
+                Motif du rejet :
+                %s
+                
+                Si vous souhaitez obtenir plus d'informations ou soumettre une nouvelle demande après avoir pris en compte ces observations, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getOrganizationName(),
+                rejectionReason
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de rejet DT envoyé à l'OEC : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de rejet à l'OEC", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+        }
+    }
+    
+    /**
+     * Envoie un email de confirmation à l'expert/évaluateur/formateur après soumission
+     */
+    public void sendExpertRegistrationConfirmation(User user) {
+        try {
+            String typeLabel = "Expert";
+            if (user.getUserType() != null) {
+                switch (user.getUserType().toUpperCase()) {
+                    case "FORMATEUR":
+                        typeLabel = "Formateur";
+                        break;
+                    case "EVALUATEUR":
+                        typeLabel = "Évaluateur";
+                        break;
+                }
+            }
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Confirmation de réception - Candidature " + typeLabel);
+            
+            String emailBody = String.format("""
+                Bonjour %s %s,
+                
+                Nous avons bien reçu votre candidature en tant que %s.
+                
+                Votre dossier est actuellement en cours d'examen par notre service de Gestion des Compétences.
+                Vous serez informé(e) par email de l'évolution de votre candidature.
+                
+                Informations de votre candidature :
+                   • ID : %s
+                   • Nom complet : %s %s
+                   • Email : %s
+                   • Domaine d'expertise : %s
+                   • Date de soumission : %s
+                
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getPrenom(),
+                user.getNom(),
+                typeLabel,
+                user.getRegistrationId(),
+                user.getPrenom(),
+                user.getNom(),
+                user.getEmail(),
+                user.getDomaineExpertise() != null ? user.getDomaineExpertise() : "Non renseigné",
+                user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de confirmation {} envoyé à : {}", typeLabel, user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de confirmation expert", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de confirmation", e);
+        }
+    }
+    
+    /**
+     * Envoie une notification au gestionnaire de compétences pour une nouvelle candidature
+     */
+    public void sendGesCompetencesNotification(User user) {
+        try {
+            String typeLabel = "Expert";
+            if (user.getUserType() != null) {
+                switch (user.getUserType().toUpperCase()) {
+                    case "FORMATEUR":
+                        typeLabel = "Formateur";
+                        break;
+                    case "EVALUATEUR":
+                        typeLabel = "Évaluateur";
+                        break;
+                }
+            }
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo("caroziiinya@gmail.com"); // Email du gestionnaire de compétences
+            message.setSubject("Nouvelle candidature " + typeLabel + " - " + user.getNom() + " " + user.getPrenom());
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Une nouvelle candidature %s a été soumise et nécessite votre examen.
+                
+                Informations du candidat :
+                   • ID : %s
+                   • Nom complet : %s %s
+                   • Email : %s
+                   • Téléphone : %s
+                   • Domaine d'expertise : %s
+                   • Date de soumission : %s
+                
+                Veuillez vous connecter à la plateforme pour examiner la candidature et le formulaire FOR20 :
+                http://localhost:5173/dt/candidatures
+                
+                Cordialement,
+                Système ALGERAC
+                """,
+                typeLabel,
+                user.getRegistrationId(),
+                user.getPrenom(),
+                user.getNom(),
+                user.getEmail(),
+                user.getPhone() != null ? user.getPhone() : "Non renseigné",
+                user.getDomaineExpertise() != null ? user.getDomaineExpertise() : "Non renseigné",
+                user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de notification Ges Compétences envoyé pour la candidature {}", user.getRegistrationId());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email au gestionnaire de compétences", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email au gestionnaire", e);
+        }
+    }
+    
+    /**
+     * Envoie un email de rejet à l'expert/évaluateur/formateur
+     */
+    public void sendExpertRejectionByGesCompetences(User user, String rejectionReason) {
+        try {
+            String typeLabel = "Expert";
+            if (user.getUserType() != null) {
+                switch (user.getUserType().toUpperCase()) {
+                    case "FORMATEUR":
+                        typeLabel = "Formateur";
+                        break;
+                    case "EVALUATEUR":
+                        typeLabel = "Évaluateur";
+                        break;
+                }
+            }
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Candidature non retenue - " + typeLabel);
+            
+            String emailBody = String.format("""
+                Bonjour %s %s,
+                
+                Nous vous informons que votre candidature en tant que %s n'a pas été retenue.
+                
+                Motif :
+                %s
+                
+                Nous vous remercions pour l'intérêt que vous portez à ALGERAC.
+                Si vous souhaitez obtenir plus d'informations, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                user.getPrenom(),
+                user.getNom(),
+                typeLabel,
+                rejectionReason
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de rejet {} envoyé à : {}", typeLabel, user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de rejet expert", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+        }
+    }
 }

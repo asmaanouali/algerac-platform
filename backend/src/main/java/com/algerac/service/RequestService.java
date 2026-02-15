@@ -215,19 +215,39 @@ public class RequestService {
             throw new RuntimeException("Vous n'êtes pas autorisé à prendre cette décision");
         }
         
-        if (request.getStatus() != RequestStatus.RECEIVABILITY_STUDY) {
+        if (request.getStatus() != RequestStatus.RECEIVABILITY_STUDY 
+            && request.getStatus() != RequestStatus.RECEIVABILITY_RESUBMITTED) {
             throw new RuntimeException("La demande n'est pas en étude de recevabilité");
         }
         
         request.setReceivabilityComments(dto.getComments());
         request.setReceivabilityDecisionDate(LocalDateTime.now());
+        request.setIsReceivable(dto.getIsReceivable());
         
         if (dto.getIsReceivable()) {
+            // Demande recevable
             request.setStatus(RequestStatus.RECEIVABLE);
             request.setProgress(60);
+            request.setCurrentPhase("Recevabilité");
+            request.setCurrentStep("Déclarée recevable");
+            request.setNextAction("Visite préliminaire ou contractualisation");
+            request.setPendingWith("RA/CD");
         } else {
+            // Demande non recevable - OEC peut corriger
             request.setStatus(RequestStatus.NOT_RECEIVABLE);
-            request.setProgress(100);
+            request.setReceivabilityCorrectionNeeded(dto.getComments());
+            request.setCorrectionDeadline(LocalDateTime.now().plusDays(30)); // 30 jours pour corriger
+            request.setProgress(40);
+            request.setCurrentPhase("Recevabilité");
+            request.setCurrentStep("Non recevable - correction requise");
+            request.setNextAction("OEC doit corriger et resoumettre");
+            request.setPendingWith("OEC");
+            
+            if (request.getReceivabilityAttempts() == null) {
+                request.setReceivabilityAttempts(1);
+            } else {
+                request.setReceivabilityAttempts(request.getReceivabilityAttempts() + 1);
+            }
         }
         
         request = requestRepository.save(request);
@@ -236,6 +256,46 @@ public class RequestService {
         
         // Notifier l'OEC
         notificationService.notifyOECReceivabilityDecision(request, dto.getIsReceivable());
+        
+        return request;
+    }
+    
+    /**
+     * OEC soumet les corrections pour une demande non recevable
+     */
+    @Transactional
+    public AccreditationRequest submitReceivabilityCorrections(Long requestId, String corrections, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (!request.getOec().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à modifier cette demande");
+        }
+        
+        if (request.getStatus() != RequestStatus.NOT_RECEIVABLE) {
+            throw new RuntimeException("Cette demande n'est pas en attente de correction");
+        }
+        
+        // Vérifier le délai
+        if (request.getCorrectionDeadline() != null && LocalDateTime.now().isAfter(request.getCorrectionDeadline())) {
+            throw new RuntimeException("Le délai de correction est dépassé");
+        }
+        
+        request.setStatus(RequestStatus.RECEIVABILITY_RESUBMITTED);
+        request.setCorrectionSubmittedDate(LocalDateTime.now());
+        request.setDescription(corrections); // Mise à jour avec les corrections
+        request.setProgress(45);
+        request.setCurrentPhase("Recevabilité");
+        request.setCurrentStep("Corrections soumises - nouvelle étude");
+        request.setNextAction("RA doit réévaluer la recevabilité");
+        request.setPendingWith("RA");
+        
+        request = requestRepository.save(request);
+        log.info("Corrections soumises pour la demande {} par l'OEC {}", 
+                request.getReferenceNumber(), currentUser.getOrganizationName());
+        
+        // Notifier le RA
+        notificationService.notifyRANewCorrections(request);
         
         return request;
     }

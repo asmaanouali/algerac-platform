@@ -170,9 +170,9 @@ export default function UtilisateursPendingPage() {
         <div className="container mx-auto p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Utilisateurs OEC en Attente</h1>
+              <h1 className="text-2xl font-bold">Candidatures Approuvées</h1>
               <p className="text-muted-foreground">
-                Candidatures OEC approuvées par le DT nécessitant la création d'un compte
+                Candidatures (OEC, Experts, Évaluateurs, Formateurs) approuvées nécessitant la création d'un compte
               </p>
             </div>
           </div>

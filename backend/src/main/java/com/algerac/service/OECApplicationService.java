@@ -136,28 +136,25 @@ public class OECApplicationService {
     
     /**
      * Rejeter une candidature (par le DT)
+     * La candidature est supprimée de la base de données après envoi de l'email de rejet
      */
     @Transactional
-    public OECApplication rejectApplication(Long id, String rejectionReason, Long dtUserId) {
+    public void rejectApplication(Long id, String rejectionReason, Long dtUserId) {
         OECApplication application = getApplicationById(id);
         
         if (application.getStatus() != ApplicationStatus.PENDING_DT) {
             throw new RuntimeException("Cette candidature a déjà été traitée");
         }
         
-        application.setStatus(ApplicationStatus.REJECTED_BY_DT);
-        application.setRejectionReason(rejectionReason);
-        application.setReviewedByDtAt(LocalDateTime.now());
-        application.setReviewedByDtUserId(dtUserId);
-        
-        application = oecApplicationRepository.save(application);
         log.info("Candidature OEC rejetée - ID: {}, Organisme: {}, Motif: {}", 
                 application.getId(), application.getNomOrganisme(), rejectionReason);
         
-        // Envoyer un email de refus au candidat
-        emailService.sendOECApplicationRejectionToCandidate(application);
+        // Envoyer un email de refus au candidat avec le motif
+        emailService.sendOECApplicationRejectionToCandidate(application, rejectionReason);
         
-        return application;
+        // Supprimer la candidature de la base de données
+        oecApplicationRepository.delete(application);
+        log.info("Candidature OEC supprimée de la base de données - ID: {}", id);
     }
     
     /**

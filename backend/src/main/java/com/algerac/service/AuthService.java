@@ -314,6 +314,13 @@ public class AuthService {
         }
         
         User user = resetToken.getUser();
+        
+        // Vérifier que le nouveau mot de passe n'est pas identique à l'ancien
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            log.warn("[AUTH SERVICE] Tentative de réutilisation du mot de passe actuel");
+            throw new RuntimeException("Le nouveau mot de passe doit être différent de l'ancien.");
+        }
+        
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         

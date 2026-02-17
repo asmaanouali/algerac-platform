@@ -33,8 +33,7 @@ import DAGDashboard from "@/pages/dag/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DashboardPage from "@/pages/dashboard-page";
 import CandidaturesOECPage from "@/pages/dt/CandidaturesOECPage";
-import UtilisateursPendingPage from "@/pages/admin/UtilisateursPendingPage";
-import UsersPage from "@/pages/admin/UsersPage";
+import UsersManagementPage from "@/pages/admin/UsersManagementPage";
 import CDAccreditations from "@/pages/cd/Accreditations";
 import TeamCompositionPage from "@/pages/ra/TeamCompositionPage";
 import DocumentaryReviewPage from "@/pages/ra/DocumentaryReviewPage";
@@ -55,6 +54,8 @@ import EQDashboard from "@/pages/eq/Dashboard";
 import CASMemberDashboard from "@/pages/cas/MemberDashboard";
 import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
+import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
+import CandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 
 function Router() {
   return (
@@ -110,10 +111,10 @@ function Router() {
       {/* Admin & Other Routes */}
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/users" component={UsersPage} />
+      <Route path="/users" component={UsersManagementPage} />
+      <Route path="/admin/utilisateurs" component={UsersManagementPage} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
-      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
       
       {/* Expert Routes */}
       <Route path="/expert" component={ExpertDashboard} />
@@ -164,6 +165,11 @@ function Router() {
       <Route path="/dg" component={DGDashboard} />
       <Route path="/dg/dashboard" component={DGDashboard} />
       <Route path="/dg/ordres-mission" component={DGDashboard} />
+      
+      {/* GES_COMPETENCES Routes */}
+      <Route path="/ges-competences" component={GesCompetencesDashboard} />
+      <Route path="/ges-competences/dashboard" component={GesCompetencesDashboard} />
+      <Route path="/ges-competences/candidatures" component={CandidaturesPage} />
       
       <Route component={NotFound} />
     </Switch>

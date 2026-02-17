@@ -2,9 +2,12 @@ package com.algerac.controller;
 
 import com.algerac.model.User;
 import com.algerac.service.CandidatureService;
+import com.algerac.service.PdfGenerationService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +22,7 @@ import java.util.Map;
 public class CandidatureController {
 
     private final CandidatureService candidatureService;
+    private final PdfGenerationService pdfGenerationService;
 
     /**
      * Récupère toutes les candidatures en attente (PENDING)
@@ -267,17 +271,187 @@ public class CandidatureController {
             
             log.info("POST /api/candidatures/{}/reject - Rejet d'une candidature avec motif : {}", id, rejectionReason);
             
-            User rejectedUser = candidatureService.rejectCandidature(id, rejectionReason);
-            log.info("Candidature {} rejetée avec succès", id);
+            candidatureService.rejectCandidature(id, rejectionReason);
+            log.info("Candidature {} rejetée et supprimée avec succès", id);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Candidature rejetée avec succès");
-            response.put("user", rejectedUser);
             
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             log.error("Erreur lors du rejet de la candidature {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors du rejet", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+    /**
+     * Télécharge le formulaire DOC1 pour une candidature OEC
+     */
+    @GetMapping("/oec/{id}/doc1")
+    public ResponseEntity<byte[]> downloadDoc1(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            log.info("GET /api/candidatures/oec/{}/doc1 - Téléchargement DOC1", id);
+            
+            User user = candidatureService.getCandidatureById(id);
+            byte[] pdfBytes = pdfGenerationService.generateDoc1Pdf(user);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                String.format("DOC1_%s.pdf", user.getOrganizationName().replaceAll("[^a-zA-Z0-9]", "_")));
+            
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+        } catch (Exception e) {
+            log.error("Erreur lors du téléchargement du DOC1", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Télécharge le formulaire FOR20 pour une candidature Expert/Évaluateur/Formateur
+     */
+    @GetMapping("/experts/{id}/for20")
+    public ResponseEntity<byte[]> downloadFor20(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            log.info("GET /api/candidatures/experts/{}/for20 - Téléchargement FOR20", id);
+            
+            User user = candidatureService.getCandidatureById(id);
+            byte[] pdfBytes = pdfGenerationService.generateFor20Pdf(user);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                String.format("FOR20_%s_%s.pdf", user.getNom(), user.getPrenom()).replaceAll("[^a-zA-Z0-9_.]", "_"));
+            
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+        } catch (Exception e) {
+            log.error("Erreur lors du téléchargement du FOR20", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Récupère toutes les candidatures d'experts/évaluateurs/formateurs en attente
+     * Accessible par GES_COMPETENCES
+     */
+    @GetMapping("/experts")
+    public ResponseEntity<?> getExpertCandidatures(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            log.info("GET /api/candidatures/experts - Récupération des candidatures experts par userId: {}", userId);
+            
+            List<User> expertCandidatures = candidatureService.getExpertCandidatures();
+            log.info("Nombre de candidatures experts trouvées : {}", expertCandidatures.size());
+            
+            return ResponseEntity.ok(expertCandidatures);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des candidatures experts", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Approuve une candidature d'expert/évaluateur/formateur
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/approve")
+    public ResponseEntity<?> approveExpertCandidature(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+            
+            log.info("POST /api/candidatures/experts/{}/approve - Approbation candidature expert", id);
+            
+            User approvedUser = candidatureService.approveExpertCandidature(id, userId);
+            log.info("Candidature expert {} approuvée avec succès", id);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Candidature approuvée. L'administrateur a été notifié pour créer le compte.");
+            response.put("user", approvedUser);
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de l'approbation de la candidature expert {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors de l'approbation", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+    
+    /**
+     * Rejette une candidature d'expert/évaluateur/formateur
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/reject")
+    public ResponseEntity<?> rejectExpertCandidature(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+            
+            String rejectionReason = request.get("rejectionReason");
+            
+            if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "message", "Le motif de refus est obligatoire"
+                ));
+            }
+            
+            log.info("POST /api/candidatures/experts/{}/reject - Rejet candidature expert", id);
+            
+            candidatureService.rejectCandidature(id, rejectionReason);
+            log.info("Candidature expert {} rejetée avec succès", id);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Candidature rejetée. Un email a été envoyé au candidat.");
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors du rejet de la candidature expert {}", id, e);
             return ResponseEntity.status(400).body(Map.of(
                 "success", false,
                 "message", e.getMessage()

@@ -68,10 +68,10 @@ public class CandidatureService {
     }
 
     /**
-     * Rejette une candidature avec un motif
+     * Rejette une candidature avec un motif et supprime l'enregistrement de la base de données
      */
     @Transactional
-    public User rejectCandidature(Long userId, String rejectionReason) {
+    public void rejectCandidature(Long userId, String rejectionReason) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
@@ -79,11 +79,6 @@ public class CandidatureService {
             throw new RuntimeException("Cette candidature a déjà été traitée");
         }
 
-        user.setStatus(UserStatus.REJECTED);
-        user.setRejectionReason(rejectionReason);
-        
-        User savedUser = userRepository.save(user);
-        
         // Envoyer email de rejet avec motif selon le type
         if (user.getRole() == UserRole.OEC) {
             emailService.sendOECRejectionByDT(user, rejectionReason);
@@ -91,7 +86,9 @@ public class CandidatureService {
             emailService.sendExpertRejectionByGesCompetences(user, rejectionReason);
         }
         
-        return savedUser;
+        // Supprimer l'enregistrement de la base de données
+        userRepository.delete(user);
+        log.info("Candidature {} rejetée et supprimée de la base de données", userId);
     }
 
     /**
@@ -185,5 +182,50 @@ public class CandidatureService {
         }
         
         return password.toString();
+    }
+    
+    /**
+     * Récupère toutes les candidatures d'experts/évaluateurs/formateurs (PENDING uniquement)
+     */
+    public List<User> getExpertCandidatures() {
+        return userRepository.findByStatusOrderByCreatedAtDesc(UserStatus.PENDING)
+            .stream()
+            .filter(user -> user.getUserType() != null && 
+                   (user.getUserType().equalsIgnoreCase("EXPERT") || 
+                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
+                    user.getUserType().equalsIgnoreCase("FORMATEUR")))
+            .toList();
+    }
+    
+    /**
+     * Approuve une candidature d'expert/évaluateur/formateur
+     * Notifie l'admin pour créer le compte
+     */
+    @Transactional
+    public User approveExpertCandidature(Long userId, Long gesCompetencesUserId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        if (user.getStatus() != UserStatus.PENDING) {
+            throw new RuntimeException("Cette candidature a déjà été traitée");
+        }
+        
+        if (user.getUserType() == null || 
+            (!user.getUserType().equalsIgnoreCase("EXPERT") && 
+             !user.getUserType().equalsIgnoreCase("EVALUATEUR") && 
+             !user.getUserType().equalsIgnoreCase("FORMATEUR"))) {
+            throw new RuntimeException("Cette candidature n'est pas une candidature expert/évaluateur/formateur");
+        }
+
+        user.setStatus(UserStatus.APPROVED);
+        user.setDateApprobation(LocalDateTime.now());
+        
+        User savedUser = userRepository.save(user);
+        
+        // Notifier l'admin pour créer le compte
+        log.info("Candidature {} approuvée - notification admin pour création de compte", user.getUserType());
+        emailService.sendExpertApprovedNotificationToAdmin(user);
+        
+        return savedUser;
     }
 }

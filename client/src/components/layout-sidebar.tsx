@@ -81,7 +81,7 @@ export function Sidebar() {
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
-      { href: "/admin/utilisateurs-pending", label: "OEC en Attente", icon: UserPlus },
+      { href: "/admin/utilisateurs-pending", label: "Candidatures", icon: UserPlus },
     ],
     expert: [
       { href: "/expert/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -126,9 +126,33 @@ export function Sidebar() {
       { href: "/dg/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dg/ordres-mission", label: "Ordres de Mission", icon: Stamp },
     ],
+    ges_competences: [
+      { href: "/ges-competences/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/ges-competences/candidatures", label: "Candidatures", icon: UserPlus },
+      { href: "/ges-competences/experts", label: "Experts Certifiés", icon: UserCheck },
+    ],
   };
 
-  const currentNav = navItems[role as keyof typeof navItems] || [];
+  const roleMapping: Record<string, keyof typeof navItems> = {
+    'ADMIN': 'admin',
+    'OEC': 'oec',
+    'RA': 'ra',
+    'DT': 'dt',
+    'CD': 'cd',
+    'DAG': 'dag',
+    'EXPERT': 'expert',
+    'REE': 'ree',
+    'ET': 'et',
+    'EQ': 'eq',
+    'CAS_MEMBER': 'cas_member',
+    'CAS_PRESIDENT': 'cas_president',
+    'DG': 'dg',
+    'GES_COMPETENCES': 'ges_competences',
+  };
+
+  const normalizedRole = role?.toUpperCase() || '';
+  const navKey = roleMapping[normalizedRole] || normalizedRole.toLowerCase();
+  const currentNav = navItems[navKey as keyof typeof navItems] || [];
 
   return (
     <div className="hidden md:flex w-64 bg-white border-r h-screen flex-col fixed left-0 top-0 z-30 shadow-lg">

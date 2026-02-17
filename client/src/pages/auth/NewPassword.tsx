@@ -68,10 +68,14 @@ export default function NewPassword() {
         // Supprimer le token du localStorage
         localStorage.removeItem("resetToken");
         toast({
-          title: "Mot de passe changé",
-          description: "Votre mot de passe a été modifié avec succès.",
-          icon: <CheckCircle2 className="text-green-600 w-6 h-6" />,
-        });
+  title: "Mot de passe modifié !",
+  description: (
+    <span className="flex items-center gap-2">
+      Votre mot de passe a été changé avec succès.
+    </span>
+  ),
+  className: "bg-green-600 text-white border-green-600"
+});
         setTimeout(() => setLocation("/"), 1200);
       } else {
         toast({

@@ -28,6 +28,12 @@ public class EmailService {
     @Value("${app.notification.email}")
     private String notificationEmail;
 
+    @Value("${app.dt.email}")
+    private String dtEmail;
+
+    @Value("${app.ges.competences.email}")
+    private String gesCompetencesEmail;
+
     @Value("${spring.mail.username}")
     private String fromEmail;
 
@@ -64,10 +70,8 @@ public class EmailService {
     }
 
     /**
-     * Envoie une notification d'inscription OEC avec PDF
-     */
-    /**
      * Envoie une notification d'inscription OEC avec PDF DOC1 en pièce jointe
+     * Destinataire : Direction Technique (DT)
      */
     public void sendOECRegistrationNotification(User user) {
         try {
@@ -75,7 +79,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             helper.setFrom(fromEmail);
-            helper.setTo(notificationEmail);
+            helper.setTo(dtEmail);  // Envoyer à DT
             
             String subject = String.format("[OEC] Nouvelle inscription - %s", user.getOrganizationName());
             helper.setSubject(subject);
@@ -92,7 +96,7 @@ public class EmailService {
             helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
 
             mailSender.send(mimeMessage);
-            log.info("Email OEC avec PDF DOC1 envoyé pour {}", user.getOrganizationName());
+            log.info("Email OEC avec PDF DOC1 envoyé à DT pour {}", user.getOrganizationName());
 
         } catch (MessagingException e) {
             log.error("Erreur lors de l'envoi de l'email OEC avec PDF", e);
@@ -151,6 +155,7 @@ public class EmailService {
 
     /**
      * Envoie une notification d'inscription Expert avec PDF FOR 20 en pièce jointe
+     * Destinataire : Gestionnaire de Compétences (GES_COMPETENCES)
      */
     public void sendExpertRegistrationNotification(User user) {
         try {
@@ -158,7 +163,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             helper.setFrom(fromEmail);
-            helper.setTo(notificationEmail);
+            helper.setTo(gesCompetencesEmail);  // Envoyer à GES_COMPETENCES
 
 
             // Déterminer le label à partir du userType uniquement
@@ -184,7 +189,7 @@ public class EmailService {
                 String emailBody = buildExpertEmailBody(user);
                 helper.setText(emailBody, false);
 
-                // Génération et ajout du PDF en pièce jointe avec l'ID dans le nom
+                // Génération et ajout du PDF FOR20 en pièce jointe avec l'ID dans le nom
                 byte[] pdfBytes = pdfGenerationService.generateFor20Pdf(user);
                 String filename = String.format("FOR_20_%s_%s_%s_%s.pdf",
                     user.getRegistrationId(),
@@ -195,7 +200,7 @@ public class EmailService {
                 helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
 
             mailSender.send(mimeMessage);
-            log.info("Email avec PDF envoyé pour {} {} ({}).", user.getNom(), user.getPrenom(), typeLabel);
+            log.info("Email avec PDF FOR20 envoyé à GES_COMPETENCES pour {} {} ({}).", user.getNom(), user.getPrenom(), typeLabel);
 
         } catch (MessagingException e) {
             log.error("Erreur lors de l'envoi de l'email avec PDF", e);
@@ -290,20 +295,25 @@ public class EmailService {
     // ============================================
     
     /**
-     * Envoie une notification au DT lors d'une nouvelle candidature OEC
+     * Envoie une notification au DT lors d'une nouvelle candidature OEC avec DOC1 en pièce jointe
+     * UNIQUEMENT envoyé au DT (pas à l'admin)
      */
     public void sendOECApplicationNotificationToDT(OECApplication application) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(notificationEmail);
-            message.setSubject(String.format("[OEC] Nouvelle demande d'inscription - %s", application.getNomOrganisme()));
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(dtEmail);  // Envoyer UNIQUEMENT au DT
+            helper.setSubject(String.format("[OEC] Nouvelle demande d'inscription - %s", application.getNomOrganisme()));
             
             String emailBody = String.format("""
                 Bonjour,
                 
-                Une nouvelle demande d'inscription OEC a été reçue et nécessite votre approbation :
+                Une nouvelle demande d'inscription OEC a été reçue et nécessite votre approbation.
+                Le formulaire DOC1 complet est joint à cet email.
                 
+                 Informations de la demande :
                 ID de la demande : #%d
                 Organisme : %s
                 Email : %s
@@ -326,10 +336,19 @@ public class EmailService {
                 application.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
             );
             
-            message.setText(emailBody);
-            mailSender.send(message);
-            log.info("Email de notification DT envoyé pour la candidature OEC #{}", application.getId());
-        } catch (Exception e) {
+            helper.setText(emailBody, false);
+
+            // Génération et ajout du PDF DOC1 en pièce jointe
+            byte[] pdfBytes = pdfGenerationService.generateOECApplicationPdf(application);
+            String filename = String.format("DOC1_%s_%s.pdf",
+                application.getNomOrganisme().replaceAll("[^a-zA-Z0-9]", "_"),
+                DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now()));
+
+            helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
+
+            mailSender.send(mimeMessage);
+            log.info("Email de notification DT avec DOC1 envoyé pour la candidature OEC #{}", application.getId());
+        } catch (MessagingException e) {
             log.error("Erreur lors de l'envoi de l'email au DT", e);
             throw new RuntimeException("Erreur lors de l'envoi de l'email au DT", e);
         }
@@ -378,7 +397,7 @@ public class EmailService {
     /**
      * Envoie un email de refus au candidat OEC
      */
-    public void sendOECApplicationRejectionToCandidate(OECApplication application) {
+    public void sendOECApplicationRejectionToCandidate(OECApplication application, String rejectionReason) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
@@ -403,7 +422,7 @@ public class EmailService {
                 L'équipe ALGERAC
                 """,
                 application.getNomOrganisme(),
-                application.getRejectionReason()
+                rejectionReason
             );
             
             message.setText(emailBody);
@@ -739,8 +758,7 @@ public class EmailService {
                    • Téléphone : %s
                    • Date de soumission : %s
                 
-                Veuillez vous connecter à la plateforme pour examiner la demande et le document DOC1 :
-                http://localhost:5173/dt/candidatures-oec
+                Veuillez vous connecter à la plateforme pour examiner la demande et le document DOC1.
                 
                 Cordialement,
                 Système ALGERAC
@@ -968,6 +986,64 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'email de rejet expert", e);
             throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+        }
+    }
+    
+    /**
+     * Envoie une notification à l'admin quand un expert/évaluateur/formateur est approuvé
+     * L'admin doit créer le compte
+     */
+    public void sendExpertApprovedNotificationToAdmin(User user) {
+        try {
+            String typeLabel = "Expert";
+            if (user.getUserType() != null) {
+                switch (user.getUserType().toUpperCase()) {
+                    case "FORMATEUR":
+                        typeLabel = "Formateur";
+                        break;
+                    case "EVALUATEUR":
+                        typeLabel = "Évaluateur";
+                        break;
+                }
+            }
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(notificationEmail); // Email de l'admin
+            message.setSubject(String.format("[ACTION REQUISE] Nouveau %s approuvé - %s %s", typeLabel, user.getNom(), user.getPrenom()));
+            
+            String emailBody = String.format("""
+                Bonjour Administrateur,
+                
+                Une nouvelle candidature %s a été approuvée par le Gestionnaire de Compétences.
+                
+                Informations :
+                - ID d'inscription : %s
+                - Nom : %s %s
+                - Email : %s
+                - Téléphone : %s
+                - Domaine d'expertise : %s
+                
+                Veuillez vous connecter à la plateforme pour créer le compte utilisateur.
+                
+                Cordialement,
+                Système ALGERAC
+                """,
+                typeLabel,
+                user.getRegistrationId(),
+                user.getPrenom(),
+                user.getNom(),
+                user.getEmail(),
+                user.getTelephoneMobile() != null ? user.getTelephoneMobile() : user.getPhone(),
+                user.getDomaineExpertise()
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de notification admin envoyé pour {} {} ({})", user.getPrenom(), user.getNom(), typeLabel);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de notification admin", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de notification admin", e);
         }
     }
 }

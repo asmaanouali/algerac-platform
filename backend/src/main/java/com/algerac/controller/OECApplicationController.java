@@ -138,14 +138,14 @@ public class OECApplicationController {
         }
         
         try {
-            OECApplication application = oecApplicationService.rejectApplication(
+            oecApplicationService.rejectApplication(
                     id, 
                     request.getRejectionReason(), 
                     userId
             );
             log.info("Candidature OEC {} rejetée par l'utilisateur {}", id, userId);
             return ResponseEntity.ok(
-                    ApiResponse.success("La candidature a été rejetée. Une notification a été envoyée au candidat.")
+                    ApiResponse.success("La candidature a été rejetée. Une notification a été envoyée au candidat et l'enregistrement a été supprimé.")
             );
         } catch (RuntimeException e) {
             log.error("Erreur lors du rejet de la candidature {}", id, e);

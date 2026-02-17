@@ -86,7 +86,7 @@ public class User {
     private LocalDate dateNaissance;
     private String nationalite;
     private String situationFamiliale;
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String photoBase64;
     
     // Section 2: Contacts

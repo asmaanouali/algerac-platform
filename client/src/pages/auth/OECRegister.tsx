@@ -5,258 +5,593 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Plus, Trash2, FileText, Upload, AlertCircle } from "lucide-react";
+import { ArrowRight, ChevronLeft, Plus, Trash2, FileText, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
-const ACTIVITIES = [
-  { label: "Inspection (FOR 04)", value: "inspection" },
-  { label: "Essais (FOR 05)", value: "essais" },
-  { label: "Étalonnage (FOR 06)", value: "etalonnage" },
-  { label: "Examens médicaux (FOR 05-1)", value: "examens_medicaux" },
-  { label: "Essais d'aptitude (FOR 05-5)", value: "essais_aptitude" },
-  { label: "Certification SM (FOR 07)", value: "cert_sm" },
-  { label: "Certification produits (FOR 07-5)", value: "cert_produits" },
-  { label: "Certification personnes (FOR 07-8)", value: "cert_personnes" },
+// Types de demande
+const TYPES_DEMANDE = [
+  { value: "initiale", label: "Accréditation initiale" },
+  { value: "extension", label: "Extension" },
+  { value: "renouvellement", label: "Renouvellement" },
+  { value: "transfert", label: "Transfert" }
 ];
 
-const STATUTS = ["EURL", "SARL", "SPA", "EPE", "EPIC", "Autre"];
-const CONSEIL_TYPES = ["Accompagnement", "Formation", "Audit interne", "Autres"];
+// Types d'activités
+const TYPES_ACTIVITES = [
+  { value: "inspection", label: "Inspection" },
+  { value: "essais", label: "Essais" },
+  { value: "etalonnage", label: "Étalonnage" },
+  { value: "examens_medicaux", label: "Examens médicaux" },
+  { value: "essais_aptitude", label: "Essais d'aptitude" },
+  { value: "cert_sm", label: "Certification SM" },
+  { value: "cert_produits", label: "Certification produits/procédés/services" },
+  { value: "cert_personnes", label: "Certification personnes" }
+];
 
-interface ValidationErrors {
-  [key: string]: string;
+// Types de prestation conseil
+const TYPES_PRESTATION = [
+  { value: "accompagnement", label: "Accompagnement" },
+  { value: "formation", label: "Formation" },
+  { value: "audit_interne", label: "Audit interne" },
+  { value: "autre", label: "Autre" }
+];
+
+// Statuts juridiques
+const STATUTS_JURIDIQUES = ["EURL", "SARL", "SPA", "EPE", "EPIC", "Autre"];
+
+// Types de sites
+const TYPES_SITES = [
+  { value: "monosite", label: "Monosite" },
+  { value: "multisites", label: "Multisites" }
+];
+
+// Liste des documents par annexe
+const DOCUMENTS_ANNEXES: Record<string, string[]> = {
+  inspection: [
+    "FOR 04",
+    "FOR 04-1",
+    "Manuel qualité",
+    "Procédures SM",
+    "Procédures techniques",
+    "Liste des documents",
+    "Dernier rapport d'audit interne",
+    "Dernier CR de revue de direction",
+    "Liste des inspecteurs",
+    "Liste des équipements",
+    "Certificats d'étalonnage",
+    "Police d'assurance",
+    "Liste des sites clients",
+    "Agrément",
+    "Dossier de validation des méthodes",
+    "Spécimen du rapport d'inspection"
+  ],
+  essais: [
+    "FOR 05",
+    "Manuel qualité",
+    "Politiques/procédures",
+    "Liste des documents",
+    "Audit interne",
+    "Revue de direction",
+    "Procédure d'incertitudes",
+    "Gestion des risques",
+    "Spécimen rapport d'essai",
+    "Dossier validation des méthodes",
+    "Liste des étalons/équipements",
+    "Certificats d'étalonnage",
+    "Procédure de surveillance",
+    "Rapport essais d'aptitude"
+  ],
+  etalonnage: [
+    "FOR 06",
+    "Manuel qualité",
+    "Procédures",
+    "Liste des documents",
+    "Audit interne",
+    "Revue de direction",
+    "Procédure d'incertitudes",
+    "Feuilles de calcul",
+    "Gestion des risques",
+    "Spécimen certificat d'étalonnage",
+    "Liste des étalons",
+    "Équipements étalonnés en interne",
+    "Certificats d'étalonnage",
+    "Procédure de surveillance",
+    "Dossiers de validation",
+    "Rapport essais d'aptitude",
+    "Liste du personnel habilité"
+  ],
+  examens_medicaux: [
+    "Organigramme",
+    "Modalités des biologistes",
+    "Procédure examens urgents",
+    "Procédures gestion du personnel",
+    "Gestion du système d'information",
+    "Procédure validation/vérification méthode",
+    "Certificats d'aptitude FOR 05-3",
+    "Procédure CIQ/EEQ",
+    "Résultats EEQ",
+    "Procédure incertitudes",
+    "Manuel qualité",
+    "Liste des documents",
+    "Planning audits internes",
+    "Planning revues de direction",
+    "Spécimen CR résultats",
+    "Procédures SM",
+    "Questionnaire FOR 05-2",
+    "Certificats d'étalonnage"
+  ],
+  essais_aptitude: [
+    "FOR 05-5",
+    "Manuel SM",
+    "Procédures",
+    "Liste des documents",
+    "Audit interne",
+    "Revue de direction",
+    "Dossier complet campagne ILC",
+    "Technique de valeur assignée",
+    "Liste prestataires externes",
+    "Spécimen rapports",
+    "Procédure et matrice des risques",
+    "FOR 81"
+  ],
+  cert_sm: [
+    "FOR 07",
+    "Manuel SM",
+    "Procédures",
+    "Liste des documents",
+    "Audit interne",
+    "Revue de direction",
+    "Composition comité de décision + preuves de compétences",
+    "Analyse de risque du comité d'impartialité",
+    "Police d'assurance RC",
+    "Liste des documents par référentiel (ISO 9001/14001/22000/45001)",
+    "Matrice des compétences auditeurs",
+    "Liste des clients certifiés",
+    "Planning des audits pour witnessing",
+    "FOR 79",
+    "FOR 80"
+  ],
+  cert_produits: [
+    "FOR 07-5",
+    "Liste des documents",
+    "Procédures SM et technique",
+    "Programme de certification + PV de validation",
+    "Autorisation du propriétaire",
+    "Audit interne",
+    "Revue de direction",
+    "Dispositif d'impartialité",
+    "Liste des ressources",
+    "Spécimen certificat",
+    "Composition dispositif décisionnel",
+    "Règles de gestion certificat/licence/marque",
+    "Liste des produits certifiés",
+    "Spécimen contrat",
+    "FOR 07-6",
+    "Planning audits de suivi"
+  ],
+  cert_personnes: [
+    "FOR 07-8",
+    "Manuel SM",
+    "Dispositions SM",
+    "Liste des documents",
+    "Audit interne",
+    "Revue de direction",
+    "Composition des dispositifs de gestion/appels/impartialité",
+    "Analyse des risques impartialité",
+    "Programme de certification ISO/IEC 17024 + PV de validation",
+    "Matrice des compétences évaluateurs",
+    "Modèle de certificat",
+    "Calendrier pour witnessing",
+    "Liste des activités externalisées",
+    "FOR 82"
+  ],
+  transfert: [
+    "Statut juridique de l'entité réceptrice",
+    "Dispositions gestion des risques",
+    "Spécimens de rapports/certificats",
+    "Rapports d'évaluation les plus récents",
+    "État d'avancement clôture des écarts",
+    "Certificat d'accréditation de l'organisme cédant"
+  ]
+};
+
+interface Site {
+  id: number;
+  localisation: string;
+  adresse: string;
+  activites: string;
+  soustraitance: string;
+  ebmd: string;
 }
 
-type Reconnaissance = { 
+interface PersonnelSite {
   id: number;
-  nom: string; 
-  date: string; 
+  site: string;
+  permanents: string;
+  vacataires: string;
+}
+
+interface ResponsableTechnique {
+  id: number;
+  nom: string;
+  qualifications: string;
+  experience: string;
+}
+
+interface PrestationConseil {
+  id: number;
+  types: string[];
+  prestataire: string;
+  date: string;
   description: string;
-};
+}
 
-type ConseilDetail = { 
-  prestataire?: string; 
-  date?: string; 
-  description?: string;
-};
+interface Reconnaissance {
+  id: number;
+  organisation: string;
+  domaine: string;
+  validite: string;
+}
 
-interface FormDataType {
+interface ChangementTransfert {
+  posteCles: string;
+  effectif: string;
+  locaux: string;
+  equipements: string;
+  systemeManagement: string;
+}
+
+interface FormData {
+  // Étape 1
   typeDemande: string;
   dateEvaluation: string;
   activites: string[];
   siteType: string;
-  nomOrganisme: string;
+  
+  // Étape 2
+  nomLegal: string;
+  abreviation: string;
   sigle: string;
   statutJuridique: string;
   registreCommerce: string;
   codesActivite: string;
   adresseSiege: string;
   adresseFacturation: string;
-  telephone: string;
-  fax: string;
   email: string;
   siteWeb: string;
-  appartientGroupe: boolean;
+  appartientGroupe: string;
   groupeNom: string;
   groupeAdresse: string;
   groupeRelation: string;
   groupeImpact: string;
+  
+  // Étape 3
   contactNom: string;
   contactFonction: string;
   contactAdresse: string;
   contactTelephone: string;
   contactFax: string;
   contactEmail: string;
-  activitePrincipale: string;
-  nbDocuments: string;
-  personnelPermanent: string;
-  personnelVacataire: string;
-  respTechNom: string;
-  respTechQualif: string;
-  respTechExp: string;
-  respQualNom: string;
-  respQualQualif: string;
-  respQualExp: string;
-  conseilRecours: boolean;
-  conseilTypes: string[];
-  statutsFile: File | null;
-  carteFiscaleFile: File | null;
-  articleImpositionFile: File | null;
-  registreCommerceFile: File | null;
-  paiementFile: File | null;
-  signataireNom: string;
-  signataireFonction: string;
+  
+  // Étape 4
+  sites: Site[];
+  
+  // Étape 5
+  personnelSites: PersonnelSite[];
+  responsablesTechniques: ResponsableTechnique[];
+  responsableQualiteNom: string;
+  responsableQualiteQualif: string;
+  responsableQualiteExp: string;
+  
+  // Étape 6
+  prestationConseil: string;
+  prestations: PrestationConseil[];
+  
+  // Étape 7
+  reconnaissances: Reconnaissance[];
+  changementsTransfert: ChangementTransfert;
+  motifTransfert: string;
+  
+  // Étape 8 - Documents techniques (cases à cocher)
+  documentsChecked: Record<string, boolean>;
+  
+  // Étape 9 - Documents administratifs
+  docsAdminChecked: Record<string, boolean>;
+  
+  // Étape 10 - Déclaration
+  organismeSoumission: string;
+  demandeurNom: string;
+  demandeurFonction: string;
+  demandeurDate: string;
+  signature: string;
+  engagementsAcceptes: boolean;
 }
+
+const STEPS = [
+  { id: 1, title: "Type de demande" },
+  { id: 2, title: "Informations organisme" },
+  { id: 3, title: "Personne à contacter" },
+  { id: 4, title: "Sites et activités" },
+  { id: 5, title: "Personnel" },
+  { id: 6, title: "Prestations conseil" },
+  { id: 7, title: "Reconnaissances" },
+  { id: 8, title: "Documents techniques" },
+  { id: 9, title: "Documents administratifs" },
+  { id: 10, title: "Déclaration et signature" }
+];
 
 export default function OECRegister() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
-  const [errors, setErrors] = useState<ValidationErrors>({});
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [conseilDetails, setConseilDetails] = useState<Record<string, ConseilDetail>>({});
-  const [reconnaissances, setReconnaissances] = useState<Reconnaissance[]>([
-    { id: 1, nom: "", date: "", description: "" }
-  ]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
-  const [formData, setFormData] = useState<FormDataType>({
+  const [formData, setFormData] = useState<FormData>({
+    // Étape 1
     typeDemande: "",
     dateEvaluation: "",
     activites: [],
     siteType: "",
-    nomOrganisme: "",
+    
+    // Étape 2
+    nomLegal: "",
+    abreviation: "",
     sigle: "",
     statutJuridique: "",
     registreCommerce: "",
     codesActivite: "",
     adresseSiege: "",
     adresseFacturation: "",
-    telephone: "",
-    fax: "",
     email: "",
     siteWeb: "",
-    appartientGroupe: false,
+    appartientGroupe: "",
     groupeNom: "",
     groupeAdresse: "",
     groupeRelation: "",
     groupeImpact: "",
+    
+    // Étape 3
     contactNom: "",
     contactFonction: "",
     contactAdresse: "",
     contactTelephone: "",
     contactFax: "",
     contactEmail: "",
-    activitePrincipale: "",
-    nbDocuments: "",
-    personnelPermanent: "",
-    personnelVacataire: "",
-    respTechNom: "",
-    respTechQualif: "",
-    respTechExp: "",
-    respQualNom: "",
-    respQualQualif: "",
-    respQualExp: "",
-    conseilRecours: false,
-    conseilTypes: [],
-    statutsFile: null,
-    carteFiscaleFile: null,
-    articleImpositionFile: null,
-    registreCommerceFile: null,
-    paiementFile: null,
-    signataireNom: "",
-    signataireFonction: "",
+    
+    // Étape 4
+    sites: [{ id: 1, localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }],
+    
+    // Étape 5
+    personnelSites: [{ id: 1, site: "", permanents: "", vacataires: "" }],
+    responsablesTechniques: [{ id: 1, nom: "", qualifications: "", experience: "" }],
+    responsableQualiteNom: "",
+    responsableQualiteQualif: "",
+    responsableQualiteExp: "",
+    
+    // Étape 6
+    prestationConseil: "",
+    prestations: [],
+    
+    // Étape 7
+    reconnaissances: [{ id: 1, organisation: "", domaine: "", validite: "" }],
+    changementsTransfert: {
+      posteCles: "",
+      effectif: "",
+      locaux: "",
+      equipements: "",
+      systemeManagement: ""
+    },
+    motifTransfert: "",
+    
+    // Étape 8
+    documentsChecked: {},
+    
+    // Étape 9
+    docsAdminChecked: {},
+    
+    // Étape 10
+    organismeSoumission: "",
+    demandeurNom: "",
+    demandeurFonction: "",
+    demandeurDate: "",
+    signature: "",
+    engagementsAcceptes: false
   });
 
-  const handleFileChange = (name: string, file: File | null) => {
-    setFormData({ ...formData, [name]: file });
+  const updateFormData = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddReconnaissance = () => {
-    const newId = reconnaissances.length > 0 
-      ? Math.max(...reconnaissances.map(r => r.id)) + 1 
-      : 1;
-    setReconnaissances([...reconnaissances, { id: newId, nom: "", date: "", description: "" }]);
-  };
-
-  const handleRemoveReconnaissance = (id: number) => {
-    setReconnaissances(reconnaissances.filter(r => r.id !== id));
-  };
-
-  const handleReconnaissanceChange = (id: number, field: keyof Reconnaissance, value: string) => {
-    setReconnaissances(reconnaissances.map(r => 
-      r.id === id ? { ...r, [field]: value } : r
-    ));
-  };
-
-  const handleConseilTypeChange = (type: string, checked: boolean) => {
-    let conseilTypes = formData.conseilTypes || [];
-    if (checked) {
-      conseilTypes = [...conseilTypes, type];
+  const toggleActivite = (activite: string) => {
+    const current = formData.activites;
+    if (current.includes(activite)) {
+      updateFormData("activites", current.filter(a => a !== activite));
     } else {
-      conseilTypes = conseilTypes.filter(t => t !== type);
+      updateFormData("activites", [...current, activite]);
     }
-    setFormData({ ...formData, conseilTypes });
   };
 
-  const handleActivityChange = (activity: string, checked: boolean) => {
-    let activites = formData.activites || [];
-    if (checked) {
-      activites = [...activites, activity];
-    } else {
-      activites = activites.filter(a => a !== activity);
+  const addSite = () => {
+    const newId = Math.max(...formData.sites.map(s => s.id), 0) + 1;
+    updateFormData("sites", [...formData.sites, { id: newId, localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }]);
+  };
+
+  const removeSite = (id: number) => {
+    updateFormData("sites", formData.sites.filter(s => s.id !== id));
+  };
+
+  const updateSite = (id: number, field: keyof Site, value: string) => {
+    updateFormData("sites", formData.sites.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const addPersonnelSite = () => {
+    const newId = Math.max(...formData.personnelSites.map(p => p.id), 0) + 1;
+    updateFormData("personnelSites", [...formData.personnelSites, { id: newId, site: "", permanents: "", vacataires: "" }]);
+  };
+
+  const removePersonnelSite = (id: number) => {
+    updateFormData("personnelSites", formData.personnelSites.filter(p => p.id !== id));
+  };
+
+  const updatePersonnelSite = (id: number, field: keyof PersonnelSite, value: string) => {
+    updateFormData("personnelSites", formData.personnelSites.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const addResponsableTechnique = () => {
+    const newId = Math.max(...formData.responsablesTechniques.map(r => r.id), 0) + 1;
+    updateFormData("responsablesTechniques", [...formData.responsablesTechniques, { id: newId, nom: "", qualifications: "", experience: "" }]);
+  };
+
+  const removeResponsableTechnique = (id: number) => {
+    updateFormData("responsablesTechniques", formData.responsablesTechniques.filter(r => r.id !== id));
+  };
+
+  const updateResponsableTechnique = (id: number, field: keyof ResponsableTechnique, value: string) => {
+    updateFormData("responsablesTechniques", formData.responsablesTechniques.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const addPrestation = () => {
+    const newId = Math.max(...formData.prestations.map(p => p.id), 0) + 1;
+    updateFormData("prestations", [...formData.prestations, { id: newId, types: [], prestataire: "", date: "", description: "" }]);
+  };
+
+  const removePrestation = (id: number) => {
+    updateFormData("prestations", formData.prestations.filter(p => p.id !== id));
+  };
+
+  const updatePrestation = (id: number, field: keyof PrestationConseil, value: any) => {
+    updateFormData("prestations", formData.prestations.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const addReconnaissance = () => {
+    const newId = Math.max(...formData.reconnaissances.map(r => r.id), 0) + 1;
+    updateFormData("reconnaissances", [...formData.reconnaissances, { id: newId, organisation: "", domaine: "", validite: "" }]);
+  };
+
+  const removeReconnaissance = (id: number) => {
+    updateFormData("reconnaissances", formData.reconnaissances.filter(r => r.id !== id));
+  };
+
+  const updateReconnaissance = (id: number, field: keyof Reconnaissance, value: string) => {
+    updateFormData("reconnaissances", formData.reconnaissances.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const toggleDocumentCheck = (doc: string) => {
+    updateFormData("documentsChecked", {
+      ...formData.documentsChecked,
+      [doc]: !formData.documentsChecked[doc]
+    });
+  };
+
+  const toggleDocAdminCheck = (doc: string) => {
+    updateFormData("docsAdminChecked", {
+      ...formData.docsAdminChecked,
+      [doc]: !formData.docsAdminChecked[doc]
+    });
+  };
+
+  const nextStep = () => {
+    if (validateStep()) {
+      if (currentStep < STEPS.length) {
+        setCurrentStep(currentStep + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
-    setFormData({ ...formData, activites });
   };
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (email && !emailRegex.test(email)) {
-      setErrors(prev => ({
-        ...prev,
-        email: "Format d'email invalide"
-      }));
-      return false;
-    } else {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.email;
-        return newErrors;
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const validateStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    switch (currentStep) {
+      case 1:
+        if (!formData.typeDemande) {
+          newErrors.typeDemande = "Le type de demande est requis";
+        }
+        if (formData.activites.length === 0) {
+          newErrors.activites = "Veuillez sélectionner au moins une activité";
+        }
+        break;
+
+      case 2:
+        if (!formData.nomLegal.trim()) {
+          newErrors.nomLegal = "Le nom légal complet est requis";
+        }
+        if (!formData.statutJuridique) {
+          newErrors.statutJuridique = "Le statut juridique est requis";
+        }
+        if (!formData.adresseSiege.trim()) {
+          newErrors.adresseSiege = "L'adresse du siège est requise";
+        }
+        if (!formData.email.trim()) {
+          newErrors.email = "L'email est requis";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = "L'email n'est pas valide";
+        }
+        break;
+
+      case 3:
+        if (!formData.contactNom.trim()) {
+          newErrors.contactNom = "Le nom complet est requis";
+        }
+        if (!formData.contactFonction.trim()) {
+          newErrors.contactFonction = "La fonction/titre est requise";
+        }
+        if (!formData.contactTelephone.trim()) {
+          newErrors.contactTelephone = "Le téléphone est requis";
+        }
+        if (!formData.contactEmail.trim()) {
+          newErrors.contactEmail = "L'email est requis";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
+          newErrors.contactEmail = "L'email n'est pas valide";
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      toast({
+        title: "Champs requis manquants",
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive"
       });
-      return true;
-    }
-  };
-
-  const validatePhone = (phone: string, fieldName: string) => {
-    const phoneRegex = /^(\+213|0)(5|6|7)[0-9]{8}$/;
-    if (phone && !phoneRegex.test(phone.replace(/\s/g, ''))) {
-      setErrors(prev => ({
-        ...prev,
-        [fieldName]: "Format invalide. Ex: +213 555 123 456 ou 0555 123 456"
-      }));
       return false;
-    } else {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[fieldName];
-        return newErrors;
-      });
-      return true;
     }
+    
+    return true;
   };
 
   const handleSubmit = async () => {
-    if (!agreedToTerms || !formData.rgpdConsent) {
-      setApiError("Vous devez cocher les deux engagements pour continuer.");
-      return;
-    }
-
-    // Validation basique
-    if (!formData.nomOrganisme || !formData.email) {
-      setApiError("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
-    if (!validateEmail(formData.email)) {
-      setApiError("Veuillez corriger les erreurs de validation");
+    if (!validateStep()) {
       return;
     }
 
     setLoading(true);
-    setApiError("");
-
     try {
-      // Préparer le payload JSON pour le backend
+      // Mapper les données du formulaire vers le format attendu par le backend
       const payload = {
-        nomOrganisme: formData.nomOrganisme,
-        typeOrganisme: formData.statutJuridique || "Non spécifié",
+        nomOrganisme: formData.nomLegal,
+        typeOrganisme: formData.statutJuridique || "OEC",
         adresseSiege: formData.adresseSiege,
-        telephone: formData.telephone,
+        telephone: formData.contactTelephone,
         email: formData.email,
-        nomRepresentant: formData.contactNom || formData.signataireNom,
-        fonction: formData.contactFonction || formData.signataireFonction,
-        telephoneDirect: formData.contactTelephone || formData.telephone,
-        emailProfessionnel: formData.contactEmail || formData.email,
-        porteeAccreditation: formData.activitePrincipale || formData.activites.join(", "),
+        nomRepresentant: formData.contactNom,
+        fonction: formData.contactFonction,
+        telephoneDirect: formData.contactTelephone,
+        emailProfessionnel: formData.contactEmail,
+        porteeAccreditation: formData.activites.join(", "),
         userType: "OEC"
       };
 
@@ -271,764 +606,1177 @@ export default function OECRegister() {
         throw new Error(errorData.message || "Erreur lors de l'inscription");
       }
 
+      toast({
+        title: "Demande soumise",
+        description: "Votre demande d'accréditation a été envoyée avec succès",
+      });
+      
       setLocation("/auth/success");
     } catch (err) {
-      let msg = "Une erreur s'est produite. Veuillez réessayer.";
-      if (err instanceof Error) {
-        msg = err.message;
-      }
-      setApiError(msg);
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Une erreur est survenue",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
-      <div className="w-full max-w-5xl space-y-8">
-        {/* Header (copied from ExpertRegister) */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <img 
-              src="/logoalgerac.png" 
-              alt="ALGERAC Logo" 
-              className="w-10 h-10 object-contain"
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      case 5:
+        return renderStep5();
+      case 6:
+        return renderStep6();
+      case 7:
+        return renderStep7();
+      case 8:
+        return renderStep8();
+      case 9:
+        return renderStep9();
+      case 10:
+        return renderStep10();
+      default:
+        return null;
+    }
+  };
+
+  // ÉTAPE 1: Type de demande
+  const renderStep1 = () => (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <Label className="text-base font-semibold">Type de demande <span className="text-red-500">*</span></Label>
+        <RadioGroup value={formData.typeDemande} onValueChange={(v) => updateFormData("typeDemande", v)}>
+          <div className="grid md:grid-cols-2 gap-3">
+            {TYPES_DEMANDE.map(type => (
+              <div key={type.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
+                <RadioGroupItem value={type.value} id={type.value} />
+                <Label htmlFor={type.value} className="cursor-pointer flex-1">{type.label}</Label>
+              </div>
+            ))}
+          </div>
+        </RadioGroup>
+        {errors.typeDemande && <p className="text-sm text-red-500">{errors.typeDemande}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Date d'évaluation souhaitée</Label>
+        <Input 
+          type="date" 
+          value={formData.dateEvaluation}
+          onChange={(e) => updateFormData("dateEvaluation", e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-base font-semibold">Type d'activité <span className="text-red-500">*</span></Label>
+        <div className="grid md:grid-cols-2 gap-3">
+          {TYPES_ACTIVITES.map(activite => (
+            <div key={activite.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
+              <Checkbox 
+                id={activite.value}
+                checked={formData.activites.includes(activite.value)}
+                onCheckedChange={() => toggleActivite(activite.value)}
+              />
+              <Label htmlFor={activite.value} className="cursor-pointer flex-1 text-sm">{activite.label}</Label>
+            </div>
+          ))}
+        </div>
+        {errors.activites && <p className="text-sm text-red-500">{errors.activites}</p>}
+      </div>
+
+      <div className="space-y-4">
+        <Label className="text-base font-semibold">Type de site</Label>
+        <RadioGroup value={formData.siteType} onValueChange={(v) => updateFormData("siteType", v)}>
+          <div className="grid md:grid-cols-2 gap-3">
+            {TYPES_SITES.map(type => (
+              <div key={type.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
+                <RadioGroupItem value={type.value} id={`site-${type.value}`} />
+                <Label htmlFor={`site-${type.value}`} className="cursor-pointer flex-1">{type.label}</Label>
+              </div>
+            ))}
+          </div>
+        </RadioGroup>
+      </div>
+    </div>
+  );
+
+  // ÉTAPE 2: Informations sur l'organisme
+  const renderStep2 = () => (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-2 md:col-span-2">
+          <Label>Nom légal complet <span className="text-red-500">*</span></Label>
+          <Input 
+            value={formData.nomLegal}
+            onChange={(e) => updateFormData("nomLegal", e.target.value)}
+            placeholder="Nom complet de l'organisme"
+          />
+          {errors.nomLegal && <p className="text-sm text-red-500">{errors.nomLegal}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Abréviation</Label>
+          <Input 
+            value={formData.abreviation}
+            onChange={(e) => updateFormData("abreviation", e.target.value)}
+            placeholder="Abréviation"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Sigle utilisé</Label>
+          <Input 
+            value={formData.sigle}
+            onChange={(e) => updateFormData("sigle", e.target.value)}
+            placeholder="Sigle"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Statut juridique <span className="text-red-500">*</span></Label>
+          <Select value={formData.statutJuridique} onValueChange={(v) => updateFormData("statutJuridique", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionnez" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUTS_JURIDIQUES.map(statut => (
+                <SelectItem key={statut} value={statut}>{statut}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.statutJuridique && <p className="text-sm text-red-500">{errors.statutJuridique}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Numéro de registre de commerce</Label>
+          <Input 
+            value={formData.registreCommerce}
+            onChange={(e) => updateFormData("registreCommerce", e.target.value)}
+            placeholder="Ex: 12-3456789-01"
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Codes d'activité</Label>
+          <Input 
+            value={formData.codesActivite}
+            onChange={(e) => updateFormData("codesActivite", e.target.value)}
+            placeholder="Codes NAA"
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Adresse du siège <span className="text-red-500">*</span></Label>
+          <Textarea 
+            value={formData.adresseSiege}
+            onChange={(e) => updateFormData("adresseSiege", e.target.value)}
+            placeholder="Adresse complète du siège social"
+            rows={3}
+          />
+          {errors.adresseSiege && <p className="text-sm text-red-500">{errors.adresseSiege}</p>}
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Adresse de facturation (si différente)</Label>
+          <Textarea 
+            value={formData.adresseFacturation}
+            onChange={(e) => updateFormData("adresseFacturation", e.target.value)}
+            placeholder="Laisser vide si identique au siège"
+            rows={2}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Email <span className="text-red-500">*</span></Label>
+          <Input 
+            type="email"
+            value={formData.email}
+            onChange={(e) => updateFormData("email", e.target.value)}
+            placeholder="contact@exemple.dz"
+          />
+          {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Site web</Label>
+          <Input 
+            value={formData.siteWeb}
+            onChange={(e) => updateFormData("siteWeb", e.target.value)}
+            placeholder="www.exemple.dz"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-4 border-t">
+        <Label className="text-base font-semibold">Appartient à un groupe ?</Label>
+        <RadioGroup value={formData.appartientGroupe} onValueChange={(v) => updateFormData("appartientGroupe", v)}>
+          <div className="flex gap-4">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="oui" id="groupe-oui" />
+              <Label htmlFor="groupe-oui">Oui</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="non" id="groupe-non" />
+              <Label htmlFor="groupe-non">Non</Label>
+            </div>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {formData.appartientGroupe === "oui" && (
+        <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Nom du groupe</Label>
+            <Input 
+              value={formData.groupeNom}
+              onChange={(e) => updateFormData("groupeNom", e.target.value)}
+              placeholder="Nom du groupe"
             />
-            <h1 className="text-xl font-bold" style={{ color: '#00A63E' }}>ALGERAC</h1>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/auth/register"><ArrowLeft className="w-4 h-4 mr-2" /> Retour</Link>
-          </Button>
-        </div>
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold">Demande d'Accréditation OEC</h2>
-          <p className="text-slate-600">Organisme d'Évaluation de la Conformité</p>
-        </div>
 
-        {/* Erreur API */}
-        {apiError && (
-          <div className="mb-6 bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-            <p className="flex-1">{apiError}</p>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Adresse du groupe</Label>
+            <Textarea 
+              value={formData.groupeAdresse}
+              onChange={(e) => updateFormData("groupeAdresse", e.target.value)}
+              placeholder="Adresse complète du groupe"
+              rows={2}
+            />
           </div>
-        )}
 
-        <Card className="shadow-xl border-0">
-          <CardContent className="p-8 md:p-12">
-            <Accordion type="multiple" defaultValue={["section-1"]} className="space-y-4">
-              {/* Section 1 - Informations générales */}
-              <AccordionItem value="section-1">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  1 - Informations générales
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Type de demande <span className="text-red-500">*</span></Label>
-                  <Select 
-                    value={formData.typeDemande}
-                    onValueChange={(value) => setFormData({...formData, typeDemande: value})}
+          <div className="space-y-2">
+            <Label>Type de relation</Label>
+            <Input 
+              value={formData.groupeRelation}
+              onChange={(e) => updateFormData("groupeRelation", e.target.value)}
+              placeholder="Ex: Filiale, Maison-mère"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Impact du groupe sur les activités locales</Label>
+            <Input 
+              value={formData.groupeImpact}
+              onChange={(e) => updateFormData("groupeImpact", e.target.value)}
+              placeholder="Précisez l'impact"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ÉTAPE 3: Personne à contacter
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label>Nom complet <span className="text-red-500">*</span></Label>
+          <Input 
+            value={formData.contactNom}
+            onChange={(e) => updateFormData("contactNom", e.target.value)}
+            placeholder="Nom et prénom"
+          />
+          {errors.contactNom && <p className="text-sm text-red-500">{errors.contactNom}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Fonction/Titre <span className="text-red-500">*</span></Label>
+          <Input 
+            value={formData.contactFonction}
+            onChange={(e) => updateFormData("contactFonction", e.target.value)}
+            placeholder="Ex: Directeur Général"
+          />
+          {errors.contactFonction && <p className="text-sm text-red-500">{errors.contactFonction}</p>}
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Adresse</Label>
+          <Textarea 
+            value={formData.contactAdresse}
+            onChange={(e) => updateFormData("contactAdresse", e.target.value)}
+            placeholder="Adresse du contact"
+            rows={2}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Téléphone <span className="text-red-500">*</span></Label>
+          <Input 
+            value={formData.contactTelephone}
+            onChange={(e) => updateFormData("contactTelephone", e.target.value)}
+            placeholder="+213 XXX XXX XXX"
+          />
+          {errors.contactTelephone && <p className="text-sm text-red-500">{errors.contactTelephone}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Fax</Label>
+          <Input 
+            value={formData.contactFax}
+            onChange={(e) => updateFormData("contactFax", e.target.value)}
+            placeholder="+213 XXX XXX XXX"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Email <span className="text-red-500">*</span></Label>
+          <Input 
+            type="email"
+            value={formData.contactEmail}
+            onChange={(e) => updateFormData("contactEmail", e.target.value)}
+            placeholder="contact@exemple.dz"
+          />
+          {errors.contactEmail && <p className="text-sm text-red-500">{errors.contactEmail}</p>}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ÉTAPE 4: Sites et activités
+  const renderStep4 = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <Label className="text-base font-semibold">Sites et activités</Label>
+        <Button type="button" onClick={addSite} size="sm" className="gap-2">
+          <Plus className="w-4 h-4" /> Ajouter une ligne
+        </Button>
+      </div>
+
+      <div className="space-y-4">
+        {formData.sites.map((site) => (
+          <Card key={site.id} className="p-4">
+            <div className="space-y-4">
+              <div className="flex justify-between items-start">
+                <h4 className="font-medium text-sm">Site #{site.id}</h4>
+                {formData.sites.length > 1 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => removeSite(site.id)}
+                    className="h-8 w-8 p-0"
                   >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Sélectionnez" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="initiale">Initiale</SelectItem>
-                      <SelectItem value="extension">Extension</SelectItem>
-                      <SelectItem value="renouvellement">Renouvellement</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Date d&apos;évaluation souhaitée</Label>
-                  <Input 
-                    type="date"
-                    value={formData.dateEvaluation}
-                    onChange={(e) => setFormData({...formData, dateEvaluation: e.target.value})}
-                  />
-                </div>
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
               </div>
 
-              <div className="space-y-3">
-                <Label>Activités demandées <span className="text-red-500">*</span></Label>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {ACTIVITIES.map(activity => (
-                    <label key={activity.value} className="flex items-center gap-2 p-3 bg-slate-50 rounded hover:bg-slate-100 cursor-pointer">
-                      <input 
-                        type="checkbox"
-                        checked={formData.activites.includes(activity.value)}
-                        onChange={(e) => handleActivityChange(activity.value, e.target.checked)}
-                      />
-                      <span className="text-sm">{activity.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Type de site</Label>
-                <Select 
-                  value={formData.siteType}
-                  onValueChange={(value) => setFormData({...formData, siteType: value})}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Sélectionnez" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="fixe">Fixe</SelectItem>
-                    <SelectItem value="mobile">Mobile</SelectItem>
-                    <SelectItem value="temporaire">Temporaire</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 2 - Identification de l'organisme */}
-              <AccordionItem value="section-2">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  2 - Identification de l&apos;organisme
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Nom de l&apos;organisme <span className="text-red-500">*</span></Label>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Site/Localisation</Label>
                   <Input 
-                    placeholder="Nom complet de l'organisme"
-                    value={formData.nomOrganisme}
-                    onChange={(e) => setFormData({...formData, nomOrganisme: e.target.value})}
+                    value={site.localisation}
+                    onChange={(e) => updateSite(site.id, "localisation", e.target.value)}
+                    placeholder="Nom du site"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Sigle</Label>
+                  <Label className="text-sm">Adresse</Label>
                   <Input 
-                    placeholder="Sigle"
-                    value={formData.sigle}
-                    onChange={(e) => setFormData({...formData, sigle: e.target.value})}
+                    value={site.adresse}
+                    onChange={(e) => updateSite(site.id, "adresse", e.target.value)}
+                    placeholder="Adresse du site"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Statut juridique <span className="text-red-500">*</span></Label>
-                  <Select 
-                    value={formData.statutJuridique}
-                    onValueChange={(value) => setFormData({...formData, statutJuridique: value})}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Sélectionnez" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {STATUTS.map(statut => (
-                        <SelectItem key={statut} value={statut}>{statut}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>N° Registre de commerce</Label>
+                  <Label className="text-sm">Activités réalisées sur site</Label>
                   <Input 
-                    placeholder="Ex: 12345678"
-                    value={formData.registreCommerce}
-                    onChange={(e) => setFormData({...formData, registreCommerce: e.target.value})}
+                    value={site.activites}
+                    onChange={(e) => updateSite(site.id, "activites", e.target.value)}
+                    placeholder="Activités"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Code(s) d&apos;activité</Label>
+                  <Label className="text-sm">Activités sous-traitées</Label>
                   <Input 
-                    placeholder="Codes d'activité"
-                    value={formData.codesActivite}
-                    onChange={(e) => setFormData({...formData, codesActivite: e.target.value})}
-                  />
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 3 - Coordonnées */}
-              <AccordionItem value="section-3">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  3 - Coordonnées
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Adresse du siège social <span className="text-red-500">*</span></Label>
-                  <Textarea 
-                    placeholder="Adresse complète"
-                    rows={2}
-                    value={formData.adresseSiege}
-                    onChange={(e) => setFormData({...formData, adresseSiege: e.target.value})}
+                    value={site.soustraitance}
+                    onChange={(e) => updateSite(site.id, "soustraitance", e.target.value)}
+                    placeholder="Sous-traitance"
                   />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Adresse de facturation</Label>
-                  <Textarea 
-                    placeholder="Si différente du siège social"
-                    rows={2}
-                    value={formData.adresseFacturation}
-                    onChange={(e) => setFormData({...formData, adresseFacturation: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Téléphone <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm">EBMD avec nom de la structure</Label>
                   <Input 
-                    placeholder="+213 XXX XXX XXX"
-                    value={formData.telephone}
-                    onChange={(e) => setFormData({...formData, telephone: e.target.value})}
-                    onBlur={(e) => validatePhone(e.target.value, 'telephone')}
+                    value={site.ebmd}
+                    onChange={(e) => updateSite(site.id, "ebmd", e.target.value)}
+                    placeholder="Examens de biologie médicale délocalisés"
                   />
-                  {errors.telephone && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> {errors.telephone}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fax</Label>
-                  <Input 
-                    placeholder="+213 XXX XXX XXX"
-                    value={formData.fax}
-                    onChange={(e) => setFormData({...formData, fax: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Email <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="email"
-                    placeholder="contact@exemple.dz"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    onBlur={(e) => validateEmail(e.target.value)}
-                  />
-                  {errors.email && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> {errors.email}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Site Web</Label>
-                  <Input 
-                    placeholder="www.exemple.dz"
-                    value={formData.siteWeb}
-                    onChange={(e) => setFormData({...formData, siteWeb: e.target.value})}
-                  />
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 4 - Appartenance à un groupe */}
-              <AccordionItem value="section-4">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  4 - Appartenance à un groupe
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded">
-                <input 
-                  type="checkbox"
-                  id="appartientGroupe"
-                  checked={formData.appartientGroupe}
-                  onChange={(e) => setFormData({...formData, appartientGroupe: e.target.checked})}
-                />
-                <Label htmlFor="appartientGroupe" className="cursor-pointer">
-                  L&apos;organisme appartient-il à un groupe ?
-                </Label>
-              </div>
-
-              {formData.appartientGroupe && (
-                <div className="grid md:grid-cols-2 gap-6 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Nom du groupe</Label>
-                    <Input 
-                      placeholder="Nom du groupe"
-                      value={formData.groupeNom}
-                      onChange={(e) => setFormData({...formData, groupeNom: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Adresse du groupe</Label>
-                    <Textarea 
-                      placeholder="Adresse complète"
-                      rows={2}
-                      value={formData.groupeAdresse}
-                      onChange={(e) => setFormData({...formData, groupeAdresse: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Nature de la relation</Label>
-                    <Input 
-                      placeholder="Ex: Filiale, Holding, etc."
-                      value={formData.groupeRelation}
-                      onChange={(e) => setFormData({...formData, groupeRelation: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Impact sur l&apos;impartialité</Label>
-                    <Textarea 
-                      placeholder="Décrivez l'impact potentiel sur l'impartialité"
-                      rows={3}
-                      value={formData.groupeImpact}
-                      onChange={(e) => setFormData({...formData, groupeImpact: e.target.value})}
-                    />
-                  </div>
-                </div>
-              )}
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 5 - Personne à contacter */}
-              <AccordionItem value="section-5">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  5 - Personne à contacter
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Nom complet <span className="text-red-500">*</span></Label>
-                  <Input 
-                    placeholder="Nom et prénom"
-                    value={formData.contactNom}
-                    onChange={(e) => setFormData({...formData, contactNom: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fonction</Label>
-                  <Input 
-                    placeholder="Fonction dans l'organisme"
-                    value={formData.contactFonction}
-                    onChange={(e) => setFormData({...formData, contactFonction: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Adresse</Label>
-                  <Input 
-                    placeholder="Adresse"
-                    value={formData.contactAdresse}
-                    onChange={(e) => setFormData({...formData, contactAdresse: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Téléphone</Label>
-                  <Input 
-                    placeholder="+213 XXX XXX XXX"
-                    value={formData.contactTelephone}
-                    onChange={(e) => setFormData({...formData, contactTelephone: e.target.value})}
-                    onBlur={(e) => validatePhone(e.target.value, 'contactTelephone')}
-                  />
-                  {errors.contactTelephone && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> {errors.contactTelephone}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fax</Label>
-                  <Input 
-                    placeholder="+213 XXX XXX XXX"
-                    value={formData.contactFax}
-                    onChange={(e) => setFormData({...formData, contactFax: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input 
-                    type="email"
-                    placeholder="contact@exemple.dz"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({...formData, contactEmail: e.target.value})}
-                    onBlur={(e) => validateEmail(e.target.value)}
-                  />
-                  {errors.contactEmail && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> {errors.contactEmail}
-                    </p>
-                  )}
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 6 - Informations sur l'activité */}
-              <AccordionItem value="section-6">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  6 - Informations sur l&apos;activité
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Activité principale</Label>
-                  <Textarea 
-                    placeholder="Décrivez votre activité principale"
-                    rows={3}
-                    value={formData.activitePrincipale}
-                    onChange={(e) => setFormData({...formData, activitePrincipale: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Nombre de documents du système</Label>
-                  <Input 
-                    type="number"
-                    placeholder="Ex: 25"
-                    value={formData.nbDocuments}
-                    onChange={(e) => setFormData({...formData, nbDocuments: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Personnel permanent</Label>
-                  <Input 
-                    type="number"
-                    placeholder="Ex: 15"
-                    value={formData.personnelPermanent}
-                    onChange={(e) => setFormData({...formData, personnelPermanent: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Personnel vacataire</Label>
-                  <Input 
-                    type="number"
-                    placeholder="Ex: 5"
-                    value={formData.personnelVacataire}
-                    onChange={(e) => setFormData({...formData, personnelVacataire: e.target.value})}
-                  />
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 7 - Responsables */}
-              <AccordionItem value="section-7">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  7 - Responsables
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200 space-y-4">
-                <h4 className="text-sm font-semibold text-green-800">Responsable Technique</h4>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nom complet</Label>
-                    <Input 
-                      placeholder="Nom et prénom"
-                      value={formData.respTechNom}
-                      onChange={(e) => setFormData({...formData, respTechNom: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Qualifications</Label>
-                    <Input 
-                      placeholder="Qualifications"
-                      value={formData.respTechQualif}
-                      onChange={(e) => setFormData({...formData, respTechQualif: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Expérience</Label>
-                    <Input 
-                      placeholder="Ex: 10 ans"
-                      value={formData.respTechExp}
-                      onChange={(e) => setFormData({...formData, respTechExp: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200 space-y-4">
-                <h4 className="text-sm font-semibold text-blue-800">Responsable Qualité</h4>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nom complet</Label>
-                    <Input 
-                      placeholder="Nom et prénom"
-                      value={formData.respQualNom}
-                      onChange={(e) => setFormData({...formData, respQualNom: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Qualifications</Label>
-                    <Input 
-                      placeholder="Qualifications"
-                      value={formData.respQualQualif}
-                      onChange={(e) => setFormData({...formData, respQualQualif: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Expérience</Label>
-                    <Input 
-                      placeholder="Ex: 8 ans"
-                      value={formData.respQualExp}
-                      onChange={(e) => setFormData({...formData, respQualExp: e.target.value})}
-                      className="bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 8 - Recours au conseil */}
-              <AccordionItem value="section-8">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  8 - Recours au conseil
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded">
-                <input 
-                  type="checkbox"
-                  id="conseilRecours"
-                  checked={formData.conseilRecours}
-                  onChange={(e) => setFormData({...formData, conseilRecours: e.target.checked})}
-                />
-                <Label htmlFor="conseilRecours" className="cursor-pointer">
-                  L&apos;organisme a-t-il eu recours au conseil ?
-                </Label>
-              </div>
-
-              {formData.conseilRecours && (
-                <div className="space-y-4 p-6 bg-amber-50 rounded-lg border-2 border-amber-200">
-                  <Label>Types de conseil utilisés</Label>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    {CONSEIL_TYPES.map(type => (
-                      <label key={type} className="flex items-center gap-2 p-3 bg-white rounded hover:bg-amber-100 cursor-pointer">
-                        <input 
-                          type="checkbox"
-                          checked={formData.conseilTypes.includes(type)}
-                          onChange={(e) => handleConseilTypeChange(type, e.target.checked)}
-                        />
-                        <span className="text-sm">{type}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 9 - Reconnaissances */}
-              <AccordionItem value="section-9">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  9 - Reconnaissances
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-slate-600">
-                  Ajoutez les reconnaissances ou accréditations obtenues
-                </p>
-                <Button 
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddReconnaissance}
-                  className="gap-2 bg-white"
-                >
-                  <Plus className="w-4 h-4" /> Ajouter
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {reconnaissances.map((rec, index) => (
-                  <div key={rec.id} className="p-6 bg-slate-50 rounded-lg border-2 border-slate-200 relative">
-                    {reconnaissances.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveReconnaissance(rec.id)}
-                        className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Nom de la reconnaissance</Label>
-                        <Input 
-                          placeholder="Ex: ISO 9001"
-                          value={rec.nom}
-                          onChange={(e) => handleReconnaissanceChange(rec.id, 'nom', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Date d&apos;obtention</Label>
-                        <Input 
-                          type="date"
-                          value={rec.date}
-                          onChange={(e) => handleReconnaissanceChange(rec.id, 'date', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Description</Label>
-                        <Textarea 
-                          placeholder="Détails de la reconnaissance"
-                          rows={2}
-                          value={rec.description}
-                          onChange={(e) => handleReconnaissanceChange(rec.id, 'description', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {reconnaissances.length === 0 && (
-                <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-lg">
-                  <p>Aucune reconnaissance ajoutée</p>
-                </div>
-              )}
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 10 - Documents requis */}
-              <AccordionItem value="section-10">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  10 - Documents requis
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="space-y-4">
-                {[
-                  { name: "statutsFile", label: "Statuts" },
-                  { name: "carteFiscaleFile", label: "Carte d'immatriculation fiscale" },
-                  { name: "articleImpositionFile", label: "N° article d'imposition" },
-                  { name: "registreCommerceFile", label: "Registre de commerce" },
-                  { name: "paiementFile", label: "Preuve de paiement" }
-                ].map(({ name, label }) => (
-                  <div key={name} className="space-y-2">
-                    <Label>{label}</Label>
-                    <div className="flex items-center gap-4">
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        className="gap-2 bg-white" 
-                        onClick={() => document.getElementById(name)?.click()}
-                      >
-                        <FileText className="w-4 h-4" /> Choisir un fichier
-                      </Button>
-                      <input 
-                        type="file" 
-                        id={name} 
-                        className="hidden" 
-                        accept=".pdf,.jpg,.png" 
-                        onChange={(e) => handleFileChange(name, e.target.files?.[0] || null)}
-                      />
-                      <span className="text-xs text-slate-400 italic">
-                        {formData[name as keyof FormDataType] 
-                          ? (formData[name as keyof FormDataType] as File).name 
-                          : 'Aucun fichier sélectionné'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Section 11 - Signature */}
-              <AccordionItem value="section-11">
-                <AccordionTrigger className="text-sm font-bold uppercase tracking-wider text-primary hover:no-underline">
-                  11 - Signature
-                </AccordionTrigger>
-                <AccordionContent className="space-y-6 pt-4">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Nom du signataire <span className="text-red-500">*</span></Label>
-                  <Input 
-                    placeholder="Nom complet"
-                    value={formData.signataireNom}
-                    onChange={(e) => setFormData({...formData, signataireNom: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fonction du signataire <span className="text-red-500">*</span></Label>
-                  <Input 
-                    placeholder="Fonction"
-                    value={formData.signataireFonction}
-                    onChange={(e) => setFormData({...formData, signataireFonction: e.target.value})}
-                  />
-                </div>
-              </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            {/* Engagements */}
-            <div className="pt-8 space-y-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-b pb-2">
-                Déclaration et engagements
-              </h3>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
-                  <input 
-                    type="checkbox" 
-                    className="mt-1" 
-                    id="agree"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  />
-                  <Label htmlFor="agree" className="text-sm leading-relaxed font-medium">
-                    Je déclare avoir pris connaissance des exigences d&apos;accréditation et m&apos;engage à :
-                    informer ALGERAC de toute modification concernant l&apos;organisme, transmettre toutes 
-                    les informations requises, faciliter les observations et évaluations, et respecter les 
-                    exigences réglementaires et normatives. <span className="text-red-500">*</span>
-                  </Label>
-                </div>
-                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
-                  <input 
-                    type="checkbox" 
-                    className="mt-1" 
-                    id="rgpd"
-                    checked={formData.rgpdConsent || false}
-                    onChange={e => setFormData({ ...formData, rgpdConsent: e.target.checked })}
-                  />
-                  <Label htmlFor="rgpd" className="text-sm leading-relaxed font-medium">
-                    En soumettant ce formulaire, j’autorise ALGERAC à collecter, traiter et exploiter les données fournies dans le cadre de la gestion de ma demande d’accréditation, conformément à la réglementation en vigueur. <span className="text-red-500">*</span>
-                  </Label>
                 </div>
               </div>
             </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 
-            <Button 
-              className="w-full h-12 text-base font-bold" 
-              onClick={handleSubmit}
-              disabled={loading || !agreedToTerms || !formData.rgpdConsent}
-              style={{ backgroundColor: '#00A63E' }}
-            >
-              {loading ? "Envoi en cours..." : "Soumettre la demande"}
+  // ÉTAPE 5: Personnel
+  const renderStep5 = () => (
+    <div className="space-y-8">
+      {/* Section Personnel par site */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label className="text-base font-semibold">Personnel par site</Label>
+          <Button type="button" onClick={addPersonnelSite} size="sm" className="gap-2">
+            <Plus className="w-4 h-4" /> Ajouter
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {formData.personnelSites.map((ps) => (
+            <Card key={ps.id} className="p-4">
+              <div className="grid md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label className="text-sm">Site</Label>
+                  <Input 
+                    value={ps.site}
+                    onChange={(e) => updatePersonnelSite(ps.id, "site", e.target.value)}
+                    placeholder="Nom du site"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Personnel technique permanent</Label>
+                  <Input 
+                    type="number"
+                    value={ps.permanents}
+                    onChange={(e) => updatePersonnelSite(ps.id, "permanents", e.target.value)}
+                    placeholder="Nombre"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Personnel vacataire/extérieur</Label>
+                  <Input 
+                    type="number"
+                    value={ps.vacataires}
+                    onChange={(e) => updatePersonnelSite(ps.id, "vacataires", e.target.value)}
+                    placeholder="Nombre"
+                  />
+                </div>
+
+                {formData.personnelSites.length > 1 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => removePersonnelSite(ps.id)}
+                    className="h-10"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Section Responsables techniques */}
+      <div className="space-y-4 pt-6 border-t">
+        <div className="flex justify-between items-center">
+          <Label className="text-base font-semibold">Responsable(s) technique(s)</Label>
+          <Button type="button" onClick={addResponsableTechnique} size="sm" className="gap-2">
+            <Plus className="w-4 h-4" /> Ajouter
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {formData.responsablesTechniques.map((rt) => (
+            <Card key={rt.id} className="p-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-medium text-sm">Responsable technique #{rt.id}</h4>
+                  {formData.responsablesTechniques.length > 1 && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeResponsableTechnique(rt.id)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Nom complet</Label>
+                    <Input 
+                      value={rt.nom}
+                      onChange={(e) => updateResponsableTechnique(rt.id, "nom", e.target.value)}
+                      placeholder="Nom et prénom"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Qualifications</Label>
+                    <Input 
+                      value={rt.qualifications}
+                      onChange={(e) => updateResponsableTechnique(rt.id, "qualifications", e.target.value)}
+                      placeholder="Diplômes, certifications"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Années d'expérience</Label>
+                    <Input 
+                      type="number"
+                      value={rt.experience}
+                      onChange={(e) => updateResponsableTechnique(rt.id, "experience", e.target.value)}
+                      placeholder="Années"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Section Responsable qualité */}
+      <div className="space-y-4 pt-6 border-t">
+        <Label className="text-base font-semibold">Responsable qualité</Label>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm">Nom complet</Label>
+            <Input 
+              value={formData.responsableQualiteNom}
+              onChange={(e) => updateFormData("responsableQualiteNom", e.target.value)}
+              placeholder="Nom et prénom"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm">Qualifications</Label>
+            <Input 
+              value={formData.responsableQualiteQualif}
+              onChange={(e) => updateFormData("responsableQualiteQualif", e.target.value)}
+              placeholder="Diplômes, certifications"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm">Années d'expérience dans la fonction</Label>
+            <Input 
+              type="number"
+              value={formData.responsableQualiteExp}
+              onChange={(e) => updateFormData("responsableQualiteExp", e.target.value)}
+              placeholder="Années"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ÉTAPE 6: Prestations de conseil
+  const renderStep6 = () => (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ?</Label>
+        <RadioGroup value={formData.prestationConseil} onValueChange={(v) => updateFormData("prestationConseil", v)}>
+          <div className="flex gap-4">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="oui" id="conseil-oui" />
+              <Label htmlFor="conseil-oui">Oui</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="non" id="conseil-non" />
+              <Label htmlFor="conseil-non">Non</Label>
+            </div>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {formData.prestationConseil === "oui" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label className="text-base font-semibold">Détails des prestations</Label>
+            <Button type="button" onClick={addPrestation} size="sm" className="gap-2">
+              <Plus className="w-4 h-4" /> Ajouter une prestation
             </Button>
+          </div>
+
+          <div className="space-y-4">
+            {formData.prestations.map((prestation) => (
+              <Card key={prestation.id} className="p-4">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-medium text-sm">Prestation #{prestation.id}</h4>
+                    {formData.prestations.length > 0 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removePrestation(prestation.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm">Type de prestation</Label>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {TYPES_PRESTATION.map(type => (
+                        <div key={type.value} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`prestation-${prestation.id}-${type.value}`}
+                            checked={prestation.types.includes(type.value)}
+                            onCheckedChange={(checked) => {
+                              const newTypes = checked 
+                                ? [...prestation.types, type.value]
+                                : prestation.types.filter(t => t !== type.value);
+                              updatePrestation(prestation.id, "types", newTypes);
+                            }}
+                          />
+                          <Label htmlFor={`prestation-${prestation.id}-${type.value}`} className="text-sm cursor-pointer">
+                            {type.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Identité et adresse du prestataire</Label>
+                      <Input 
+                        value={prestation.prestataire}
+                        onChange={(e) => updatePrestation(prestation.id, "prestataire", e.target.value)}
+                        placeholder="Nom et adresse"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Date</Label>
+                      <Input 
+                        type="date"
+                        value={prestation.date}
+                        onChange={(e) => updatePrestation(prestation.id, "date", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-sm">Description de la prestation</Label>
+                      <Textarea 
+                        value={prestation.description}
+                        onChange={(e) => updatePrestation(prestation.id, "description", e.target.value)}
+                        placeholder="Détails de la prestation"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ÉTAPE 7: Autres informations et reconnaissances
+  const renderStep7 = () => (
+    <div className="space-y-8">
+      {/* Section Reconnaissances */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label className="text-base font-semibold">Autres informations et reconnaissances</Label>
+          <Button type="button" onClick={addReconnaissance} size="sm" className="gap-2">
+            <Plus className="w-4 h-4" /> Ajouter
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {formData.reconnaissances.map((rec) => (
+            <Card key={rec.id} className="p-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-medium text-sm">Reconnaissance #{rec.id}</h4>
+                  {formData.reconnaissances.length > 1 && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeReconnaissance(rec.id)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Nom et localisation de l'organisation</Label>
+                    <Input 
+                      value={rec.organisation}
+                      onChange={(e) => updateReconnaissance(rec.id, "organisation", e.target.value)}
+                      placeholder="Organisation"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Domaine couvert</Label>
+                    <Input 
+                      value={rec.domaine}
+                      onChange={(e) => updateReconnaissance(rec.id, "domaine", e.target.value)}
+                      placeholder="Domaine"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Validité</Label>
+                    <Input 
+                      value={rec.validite}
+                      onChange={(e) => updateReconnaissance(rec.id, "validite", e.target.value)}
+                      placeholder="Date de validité"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Section Transfert (si applicable) */}
+      {formData.typeDemande === "transfert" && (
+        <div className="space-y-6 pt-6 border-t">
+          <Label className="text-base font-semibold">Informations sur le transfert</Label>
+          
+          <div className="space-y-4">
+            <Label className="text-sm font-medium">Motif du transfert</Label>
+            <RadioGroup value={formData.motifTransfert} onValueChange={(v) => updateFormData("motifTransfert", v)}>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 border rounded-lg p-3">
+                  <RadioGroupItem value="reorganisation" id="motif-reorganisation" />
+                  <Label htmlFor="motif-reorganisation" className="cursor-pointer">
+                    Réorganisation/création de filiale
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border rounded-lg p-3">
+                  <RadioGroupItem value="cession" id="motif-cession" />
+                  <Label htmlFor="motif-cession" className="cursor-pointer">
+                    Cession de portée à une autre entité
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border rounded-lg p-3">
+                  <RadioGroupItem value="fusion" id="motif-fusion" />
+                  <Label htmlFor="motif-fusion" className="cursor-pointer">
+                    Fusion de deux OEC
+                  </Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Tableau des changements</Label>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Postes clés - changement opéré</Label>
+                <Textarea 
+                  value={formData.changementsTransfert.posteCles}
+                  onChange={(e) => updateFormData("changementsTransfert", {
+                    ...formData.changementsTransfert,
+                    posteCles: e.target.value
+                  })}
+                  placeholder="Décrire les changements"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Effectif - changement opéré</Label>
+                <Textarea 
+                  value={formData.changementsTransfert.effectif}
+                  onChange={(e) => updateFormData("changementsTransfert", {
+                    ...formData.changementsTransfert,
+                    effectif: e.target.value
+                  })}
+                  placeholder="Décrire les changements"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Locaux - changement opéré</Label>
+                <Textarea 
+                  value={formData.changementsTransfert.locaux}
+                  onChange={(e) => updateFormData("changementsTransfert", {
+                    ...formData.changementsTransfert,
+                    locaux: e.target.value
+                  })}
+                  placeholder="Décrire les changements"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Équipements - changement opéré</Label>
+                <Textarea 
+                  value={formData.changementsTransfert.equipements}
+                  onChange={(e) => updateFormData("changementsTransfert", {
+                    ...formData.changementsTransfert,
+                    equipements: e.target.value
+                  })}
+                  placeholder="Décrire les changements"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Système de management - changement opéré</Label>
+                <Textarea 
+                  value={formData.changementsTransfert.systemeManagement}
+                  onChange={(e) => updateFormData("changementsTransfert", {
+                    ...formData.changementsTransfert,
+                    systemeManagement: e.target.value
+                  })}
+                  placeholder="Décrire les changements"
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ÉTAPE 8: Documents techniques à joindre
+  const renderStep8 = () => {
+    const selectedActivities = formData.activites;
+    const allDocuments: string[] = [];
+    
+    selectedActivities.forEach(activity => {
+      if (DOCUMENTS_ANNEXES[activity]) {
+        allDocuments.push(...DOCUMENTS_ANNEXES[activity]);
+      }
+    });
+    
+    // Ajouter annexe transfert si applicable
+    if (formData.typeDemande === "transfert" && DOCUMENTS_ANNEXES.transfert) {
+      allDocuments.push(...DOCUMENTS_ANNEXES.transfert);
+    }
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Liste des documents à joindre</h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Cochez chaque document que vous inclurez dans votre dossier
+          </p>
+        </div>
+
+        {selectedActivities.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            Veuillez sélectionner au moins une activité à l'étape 1 pour voir les documents requis
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {selectedActivities.map(activity => {
+              const activityLabel = TYPES_ACTIVITES.find(a => a.value === activity)?.label || activity;
+              const docs = DOCUMENTS_ANNEXES[activity] || [];
+              
+              return (
+                <div key={activity} className="space-y-3">
+                  <h4 className="font-semibold text-base text-[#00A63E]">
+                    {activityLabel}
+                  </h4>
+                  <div className="space-y-2 pl-4">
+                    {docs.map((doc, idx) => (
+                      <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
+                        <Checkbox 
+                          id={`doc-${activity}-${idx}`}
+                          checked={!!formData.documentsChecked[`${activity}-${doc}`]}
+                          onCheckedChange={() => toggleDocumentCheck(`${activity}-${doc}`)}
+                        />
+                        <Label htmlFor={`doc-${activity}-${idx}`} className="cursor-pointer text-sm flex-1">
+                          {doc}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {formData.typeDemande === "transfert" && DOCUMENTS_ANNEXES.transfert && (
+              <div className="space-y-3 pt-4 border-t">
+                <h4 className="font-semibold text-base text-[#00A63E]">
+                  Annexe 09 - Documents de transfert
+                </h4>
+                <div className="space-y-2 pl-4">
+                  {DOCUMENTS_ANNEXES.transfert.map((doc, idx) => (
+                    <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
+                      <Checkbox 
+                        id={`doc-transfert-${idx}`}
+                        checked={!!formData.documentsChecked[`transfert-${doc}`]}
+                        onCheckedChange={() => toggleDocumentCheck(`transfert-${doc}`)}
+                      />
+                      <Label htmlFor={`doc-transfert-${idx}`} className="cursor-pointer text-sm flex-1">
+                        {doc}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ÉTAPE 9: Documents administratifs
+  const renderStep9 = () => {
+    const docsAdmin = [
+      "Copie des statuts de l'organisme",
+      "Copie de la carte d'immatriculation fiscale (NIS, NIF)",
+      "Copie du N° article d'imposition",
+      "Copie du registre de commerce",
+      "Chèque à l'ordre d'ALGERAC (organismes nationaux)",
+      "Ordre de virement à l'ordre d'ALGERAC (organismes étrangers)"
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Documents administratifs</h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Cochez chaque document administratif que vous inclurez
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {docsAdmin.map((doc, idx) => (
+            <div key={idx} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-slate-50">
+              <Checkbox 
+                id={`admin-doc-${idx}`}
+                checked={!!formData.docsAdminChecked[doc]}
+                onCheckedChange={() => toggleDocAdminCheck(doc)}
+              />
+              <Label htmlFor={`admin-doc-${idx}`} className="cursor-pointer text-sm flex-1">
+                {doc}
+              </Label>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ÉTAPE 10: Déclaration et signature
+  const renderStep10 = () => (
+    <div className="space-y-6">
+      <div className="bg-slate-50 p-6 rounded-lg space-y-4">
+        <h3 className="font-semibold text-lg">Engagements du demandeur</h3>
+        <div className="text-sm leading-relaxed space-y-2 text-slate-700">
+          <p>En soumettant cette demande, je déclare que :</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Toutes les informations fournies sont exactes et complètes</li>
+            <li>L'organisme s'engage à respecter toutes les exigences d'accréditation</li>
+            <li>L'organisme informera ALGERAC de tout changement significatif</li>
+            <li>L'organisme accepte de se soumettre aux évaluations prévues</li>
+            <li>L'organisme s'engage à payer les frais d'accréditation applicables</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Nom de l'organisme autorisant la soumission</Label>
+          <Input 
+            value={formData.organismeSoumission}
+            onChange={(e) => updateFormData("organismeSoumission", e.target.value)}
+            placeholder="Nom officiel de l'organisme"
+          />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Nom complet du demandeur</Label>
+            <Input 
+              value={formData.demandeurNom}
+              onChange={(e) => updateFormData("demandeurNom", e.target.value)}
+              placeholder="Nom et prénom"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fonction</Label>
+            <Input 
+              value={formData.demandeurFonction}
+              onChange={(e) => updateFormData("demandeurFonction", e.target.value)}
+              placeholder="Fonction du demandeur"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Input 
+              type="date"
+              value={formData.demandeurDate}
+              onChange={(e) => updateFormData("demandeurDate", e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Signature (nom)</Label>
+            <Input 
+              value={formData.signature}
+              onChange={(e) => updateFormData("signature", e.target.value)}
+              placeholder="Signature électronique"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border-2">
+        <Checkbox 
+          id="engagements"
+          checked={formData.engagementsAcceptes}
+          onCheckedChange={(checked) => updateFormData("engagementsAcceptes", checked)}
+        />
+        <Label htmlFor="engagements" className="cursor-pointer text-sm leading-relaxed">
+          J'accepte les engagements ci-dessus et confirme que j'ai l'autorité pour soumettre cette demande au nom de l'organisme
+        </Label>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logoalgerac.png" 
+              alt="ALGERAC" 
+              className="w-12 h-12 object-contain"
+            />
+            <div>
+              <h1 className="text-2xl font-bold" style={{ color: '#00A63E' }}>ALGERAC</h1>
+              <p className="text-sm text-slate-600">Demande d'Accréditation OEC</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/auth/register">
+              <ChevronLeft className="w-4 h-4 mr-1" /> Retour
+            </Link>
+          </Button>
+        </div>
+
+        {/* Modern Progress Bar */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Étape {currentStep} sur {STEPS.length}</h2>
+              <p className="text-sm text-slate-600">{STEPS[currentStep - 1].title}</p>
+            </div>
+            <span className="text-sm font-medium text-slate-500">
+              {Math.round((currentStep / STEPS.length) * 100)}% complété
+            </span>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00A63E] to-[#00D44A] transition-all duration-500"
+              style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+            />
+          </div>
+
+          {/* Step indicators */}
+          <div className="flex justify-between mt-4">
+            {STEPS.map((step) => (
+              <div 
+                key={step.id} 
+                className={cn(
+                  "flex flex-col items-center transition-all",
+                  step.id <= currentStep ? "opacity-100" : "opacity-40"
+                )}
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                  step.id < currentStep 
+                    ? "bg-[#00A63E] text-white" 
+                    : step.id === currentStep
+                    ? "bg-[#00A63E] text-white ring-4 ring-[#00A63E]/20"
+                    : "bg-slate-200 text-slate-400"
+                )}>
+                  {step.id}
+                </div>
+                <span className="text-[10px] mt-1 text-center hidden md:block max-w-[80px]">
+                  {step.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <Card className="shadow-lg">
+          <CardContent className="p-8 md:p-12">
+            {renderStep()}
+
+            {/* Navigation */}
+            <div className="flex justify-between mt-8 pt-6 border-t">
+              {currentStep > 1 && (
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={prevStep}
+                  className="gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Précédent
+                </Button>
+              )}
+              
+              {currentStep < STEPS.length ? (
+                <Button 
+                  type="button"
+                  onClick={nextStep}
+                  className="gap-2 ml-auto"
+                  style={{ backgroundColor: '#00A63E' }}
+                >
+                  Suivant <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button 
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="ml-auto"
+                  style={{ backgroundColor: '#00A63E' }}
+                >
+                  {loading ? "Envoi en cours..." : "Soumettre la demande"}
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

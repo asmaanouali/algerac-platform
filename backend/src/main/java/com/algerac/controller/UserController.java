@@ -152,7 +152,7 @@ public class UserController {
                     .nom(request.getNom())
                     .prenom(request.getPrenom())
                     .email(request.getEmail())
-                    .telephone(request.getTelephone())
+                    .phone(request.getTelephone())
                     .role(UserRole.valueOf(request.getRole()))
                     .password(passwordEncoder.encode(request.getPassword()))
                     .status(UserStatus.APPROVED)

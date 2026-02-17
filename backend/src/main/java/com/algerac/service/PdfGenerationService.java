@@ -667,4 +667,63 @@ public class PdfGenerationService {
                 .setTextAlignment(TextAlignment.CENTER);
         document.add(address);
     }
+    
+    /**
+     * Generation du PDF DOC1 pour une candidature OEC
+     */
+    public byte[] generateOECApplicationPdf(com.algerac.model.OECApplication application) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            PdfFont font = PdfFontFactory.createFont("Helvetica");
+            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold");
+            
+            // En-tete
+            Paragraph header = new Paragraph("DEMANDE D'ACCREDITATION OEC")
+                    .setFont(boldFont)
+                    .setFontSize(18)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setBold();
+            document.add(header);
+            
+            Paragraph subtitle = new Paragraph("Organisme d'evaluation de la Conformite")
+                    .setFont(font)
+                    .setFontSize(12)
+                    .setTextAlignment(TextAlignment.CENTER);
+            document.add(subtitle);
+            
+            document.add(new Paragraph("\n"));
+            
+            // Informations de base
+            Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
+                    .useAllAvailableWidth();
+            
+            table.addCell(createCell("Nom de l'organisme :", boldFont));
+            table.addCell(createCell(application.getNomOrganisme(), font));
+            
+            table.addCell(createCell("Type d'organisme :", boldFont));
+            table.addCell(createCell(application.getTypeOrganisme() != null ? application.getTypeOrganisme() : "", font));
+            
+            table.addCell(createCell("Adresse du siege :", boldFont));
+            table.addCell(createCell(application.getAdresseSiege() != null ? application.getAdresseSiege() : "", font));
+            
+            table.addCell(createCell("Telephone :", boldFont));
+            table.addCell(createCell(application.getTelephone() != null ? application.getTelephone() : "", font));
+            
+            table.addCell(createCell("Email :", boldFont));
+            table.addCell(createCell(application.getEmail(), font));
+            
+            document.add(table);
+            document.close();
+            
+            log.info("PDF DOC1 genere pour la candidature OEC #{}", application.getId());
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            log.error("Erreur lors de la generation du PDF DOC1", e);
+            throw new RuntimeException("Erreur lors de la generation du PDF DOC1", e);
+        }
+    }
 }

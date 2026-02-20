@@ -23,6 +23,28 @@ public class NotificationService {
     
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+
+    /**
+     * Generic helper to create a notification for any user
+     */
+    @Transactional
+    public void createNotification(Long userId, String title, String message, String type) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            log.warn("Cannot create notification: user {} not found", userId);
+            return;
+        }
+        Notification notification = Notification.builder()
+                .user(user)
+                .title(title)
+                .message(message)
+                .type(type != null ? type.toLowerCase() : "info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+        log.info("Notification created for user {}: {}", userId, title);
+    }
     
     @Transactional
     public void notifyChefDepartmentNewRequest(AccreditationRequest request) {

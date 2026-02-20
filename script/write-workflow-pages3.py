@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+"""Batch 3: Enhanced OEC MyRequestsPage with proper layout."""
+import os
+
+BASE = r"c:\Users\la_no\OneDrive\Desktop\algerac-platform\client\src\pages"
+
+files = {}
+
+files[os.path.join(BASE, "oec", "MyRequestsPage.tsx")] = r'''import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -328,3 +335,11 @@ export default function MyRequestsPage() {
     </div>
   );
 }
+'''
+
+for filepath, content in files.items():
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"Written: {filepath}")
+print(f"\nDone! Wrote {len(files)} files.")

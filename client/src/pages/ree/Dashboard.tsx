@@ -125,7 +125,7 @@ export default function REEDashboard() {
                   <CardHeader><CardTitle className="text-lg">Mes Équipes</CardTitle></CardHeader>
                   <CardContent>
                     {reeTeams.length > 0 ? reeTeams.map((t: any) => (
-                      <div key={t.id} className="p-3 border rounded-lg mb-2">
+                      <div key={t.id} className="p-3 border border-gray-200 rounded-lg mb-2 hover:shadow-sm transition-all hover:border-primary/30">
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-medium text-sm">Équipe #{t.teamId}</p>
@@ -152,7 +152,7 @@ export default function REEDashboard() {
                         { label: "Rédaction Rapports", href: "/ree/rapports", icon: FileText, desc: "Rédiger le rapport FOR 23" },
                       ].map((item) => (
                         <Link key={item.href} href={item.href}>
-                          <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                          <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-all hover:shadow-sm">
                             <item.icon className="w-5 h-5 text-primary" />
                             <div>
                               <p className="font-medium text-sm">{item.label}</p>

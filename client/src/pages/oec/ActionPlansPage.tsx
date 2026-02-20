@@ -21,7 +21,7 @@ interface ActionPlan {
 }
 
 export default function ActionPlansPage() {
-  const { id } = useParams();
+  const { requestId: id } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [actionPlans, setActionPlans] = useState<ActionPlan[]>([

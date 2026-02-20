@@ -79,11 +79,11 @@ function Router() {
       <Route path="/oec/payment/:requestId" component={PaymentPage} />
       <Route path="/oec/paiement/:requestId" component={PaymentPage} />
       <Route path="/oec/demandes/:requestId/validation" component={ValidateQuotationPage} />
-      <Route path="/oec/demandes/:id/corriger" component={CorrectRequestPage} />
-      <Route path="/oec/demandes/:id/equipe" component={ValidateTeamPage} />
-      <Route path="/oec/demandes/:id/reponse-documentaire" component={DocumentaryResponsePage} />
-      <Route path="/oec/demandes/:id/plans-actions" component={ActionPlansPage} />
-      <Route path="/oec/demandes/:id/lever-obstacles" component={LiftObstaclesPage} />
+      <Route path="/oec/demandes/:requestId/corriger" component={CorrectRequestPage} />
+      <Route path="/oec/demandes/:requestId/equipe" component={ValidateTeamPage} />
+      <Route path="/oec/demandes/:requestId/reponse-documentaire" component={DocumentaryResponsePage} />
+      <Route path="/oec/demandes/:requestId/plans-actions" component={ActionPlansPage} />
+      <Route path="/oec/demandes/:requestId/lever-obstacles" component={LiftObstaclesPage} />
       
       {/* RA Routes */}
       <Route path="/ra" component={RADashboard} />

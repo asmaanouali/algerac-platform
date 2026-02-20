@@ -187,7 +187,7 @@ export default function CASPreparationPage() {
                           {meetings.length === 0 ? (
                             <p className="text-center text-muted-foreground py-8">Aucune réunion planifiée</p>
                           ) : meetings.map((meeting: any) => (
-                            <div key={meeting.id} className="border rounded-lg p-4 space-y-3">
+                            <div key={meeting.id} className="border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
                               <div className="flex justify-between">
                                 <div>
                                   <p className="font-semibold">{meeting.meetingCode}</p>

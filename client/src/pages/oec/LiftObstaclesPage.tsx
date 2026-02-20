@@ -1,58 +1,58 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Sidebar } from "@/components/layout-sidebar";
-import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Send, AlertTriangle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function LiftObstaclesPage() {
-  const { id } = useParams();
+  const { requestId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [details, setDetails] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, isLoading: authLoading } = useAuth();
+  
+  const [request, setRequest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!details.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez décrire les actions entreprises pour lever les obstacles",
-      });
-      return;
-    }
+  useEffect(() => {
+    if (user && !authLoading) loadData();
+  }, [requestId, user, authLoading]);
 
-    setIsSubmitting(true);
-    
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
+  if (!user) { setLocation("/"); return null; }
+
+  const loadData = async () => {
     try {
-      await apiRequest("POST", `/api/requests/${id}/lift-obstacles`, {
-        details,
-      });
-      
-      toast({
-        title: "Notification envoyée",
-        description: "Le CD a été notifié de la levée des obstacles",
-      });
-      
-      setLocation("/oec/mes-demandes");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer la notification",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      setLoading(true);
+      const res = await fetch(`/api/requests/${requestId}`, { credentials: "include" });
+      if (res.ok) setRequest(await res.json());
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
+
+  const handleSubmit = async () => {
+    if (!description.trim()) { toast({ variant: "destructive", title: "Erreur", description: "Décrivez les mesures prises" }); return; }
+    setSubmitting(true);
+    try {
+      await apiRequest("POST", `/api/requests/${requestId}/lift-obstacles`, { description, resolved: true });
+      toast({ title: "Obstacles levés", description: "Votre réponse a été transmise. Le processus continue." });
+      setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setSubmitting(false); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -60,88 +60,37 @@ export default function LiftObstaclesPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-8">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/oec/mes-demandes")}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour à mes demandes
-          </Button>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Levée des Obstacles</h1>
+              <p className="text-muted-foreground mt-2">Suite à la visite préliminaire, des obstacles bloquants ont été identifiés</p>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Notification de Levée des Obstacles
-              </CardTitle>
-              <CardDescription>
-                Le processus d'accréditation a été suspendu suite à l'identification d'obstacles 
-                bloquants lors de la visite préliminaire. Notifiez le CD une fois ces obstacles levés.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert className="mb-6" variant="destructive">
-                <AlertDescription>
-                  Votre processus d'accréditation est actuellement <strong>suspendu</strong> en raison 
-                  d'obstacles identifiés dans le rapport de visite préliminaire (FOR 12).
-                </AlertDescription>
-              </Alert>
+            {request && (
+              <Alert><AlertDescription><strong>Référence :</strong> {request.referenceNumber}<br /><strong>Domaine :</strong> {request.domain}</AlertDescription></Alert>
+            )}
 
-              <div className="mb-6 p-4 bg-muted/50 rounded-lg space-y-2">
-                <h3 className="font-semibold">Rappel :</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les obstacles bloquants peuvent inclure : infrastructure inadéquate, personnel 
-                  insuffisant, équipements non conformes, système qualité inexistant, etc.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Assurez-vous que tous les obstacles identifiés dans le rapport FOR 12 ont été 
-                  effectivement levés avant de notifier le CD.
-                </p>
-              </div>
+            <Alert variant="destructive" className="border-amber-300 bg-amber-50 text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Le rapport de visite préliminaire (FOR 12) a identifié des obstacles bloquants.
+                Vous devez décrire les mesures correctives prises pour lever ces obstacles avant que le processus puisse continuer.
+              </AlertDescription>
+            </Alert>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>Mesures Correctives</CardTitle><CardDescription>Décrivez les actions entreprises pour résoudre chaque obstacle identifié</CardDescription></CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="details">
-                    Détails des actions entreprises pour lever les obstacles *
-                  </Label>
-                  <Textarea
-                    id="details"
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                    placeholder="Décrivez précisément les actions entreprises pour lever chaque obstacle identifié..."
-                    className="min-h-[200px]"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Référencez chaque obstacle du rapport FOR 12 et décrivez les mesures correctives mises en place.
-                  </p>
+                  <Label>Description des mesures prises *</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pour chaque obstacle identifié, décrivez les mesures correctives mises en place..." rows={10} />
                 </div>
-
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Le CD procédera à une vérification avant de reprendre le processus d'accréditation.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={isSubmitting}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Envoi..." : "Notifier la levée des obstacles"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setLocation("/oec/mes-demandes")}
-                    disabled={isSubmitting}
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                <Button onClick={handleSubmit} disabled={submitting || !description.trim()} className="w-full">
+                  {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><CheckCircle className="mr-2 h-4 w-4" />Confirmer la levée des obstacles</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
     </div>

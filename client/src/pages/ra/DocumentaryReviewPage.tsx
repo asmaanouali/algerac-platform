@@ -169,7 +169,7 @@ export default function DocumentaryReviewPage() {
                   ) : (
                     <div className="space-y-4">
                       {reviews.map((review: any) => (
-                        <div key={review.id} className="border rounded-lg p-4 space-y-3">
+                        <div key={review.id} className="border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-center">
                             <div>
                               <p className="text-sm font-medium">Revue #{review.id}</p>

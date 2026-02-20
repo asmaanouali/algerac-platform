@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle } from "lucide-react";
+import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface Expert {
@@ -149,6 +149,20 @@ export default function TeamCompositionPage() {
     }
   };
 
+  const removeMember = async (memberId: number) => {
+    if (!confirm("Voulez-vous vraiment retirer ce membre de l'équipe ?")) return;
+    try {
+      const res = await apiRequest("DELETE", `/api/workflow/teams/members/${memberId}`);
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: "Membre retiré de l'équipe" });
+        selectRequest(selectedRequest);
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -180,8 +194,8 @@ export default function TeamCompositionPage() {
                       <div
                         key={r.id}
                         onClick={() => selectRequest(r)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedRequest?.id === r.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"
+                        className={`p-3 rounded-lg border border-gray-200 cursor-pointer transition-all hover:shadow-sm ${
+                          selectedRequest?.id === r.id ? "border-primary bg-primary/5 shadow-sm" : "hover:bg-gray-50 hover:border-primary/30"
                         }`}
                       >
                         <div className="flex justify-between items-start">
@@ -220,7 +234,10 @@ export default function TeamCompositionPage() {
                         <Button variant="outline" onClick={() => setShowAddMember(true)}>
                           <UserPlus className="w-4 h-4 mr-2" />Ajouter
                         </Button>
-                        <Button onClick={sendToOEC}>
+                        <Button 
+                          onClick={sendToOEC}
+                          disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned)}
+                        >
                           <Send className="w-4 h-4 mr-2" />Envoyer à l'OEC
                         </Button>
                       </div>
@@ -253,6 +270,7 @@ export default function TeamCompositionPage() {
                           <TableHead>Rôle</TableHead>
                           <TableHead>Engagements</TableHead>
                           <TableHead>Statut</TableHead>
+                          {team.status === "DRAFT" && <TableHead>Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -272,24 +290,49 @@ export default function TeamCompositionPage() {
                             <TableCell>
                               <div className="flex gap-1">
                                 {m.confidentialityAgreementSigned ? (
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  <div className="flex items-center gap-1" title="Engagement de confidentialité signé">
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  </div>
                                 ) : (
-                                  <Shield className="w-4 h-4 text-gray-300" />
+                                  <div className="flex items-center gap-1" title="Engagement de confidentialité non signé">
+                                    <Shield className="w-4 h-4 text-gray-300" />
+                                  </div>
+                                )}
+                                {m.impartialityAgreementSigned ? (
+                                  <div className="flex items-center gap-1" title="Engagement d'impartialité signé">
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1" title="Engagement d'impartialité non signé">
+                                    <Shield className="w-4 h-4 text-gray-300" />
+                                  </div>
                                 )}
                                 {m.conflictOfInterestDeclared && (
-                                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                  <AlertTriangle className="w-4 h-4 text-amber-500" title="Conflit d'intérêt déclaré" />
                                 )}
                               </div>
                             </TableCell>
                             <TableCell>
                               {m.recusedByOEC ? (
                                 <Badge variant="destructive">Récusé</Badge>
-                              ) : m.confidentialityAgreementSigned ? (
+                              ) : m.confidentialityAgreementSigned && m.impartialityAgreementSigned ? (
                                 <Badge className="bg-green-100 text-green-800">Confirmé</Badge>
                               ) : (
-                                <Badge variant="secondary">En attente</Badge>
+                                <Badge variant="secondary">En attente signature</Badge>
                               )}
                             </TableCell>
+                            {team.status === "DRAFT" && (
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeMember(m.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            )}
                           </TableRow>
                         ))}
                       </TableBody>
@@ -297,11 +340,20 @@ export default function TeamCompositionPage() {
                   )}
 
                   {team && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm font-medium text-blue-800">
-                        Rappel : L'équipe doit comprendre au minimum 1 REE et 1 ET.
-                        Rôles optionnels : Expert, Évaluateur Qualité, Superviseur, Observateur, Évaluateur en Formation.
-                      </p>
+                    <div className="mt-4 space-y-2">
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800">
+                          Rappel : L'équipe doit comprendre au minimum 1 REE et 1 ET.
+                          Rôles optionnels : Expert, Évaluateur Qualité, Superviseur, Observateur, Évaluateur en Formation.
+                        </p>
+                      </div>
+                      {members.some(m => !m.confidentialityAgreementSigned || !m.impartialityAgreementSigned) && (
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <p className="text-sm font-medium text-amber-800">
+                            ⚠️ Tous les membres doivent signer leurs engagements de confidentialité et d'impartialité avant l'envoi à l'OEC.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

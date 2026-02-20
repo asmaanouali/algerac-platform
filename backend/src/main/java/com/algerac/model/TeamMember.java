@@ -1,6 +1,7 @@
 package com.algerac.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -56,5 +57,16 @@ public class TeamMember {
         if (addedAt == null) {
             addedAt = LocalDateTime.now();
         }
+    }
+    
+    @JsonProperty("commitmentSigned")
+    public Boolean getCommitmentSigned() {
+        return Boolean.TRUE.equals(confidentialityAgreementSigned) && 
+               Boolean.TRUE.equals(impartialityAgreementSigned);
+    }
+    
+    @JsonProperty("teamId")
+    public Long getTeamId() {
+        return team != null ? team.getId() : null;
     }
 }

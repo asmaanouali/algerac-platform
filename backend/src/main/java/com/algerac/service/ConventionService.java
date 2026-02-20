@@ -29,13 +29,14 @@ public class ConventionService {
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+        if (request.getAssignedToRa() != null &&
+                !request.getAssignedToRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à créer une convention pour cette demande");
         }
         
         if (request.getStatus() != RequestStatus.RECEIVABLE && 
             request.getStatus() != RequestStatus.QUOTATION_PREPARATION) {
-            throw new RuntimeException("La demande doit être recevable pour créer une convention");
+            throw new RuntimeException("La demande doit être recevable pour créer une convention. Statut actuel : " + request.getStatus());
         }
         
         String conventionNumber = generateConventionNumber();
@@ -66,7 +67,8 @@ public class ConventionService {
         Convention convention = conventionRepository.findById(conventionId)
                 .orElseThrow(() -> new RuntimeException("Convention non trouvée"));
         
-        if (!convention.getPreparedByRa().getId().equals(currentUser.getId())) {
+        if (convention.getPreparedByRa() != null &&
+                !convention.getPreparedByRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à envoyer cette convention");
         }
         
@@ -92,7 +94,8 @@ public class ConventionService {
                 .orElseThrow(() -> new RuntimeException("Convention non trouvée"));
         
         AccreditationRequest request = convention.getRequest();
-        if (!request.getOec().getId().equals(currentUser.getId())) {
+        if (request.getOec() != null &&
+                !request.getOec().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à valider cette convention");
         }
         

@@ -1,58 +1,66 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Sidebar } from "@/components/layout-sidebar";
-import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, FileText, Upload } from "lucide-react";
+import { Loader2, Send, AlertTriangle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DocumentaryResponsePage() {
-  const { id } = useParams();
+  const { requestId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  
+  const [request, setRequest] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [response, setResponse] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!response.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez décrire votre réponse aux manquements",
-      });
-      return;
-    }
+  useEffect(() => {
+    if (user && !authLoading) loadData();
+  }, [requestId, user, authLoading]);
 
-    setIsSubmitting(true);
-    
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
+  if (!user) { setLocation("/"); return null; }
+
+  const loadData = async () => {
     try {
-      await apiRequest("POST", `/api/requests/${id}/documentary-response`, {
-        response,
-      });
-      
-      toast({
-        title: "Réponse soumise",
-        description: "Votre réponse aux manquements documentaires a été transmise",
-      });
-      
-      setLocation("/oec/mes-demandes");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error.message || "Impossible de soumettre votre réponse",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      setLoading(true);
+      const [reqRes, revRes] = await Promise.all([
+        fetch(`/api/requests/${requestId}`, { credentials: "include" }),
+        fetch(`/api/workflow/documentary-review/by-request/${requestId}`, { credentials: "include" }),
+      ]);
+      if (reqRes.ok) setRequest(await reqRes.json());
+      if (revRes.ok) setReviews(await revRes.json());
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
+
+  const handleSubmit = async () => {
+    if (!response.trim()) { toast({ variant: "destructive", title: "Erreur", description: "Rédigez votre réponse" }); return; }
+    setSubmitting(true);
+    try {
+      await apiRequest("POST", `/api/requests/${requestId}/documentary-response`, { response, documentsProvided: true });
+      toast({ title: "Réponse envoyée", description: "Votre réponse aux insuffisances documentaires a été transmise" });
+      setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setSubmitting(false); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  const deficiencies = reviews.filter((r: any) => r.deficienciesIdentified);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -60,78 +68,48 @@ export default function DocumentaryResponsePage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-8">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/oec/mes-demandes")}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour à mes demandes
-          </Button>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Réponse aux Insuffisances Documentaires</h1>
+              <p className="text-muted-foreground mt-2">Répondez aux observations de l'équipe d'évaluation</p>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Réponse aux Manquements Documentaires
-              </CardTitle>
-              <CardDescription>
-                L'équipe d'évaluation a identifié des manquements lors de la revue documentaire (FOR 56).
-                Veuillez fournir les documents manquants et/ou vos explications.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert className="mb-6">
-                <AlertDescription>
-                  Vous disposez d'un délai de <strong>3 mois</strong> pour répondre aux manquements 
-                  identifiés. Passé ce délai, votre dossier sera classé sans suite.
-                </AlertDescription>
-              </Alert>
+            {request && (
+              <Alert><AlertDescription><strong>Référence :</strong> {request.referenceNumber}<br /><strong>Domaine :</strong> {request.domain}</AlertDescription></Alert>
+            )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <Alert variant="destructive" className="border-amber-300 bg-amber-50 text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Délai :</strong> Vous disposez de <strong>3 mois</strong> pour répondre aux insuffisances documentaires. Passé ce délai, le dossier sera classé par le CD.
+              </AlertDescription>
+            </Alert>
+
+            {deficiencies.map((review: any) => (
+              <Card key={review.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-500" />Insuffisances identifiées</CardTitle>
+                  <CardDescription>Revue du {new Date(review.reviewStartDate).toLocaleDateString("fr-FR")}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-amber-50 p-4 rounded-lg"><p className="whitespace-pre-wrap">{review.deficienciesDetails}</p></div>
+                </CardContent>
+              </Card>
+            ))}
+
+            <Card>
+              <CardHeader><CardTitle><FileText className="inline h-5 w-5 mr-2" />Votre Réponse</CardTitle><CardDescription>Décrivez les corrections apportées et les documents complémentaires fournis</CardDescription></CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="response">
-                    Votre réponse aux manquements identifiés *
-                  </Label>
-                  <Textarea
-                    id="response"
-                    value={response}
-                    onChange={(e) => setResponse(e.target.value)}
-                    placeholder="Décrivez les documents fournis et/ou vos explications concernant les manquements identifiés..."
-                    className="min-h-[200px]"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Référencez chaque manquement identifié dans le FOR 56 et fournissez une réponse précise.
-                  </p>
+                  <Label>Réponse détaillée *</Label>
+                  <Textarea value={response} onChange={(e) => setResponse(e.target.value)} placeholder="Détaillez les corrections apportées, les documents mis à jour ou ajoutés..." rows={10} />
                 </div>
-
-                <div className="p-4 border-2 border-dashed rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Upload className="h-5 w-5" />
-                    <span className="text-sm">
-                      Téléchargez les documents manquants via l'onglet "Mes Documents"
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={isSubmitting}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Soumission..." : "Soumettre la réponse"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setLocation("/oec/mes-demandes")}
-                    disabled={isSubmitting}
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                <Button onClick={handleSubmit} disabled={submitting || !response.trim()} className="w-full">
+                  {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer la réponse</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
     </div>

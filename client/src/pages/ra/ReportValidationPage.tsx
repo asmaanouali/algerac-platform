@@ -110,7 +110,7 @@ export default function ReportValidationPage() {
                   ) : (
                     <div className="space-y-4">
                       {reports.map((report: any) => (
-                        <div key={report.id} className="border rounded-lg p-5 space-y-4">
+                        <div key={report.id} className="border border-gray-200 rounded-lg p-5 space-y-4 hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-start">
                             <div>
                               <h3 className="font-semibold text-lg">{report.reportNumber}</h3>

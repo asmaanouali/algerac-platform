@@ -89,6 +89,24 @@ public class EvaluationTeamService {
     }
     
     /**
+     * Retirer un membre de l'équipe (avant envoi à l'OEC)
+     */
+    @Transactional
+    public void removeMember(Long memberId, User currentUser) {
+        TeamMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
+        
+        EvaluationTeam team = member.getTeam();
+        if (team.getStatus() != TeamStatus.DRAFT) {
+            throw new RuntimeException("Impossible de supprimer un membre d'une équipe déjà envoyée");
+        }
+        
+        memberRepository.delete(member);
+        log.info("Membre {} retiré de l'équipe {} par {}", 
+                member.getExpert().getFullName(), team.getTeamCode(), currentUser.getFullName());
+    }
+    
+    /**
      * Expert signe les engagements de confidentialité et impartialité (FOR 01-1)
      */
     @Transactional

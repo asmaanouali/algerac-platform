@@ -29,7 +29,10 @@ export default function CommitmentsPage() {
   const signCommitment = async (memberId: number) => {
     setSigning(memberId);
     try {
-      const res = await apiRequest("POST", `/api/workflow/teams/members/${memberId}/sign`);
+      const res = await apiRequest("POST", `/api/workflow/teams/members/${memberId}/sign`, {
+        hasConflictOfInterest: false,
+        conflictDetails: ""
+      });
       const data = await res.json();
       if (data.success) {
         toast({ title: "Succès", description: "Engagement signé avec succès" });
@@ -76,7 +79,7 @@ export default function CommitmentsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {unsigned.map((m: any) => (
-                      <div key={m.id} className="border rounded-lg p-4 bg-white">
+                      <div key={m.id} className="border border-gray-200 rounded-lg p-4 bg-white hover:border-amber-300 transition-colors">
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-semibold">Équipe #{m.teamId}</p>
@@ -120,7 +123,7 @@ export default function CommitmentsPage() {
                   {signed.length > 0 ? (
                     <div className="space-y-2">
                       {signed.map((m: any) => (
-                        <div key={m.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50/30">
+                        <div key={m.id} className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-green-50/30 hover:bg-green-50/50 transition-colors">
                           <div className="flex items-center gap-3">
                             <CheckCircle2 className="w-5 h-5 text-green-600" />
                             <div>

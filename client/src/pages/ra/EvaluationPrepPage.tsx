@@ -196,7 +196,7 @@ export default function EvaluationPrepPage() {
                             )}
                           </div>
                           {plans.map((plan: any) => (
-                            <div key={plan.id} className="border rounded-lg p-4 space-y-3">
+                            <div key={plan.id} className="border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
                               <div className="flex justify-between">
                                 <div>
                                   <p className="font-medium">{plan.planCode}</p>

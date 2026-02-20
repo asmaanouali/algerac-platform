@@ -1,58 +1,83 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Sidebar } from "@/components/layout-sidebar";
-import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Send, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/layout-sidebar";
+import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
 
+const DOMAINS = [
+  "Laboratoires d'essais",
+  "Laboratoires d'étalonnage",
+  "Organismes d'inspection",
+  "Organismes de certification de produits",
+  "Organismes de certification de systèmes de management",
+  "Organismes de certification de personnes",
+  "Organismes de vérification/validation",
+  "Producteurs de matériaux de référence",
+];
+
 export default function CorrectRequestPage() {
-  const { id } = useParams();
+  const { requestId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  
+  const [request, setRequest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [corrections, setCorrections] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [domain, setDomain] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!corrections.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez décrire les corrections apportées",
-      });
-      return;
-    }
+  useEffect(() => {
+    if (user && !authLoading) loadData();
+  }, [requestId, user, authLoading]);
 
-    setIsSubmitting(true);
-    
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
+  if (!user) { setLocation("/"); return null; }
+
+  const loadData = async () => {
     try {
-      await apiRequest("POST", `/api/requests/${id}/receivability-corrections`, {
-        corrections,
-      });
-      
-      toast({
-        title: "Corrections soumises",
-        description: "Votre demande corrigée a été resoumise avec succès",
-      });
-      
-      setLocation("/oec/mes-demandes");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error.message || "Impossible de soumettre les corrections",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      setLoading(true);
+      const res = await fetch(`/api/requests/${requestId}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setRequest(data);
+        setDomain(data.domain || "");
+        setDescription(data.description || "");
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
+
+  const handleSubmit = async () => {
+    if (!corrections.trim()) { toast({ variant: "destructive", title: "Erreur", description: "Décrivez les corrections" }); return; }
+    setSubmitting(true);
+    try {
+      // Resubmit the request with corrections
+      await apiRequest("POST", `/api/requests/${requestId}/submit`, {
+        corrections,
+        domain,
+        description,
+      });
+      toast({ title: "Corrections soumises", description: "Votre demande corrigée a été resoumise pour étude. Vous devez procéder au paiement." });
+      setTimeout(() => setLocation(`/oec/paiement/${requestId}`), 2000);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setSubmitting(false); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -60,67 +85,51 @@ export default function CorrectRequestPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-8">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/oec/mes-demandes")}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour à mes demandes
-          </Button>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Corriger et Resoumettre</h1>
+              <p className="text-muted-foreground mt-2">Votre demande a été déclarée non recevable. Corrigez-la et resoumettez.</p>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Corriger et Resoumettre la Demande</CardTitle>
-              <CardDescription>
-                Cette demande a été jugée non recevable. Veuillez apporter les corrections 
-                nécessaires et décrire les modifications effectuées.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert className="mb-6">
-                <AlertCircle className="h-4 w-4" />
+            {request?.receivabilityComments && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Assurez-vous d'avoir corrigé tous les points soulevés dans la décision 
-                  de non-recevabilité avant de resoumettre votre demande.
+                  <strong>Motifs de non-recevabilité :</strong>
+                  <p className="mt-2 whitespace-pre-wrap">{request.receivabilityComments}</p>
                 </AlertDescription>
               </Alert>
+            )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>Corrections</CardTitle><CardDescription>Modifiez les informations nécessaires et décrivez les corrections apportées</CardDescription></CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="corrections">
-                    Description des corrections apportées *
-                  </Label>
-                  <Textarea
-                    id="corrections"
-                    value={corrections}
-                    onChange={(e) => setCorrections(e.target.value)}
-                    placeholder="Décrivez en détail les corrections que vous avez apportées à votre dossier..."
-                    className="min-h-[200px]"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Soyez précis sur les modifications effectuées pour faciliter la réévaluation.
-                  </p>
+                  <Label>Domaine d'accréditation</Label>
+                  <Select value={domain} onValueChange={setDomain}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionnez le domaine" /></SelectTrigger>
+                    <SelectContent>
+                      {DOMAINS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={isSubmitting}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Soumission..." : "Resoumettre la demande"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setLocation("/oec/mes-demandes")}
-                    disabled={isSubmitting}
-                  >
-                    Annuler
-                  </Button>
+                <div className="space-y-2">
+                  <Label>Description mise à jour</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description détaillée de votre activité..." rows={6} />
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+
+                <div className="space-y-2">
+                  <Label>Description des corrections apportées *</Label>
+                  <Textarea value={corrections} onChange={(e) => setCorrections(e.target.value)} placeholder="Décrivez les corrections effectuées en réponse aux motifs de non-recevabilité..." rows={6} />
+                </div>
+
+                <Button onClick={handleSubmit} disabled={submitting || !corrections.trim()} className="w-full">
+                  {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Soumission...</> : <><Send className="mr-2 h-4 w-4" />Resoumettre la demande</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
     </div>

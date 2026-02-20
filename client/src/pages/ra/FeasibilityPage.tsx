@@ -1,431 +1,196 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, CheckCircle, XCircle, Eye, Send } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, FileText, CheckCircle, XCircle, Eye, Send, Globe, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
 
-interface AccreditationRequest {
-  id: number;
-  referenceNumber: string;
-  type: string;
-  domain: string;
-  description: string;
-  status: string;
-  progress: number;
-  submissionDate: string;
-  assignmentDate: string;
-  oec: {
-    organizationName: string;
-    email: string;
-  };
-}
-
-interface FeasibilityStudy {
-  id: number;
-  decision: string;
-  comments: string;
-  technicalAnalysis: string;
-  complianceCheck: string;
-  studyStartDate: string;
-}
-
 export default function RAFeasibilityPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   
-  const [requests, setRequests] = useState<AccreditationRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [studyDialogOpen, setStudyDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<AccreditationRequest | null>(null);
-  const [decision, setDecision] = useState<"RECEIVABLE" | "NOT_RECEIVABLE">("RECEIVABLE");
-  const [comments, setComments] = useState("");
-  const [technicalAnalysis, setTechnicalAnalysis] = useState("");
-  const [complianceCheck, setComplianceCheck] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Study form
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [step, setStep] = useState<"documents" | "resources" | "decision">("documents");
+  const [technicalAnalysis, setTechnicalAnalysis] = useState("");
+  const [complianceCheck, setComplianceCheck] = useState("");
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  const [resourcesAvailable, setResourcesAvailable] = useState("");
+  const [decision, setDecision] = useState("");
+  const [comments, setComments] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+
   useEffect(() => {
-    if (!authLoading && !user) {
-      setLocation("/");
-    } else if (user && !authLoading) {
-      loadRequests();
-    }
+    if (!authLoading && !user) setLocation("/");
+    else if (user && !authLoading) loadRequests();
   }, [user, authLoading]);
 
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (!user) return null;
 
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest("GET", "/api/requests/assigned-to-me");
-      const data = await response.json();
-      // Filtrer uniquement les demandes en état ASSIGNED_TO_RA ou RECEIVABILITY_STUDY
-      const pendingRequests = data.filter(
-        (r: AccreditationRequest) =>
-          r.status === "ASSIGNED_TO_RA" || r.status === "RECEIVABILITY_STUDY"
-      );
-      setRequests(pendingRequests);
+      const res = await apiRequest("GET", "/api/requests/assigned-to-me");
+      const data = await res.json();
+      setRequests(data.filter((r: any) => ["ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK"].includes(r.status)));
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
 
-  const openStudyDialog = async (request: AccreditationRequest) => {
-    setSelectedRequest(request);
-    setDecision("RECEIVABLE");
-    setComments("");
-    setTechnicalAnalysis("");
-    setComplianceCheck("");
-    setRejectionReason("");
+  const selectRequest = (r: any) => {
+    setSelectedRequest(r);
+    setStep("documents");
+    setTechnicalAnalysis(""); setComplianceCheck(""); setPaymentVerified(false);
+    setResourcesAvailable(""); setDecision(""); setComments(""); setRejectionReason("");
+  };
 
-    // Si la demande est en ASSIGNED_TO_RA, démarrer l'étude
-    if (request.status === "ASSIGNED_TO_RA") {
-      try {
-        await apiRequest("POST", `/api/feasibility-studies/start/${request.id}`);
-      } catch (err) {
-        console.error("Erreur lors du démarrage de l'étude:", err);
-      }
+  const startStudy = async () => {
+    if (!selectedRequest) return;
+    try {
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/start-study`);
+      toast({ title: "Étude démarrée" });
+      loadRequests();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
     }
-
-    setStudyDialogOpen(true);
   };
 
   const handleSubmitDecision = async () => {
-    if (!selectedRequest) return;
-
+    if (!decision) return;
     if (decision === "NOT_RECEIVABLE" && !rejectionReason.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez indiquer la raison du rejet",
-      });
-      return;
+      toast({ variant: "destructive", title: "Erreur", description: "Indiquez la raison du rejet" }); return;
     }
-
     try {
       setSubmitting(true);
-
-      const response = await apiRequest(
-        "POST",
-        `/api/feasibility-studies/submit-decision/${selectedRequest.id}`,
-        {
-          decision,
-          comments,
-          technicalAnalysis,
-          complianceCheck,
-          rejectionReason: decision === "NOT_RECEIVABLE" ? rejectionReason : null,
-        }
-      );
-
-      toast({
-        title: "Décision enregistrée",
-        description:
-          decision === "RECEIVABLE"
-            ? "La demande a été déclarée recevable"
-            : "La demande a été déclarée non recevable",
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/receivability-decision`, {
+        isReceivable: decision === "RECEIVABLE",
+        comments: `${technicalAnalysis}\n\nConformité: ${complianceCheck}\n\nCommentaires: ${comments}${rejectionReason ? "\n\nRaison du rejet: " + rejectionReason : ""}`,
       });
-
-      setStudyDialogOpen(false);
-      loadRequests();
-      
-      // Si recevable, naviguer vers la page de création de devis
-      if (decision === "RECEIVABLE") {
-        setLocation(`/ra/demandes/${selectedRequest.id}/devis`);
-      }
+      toast({ title: "Décision enregistrée" });
+      if (decision === "RECEIVABLE") setLocation(`/ra/demandes/${selectedRequest.id}/devis`);
+      else loadRequests();
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setSubmitting(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
-    
-    <div className="container mx-auto py-8">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Études de Faisabilité</h1>
-          <p className="text-muted-foreground mt-2">
-            Évaluez les demandes d'accréditation qui vous sont assignées
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50/50">
+      <Sidebar />
+      <div className="md:ml-64">
+        <Navbar />
+        <main className="p-8">
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Étude de Recevabilité</h1>
+              <p className="text-muted-foreground mt-2">Analysez les dossiers selon les critères de recevabilité (Étape 2)</p>
+            </div>
 
-        {/* Statistiques */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Demandes assignées
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{requests.length}</div>
-              <p className="text-xs text-muted-foreground">
-                En attente d'étude
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            <Alert><AlertDescription><strong>Délai :</strong> L'étude de recevabilité doit être complétée dans un délai de <strong>6 mois</strong> à compter de la réception du dossier.</AlertDescription></Alert>
 
-        {/* Liste des demandes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Demandes à évaluer</CardTitle>
-            <CardDescription>
-              Effectuez l'étude de faisabilité pour chaque demande
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {requests.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                <p className="text-muted-foreground">
-                  Aucune demande en attente d'étude
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {requests.map((request) => (
-                  <div
-                    key={request.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold">{request.referenceNumber}</h3>
-                        <Badge variant="outline">{request.type}</Badge>
-                        <Badge
-                          variant={
-                            request.status === "RECEIVABILITY_STUDY"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {request.status === "RECEIVABILITY_STUDY"
-                            ? "En cours d'étude"
-                            : "Nouvelle"}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Request list */}
+              <Card className="lg:col-span-1">
+                <CardHeader><CardTitle className="text-lg">Dossiers à étudier</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  {requests.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucun dossier en attente</p>
+                  ) : requests.map((r) => (
+                    <div key={r.id} onClick={() => selectRequest(r)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedRequest?.id === r.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
+                      <div className="flex justify-between items-start">
+                        <div><p className="font-medium text-sm">{r.referenceNumber || `#${r.id}`}</p><p className="text-xs text-muted-foreground">{r.oec?.organizationName}</p><p className="text-xs text-muted-foreground">{r.domain}</p></div>
+                        <Badge variant={r.status === "RECEIVABILITY_STUDY" ? "default" : "secondary"} className="text-xs">
+                          {r.status === "RECEIVABILITY_STUDY" ? "En cours" : "Nouveau"}
                         </Badge>
                       </div>
-                      <p className="text-sm font-medium">
-                        {request.oec.organizationName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Domaine : {request.domain}
-                      </p>
-                      {request.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {request.description}
-                        </p>
-                      )}
-                      <p className="text-sm text-muted-foreground">
-                        Assignée le :{" "}
-                        {new Date(request.assignmentDate).toLocaleDateString("fr-FR")}
-                      </p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setLocation(`/ra/demandes/${request.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Détails
-                      </Button>
-                      <Button size="sm" onClick={() => openStudyDialog(request)}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Étudier
-                      </Button>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Study form */}
+              <Card className="lg:col-span-2">
+                <CardHeader><CardTitle>Étude de Recevabilité</CardTitle><CardDescription>{selectedRequest ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}` : "Sélectionnez un dossier"}</CardDescription></CardHeader>
+                <CardContent>
+                  {!selectedRequest ? (
+                    <p className="text-center text-muted-foreground py-8">Sélectionnez un dossier</p>
+                  ) : selectedRequest.status === "ASSIGNED_TO_RA" ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">Démarrez l'étude de recevabilité pour ce dossier</p>
+                      <Button onClick={startStudy}><FileText className="mr-2 h-4 w-4" />Démarrer l'étude</Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  ) : (
+                    <Tabs value={step} onValueChange={(v) => setStep(v as any)} className="space-y-4">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="documents">1. Documents & Paiement</TabsTrigger>
+                        <TabsTrigger value="resources">2. Ressources</TabsTrigger>
+                        <TabsTrigger value="decision">3. Décision</TabsTrigger>
+                      </TabsList>
 
-      {/* Dialog d'étude de faisabilité */}
-      <Dialog open={studyDialogOpen} onOpenChange={setStudyDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Étude de Faisabilité</DialogTitle>
-            <DialogDescription>
-              Évaluez la recevabilité de la demande
-            </DialogDescription>
-          </DialogHeader>
+                      <TabsContent value="documents" className="space-y-4">
+                        <div className="space-y-2"><Label>Analyse technique des documents *</Label><Textarea value={technicalAnalysis} onChange={(e) => setTechnicalAnalysis(e.target.value)} placeholder="Vérifiez la complétude et la conformité des documents soumis..." rows={5} /></div>
+                        <div className="space-y-2"><Label>Vérification de conformité *</Label><Textarea value={complianceCheck} onChange={(e) => setComplianceCheck(e.target.value)} placeholder="Vérifiez la conformité aux normes applicables..." rows={5} /></div>
+                        <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <input type="checkbox" id="payment-check" checked={paymentVerified} onChange={(e) => setPaymentVerified(e.target.checked)} className="h-5 w-5" />
+                          <label htmlFor="payment-check" className="cursor-pointer"><p className="font-medium">Paiement des frais de dossier vérifié</p><p className="text-sm text-muted-foreground">Confirmez que les droits fixes (5 000 DA) ont été payés</p></label>
+                        </div>
+                        <Button onClick={() => setStep("resources")} disabled={!technicalAnalysis || !complianceCheck || !paymentVerified}>Suivant : Ressources</Button>
+                      </TabsContent>
 
-          {selectedRequest && (
-            <div className="space-y-4 py-4">
-              <Alert>
-                <AlertDescription>
-                  <strong>Référence :</strong> {selectedRequest.referenceNumber}
-                  <br />
-                  <strong>OEC :</strong> {selectedRequest.oec.organizationName}
-                  <br />
-                  <strong>Domaine :</strong> {selectedRequest.domain}
-                </AlertDescription>
-              </Alert>
+                      <TabsContent value="resources" className="space-y-4">
+                        <div className="space-y-3">
+                          <Label>Disponibilité des ressources d'évaluation *</Label>
+                          <RadioGroup value={resourcesAvailable} onValueChange={setResourcesAvailable}>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="yes" id="ra-y" /><Label htmlFor="ra-y" className="cursor-pointer flex-1"><p className="font-medium">Ressources disponibles</p><p className="text-sm text-muted-foreground">Évaluateurs compétents disponibles en interne</p></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="foreign" id="ra-f" /><Label htmlFor="ra-f" className="cursor-pointer flex-1"><div className="flex items-center gap-2"><Globe className="h-4 w-4" /><div><p className="font-medium">Experts étrangers nécessaires</p><p className="text-sm text-muted-foreground">L'OEC sera consulté pour les frais supplémentaires</p></div></div></Label></div>
+                          </RadioGroup>
+                        </div>
+                        {resourcesAvailable === "foreign" && <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>L'OEC sera contacté pour accepter les frais supplémentaires. S'il refuse, le dossier sera classé.</AlertDescription></Alert>}
+                        <Button onClick={() => setStep("decision")} disabled={!resourcesAvailable}>Suivant : Décision</Button>
+                      </TabsContent>
 
-              {/* Décision */}
-              <div className="space-y-3">
-                <Label>Décision de recevabilité</Label>
-                <RadioGroup value={decision} onValueChange={(v) => setDecision(v as any)}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="RECEIVABLE" id="receivable" />
-                    <Label htmlFor="receivable" className="font-normal cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Recevable
-                      </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="NOT_RECEIVABLE" id="not-receivable" />
-                    <Label htmlFor="not-receivable" className="font-normal cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-4 w-4 text-destructive" />
-                        Non recevable
-                      </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Analyse technique */}
-              <div className="space-y-2">
-                <Label htmlFor="technicalAnalysis">Analyse technique</Label>
-                <Textarea
-                  id="technicalAnalysis"
-                  placeholder="Décrivez l'analyse technique de la demande..."
-                  value={technicalAnalysis}
-                  onChange={(e) => setTechnicalAnalysis(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              {/* Vérification de conformité */}
-              <div className="space-y-2">
-                <Label htmlFor="complianceCheck">Vérification de conformité</Label>
-                <Textarea
-                  id="complianceCheck"
-                  placeholder="Décrivez la vérification de conformité..."
-                  value={complianceCheck}
-                  onChange={(e) => setComplianceCheck(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              {/* Commentaires */}
-              <div className="space-y-2">
-                <Label htmlFor="comments">Commentaires généraux</Label>
-                <Textarea
-                  id="comments"
-                  placeholder="Ajoutez des commentaires si nécessaire..."
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              {/* Raison du rejet (si non recevable) */}
-              {decision === "NOT_RECEIVABLE" && (
-                <div className="space-y-2">
-                  <Label htmlFor="rejectionReason">
-                    Raison du rejet <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id="rejectionReason"
-                    placeholder="Expliquez en détail pourquoi la demande est non recevable..."
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={4}
-                    required
-                  />
-                  <Alert variant="destructive">
-                    <AlertDescription>
-                      L'OEC sera notifié et recevra un email avec cette raison.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              )}
-
-              {decision === "RECEIVABLE" && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Une fois validée, vous serez redirigé vers la page de création du devis
-                    et de la convention.
-                  </AlertDescription>
-                </Alert>
-              )}
+                      <TabsContent value="decision" className="space-y-4">
+                        <div className="space-y-3">
+                          <Label>Décision de recevabilité *</Label>
+                          <RadioGroup value={decision} onValueChange={setDecision}>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-green-300 transition-colors cursor-pointer"><RadioGroupItem value="RECEIVABLE" id="dec-r" /><Label htmlFor="dec-r" className="flex items-center gap-2 cursor-pointer flex-1"><CheckCircle className="h-5 w-5 text-green-500" /><div><p className="font-medium">Recevable</p><p className="text-sm text-muted-foreground">Le dossier passera à la validation DG puis à la contractualisation</p></div></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-red-300 transition-colors cursor-pointer"><RadioGroupItem value="NOT_RECEIVABLE" id="dec-nr" /><Label htmlFor="dec-nr" className="flex items-center gap-2 cursor-pointer flex-1"><XCircle className="h-5 w-5 text-red-500" /><div><p className="font-medium">Non recevable</p><p className="text-sm text-muted-foreground">L'OEC devra corriger et soumettre à nouveau</p></div></Label></div>
+                          </RadioGroup>
+                        </div>
+                        <div className="space-y-2"><Label>Commentaires</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Observations générales..." rows={3} /></div>
+                        {decision === "NOT_RECEIVABLE" && <div className="space-y-2"><Label>Raison du rejet *</Label><Textarea value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Détaillez les raisons..." rows={4} /></div>}
+                        <Button onClick={handleSubmitDecision} disabled={submitting || !decision}>
+                          {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enregistrement...</> : <><Send className="mr-2 h-4 w-4" />Soumettre la décision</>}
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setStudyDialogOpen(false)}
-              disabled={submitting}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleSubmitDecision} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Soumettre la décision
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

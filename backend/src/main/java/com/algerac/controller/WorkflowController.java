@@ -47,6 +47,11 @@ public class WorkflowController {
         return ResponseEntity.ok(availabilityRepository.findByUser_Id(userId));
     }
 
+    @GetMapping("/availability/user/{userId}")
+    public ResponseEntity<?> getUserAvailabilityAlt(@PathVariable Long userId) {
+        return ResponseEntity.ok(availabilityRepository.findByUser_Id(userId));
+    }
+
     @PostMapping("/availability")
     public ResponseEntity<ApiResponse> setUnavailability(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
@@ -67,6 +72,28 @@ public class WorkflowController {
                 }
             }
             return ResponseEntity.ok(ApiResponse.success("Indisponibilités enregistrées", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/availability/mark-unavailable")
+    public ResponseEntity<ApiResponse> markUnavailable(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String dateStr = (String) body.get("unavailableDate");
+            String reason = (String) body.getOrDefault("reason", "Indisponible");
+
+            LocalDate date = LocalDate.parse(dateStr);
+            List<UserAvailability> existing = availabilityRepository.findByUser_IdAndUnavailableDateBetween(userId, date, date);
+            if (existing.isEmpty()) {
+                availabilityRepository.save(UserAvailability.builder()
+                        .user(user).unavailableDate(date).reason(reason).build());
+            }
+            return ResponseEntity.ok(ApiResponse.success("Indisponibilité enregistrée", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -119,7 +146,7 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             Long requestId = ((Number) body.get("requestId")).longValue();
             String teamCode = "EQ-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
@@ -136,7 +163,7 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             Long expertId = ((Number) body.get("expertId")).longValue();
             TeamRole role = TeamRole.valueOf((String) body.get("role"));
@@ -149,16 +176,43 @@ public class WorkflowController {
         }
     }
 
+    @DeleteMapping("/teams/members/{memberId}")
+    public ResponseEntity<ApiResponse> removeTeamMember(@PathVariable Long memberId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            teamService.removeMember(memberId, user);
+            return ResponseEntity.ok(ApiResponse.success("Membre retiré de l'équipe", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/teams/{teamId}/send-to-oec")
     public ResponseEntity<ApiResponse> sendTeamToOEC(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             String compositionSheet = body.getOrDefault("compositionSheet", "Fiche composition équipe FOR 26");
             EvaluationTeam team = teamService.sendToOEC(teamId, compositionSheet, user);
             return ResponseEntity.ok(ApiResponse.success("Équipe envoyée à l'OEC pour validation", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/teams/my-teams")
+    public ResponseEntity<?> getMyTeamMemberships(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            
+            List<TeamMember> memberships = memberRepository.findByExpert_Id(userId);
+            return ResponseEntity.ok(memberships);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -169,7 +223,7 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             Boolean hasConflict = (Boolean) body.getOrDefault("hasConflictOfInterest", false);
             String conflictDetails = (String) body.getOrDefault("conflictDetails", "");
@@ -186,7 +240,7 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             Boolean validated = (Boolean) body.get("validated");
             String recusationReason = (String) body.get("recusationReason");
@@ -221,7 +275,7 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
             EvaluationTeam team = teams.isEmpty() ? null : teams.get(0);
 
@@ -247,7 +301,7 @@ public class WorkflowController {
     @PostMapping("/documentary-review/{id}/report-deficiency")
     public ResponseEntity<ApiResponse> reportDeficiency(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
-            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow();
+            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
             review.setDeficienciesIdentified(true);
             review.setDeficienciesDetails(body.get("details"));
             review.setStatus(DocumentaryReviewStatus.DEFICIENCIES_FOUND);
@@ -268,7 +322,7 @@ public class WorkflowController {
     @PostMapping("/documentary-review/{id}/complete")
     public ResponseEntity<ApiResponse> completeDocumentaryReview(@PathVariable Long id) {
         try {
-            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow();
+            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
             review.setReviewCompletionDate(LocalDateTime.now());
             review.setStatus(DocumentaryReviewStatus.COMPLETED_NO_ISSUES);
             docReviewRepository.save(review);
@@ -299,7 +353,7 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
 
             String planCode = "PLAN-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
@@ -329,7 +383,7 @@ public class WorkflowController {
     @PostMapping("/evaluation-plan/{id}/validate")
     public ResponseEntity<ApiResponse> validateEvaluationPlan(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
-            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow();
+            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan d'évaluation non trouvé"));
             Boolean approved = (Boolean) body.getOrDefault("approved", true);
 
             if (approved) {
@@ -357,7 +411,7 @@ public class WorkflowController {
     @PostMapping("/evaluation-plan/{id}/send-to-oec")
     public ResponseEntity<ApiResponse> sendPlanToOEC(@PathVariable Long id) {
         try {
-            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow();
+            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan d'évaluation non trouvé"));
             plan.setSentToOEC(LocalDateTime.now());
             plan.setStatus(EvaluationPlanStatus.SENT_TO_OEC);
             evalPlanRepository.save(plan);
@@ -389,8 +443,8 @@ public class WorkflowController {
             Long requestId = ((Number) body.get("requestId")).longValue();
             Long memberId = ((Number) body.get("teamMemberId")).longValue();
 
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
-            User member = userRepository.findById(memberId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            User member = userRepository.findById(memberId).orElseThrow(() -> new RuntimeException("Membre non trouvé"));
 
             String orderNumber = "OM-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
@@ -415,7 +469,7 @@ public class WorkflowController {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
-            MissionOrder order = missionOrderRepository.findById(id).orElseThrow();
+            MissionOrder order = missionOrderRepository.findById(id).orElseThrow(() -> new RuntimeException("Ordre de mission non trouvé"));
             order.setApprovedByDT(true);
             order.setDtApprovalDate(LocalDateTime.now());
             order.setStatus(MissionOrderStatus.PENDING_DG_APPROVAL);
@@ -433,7 +487,7 @@ public class WorkflowController {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
-            MissionOrder order = missionOrderRepository.findById(id).orElseThrow();
+            MissionOrder order = missionOrderRepository.findById(id).orElseThrow(() -> new RuntimeException("Ordre de mission non trouvé"));
             order.setApprovedByDG(true);
             order.setDgApprovalDate(LocalDateTime.now());
             order.setStatus(MissionOrderStatus.FULLY_APPROVED);
@@ -448,7 +502,7 @@ public class WorkflowController {
     @PostMapping("/mission-orders/{id}/send-to-member")
     public ResponseEntity<ApiResponse> sendMissionOrderToMember(@PathVariable Long id) {
         try {
-            MissionOrder order = missionOrderRepository.findById(id).orElseThrow();
+            MissionOrder order = missionOrderRepository.findById(id).orElseThrow(() -> new RuntimeException("Ordre de mission non trouvé"));
             order.setStatus(MissionOrderStatus.SENT_TO_MEMBER);
             order.setSentToMemberDate(LocalDateTime.now());
             missionOrderRepository.save(order);
@@ -485,10 +539,10 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User author = userRepository.findById(userId).orElseThrow();
+            User author = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
             EvaluationNote note = EvaluationNote.builder()
                     .request(request).author(author)
@@ -509,7 +563,7 @@ public class WorkflowController {
     @PostMapping("/notes/{id}/send-to-ree")
     public ResponseEntity<ApiResponse> sendNoteToREE(@PathVariable Long id) {
         try {
-            EvaluationNote note = noteRepository.findById(id).orElseThrow();
+            EvaluationNote note = noteRepository.findById(id).orElseThrow(() -> new RuntimeException("Note non trouvée"));
             note.setSentToREE(true);
             note.setSentDate(LocalDateTime.now());
             noteRepository.save(note);
@@ -540,7 +594,7 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
             String gapCode = "FOR02-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
@@ -570,7 +624,7 @@ public class WorkflowController {
     @PostMapping("/gaps/{id}/submit-action-plan")
     public ResponseEntity<ApiResponse> submitActionPlan(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
-            Gap gap = gapRepository.findById(id).orElseThrow();
+            Gap gap = gapRepository.findById(id).orElseThrow(() -> new RuntimeException("Écart non trouvé"));
 
             ActionPlan plan = ActionPlan.builder()
                     .gap(gap)
@@ -595,7 +649,7 @@ public class WorkflowController {
     @PostMapping("/gaps/{id}/evaluate-plan")
     public ResponseEntity<ApiResponse> evaluateActionPlan(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
-            Gap gap = gapRepository.findById(id).orElseThrow();
+            Gap gap = gapRepository.findById(id).orElseThrow(() -> new RuntimeException("Écart non trouvé"));
             ActionPlan plan = actionPlanRepository.findByGap_Id(id)
                     .orElseThrow(() -> new RuntimeException("Plan d'action non trouvé"));
 
@@ -631,7 +685,7 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
 
             String reportNumber = "RAP-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
@@ -666,7 +720,7 @@ public class WorkflowController {
     @PostMapping("/reports/{id}/submit")
     public ResponseEntity<ApiResponse> submitReport(@PathVariable Long id) {
         try {
-            EvaluationReport report = reportRepository.findById(id).orElseThrow();
+            EvaluationReport report = reportRepository.findById(id).orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
             report.setSubmittedToCD(LocalDateTime.now());
             report.setStatus(EvaluationReportStatus.SUBMITTED_TO_CD);
             reportRepository.save(report);
@@ -686,7 +740,7 @@ public class WorkflowController {
     @PostMapping("/reports/{id}/validate")
     public ResponseEntity<ApiResponse> validateReport(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
-            EvaluationReport report = reportRepository.findById(id).orElseThrow();
+            EvaluationReport report = reportRepository.findById(id).orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
             Boolean approved = (Boolean) body.getOrDefault("approved", true);
 
             if (approved) {
@@ -725,7 +779,7 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
             String meetingCode = "CAS-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
@@ -755,9 +809,9 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User voter = userRepository.findById(userId).orElseThrow();
+            User voter = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow();
+            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
 
             CASVote vote = CASVote.builder()
                     .meeting(meeting).voter(voter)
@@ -780,7 +834,7 @@ public class WorkflowController {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
-            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow();
+            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
             meeting.setFinalDecision(body.get("decision"));
             meeting.setPresidentNotes(body.get("presidentNotes"));
             meeting.setStatus(CASMeetingStatus.DECIDED);
@@ -820,7 +874,7 @@ public class WorkflowController {
     @PostMapping("/evaluation/start/{requestId}")
     public ResponseEntity<ApiResponse> startEvaluation(@PathVariable Long requestId) {
         try {
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             request.setStatus(RequestStatus.EVALUATION_IN_PROGRESS);
             request.setEvaluationStartDate(LocalDateTime.now());
             request.setCurrentStep("Évaluation en cours");
@@ -835,7 +889,7 @@ public class WorkflowController {
     @PostMapping("/evaluation/complete/{requestId}")
     public ResponseEntity<ApiResponse> completeEvaluation(@PathVariable Long requestId) {
         try {
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             request.setStatus(RequestStatus.EVALUATION_COMPLETED);
             request.setEvaluationEndDate(LocalDateTime.now());
             request.setCurrentStep("Évaluation terminée");
@@ -857,8 +911,17 @@ public class WorkflowController {
             map.put("id", ra.getId());
             map.put("fullName", ra.getFullName());
             map.put("email", ra.getEmail());
-            long assignedCount = requestRepository.findByAssignedToRa_Id(ra.getId()).size();
-            map.put("assignedDossiers", assignedCount);
+            map.put("specialite", ra.getSpecialite());
+            map.put("domaineExpertise", ra.getDomaineExpertise());
+            map.put("sousDomaineExpertise", ra.getSousDomaineExpertise());
+            List<AccreditationRequest> assigned = requestRepository.findByAssignedToRa_Id(ra.getId());
+            map.put("assignedDossiers", assigned.size());
+            long activeDossiers = assigned.stream().filter(r -> 
+                r.getStatus() != RequestStatus.CLOSED && 
+                r.getStatus() != RequestStatus.CAS_DECISION_REFUSAL &&
+                r.getStatus() != RequestStatus.WITHDRAWN
+            ).count();
+            map.put("activeDossiers", activeDossiers);
             return map;
         }).collect(Collectors.toList());
         return ResponseEntity.ok(result);

@@ -32,12 +32,14 @@ public class QuotationService {
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+        if (request.getAssignedToRa() != null &&
+                !request.getAssignedToRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à créer un devis pour cette demande");
         }
         
-        if (request.getStatus() != RequestStatus.RECEIVABLE) {
-            throw new RuntimeException("La demande doit être recevable pour créer un devis");
+        if (request.getStatus() != RequestStatus.RECEIVABLE &&
+                request.getStatus() != RequestStatus.QUOTATION_PREPARATION) {
+            throw new RuntimeException("La demande doit être à l'état 'Recevable' pour créer un devis. Statut actuel : " + request.getStatus());
         }
         
         String quotationNumber = generateQuotationNumber();
@@ -73,7 +75,8 @@ public class QuotationService {
         Quotation quotation = quotationRepository.findById(quotationId)
                 .orElseThrow(() -> new RuntimeException("Devis non trouvé"));
         
-        if (!quotation.getPreparedByRa().getId().equals(currentUser.getId())) {
+        if (quotation.getPreparedByRa() != null &&
+                !quotation.getPreparedByRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à envoyer ce devis");
         }
         
@@ -144,7 +147,8 @@ public class QuotationService {
         Quotation quotation = quotationRepository.findById(quotationId)
                 .orElseThrow(() -> new RuntimeException("Devis non trouvé"));
         
-        if (!quotation.getPreparedByRa().getId().equals(currentUser.getId())) {
+        if (quotation.getPreparedByRa() != null &&
+                !quotation.getPreparedByRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à envoyer ce devis");
         }
         
@@ -179,7 +183,8 @@ public class QuotationService {
                 .orElseThrow(() -> new RuntimeException("Devis non trouvé"));
         
         AccreditationRequest request = quotation.getRequest();
-        if (!request.getOec().getId().equals(currentUser.getId())) {
+        if (request.getOec() != null &&
+                !request.getOec().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à valider ce devis");
         }
         

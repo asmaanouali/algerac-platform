@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Quotation {
   id: number;
@@ -67,14 +68,7 @@ export default function DAGDashboard() {
   const loadQuotations = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/quotations/pending-approval", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors du chargement des devis");
-      }
-
+      const response = await apiRequest("GET", "/api/quotations/pending-approval");
       const data = await response.json();
       setQuotations(data);
     } catch (err: any) {
@@ -100,25 +94,11 @@ export default function DAGDashboard() {
     try {
       setApproving(true);
 
-      const response = await fetch(`/api/quotations/${selectedQuotation.id}/approve`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          comments,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de l'approbation");
-      }
+      await apiRequest("POST", `/api/quotations/${selectedQuotation.id}/approve`, { comments });
 
       toast({
         title: "Devis approuvé",
-        description: "Le devis a été approuvé avec succès",
+        description: "Le devis a été approuvé. Le RA peut maintenant envoyer à l'OEC.",
       });
 
       setApprovalDialogOpen(false);
@@ -143,7 +123,11 @@ export default function DAGDashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto p-6">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard - DAG</h1>
@@ -254,6 +238,8 @@ export default function DAGDashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
+        </main>
       </div>
 
       {/* Dialog d'approbation */}

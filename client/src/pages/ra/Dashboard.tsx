@@ -8,58 +8,82 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, FileSearch, CheckCircle, XCircle, PlayCircle, FileSignature } from "lucide-react";
+import { Loader2, FileSearch, CheckCircle, XCircle, PlayCircle, FileSignature, AlertTriangle, Globe, Eye, ArrowRight, Send, FileText } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
+
+const STATUS_LABELS: Record<string, string> = {
+  ASSIGNED_TO_RA: "Assigné",
+  RECEIVABILITY_STUDY: "Étude en cours",
+  RESOURCE_CHECK: "Vérification ressources",
+  FOREIGN_EXPERT_PROPOSED: "Expert étranger proposé",
+  PRELIMINARY_VISIT_PROPOSED: "Visite préliminaire proposée",
+  PRELIMINARY_VISIT_ACCEPTED: "Visite acceptée",
+  PRELIMINARY_VISIT_COMPLETED: "Visite terminée",
+  OBSTACLES_IDENTIFIED: "Obstacles identifiés",
+  PENDING_DG_VALIDATION: "Attente validation DG",
+  DG_VALIDATED: "Validé par DG",
+  RECEIVABLE: "Recevable",
+  NOT_RECEIVABLE: "Non recevable",
+  QUOTATION_PREPARATION: "Préparation devis",
+  QUOTATION_SENT_TO_DAG: "Devis envoyé au DAG",
+  QUOTATION_APPROVED_BY_DAG: "Devis approuvé par DAG",
+  QUOTATION_SENT_TO_OEC: "Envoyé à l'OEC",
+  QUOTATION_VALIDATED: "Devis validé par OEC",
+  TEAM_DESIGNATION: "Constitution équipe",
+  TEAM_SENT_TO_OEC: "Équipe envoyée à l'OEC",
+  TEAM_VALIDATED: "Équipe validée",
+  TEAM_RECUSED: "Équipe récusée",
+  DOCUMENTARY_REVIEW: "Revue documentaire",
+};
 
 export default function RADashboard() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
-  const [assignedRequests, setAssignedRequests] = useState<any[]>([]);
-  const [studyRequests, setStudyRequests] = useState<any[]>([]);
+  const [allRequests, setAllRequests] = useState<any[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
+
+  // Dialogs
   const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
+  const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [visitDialogOpen, setVisitDialogOpen] = useState(false);
+  const [dgPrepDialogOpen, setDgPrepDialogOpen] = useState(false);
+  const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
+
+  // Form state
   const [referenceNumber, setReferenceNumber] = useState("");
   const [decision, setDecision] = useState("");
   const [comments, setComments] = useState("");
+  const [resourcesAvailable, setResourcesAvailable] = useState("");
+  const [foreignExpertNeeded, setForeignExpertNeeded] = useState(false);
+  const [visitNeeded, setVisitNeeded] = useState("");
+  const [visitJustification, setVisitJustification] = useState("");
+  const [dgSynthesis, setDgSynthesis] = useState("");
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      setLocation("/");
-    } else if (user && !authLoading) {
-      loadData();
-    }
+    if (!authLoading && !user) setLocation("/");
+    else if (user && !authLoading) loadData();
   }, [user, authLoading]);
 
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (!user) return null;
 
   const loadData = async () => {
     try {
-      // Charger les demandes assignées à ce RA
-      const assignedRes = await apiRequest("GET", "/api/requests/assigned-to-me");
-      const data = await assignedRes.json();
-      // Séparer les demandes par statut
-      setAssignedRequests(data.filter((r: any) => r.status === "ASSIGNED_TO_RA"));
-      setStudyRequests(data.filter((r: any) => r.status === "RECEIVABILITY_STUDY"));
+      const res = await apiRequest("GET", "/api/requests/assigned-to-me");
+      const data = await res.json();
+      setAllRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Erreur:", error);
     } finally {
@@ -67,69 +91,41 @@ export default function RADashboard() {
     }
   };
 
+  const newAssignments = allRequests.filter(r => r.status === "ASSIGNED_TO_RA");
+  const inStudy = allRequests.filter(r => ["RECEIVABILITY_STUDY", "RESOURCE_CHECK", "FOREIGN_EXPERT_PROPOSED", "PRELIMINARY_VISIT_PROPOSED", "PRELIMINARY_VISIT_ACCEPTED", "PRELIMINARY_VISIT_COMPLETED", "OBSTACLES_IDENTIFIED", "PENDING_DG_VALIDATION"].includes(r.status));
+  const validated = allRequests.filter(r => ["DG_VALIDATED", "RECEIVABLE"].includes(r.status));
+  const inProgress = allRequests.filter(r => ["QUOTATION_PREPARATION", "QUOTATION_SENT_TO_DAG", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC", "QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_VALIDATED", "TEAM_RECUSED", "DOCUMENTARY_REVIEW"].includes(r.status));
+
+  // Actions
   const startStudy = async (requestId: number) => {
     try {
       await apiRequest("POST", `/api/requests/${requestId}/start-study`);
-
-      toast({
-        title: "Étude commencée",
-        description: "L'étude de recevabilité a été lancée",
-      });
-
+      toast({ title: "Étude commencée", description: "L'étude de recevabilité a été lancée" });
       loadData();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
     }
   };
 
   const openReferenceDialog = (request: any) => {
     setSelectedRequest(request);
-    // Générer un numéro de référence par défaut
     const year = new Date().getFullYear();
-    const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    setReferenceNumber(`D-${year}-${randomNum}`);
+    const num = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    setReferenceNumber(`D-${year}-${num}`);
     setReferenceDialogOpen(true);
   };
 
   const handleSetReference = async () => {
-    if (!referenceNumber.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez saisir un numéro de référence",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!referenceNumber.trim()) return;
     setProcessing(true);
-
     try {
-      await apiRequest(
-        "POST",
-        `/api/requests/${selectedRequest.id}/set-reference`,
-        { referenceNumber: referenceNumber.trim() }
-      );
-
-      toast({
-        title: "Numéro attribué",
-        description: `Le numéro ${referenceNumber} a été attribué avec succès`,
-      });
-
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/set-reference`, { referenceNumber: referenceNumber.trim() });
+      toast({ title: "Numéro attribué", description: `Référence ${referenceNumber} attribuée` });
       setReferenceDialogOpen(false);
       loadData();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-    }
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
   };
 
   const openDecisionDialog = (request: any) => {
@@ -140,375 +136,350 @@ export default function RADashboard() {
   };
 
   const handleDecision = async () => {
-    if (!decision || !comments.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner une décision et saisir des commentaires",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!decision || !comments.trim()) { toast({ title: "Erreur", description: "Remplissez tous les champs", variant: "destructive" }); return; }
     setProcessing(true);
-
     try {
-      await apiRequest(
-        "POST",
-        `/api/requests/${selectedRequest.id}/receivability-decision`,
-        {
-          isReceivable: decision === "receivable",
-          comments: comments
-        }
-      );
-
-      toast({
-        title: "Décision enregistrée",
-        description: `La demande a été déclarée ${decision === "receivable" ? "recevable" : "non recevable"}`,
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/receivability-decision`, {
+        isReceivable: decision === "receivable",
+        comments,
       });
-
+      toast({ title: "Décision enregistrée", description: `Demande déclarée ${decision === "receivable" ? "recevable" : "non recevable"}` });
       setDecisionDialogOpen(false);
       loadData();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
+  };
+
+  const openResourceDialog = (request: any) => {
+    setSelectedRequest(request);
+    setResourcesAvailable("");
+    setForeignExpertNeeded(false);
+    setResourceDialogOpen(true);
+  };
+
+  const handleResourceCheck = async () => {
+    if (!resourcesAvailable) return;
+    setProcessing(true);
+    try {
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/resource-check`, {
+        resourcesAvailable: resourcesAvailable === "yes",
+        foreignExpertNeeded,
+        comments,
       });
-    } finally {
-      setProcessing(false);
+      toast({ title: "Vérification enregistrée" });
+      setResourceDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
+  };
+
+  const openVisitDialog = (request: any) => {
+    setSelectedRequest(request);
+    setVisitNeeded("");
+    setVisitJustification("");
+    setVisitDialogOpen(true);
+  };
+
+  const handleVisitDecision = async () => {
+    if (!visitNeeded) return;
+    setProcessing(true);
+    try {
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/preliminary-visit-decision`, {
+        visitNeeded: visitNeeded === "yes",
+        justification: visitJustification,
+      });
+      toast({ title: "Décision enregistrée", description: visitNeeded === "yes" ? "Visite préliminaire proposée à l'OEC" : "Pas de visite nécessaire" });
+      setVisitDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
+  };
+
+  const openDGPrepDialog = (request: any) => {
+    setSelectedRequest(request);
+    setDgSynthesis("");
+    setDgPrepDialogOpen(true);
+  };
+
+  const handleDGPrep = async () => {
+    if (!dgSynthesis.trim()) return;
+    setProcessing(true);
+    try {
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/prepare-dg-validation`, {
+        synthesis: dgSynthesis,
+      });
+      toast({ title: "Dossier transmis", description: "Le dossier a été transmis au DG pour validation" });
+      setDgPrepDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
+  };
+
+  const openNotifyDialog = (request: any) => {
+    setSelectedRequest(request);
+    setNotifyDialogOpen(true);
+  };
+
+  const handleNotifyReceivable = async () => {
+    setProcessing(true);
+    try {
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/notify-receivable`, {});
+      toast({ title: "OEC notifié", description: "L'OEC a été notifié de la recevabilité. Note de synthèse envoyée au CD." });
+      setNotifyDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally { setProcessing(false); }
+  };
+
+  const getStepActions = (request: any) => {
+    switch (request.status) {
+      case "ASSIGNED_TO_RA":
+        return !request.referenceNumber ? (
+          <Button size="sm" onClick={() => openReferenceDialog(request)}><FileSignature className="mr-2 h-4 w-4" />Attribuer numéro</Button>
+        ) : (
+          <Button size="sm" onClick={() => startStudy(request.id)}><PlayCircle className="mr-2 h-4 w-4" />Commencer l'étude</Button>
+        );
+      case "RECEIVABILITY_STUDY":
+        return (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => openResourceDialog(request)}><Globe className="mr-1 h-4 w-4" />Ressources</Button>
+            <Button size="sm" onClick={() => openDecisionDialog(request)}>Décision</Button>
+          </div>
+        );
+      case "RESOURCE_CHECK":
+        return <Button size="sm" onClick={() => openVisitDialog(request)}><Eye className="mr-1 h-4 w-4" />Visite préliminaire</Button>;
+      case "PRELIMINARY_VISIT_COMPLETED":
+        return <Button size="sm" onClick={() => openDGPrepDialog(request)}><Send className="mr-1 h-4 w-4" />Préparer dossier DG</Button>;
+      case "DG_VALIDATED":
+        return <Button size="sm" onClick={() => openNotifyDialog(request)}><CheckCircle className="mr-1 h-4 w-4" />Notifier OEC</Button>;
+      case "RECEIVABLE":
+        return <Button size="sm" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 3 : Devis</Button>;
+      case "QUOTATION_PREPARATION":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><FileText className="mr-1 h-4 w-4" />Continuer devis</Button>;
+      case "QUOTATION_SENT_TO_DAG":
+        return <Button size="sm" variant="ghost" disabled><Loader2 className="mr-1 h-4 w-4 animate-spin" />En attente DAG…</Button>;
+      case "QUOTATION_APPROVED_BY_DAG":
+        return <Button size="sm" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><Send className="mr-1 h-4 w-4" />Envoyer à l'OEC</Button>;
+      case "QUOTATION_VALIDATED":
+        return <Button size="sm" onClick={() => setLocation(`/ra/equipes`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 4 : Équipe</Button>;
+      case "TEAM_VALIDATED":
+        return <Button size="sm" onClick={() => setLocation(`/ra/revue-documentaire`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 5 : Revue</Button>;
+      default:
+        return <Badge variant="secondary">{STATUS_LABELS[request.status] || request.status}</Badge>;
     }
+  };
+
+  const getProgress = (status: string) => {
+    const steps = ["ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK","PENDING_DG_VALIDATION","DG_VALIDATED","RECEIVABLE","QUOTATION_PREPARATION","QUOTATION_SENT_TO_DAG","QUOTATION_APPROVED_BY_DAG","QUOTATION_VALIDATED","TEAM_DESIGNATION","TEAM_VALIDATED","DOCUMENTARY_REVIEW"];
+    const idx = steps.indexOf(status);
+    return idx >= 0 ? Math.round(((idx + 1) / steps.length) * 100) : 5;
   };
 
   return (
     <div className="flex h-screen w-full bg-slate-50">
       <Sidebar />
-      
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
-        
         <main className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex justify-center items-center h-96">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <div className="flex justify-center items-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
             <>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Responsable d'Accréditation</h1>
-        <p className="text-muted-foreground">
-          Étudiez la recevabilité des demandes qui vous sont assignées
-        </p>
-      </div>
-
-      <Tabs defaultValue="assigned" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="assigned">
-            Nouvelles assignations ({assignedRequests.length})
-          </TabsTrigger>
-          <TabsTrigger value="study">
-            En cours d'étude ({studyRequests.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="assigned">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileSearch className="h-5 w-5" />
-                Demandes assignées
-              </CardTitle>
-              <CardDescription>
-                Demandes qui vous ont été assignées et qui nécessitent de commencer l'étude
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {assignedRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Aucune demande assignée
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>OEC</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Domaine</TableHead>
-                      <TableHead>Date d'assignation</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignedRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-mono font-medium">
-                          {request.referenceNumber || (
-                            <Badge variant="secondary">En attente</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {request.oec?.organizationName || request.oec?.fullName}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{request.type}</Badge>
-                        </TableCell>
-                        <TableCell>{request.domain}</TableCell>
-                        <TableCell>
-                          {request.assignmentDate 
-                            ? new Date(request.assignmentDate).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {!request.referenceNumber ? (
-                            <Button
-                              size="sm"
-                              onClick={() => openReferenceDialog(request)}
-                              variant="default"
-                            >
-                              <FileSignature className="mr-2 h-4 w-4" />
-                              Attribuer numéro
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => startStudy(request.id)}
-                            >
-                              <PlayCircle className="mr-2 h-4 w-4" />
-                              Commencer l'étude
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="study">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileSearch className="h-5 w-5" />
-                Demandes en cours d'étude
-              </CardTitle>
-              <CardDescription>
-                Demandes pour lesquelles l'étude de recevabilité est en cours
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {studyRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Aucune demande en cours d'étude
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>OEC</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Domaine</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {studyRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-mono font-medium">
-                          {request.referenceNumber}
-                        </TableCell>
-                        <TableCell>
-                          {request.oec?.organizationName || request.oec?.fullName}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{request.type}</Badge>
-                        </TableCell>
-                        <TableCell>{request.domain}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {request.description || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            onClick={() => openDecisionDialog(request)}
-                          >
-                            Prendre une décision
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={decisionDialogOpen} onOpenChange={setDecisionDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Décision de recevabilité</DialogTitle>
-            <DialogDescription>
-              Prenez une décision concernant la recevabilité de cette demande
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedRequest && (
-            <div className="space-y-4 py-4">
-              <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Référence:</span>
-                    <p className="font-mono font-medium">{selectedRequest.referenceNumber}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">OEC:</span>
-                    <p className="font-medium">
-                      {selectedRequest.oec?.organizationName || selectedRequest.oec?.fullName}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Type:</span>
-                    <p className="font-medium">{selectedRequest.type}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Domaine:</span>
-                    <p className="font-medium">{selectedRequest.domain}</p>
-                  </div>
-                </div>
-                {selectedRequest.description && (
-                  <div className="mt-2 pt-2 border-t">
-                    <span className="text-muted-foreground text-sm">Description:</span>
-                    <p className="text-sm mt-1">{selectedRequest.description}</p>
-                  </div>
-                )}
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2">Responsable d'Accréditation</h1>
+                <p className="text-muted-foreground">Gérez l'ensemble du processus d'accréditation pour vos dossiers</p>
               </div>
 
-              <div className="space-y-3">
-                <Label>Décision *</Label>
-                <RadioGroup value={decision} onValueChange={setDecision}>
-                  <div className="flex items-center space-x-2 border rounded-lg p-3">
-                    <RadioGroupItem value="receivable" id="receivable" />
-                    <Label htmlFor="receivable" className="flex items-center gap-2 cursor-pointer flex-1">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="font-medium">Recevable</p>
-                        <p className="text-sm text-muted-foreground">
-                          La demande est conforme et peut passer à l'étape suivante
-                        </p>
+              <div className="grid gap-4 md:grid-cols-4 mb-6">
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-600">{newAssignments.length}</div><p className="text-xs text-muted-foreground">Nouvelles assignations</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-600">{inStudy.length}</div><p className="text-xs text-muted-foreground">Étude recevabilité</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-600">{validated.length}</div><p className="text-xs text-muted-foreground">Validés / Recevables</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold">{inProgress.length}</div><p className="text-xs text-muted-foreground">En progression</p></CardContent></Card>
+              </div>
+
+              <Tabs defaultValue="new" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="new">Assignations ({newAssignments.length})</TabsTrigger>
+                  <TabsTrigger value="study">Recevabilité ({inStudy.length})</TabsTrigger>
+                  <TabsTrigger value="validated">Validés ({validated.length})</TabsTrigger>
+                  <TabsTrigger value="progress">En cours ({inProgress.length})</TabsTrigger>
+                  <TabsTrigger value="all">Tous ({allRequests.length})</TabsTrigger>
+                </TabsList>
+
+                {/* Each tab renders the request table with appropriate actions */}
+                {[
+                  { value: "new", data: newAssignments, title: "Nouvelles assignations", desc: "Attribuez un numéro de référence puis démarrez l'étude" },
+                  { value: "study", data: inStudy, title: "Étude de recevabilité", desc: "Vérifiez les ressources, décidez de la visite préliminaire, préparez le dossier DG" },
+                  { value: "validated", data: validated, title: "Dossiers validés par DG", desc: "Notifiez l'OEC et passez à la contractualisation" },
+                  { value: "progress", data: inProgress, title: "Dossiers en progression", desc: "Contractualisation, équipe d'évaluation, revue documentaire" },
+                  { value: "all", data: allRequests, title: "Tous les dossiers", desc: "Vue complète de tous vos dossiers" },
+                ].map(({ value, data, title, desc }) => (
+                  <TabsContent key={value} value={value}>
+                    <Card>
+                      <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{desc}</CardDescription></CardHeader>
+                      <CardContent>
+                        {data.length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">Aucun dossier</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Référence</TableHead>
+                                <TableHead>OEC</TableHead>
+                                <TableHead>Domaine</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead>Progression</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {data.map((request: any) => (
+                                <TableRow key={request.id}>
+                                  <TableCell className="font-mono font-medium">{request.referenceNumber || <Badge variant="secondary">En attente</Badge>}</TableCell>
+                                  <TableCell>{request.oec?.organizationName || request.oec?.fullName}</TableCell>
+                                  <TableCell>{request.domain}</TableCell>
+                                  <TableCell><Badge variant="outline">{STATUS_LABELS[request.status] || request.status.replace(/_/g, " ")}</Badge></TableCell>
+                                  <TableCell><Progress value={getProgress(request.status)} className="w-20" /></TableCell>
+                                  <TableCell>{getStepActions(request)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                ))}
+              </Tabs>
+
+              {/* Reference Dialog */}
+              <Dialog open={referenceDialogOpen} onOpenChange={setReferenceDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader><DialogTitle>Attribuer un numéro de référence</DialogTitle><DialogDescription>Numéro unique pour identifier ce dossier</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Numéro de référence *</Label>
+                      <Input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="D-2026-001" />
+                      <p className="text-xs text-muted-foreground">Format : D-ANNÉE-NUMÉRO</p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setReferenceDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleSetReference} disabled={processing}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Attribuer</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Receivability Decision Dialog */}
+              <Dialog open={decisionDialogOpen} onOpenChange={setDecisionDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader><DialogTitle>Décision de recevabilité</DialogTitle><DialogDescription>Évaluez la conformité du dossier</DialogDescription></DialogHeader>
+                  {selectedRequest && (
+                    <div className="space-y-4 py-4">
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-muted-foreground">Référence:</span><p className="font-mono font-medium">{selectedRequest.referenceNumber}</p></div>
+                        <div><span className="text-muted-foreground">OEC:</span><p className="font-medium">{selectedRequest.oec?.organizationName}</p></div>
+                        <div><span className="text-muted-foreground">Type:</span><p className="font-medium">{selectedRequest.type}</p></div>
+                        <div><span className="text-muted-foreground">Domaine:</span><p className="font-medium">{selectedRequest.domain}</p></div>
                       </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-lg p-3">
-                    <RadioGroupItem value="not-receivable" id="not-receivable" />
-                    <Label htmlFor="not-receivable" className="flex items-center gap-2 cursor-pointer flex-1">
-                      <XCircle className="h-5 w-5 text-red-600" />
-                      <div>
-                        <p className="font-medium">Non recevable</p>
-                        <p className="text-sm text-muted-foreground">
-                          La demande ne répond pas aux critères requis
-                        </p>
+                      <div className="space-y-3">
+                        <Label>Décision *</Label>
+                        <RadioGroup value={decision} onValueChange={setDecision}>
+                          <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-green-300 transition-colors cursor-pointer"><RadioGroupItem value="receivable" id="r1" /><Label htmlFor="r1" className="flex items-center gap-2 cursor-pointer flex-1"><CheckCircle className="h-5 w-5 text-green-600" /><div><p className="font-medium">Recevable</p><p className="text-sm text-muted-foreground">Conforme, passe à l'étape suivante</p></div></Label></div>
+                          <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-red-300 transition-colors cursor-pointer"><RadioGroupItem value="not-receivable" id="r2" /><Label htmlFor="r2" className="flex items-center gap-2 cursor-pointer flex-1"><XCircle className="h-5 w-5 text-red-600" /><div><p className="font-medium">Non recevable</p><p className="text-sm text-muted-foreground">L'OEC devra corriger et resoumettre</p></div></Label></div>
+                        </RadioGroup>
                       </div>
-                    </Label>
+                      <div className="space-y-2"><Label>Commentaires *</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Justification détaillée..." rows={4} /></div>
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setDecisionDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleDecision} disabled={processing}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Enregistrer</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Resource Check Dialog */}
+              <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Vérification des ressources</DialogTitle><DialogDescription>Vérifiez la disponibilité des évaluateurs et experts</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3">
+                      <Label>Ressources disponibles ? *</Label>
+                      <RadioGroup value={resourcesAvailable} onValueChange={setResourcesAvailable}>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="res-y" /><Label htmlFor="res-y">Oui — évaluateurs compétents disponibles</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="res-n" /><Label htmlFor="res-n">Non — besoin d'experts étrangers</Label></div>
+                      </RadioGroup>
+                    </div>
+                    {resourcesAvailable === "no" && (
+                      <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>L'OEC sera consulté pour accepter les frais supplémentaires liés à l'intervention d'experts étrangers.</AlertDescription></Alert>
+                    )}
+                    <div className="space-y-2"><Label>Commentaires</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Détails..." rows={3} /></div>
                   </div>
-                </RadioGroup>
-              </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setResourceDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleResourceCheck} disabled={processing || !resourcesAvailable}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Valider</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-              <div className="space-y-2">
-                <Label htmlFor="comments">Commentaires et justification *</Label>
-                <Textarea
-                  id="comments"
-                  placeholder="Détaillez les raisons de votre décision..."
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  rows={6}
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDecisionDialogOpen(false)}
-              disabled={processing}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleDecision} disabled={processing}>
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enregistrer la décision
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog d'attribution du numéro de référence */}
-      <Dialog open={referenceDialogOpen} onOpenChange={setReferenceDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Attribuer un numéro de référence</DialogTitle>
-            <DialogDescription>
-              Attribuez un numéro de référence unique à cette demande pour la prendre en charge
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedRequest && (
-            <div className="space-y-4 py-4">
-              <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
-                <div className="text-sm space-y-1">
-                  <div>
-                    <span className="text-muted-foreground">OEC:</span>
-                    <p className="font-medium">
-                      {selectedRequest.oec?.organizationName || selectedRequest.oec?.fullName}
-                    </p>
+              {/* Preliminary Visit Dialog */}
+              <Dialog open={visitDialogOpen} onOpenChange={setVisitDialogOpen}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Visite préliminaire</DialogTitle><DialogDescription>Décidez si une visite préliminaire est nécessaire</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3">
+                      <Label>Visite préliminaire nécessaire ? *</Label>
+                      <RadioGroup value={visitNeeded} onValueChange={setVisitNeeded}>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="v-y" /><Label htmlFor="v-y">Oui — une visite du site est nécessaire</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="v-n" /><Label htmlFor="v-n">Non — le dossier peut être traité sans visite</Label></div>
+                      </RadioGroup>
+                    </div>
+                    {visitNeeded === "yes" && (
+                      <div className="space-y-2"><Label>Justification *</Label><Textarea value={visitJustification} onChange={(e) => setVisitJustification(e.target.value)} placeholder="Pourquoi la visite est nécessaire..." rows={3} /></div>
+                    )}
+                    <Alert><AlertDescription>Si oui, l'OEC sera informé et devra accepter la visite préliminaire.</AlertDescription></Alert>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="ml-2 font-medium">{selectedRequest.type}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Domaine:</span>
-                    <span className="ml-2 font-medium">{selectedRequest.domain}</span>
-                  </div>
-                </div>
-              </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setVisitDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleVisitDecision} disabled={processing || !visitNeeded}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Enregistrer</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-              <div className="space-y-2">
-                <Label htmlFor="referenceNumber">Numéro de référence *</Label>
-                <Input
-                  id="referenceNumber"
-                  placeholder="D-2026-001"
-                  value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format recommandé : D-ANNÉE-NUMÉRO (ex: D-2026-001)
-                </p>
-              </div>
-            </div>
-          )}
+              {/* DG Preparation Dialog */}
+              <Dialog open={dgPrepDialogOpen} onOpenChange={setDgPrepDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader><DialogTitle>Préparer le dossier pour le DG</DialogTitle><DialogDescription>Rédigez la note de synthèse pour validation par le Directeur Général</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <Alert><AlertDescription>Le DG validera la recevabilité du dossier sur la base de votre synthèse. Cette étape est obligatoire avant de notifier l'OEC.</AlertDescription></Alert>
+                    <div className="space-y-2"><Label>Note de synthèse pour le DG *</Label><Textarea value={dgSynthesis} onChange={(e) => setDgSynthesis(e.target.value)} placeholder="Résumez les conclusions de votre étude de recevabilité..." rows={8} /></div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setDgPrepDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleDGPrep} disabled={processing || !dgSynthesis.trim()}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Transmettre au DG</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setReferenceDialogOpen(false)}
-              disabled={processing}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleSetReference} disabled={processing}>
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Attribuer le numéro
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {/* Notify OEC Dialog */}
+              <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Notifier l'OEC de la recevabilité</DialogTitle><DialogDescription>L'OEC sera informé que sa demande est recevable. Une note de synthèse sera envoyée au CD.</DialogDescription></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <Alert><CheckCircle className="h-4 w-4" /><AlertDescription>Le dossier a été validé par le DG. L'OEC recevra une notification et vous pourrez passer à l'étape de contractualisation.</AlertDescription></Alert>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setNotifyDialogOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button onClick={handleNotifyReceivable} disabled={processing}>{processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Notifier et continuer</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </>
           )}
         </main>
@@ -516,4 +487,3 @@ export default function RADashboard() {
     </div>
   );
 }
-

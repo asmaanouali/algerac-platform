@@ -4,19 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CheckCircle, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, CheckCircle, FileText, CreditCard, FileSignature, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-
-interface AccreditationRequest {
-  id: number;
-  referenceNumber: string;
-  type: string;
-  domain: string;
-  status: string;
-}
+import { apiRequest } from "@/lib/queryClient";
 
 interface Quotation {
   id: number;
@@ -42,296 +36,162 @@ export default function ValidateQuotationConventionPage() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   
-  const [request, setRequest] = useState<AccreditationRequest | null>(null);
+  const [request, setRequest] = useState<any>(null);
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [convention, setConvention] = useState<Convention | null>(null);
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
+  const [conventionSigned, setConventionSigned] = useState(false);
+  const [quotationAccepted, setQuotationAccepted] = useState(false);
 
   useEffect(() => {
-    if (user && !authLoading) {
-      loadData();
-    }
+    if (user && !authLoading) loadData();
   }, [requestId, user, authLoading]);
 
-  // Rediriger vers login si non authentifié
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-4 w-4 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    setLocation("/");
-    return null;
-  }
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
+  if (!user) { setLocation("/"); return null; }
 
   const loadData = async () => {
     try {
       setLoading(true);
-
-      // Charger la demande
-      const requestRes = await fetch(`/api/requests/${requestId}`, {
-        credentials: "include",
-      });
-      if (requestRes.ok) {
-        setRequest(await requestRes.json());
-      }
-
-      // Charger le devis
-      const quotationRes = await fetch(`/api/quotations/by-request/${requestId}`, {
-        credentials: "include",
-      });
-      if (quotationRes.ok) {
-        const quotations = await quotationRes.json();
-        if (quotations.length > 0) {
-          setQuotation(quotations[0]);
-        }
-      }
-
-      // Charger la convention
-      const conventionRes = await fetch(`/api/conventions/by-request/${requestId}`, {
-        credentials: "include",
-      });
-      if (conventionRes.ok) {
-        const conventions = await conventionRes.json();
-        if (conventions.length > 0) {
-          setConvention(conventions[0]);
-        }
-      }
+      const [reqRes, quotRes, convRes] = await Promise.all([
+        fetch(`/api/requests/${requestId}`, { credentials: "include" }),
+        fetch(`/api/quotations/by-request/${requestId}`, { credentials: "include" }),
+        fetch(`/api/conventions/by-request/${requestId}`, { credentials: "include" }),
+      ]);
+      if (reqRes.ok) setRequest(await reqRes.json());
+      if (quotRes.ok) { const q = await quotRes.json(); if (q.length > 0) setQuotation(q[0]); }
+      if (convRes.ok) { const c = await convRes.json(); if (c.length > 0) setConvention(c[0]); }
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
 
   const handleValidate = async () => {
-    if (!quotation || !convention) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Le devis et la convention doivent être disponibles",
-      });
+    if (!conventionSigned || !quotationAccepted) {
+      toast({ variant: "destructive", title: "Erreur", description: "Vous devez accepter le devis ET signer la convention" });
       return;
     }
-
     try {
       setValidating(true);
-
-      // Valider le devis
-      const quotationRes = await fetch(`/api/quotations/${quotation.id}/validate`, {
-        method: "POST",
-        credentials: "include",
+      await apiRequest("POST", `/api/requests/${requestId}/oec-validate-quotation`, {
+        accepted: true,
+        conventionSigned: true,
       });
-
-      if (!quotationRes.ok) {
-        throw new Error("Erreur lors de la validation du devis");
-      }
-
-      // Valider la convention
-      const conventionRes = await fetch(`/api/conventions/${convention.id}/validate`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!conventionRes.ok) {
-        throw new Error("Erreur lors de la validation de la convention");
-      }
-
-      toast({
-        title: "Validation réussie",
-        description: "Le devis et la convention ont été validés avec succès",
-      });
-
-      setTimeout(() => {
-        setLocation("/oec/mes-demandes");
-      }, 2000);
+      toast({ title: "Succès", description: "Devis accepté et convention signée. Vous serez redirigé vers le paiement." });
+      setTimeout(() => setLocation(`/oec/paiement/${requestId}`), 2000);
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setValidating(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setValidating(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const handleReject = async () => {
+    try {
+      setValidating(true);
+      await apiRequest("POST", `/api/requests/${requestId}/oec-validate-quotation`, { accepted: false });
+      toast({ title: "Devis refusé", description: "Le processus d'accréditation sera arrêté", variant: "destructive" });
+      setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setValidating(false); }
+  };
 
-  if (!request || !quotation || !convention) {
-    return (
-      <div className="container max-w-2xl mx-auto py-8">
-        <Alert variant="destructive">
-          <AlertDescription>
-            Les informations de la demande n'ont pas pu être chargées
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
-    <div className="container max-w-4xl mx-auto py-8">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Validation du Devis et de la Convention</h1>
-          <p className="text-muted-foreground mt-2">
-            Examinez et validez les documents pour la demande {request.referenceNumber}
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50/50">
+      <Sidebar />
+      <div className="md:ml-64">
+        <Navbar />
+        <main className="p-8">
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">Validation du Devis et Convention</h1>
+              <p className="text-muted-foreground mt-2">Examinez le devis et la convention pour votre demande d'accréditation</p>
+            </div>
 
-        <Alert>
-          <AlertDescription>
-            <strong>Type :</strong> {request.type}
-            <br />
-            <strong>Domaine :</strong> {request.domain}
-          </AlertDescription>
-        </Alert>
+            {request && (
+              <Alert><AlertDescription><strong>Référence :</strong> {request.referenceNumber}<br /><strong>Domaine :</strong> {request.domain}<br /><strong>Type :</strong> {request.type}</AlertDescription></Alert>
+            )}
 
-        <Tabs defaultValue="quotation" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="quotation">
-              <FileText className="h-4 w-4 mr-2" />
-              Devis
-            </TabsTrigger>
-            <TabsTrigger value="convention">
-              <FileText className="h-4 w-4 mr-2" />
-              Convention
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="quotation">
-            <Card>
-              <CardHeader>
-                <CardTitle>Devis - {quotation.quotationNumber}</CardTitle>
-                <CardDescription>
-                  Préparé par {quotation.preparedByRaName}
-                  {quotation.approvedByDagName && ` • Approuvé par ${quotation.approvedByDagName}`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Montant total</p>
-                      <p className="text-3xl font-bold">
-                        {quotation.amount.toLocaleString()} DA
-                      </p>
-                    </div>
-                  </div>
-
-                  {quotation.details && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold">Détails des prestations</p>
-                      <div className="p-3 bg-muted/50 rounded text-sm whitespace-pre-wrap">
-                        {quotation.details}
-                      </div>
-                    </div>
-                  )}
-
-                  {quotation.dagComments && (
-                    <div className="space-y-2 mt-4">
-                      <p className="text-sm font-semibold">Commentaires du DAG</p>
-                      <div className="p-3 bg-muted/50 rounded text-sm">
-                        {quotation.dagComments}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="convention">
-            <Card>
-              <CardHeader>
-                <CardTitle>Convention - {convention.conventionNumber}</CardTitle>
-                <CardDescription>
-                  Préparée par {convention.preparedByRaName}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Contenu de la convention</p>
-                    <div className="p-4 border rounded-lg bg-muted/50 text-sm whitespace-pre-wrap max-h-[400px] overflow-y-auto">
-                      {convention.content || "Aucun contenu fourni"}
-                    </div>
-                  </div>
-
-                  {convention.termsAndConditions && (
-                    <div>
-                      <p className="text-sm font-semibold mb-2">Termes et conditions</p>
-                      <div className="p-4 border rounded-lg bg-muted/50 text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-                        {convention.termsAndConditions}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <Card className="border-primary">
-          <CardHeader>
-            <CardTitle>Validation</CardTitle>
-            <CardDescription>
-              En validant, vous acceptez le devis et la convention pour cette demande d'accréditation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
+            <Alert variant="destructive" className="border-amber-300 bg-amber-50 text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Veuillez examiner attentivement le devis et la convention avant de valider.
-                Cette action confirmera votre accord et permettra de poursuivre le processus d'accréditation.
+                <strong>Délai :</strong> Vous disposez de <strong>10 jours</strong> pour accepter ou refuser le devis et signer la convention. Un rappel sera envoyé au bout de 5 jours.
               </AlertDescription>
             </Alert>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setLocation("/oec/mes-demandes")}
-                disabled={validating}
-              >
-                Retour
-              </Button>
-              <Button
-                className="flex-1"
-                size="lg"
-                onClick={handleValidate}
-                disabled={validating}
-              >
-                {validating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Validation en cours...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Valider le devis et la convention
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            <Tabs defaultValue="quotation">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="quotation"><FileText className="h-4 w-4 mr-2" />Devis</TabsTrigger>
+                <TabsTrigger value="convention"><FileSignature className="h-4 w-4 mr-2" />Convention</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="quotation">
+                <Card>
+                  <CardHeader><CardTitle>Devis d'Accréditation</CardTitle><CardDescription>Détail des frais proposés par ALGERAC</CardDescription></CardHeader>
+                  <CardContent className="space-y-4">
+                    {quotation ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">N° Devis</p><p className="font-mono font-medium">{quotation.quotationNumber}</p></div>
+                          <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">Montant</p><p className="text-2xl font-bold text-primary">{quotation.amount?.toLocaleString("fr-FR")} DA</p></div>
+                        </div>
+                        <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground mb-2">Détails</p><p className="whitespace-pre-wrap">{quotation.details}</p></div>
+                        {quotation.dagComments && <div className="border rounded-lg p-4 bg-blue-50"><p className="text-sm text-muted-foreground mb-1">Commentaires DAG</p><p>{quotation.dagComments}</p></div>}
+                        <div className="flex items-center gap-3 p-4 border rounded-lg">
+                          <input type="checkbox" id="accept-quotation" checked={quotationAccepted} onChange={(e) => setQuotationAccepted(e.target.checked)} className="h-5 w-5" />
+                          <label htmlFor="accept-quotation" className="cursor-pointer"><p className="font-medium">J'accepte le devis</p><p className="text-sm text-muted-foreground">Je confirme avoir pris connaissance du montant et des détails</p></label>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">Aucun devis disponible</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="convention">
+                <Card>
+                  <CardHeader><CardTitle>Convention d'Accréditation</CardTitle><CardDescription>Termes et conditions de l'accréditation</CardDescription></CardHeader>
+                  <CardContent className="space-y-4">
+                    {convention ? (
+                      <>
+                        <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">N° Convention</p><p className="font-mono font-medium">{convention.conventionNumber}</p></div>
+                        <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground mb-2">Contenu</p><p className="whitespace-pre-wrap">{convention.content}</p></div>
+                        <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground mb-2">Termes et Conditions</p><p className="whitespace-pre-wrap">{convention.termsAndConditions}</p></div>
+                        <div className="flex items-center gap-3 p-4 border rounded-lg">
+                          <input type="checkbox" id="sign-convention" checked={conventionSigned} onChange={(e) => setConventionSigned(e.target.checked)} className="h-5 w-5" />
+                          <label htmlFor="sign-convention" className="cursor-pointer"><p className="font-medium">Je signe la convention</p><p className="text-sm text-muted-foreground">Je m'engage à respecter les termes et conditions</p></label>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">Aucune convention disponible</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            {quotation && convention && (
+              <Card className="border-primary">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button variant="destructive" onClick={handleReject} disabled={validating} className="flex-1">
+                      Refuser le devis
+                    </Button>
+                    <Button onClick={handleValidate} disabled={validating || !quotationAccepted || !conventionSigned} className="flex-1">
+                      {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><CreditCard className="mr-2 h-4 w-4" />Accepter et procéder au paiement</>}
+                    </Button>
+                  </div>
+                  {(!quotationAccepted || !conventionSigned) && (
+                    <p className="text-sm text-muted-foreground mt-3 text-center">Acceptez le devis et signez la convention pour continuer</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

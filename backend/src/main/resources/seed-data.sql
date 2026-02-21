@@ -1,5 +1,6 @@
 -- ALGERAC Platform - Seed Data
 -- Run this after Spring Boot creates the tables
+-- Table truncation is handled by DataInitializer.java on startup
 
 -- Insert test users (passwords are BCrypt hashed 'password123')
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, specialite, experience, nom, prenom) VALUES
@@ -23,11 +24,4 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 ('dg@algerac.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Mme Farida Benmansour', 'DG', 'ALGERAC', '0556777777', NOW(), 'APPROVED', NULL, NULL, 'Benmansour', 'Farida'),
 ('caroziiinya@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Gestionnaire Compétences', 'GES_COMPETENCES', 'ALGERAC', '0556888888', NOW(), 'APPROVED', 'Gestion des compétences', '5 ans', 'Gestionnaire', 'Compétences')
 ON CONFLICT (email) DO NOTHING;
-
--- Insert test accreditation requests
-INSERT INTO accreditation_requests (oec_id, type, domain, description, status, progress, submission_date, created_at) VALUES
-((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'INITIAL', 'Laboratoire d''essais', 'Demande initiale pour accréditation laboratoire', 'PAYMENT_COMPLETED', 20, NOW() - INTERVAL '2 days', NOW() - INTERVAL '3 days'),
-((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'RENOUVELLEMENT', 'Inspection', 'Renouvellement accréditation inspection', 'PAYMENT_COMPLETED', 20, NOW() - INTERVAL '1 day', NOW() - INTERVAL '2 days'),
-((SELECT id FROM users WHERE email = 'lynakdr724@gmail.com'), 'EXTENSION', 'Certification', 'Extension de portée pour certification', 'PAYMENT_COMPLETED', 20, NOW(), NOW() - INTERVAL '1 day')
-ON CONFLICT DO NOTHING;
 

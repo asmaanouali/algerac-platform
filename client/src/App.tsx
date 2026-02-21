@@ -57,6 +57,18 @@ import DGDashboard from "@/pages/dg/Dashboard";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import CandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 
+// Phase II - Évaluation sur site
+import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
+import GapResponsePage from "@/pages/oec/GapResponsePage";
+import EvaluationOversightPage from "@/pages/cd/EvaluationOversightPage";
+
+// Phase III - Décision d'accréditation & Certificat
+import ReportDraftingPage from "@/pages/ree/ReportDraftingPage";
+import AccreditationDecisionPage from "@/pages/ra/AccreditationDecisionPage";
+
+// Phase IV - Surveillance périodique
+import SurveillanceManagementPage from "@/pages/ra/SurveillanceManagementPage";
+
 function Router() {
   return (
     <Switch>
@@ -84,6 +96,7 @@ function Router() {
       <Route path="/oec/demandes/:requestId/reponse-documentaire" component={DocumentaryResponsePage} />
       <Route path="/oec/demandes/:requestId/plans-actions" component={ActionPlansPage} />
       <Route path="/oec/demandes/:requestId/lever-obstacles" component={LiftObstaclesPage} />
+      <Route path="/oec/reponse-ecarts" component={GapResponsePage} />
       
       {/* RA Routes */}
       <Route path="/ra" component={RADashboard} />
@@ -96,6 +109,8 @@ function Router() {
       <Route path="/ra/gestion-ecarts" component={GapsManagementPage} />
       <Route path="/ra/rapports" component={ReportValidationPage} />
       <Route path="/ra/preparation-cas" component={CASPreparationPage} />
+      <Route path="/ra/decision-accreditation" component={AccreditationDecisionPage} />
+      <Route path="/ra/surveillance" component={SurveillanceManagementPage} />
       
       {/* CD Routes */}
       <Route path="/cd" component={CDDashboard} />
@@ -103,6 +118,7 @@ function Router() {
       <Route path="/cd/manage-requests" component={CDManageRequestsPage} />
       <Route path="/cd/gerer-demandes" component={CDManageRequestsPage} />
       <Route path="/cd/accreditations" component={CDAccreditations} />
+      <Route path="/cd/pilotage-evaluation" component={EvaluationOversightPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
@@ -133,6 +149,8 @@ function Router() {
       <Route path="/ree/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/ree/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/ree/rapports" component={ExpertReportDraftingPage} />
+      <Route path="/ree/evaluation-site" component={SiteEvaluationPage} />
+      <Route path="/ree/redaction-rapport" component={ReportDraftingPage} />
       
       {/* ET Routes */}
       <Route path="/et" component={ETDashboard} />

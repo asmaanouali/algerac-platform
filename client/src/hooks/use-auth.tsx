@@ -54,26 +54,15 @@ export function useLogin() {
 }
 
 export function useLogout() {
-  const { toast } = useToast();
   return useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/logout");
+      // Fire-and-forget — redirect immediately
+      fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     },
-    onSuccess: () => {
+    onMutate: () => {
       queryClient.setQueryData(["/api/auth/me"], null);
-      toast({
-        title: "Déconnexion réussie",
-        description: "À bientôt !",
-      });
-      // Redirection vers la page de connexion
-      window.location.href = "/";
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erreur lors de la déconnexion",
-        description: error.message,
-        variant: "destructive",
-      });
+      queryClient.clear();
+      window.location.replace("/");
     },
   });
 }

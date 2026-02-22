@@ -25,3 +25,5 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 ('caroziiinya@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Gestionnaire Compétences', 'GES_COMPETENCES', 'ALGERAC', '0556888888', NOW(), 'APPROVED', 'Gestion des compétences', '5 ans', 'Gestionnaire', 'Compétences')
 ON CONFLICT (email) DO NOTHING;
 
+-- Test accreditation requests are now seeded by TestDataSeeder.java (JPA-based, more reliable)
+

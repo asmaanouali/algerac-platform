@@ -62,8 +62,12 @@ public class EvaluationTeamService {
         User expert = userRepository.findById(expertId)
                 .orElseThrow(() -> new RuntimeException("Expert non trouvé"));
         
-        if (expert.getRole() != UserRole.EXPERT && expert.getRole() != UserRole.RA) {
-            throw new RuntimeException("L'utilisateur doit être un expert ou un RA");
+        List<UserRole> teamEligibleRoles = List.of(
+            UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ,
+            UserRole.EVALUATEUR, UserRole.FORMATEUR, UserRole.RA
+        );
+        if (!teamEligibleRoles.contains(expert.getRole())) {
+            throw new RuntimeException("L'utilisateur doit avoir un rôle d'évaluation (REE, ET, EQ, EXPERT, etc.)");
         }
         
         TeamMember member = TeamMember.builder()

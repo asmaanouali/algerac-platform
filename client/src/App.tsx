@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";  // Add this import
+import { SidebarProvider } from "@/components/sidebar-context";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/auth/Login";
 import RegisterSelection from "@/pages/auth/RegisterSelection";
@@ -199,8 +200,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>  {/* Add this wrapper */}
-          <Toaster />
-          <Router />
+          <SidebarProvider>
+            <Toaster />
+            <Router />
+          </SidebarProvider>
         </AuthProvider>  {/* Close it here */}
       </TooltipProvider>
     </QueryClientProvider>

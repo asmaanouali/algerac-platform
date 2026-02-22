@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/use-auth";
+﻿import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useRequests } from "@/hooks/use-requests";
@@ -22,7 +22,7 @@ export default function RequestsListPage() {
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
-        <main className="p-8">
+        <main className="p-4 md:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-900">

@@ -177,7 +177,7 @@ export default function CASPresidentDashboard() {
                             <h3 className="font-medium">Récapitulatif des Votes</h3>
                             {votes.length > 0 ? (
                               <>
-                                <div className="grid grid-cols-4 gap-2 mb-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
                                   {["ACCORDER", "REFUSER", "AJOURNER", "ABSTENTION"].map((v) => {
                                     const count = votes.filter((vote: any) => vote.vote === v).length;
                                     return (

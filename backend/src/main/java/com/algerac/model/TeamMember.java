@@ -69,4 +69,14 @@ public class TeamMember {
     public Long getTeamId() {
         return team != null ? team.getId() : null;
     }
+
+    @JsonProperty("requestId")
+    public Long getRequestId() {
+        return team != null && team.getRequest() != null ? team.getRequest().getId() : null;
+    }
+
+    @JsonProperty("requestReferenceNumber")
+    public String getRequestReferenceNumber() {
+        return team != null && team.getRequest() != null ? team.getRequest().getReferenceNumber() : null;
+    }
 }

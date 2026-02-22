@@ -14,7 +14,7 @@ import java.util.List;
  * Truncates all tables except 'users' on every startup.
  * Keeps the dev database clean without losing user accounts.
  */
-@Component
+//@Component
 @Slf4j
 public class DataInitializer implements ApplicationRunner {
 

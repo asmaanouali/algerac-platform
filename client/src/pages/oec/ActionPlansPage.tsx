@@ -90,7 +90,7 @@ export default function ActionPlansPage() {
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
-        <main className="p-8">
+        <main className="p-4 md:p-8">
           <Button
             variant="ghost"
             onClick={() => setLocation("/oec/mes-demandes")}
@@ -174,7 +174,7 @@ export default function ActionPlansPage() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor={`responsible-${index}`}>Responsable *</Label>
                           <Input

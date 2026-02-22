@@ -38,8 +38,8 @@ export default function DocumentaryAnalysisPage() {
     setSelectedTeam(team);
     try {
       const [reqRes, notesRes] = await Promise.all([
-        fetch(`/api/requests/${team.requestId || team.teamId}`, { credentials: "include" }),
-        fetch(`/api/workflow/notes/request/${team.requestId || team.teamId}`, { credentials: "include" }),
+        fetch(`/api/requests/${team.requestId}`, { credentials: "include" }),
+        fetch(`/api/workflow/notes/by-request/${team.requestId}`, { credentials: "include" }),
       ]);
       if (reqRes.ok) setRequest(await reqRes.json());
       if (notesRes.ok) setNotes(await notesRes.json());
@@ -51,7 +51,7 @@ export default function DocumentaryAnalysisPage() {
     setSubmitting(true);
     try {
       const res = await apiRequest("POST", "/api/workflow/notes/create", {
-        requestId: selectedTeam.requestId || selectedTeam.teamId,
+        requestId: selectedTeam.requestId,
         authorId: user?.id,
         noteType: "EVALUATION",
         content: newNote,
@@ -105,7 +105,7 @@ export default function DocumentaryAnalysisPage() {
                   {teams.map((t: any) => (
                     <div key={t.id} onClick={() => selectTeam(t)}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedTeam?.id === t.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
-                      <p className="font-medium text-sm">Équipe #{t.teamId}</p>
+                      <p className="font-medium text-sm">{t.requestReferenceNumber || `Équipe #${t.teamId}`}</p>
                       <p className="text-xs text-muted-foreground">Rôle: {t.role}</p>
                     </div>
                   ))}

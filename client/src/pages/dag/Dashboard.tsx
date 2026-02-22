@@ -123,12 +123,12 @@ export default function DAGDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen bg-slate-50">
       <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col w-full md:ml-64">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-6">
-      <div className="space-y-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
+          <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard - DAG</h1>
           <p className="text-muted-foreground mt-2">
@@ -238,7 +238,7 @@ export default function DAGDashboard() {
             )}
           </CardContent>
         </Card>
-      </div>
+          </div>
         </main>
       </div>
 

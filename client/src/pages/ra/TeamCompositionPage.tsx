@@ -18,6 +18,7 @@ interface Expert {
   id: number;
   fullName: string;
   email: string;
+  role: string;
   specialite: string;
   experience: string;
   activeDossiers: number;
@@ -39,8 +40,8 @@ interface TeamMember {
 const teamRoles = [
   { value: "REE", label: "Responsable Équipe Évaluation" },
   { value: "ET", label: "Évaluateur Technique" },
-  { value: "EXP", label: "Expert" },
   { value: "EQ", label: "Évaluateur Qualité" },
+  { value: "EXP", label: "Expert" },
   { value: "SUP", label: "Superviseur" },
   { value: "OBS", label: "Observateur" },
   { value: "EF", label: "Évaluateur en Formation" },
@@ -73,7 +74,9 @@ export default function TeamCompositionPage() {
       if (reqRes.ok) {
         const allReqs = await reqRes.json();
         setRequests(allReqs.filter((r: any) =>
-          ["QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_RECUSED"].includes(r.status)
+          ["QUOTATION_VALIDATED", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC",
+           "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_RECUSED",
+           "FEASIBILITY_APPROVED", "RECEIVABLE"].includes(r.status)
         ));
       }
       if (expRes.ok) setExperts(await expRes.json());
@@ -370,6 +373,7 @@ export default function TeamCompositionPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Évaluateur</TableHead>
+                        <TableHead>Rôle</TableHead>
                         <TableHead>Spécialité</TableHead>
                         <TableHead>Expérience</TableHead>
                         <TableHead>Dossiers actifs</TableHead>
@@ -385,6 +389,7 @@ export default function TeamCompositionPage() {
                               <p className="text-xs text-muted-foreground">{exp.email}</p>
                             </div>
                           </TableCell>
+                          <TableCell><Badge variant="outline" className="text-xs">{exp.role || "—"}</Badge></TableCell>
                           <TableCell>{exp.specialite || "—"}</TableCell>
                           <TableCell>{exp.experience || "—"}</TableCell>
                           <TableCell>
@@ -423,7 +428,7 @@ export default function TeamCompositionPage() {
                     <SelectContent>
                       {experts.map((exp) => (
                         <SelectItem key={exp.id} value={String(exp.id)}>
-                          {exp.fullName} — {exp.specialite || "Généraliste"} ({exp.activeDossiers} dossiers)
+                          {exp.fullName} [{exp.role}] — {exp.specialite || "Généraliste"} ({exp.activeDossiers} dossiers)
                         </SelectItem>
                       ))}
                     </SelectContent>

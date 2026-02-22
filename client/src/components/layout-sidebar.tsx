@@ -31,6 +31,8 @@ import {
   Vote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useSidebar } from "@/components/sidebar-context";
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -154,8 +156,10 @@ export function Sidebar() {
   const navKey = roleMapping[normalizedRole] || normalizedRole.toLowerCase();
   const currentNav = navItems[navKey as keyof typeof navItems] || [];
 
-  return (
-    <div className="hidden md:flex w-64 bg-white border-r h-screen flex-col fixed left-0 top-0 z-30 shadow-lg">
+  const { isMobileOpen, closeMobile } = useSidebar();
+
+  const sidebarContent = (
+    <>
       <div className="p-6 border-b flex items-center justify-center">
         <div className="flex items-center gap-3 font-display text-2xl font-bold text-primary">
           <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
@@ -164,7 +168,6 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-      
         {currentNav.map((item) => (
           <Link key={item.href} href={item.href}>
             <div
@@ -172,6 +175,7 @@ export function Sidebar() {
                 "sidebar-link cursor-pointer",
                 location === item.href && "active"
               )}
+              onClick={closeMobile}
             >
               <item.icon className="w-5 h-5" />
               <span>{item.label}</span>
@@ -181,8 +185,8 @@ export function Sidebar() {
       </div>
 
       <div className="p-4 border-t">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={() => logoutMutation.mutate()}
         >
@@ -190,6 +194,22 @@ export function Sidebar() {
           Déconnexion
         </Button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex w-64 bg-white border-r h-screen flex-col fixed left-0 top-0 z-30 shadow-lg">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile sidebar drawer */}
+      <Sheet open={isMobileOpen} onOpenChange={(open) => !open && closeMobile()}>
+        <SheetContent side="left" className="w-64 p-0 flex flex-col">
+          {sidebarContent}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

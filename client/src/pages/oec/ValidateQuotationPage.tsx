@@ -103,7 +103,7 @@ export default function ValidateQuotationConventionPage() {
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
-        <main className="p-8">
+        <main className="p-4 md:p-8">
           <div className="max-w-4xl mx-auto space-y-6">
             <div>
               <h1 className="text-3xl font-bold">Validation du Devis et Convention</h1>
@@ -133,7 +133,7 @@ export default function ValidateQuotationConventionPage() {
                   <CardContent className="space-y-4">
                     {quotation ? (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">N° Devis</p><p className="font-mono font-medium">{quotation.quotationNumber}</p></div>
                           <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">Montant</p><p className="text-2xl font-bold text-primary">{quotation.amount?.toLocaleString("fr-FR")} DA</p></div>
                         </div>

@@ -46,11 +46,11 @@ export default function ReportDraftingPage() {
   const selectTeam = async (team: any) => {
     setSelectedTeam(team);
     try {
-      const reqId = team.requestId || team.teamId;
+      const reqId = team.requestId;
       const [notesRes, gapsRes, reportsRes] = await Promise.all([
-        fetch(`/api/workflow/notes/request/${reqId}`, { credentials: "include" }),
-        fetch(`/api/workflow/gaps/request/${reqId}`, { credentials: "include" }),
-        fetch(`/api/workflow/reports/request/${reqId}`, { credentials: "include" }),
+        fetch(`/api/workflow/notes/by-request/${reqId}`, { credentials: "include" }),
+        fetch(`/api/workflow/gaps/by-request/${reqId}`, { credentials: "include" }),
+        fetch(`/api/workflow/reports/by-request/${reqId}`, { credentials: "include" }),
       ]);
       if (notesRes.ok) setNotes(await notesRes.json());
       if (gapsRes.ok) setGaps(await gapsRes.json());
@@ -61,7 +61,7 @@ export default function ReportDraftingPage() {
   const createDraft = async () => {
     setSubmitting(true);
     try {
-      const reqId = selectedTeam.requestId || selectedTeam.teamId;
+      const reqId = selectedTeam.requestId;
       const res = await apiRequest("POST", "/api/workflow/reports/create", {
         requestId: reqId,
         authorId: user?.id,
@@ -125,7 +125,7 @@ export default function ReportDraftingPage() {
                   {teams.map((t: any) => (
                     <div key={t.id} onClick={() => selectTeam(t)}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedTeam?.id === t.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
-                      <p className="font-medium text-sm">Équipe #{t.teamId}</p>
+                      <p className="font-medium text-sm">{t.requestReferenceNumber || `Équipe #${t.teamId}`}</p>
                       <Badge variant="outline" className="text-xs mt-1">{t.role}</Badge>
                     </div>
                   ))}

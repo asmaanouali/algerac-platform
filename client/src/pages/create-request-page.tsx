@@ -73,7 +73,7 @@ export default function CreateRequestPage() {
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
-        <main className="p-8">
+        <main className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
@@ -102,7 +102,7 @@ export default function CreateRequestPage() {
                     {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
                   </div>
                   <span className={cn(
-                    "mt-2 text-sm font-medium",
+                    "mt-2 text-sm font-medium hidden sm:block",
                     currentStep >= step.id ? "text-primary" : "text-slate-400"
                   )}>
                     {step.title}
@@ -183,7 +183,7 @@ export default function CreateRequestPage() {
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-4 border rounded-lg bg-slate-50">
                           <span className="text-xs text-muted-foreground uppercase">Organisation</span>
                           <p className="font-semibold">{user.organizationName || user.fullName}</p>

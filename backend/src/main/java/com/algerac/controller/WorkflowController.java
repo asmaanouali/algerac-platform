@@ -107,8 +107,10 @@ public class WorkflowController {
 
     @GetMapping("/available-experts")
     public ResponseEntity<?> getAvailableExperts(@RequestParam(required = false) String date) {
-        List<User> experts = userRepository.findByRole(UserRole.EXPERT).stream()
-                .filter(u -> u.getStatus() == UserStatus.APPROVED).collect(Collectors.toList());
+        List<UserRole> teamEligibleRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR);
+        List<User> experts = userRepository.findAll().stream()
+                .filter(u -> teamEligibleRoles.contains(u.getRole()) && u.getStatus() == UserStatus.APPROVED)
+                .collect(Collectors.toList());
 
         if (date != null) {
             LocalDate targetDate = LocalDate.parse(date);
@@ -123,6 +125,7 @@ public class WorkflowController {
             map.put("id", e.getId());
             map.put("fullName", e.getFullName());
             map.put("email", e.getEmail());
+            map.put("role", e.getRole() != null ? e.getRole().name() : null);
             map.put("specialite", e.getSpecialite());
             map.put("experience", e.getExperience());
             map.put("disponibilite", e.getDisponibilite());

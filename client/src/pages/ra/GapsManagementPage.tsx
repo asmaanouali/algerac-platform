@@ -119,7 +119,7 @@ export default function GapsManagementPage() {
                     <p className="text-center text-muted-foreground py-8">Aucun écart identifié pour ce dossier</p>
                   ) : (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <Card><CardContent className="pt-4 text-center">
                           <p className="text-2xl font-bold text-red-600">{gaps.filter((g: any) => g.type === "CRITIQUE").length}</p>
                           <p className="text-xs text-muted-foreground">Critiques</p>

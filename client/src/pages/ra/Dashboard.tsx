@@ -42,6 +42,32 @@ const STATUS_LABELS: Record<string, string> = {
   TEAM_VALIDATED: "Équipe validée",
   TEAM_RECUSED: "Équipe récusée",
   DOCUMENTARY_REVIEW: "Revue documentaire",
+  DOCUMENTARY_REVIEW_DEFICIENCIES: "Insuffisances documentaires",
+  AWAITING_OEC_DOC_RESPONSE: "Attente réponse OEC",
+  DOCUMENTARY_REVIEW_COMPLETED: "Revue documentaire terminée",
+  EVALUATION_PLAN_PREPARATION: "Préparation évaluation",
+  EVALUATION_PLAN_VALIDATION: "Validation plan FOR 32",
+  EVALUATION_PLANNED: "Évaluation planifiée",
+  EVALUATION_IN_PROGRESS: "Évaluation en cours",
+  EVALUATION_COMPLETED: "Évaluation terminée",
+  AWAITING_ACTION_PLANS: "Attente plans d'action",
+  ACTION_PLANS_EVALUATION: "Évaluation plans d'action",
+  ACTION_PLANS_IMPLEMENTATION: "Mise en œuvre plans",
+  GAPS_RESOLVED: "Écarts résolus",
+  REPORT_DRAFTING: "Rédaction rapport",
+  REPORT_VALIDATION: "Validation rapport",
+  REPORT_VALIDATED: "Rapport validé",
+  CAS_PREPARATION: "Préparation CAS",
+  CAS_SCHEDULED: "CAS programmé",
+  CAS_DECISION_GRANT: "Décision favorable",
+  CAS_DECISION_REFUSAL: "Décision défavorable",
+  CAS_DECISION_POSTPONEMENT: "Décision reportée",
+  CERTIFICATE_PREPARATION: "Préparation certificat",
+  CERTIFICATE_ISSUED: "Certificat délivré",
+  ACTIVE: "Accréditation active",
+  SUSPENDED: "Suspendu",
+  WITHDRAWN: "Retiré",
+  CLOSED: "Clôturé",
 };
 
 export default function RADashboard() {
@@ -94,7 +120,8 @@ export default function RADashboard() {
   const newAssignments = allRequests.filter(r => r.status === "ASSIGNED_TO_RA");
   const inStudy = allRequests.filter(r => ["RECEIVABILITY_STUDY", "RESOURCE_CHECK", "FOREIGN_EXPERT_PROPOSED", "PRELIMINARY_VISIT_PROPOSED", "PRELIMINARY_VISIT_ACCEPTED", "PRELIMINARY_VISIT_COMPLETED", "OBSTACLES_IDENTIFIED", "PENDING_DG_VALIDATION"].includes(r.status));
   const validated = allRequests.filter(r => ["DG_VALIDATED", "RECEIVABLE"].includes(r.status));
-  const inProgress = allRequests.filter(r => ["QUOTATION_PREPARATION", "QUOTATION_SENT_TO_DAG", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC", "QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_VALIDATED", "TEAM_RECUSED", "DOCUMENTARY_REVIEW"].includes(r.status));
+  const inProgress = allRequests.filter(r => ["QUOTATION_PREPARATION", "QUOTATION_SENT_TO_DAG", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC", "QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_VALIDATED", "TEAM_RECUSED", "DOCUMENTARY_REVIEW", "DOCUMENTARY_REVIEW_DEFICIENCIES", "AWAITING_OEC_DOC_RESPONSE", "DOCUMENTARY_REVIEW_COMPLETED"].includes(r.status));
+  const inEvaluation = allRequests.filter(r => ["EVALUATION_PLAN_PREPARATION", "EVALUATION_PLAN_VALIDATION", "EVALUATION_PLANNED", "EVALUATION_IN_PROGRESS", "EVALUATION_COMPLETED", "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION", "ACTION_PLANS_IMPLEMENTATION", "GAPS_RESOLVED", "REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED", "CAS_PREPARATION", "CAS_SCHEDULED", "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT", "CERTIFICATE_PREPARATION", "CERTIFICATE_ISSUED", "ACTIVE"].includes(r.status));
 
   // Actions
   const startStudy = async (requestId: number) => {
@@ -269,13 +296,62 @@ export default function RADashboard() {
         return <Button size="sm" onClick={() => setLocation(`/ra/equipes`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 4 : Équipe</Button>;
       case "TEAM_VALIDATED":
         return <Button size="sm" onClick={() => setLocation(`/ra/revue-documentaire`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 5 : Revue</Button>;
+      case "DOCUMENTARY_REVIEW":
+      case "DOCUMENTARY_REVIEW_DEFICIENCIES":
+      case "AWAITING_OEC_DOC_RESPONSE":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/revue-documentaire`)}><FileSearch className="mr-1 h-4 w-4" />Revue documentaire</Button>;
+      case "DOCUMENTARY_REVIEW_COMPLETED":
+        return <Button size="sm" onClick={() => setLocation(`/ra/preparation-evaluation`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 6 : Prép. évaluation</Button>;
+      case "EVALUATION_PLAN_PREPARATION":
+      case "EVALUATION_PLAN_VALIDATION":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/preparation-evaluation`)}><FileText className="mr-1 h-4 w-4" />Préparation évaluation</Button>;
+      case "EVALUATION_PLANNED":
+        return <Badge className="bg-blue-100 text-blue-800">Évaluation planifiée</Badge>;
+      case "EVALUATION_IN_PROGRESS":
+        return <Badge className="bg-amber-100 text-amber-800">Évaluation sur site</Badge>;
+      case "EVALUATION_COMPLETED":
+        return <Button size="sm" onClick={() => setLocation(`/ra/ecarts`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 8 : Écarts</Button>;
+      case "AWAITING_ACTION_PLANS":
+      case "ACTION_PLANS_EVALUATION":
+      case "ACTION_PLANS_IMPLEMENTATION":
+      case "GAPS_RESOLVED":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/ecarts`)}><FileText className="mr-1 h-4 w-4" />Gestion écarts</Button>;
+      case "REPORT_DRAFTING":
+      case "REPORT_VALIDATION":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/rapport`)}><FileText className="mr-1 h-4 w-4" />Validation rapport</Button>;
+      case "REPORT_VALIDATED":
+        return <Button size="sm" onClick={() => setLocation(`/ra/preparation-cas`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 9 : CAS</Button>;
+      case "CAS_PREPARATION":
+      case "CAS_SCHEDULED":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/preparation-cas`)}><FileText className="mr-1 h-4 w-4" />Préparation CAS</Button>;
+      case "CAS_DECISION_GRANT":
+        return <Button size="sm" onClick={() => setLocation(`/ra/decision`)}><CheckCircle className="mr-1 h-4 w-4" />Décision favorable</Button>;
+      case "CAS_DECISION_REFUSAL":
+        return <Badge variant="destructive">Refusé</Badge>;
+      case "CAS_DECISION_POSTPONEMENT":
+        return <Badge className="bg-amber-100 text-amber-800">Reporté</Badge>;
+      case "CERTIFICATE_PREPARATION":
+      case "CERTIFICATE_ISSUED":
+      case "ACTIVE":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/decision`)}><CheckCircle className="mr-1 h-4 w-4" />Accréditation</Button>;
       default:
         return <Badge variant="secondary">{STATUS_LABELS[request.status] || request.status}</Badge>;
     }
   };
 
   const getProgress = (status: string) => {
-    const steps = ["ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK","PENDING_DG_VALIDATION","DG_VALIDATED","RECEIVABLE","QUOTATION_PREPARATION","QUOTATION_SENT_TO_DAG","QUOTATION_APPROVED_BY_DAG","QUOTATION_VALIDATED","TEAM_DESIGNATION","TEAM_VALIDATED","DOCUMENTARY_REVIEW"];
+    const steps = [
+      "ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK","PENDING_DG_VALIDATION",
+      "DG_VALIDATED","RECEIVABLE",
+      "QUOTATION_PREPARATION","QUOTATION_APPROVED_BY_DAG","QUOTATION_VALIDATED",
+      "TEAM_DESIGNATION","TEAM_VALIDATED",
+      "DOCUMENTARY_REVIEW","DOCUMENTARY_REVIEW_COMPLETED",
+      "EVALUATION_PLAN_PREPARATION","EVALUATION_PLANNED","EVALUATION_IN_PROGRESS","EVALUATION_COMPLETED",
+      "AWAITING_ACTION_PLANS","GAPS_RESOLVED",
+      "REPORT_DRAFTING","REPORT_VALIDATED",
+      "CAS_PREPARATION","CAS_SCHEDULED","CAS_DECISION_GRANT",
+      "CERTIFICATE_ISSUED","ACTIVE"
+    ];
     const idx = steps.indexOf(status);
     return idx >= 0 ? Math.round(((idx + 1) / steps.length) * 100) : 5;
   };
@@ -295,11 +371,12 @@ export default function RADashboard() {
                 <p className="text-muted-foreground">Gérez l'ensemble du processus d'accréditation pour vos dossiers</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4 mb-6">
+              <div className="grid gap-4 md:grid-cols-5 mb-6">
                 <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-600">{newAssignments.length}</div><p className="text-xs text-muted-foreground">Nouvelles assignations</p></CardContent></Card>
                 <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-600">{inStudy.length}</div><p className="text-xs text-muted-foreground">Étude recevabilité</p></CardContent></Card>
                 <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-600">{validated.length}</div><p className="text-xs text-muted-foreground">Validés / Recevables</p></CardContent></Card>
                 <Card><CardContent className="pt-6"><div className="text-2xl font-bold">{inProgress.length}</div><p className="text-xs text-muted-foreground">En progression</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-purple-600">{inEvaluation.length}</div><p className="text-xs text-muted-foreground">Évaluation / Décision</p></CardContent></Card>
               </div>
 
               <Tabs defaultValue="new" className="space-y-4">
@@ -308,6 +385,7 @@ export default function RADashboard() {
                   <TabsTrigger value="study">Recevabilité ({inStudy.length})</TabsTrigger>
                   <TabsTrigger value="validated">Validés ({validated.length})</TabsTrigger>
                   <TabsTrigger value="progress">En cours ({inProgress.length})</TabsTrigger>
+                  <TabsTrigger value="evaluation">Évaluation ({inEvaluation.length})</TabsTrigger>
                   <TabsTrigger value="all">Tous ({allRequests.length})</TabsTrigger>
                 </TabsList>
 
@@ -317,6 +395,7 @@ export default function RADashboard() {
                   { value: "study", data: inStudy, title: "Étude de recevabilité", desc: "Vérifiez les ressources, décidez de la visite préliminaire, préparez le dossier DG" },
                   { value: "validated", data: validated, title: "Dossiers validés par DG", desc: "Notifiez l'OEC et passez à la contractualisation" },
                   { value: "progress", data: inProgress, title: "Dossiers en progression", desc: "Contractualisation, équipe d'évaluation, revue documentaire" },
+                  { value: "evaluation", data: inEvaluation, title: "Évaluation & Décision", desc: "Préparation évaluation, écarts, rapport, CAS, accréditation (Étapes 6-9)" },
                   { value: "all", data: allRequests, title: "Tous les dossiers", desc: "Vue complète de tous vos dossiers" },
                 ].map(({ value, data, title, desc }) => (
                   <TabsContent key={value} value={value}>

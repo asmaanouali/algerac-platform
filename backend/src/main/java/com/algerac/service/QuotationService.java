@@ -25,10 +25,14 @@ public class QuotationService {
     private final NotificationService notificationService;
     
     /**
-     * Créer un nouveau devis par le RA
+     * Créer une demande d'établissement du devis par le RA
+     * Le RA propose la composition de l'équipe et la durée, le montant sera fixé par le DAG
      */
     @Transactional
-    public Quotation createQuotation(Long requestId, BigDecimal amount, String details, User currentUser) {
+    public Quotation createQuotation(Long requestId, Integer reeCount, Integer etCount,
+                                     Integer eqCount, Integer obsCount, Integer supCount,
+                                     Integer expCount, Double evaluationDurationDays,
+                                     String details, User currentUser) {
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -49,7 +53,14 @@ public class QuotationService {
                 .quotationNumber(quotationNumber)
                 .preparedByRa(currentUser)
                 .status(QuotationStatus.DRAFT)
-                .amount(amount)
+                .amount(BigDecimal.ZERO) // Le montant sera défini par le DAG
+                .reeCount(reeCount != null ? reeCount : 1)
+                .etCount(etCount != null ? etCount : 1)
+                .eqCount(eqCount != null ? eqCount : 0)
+                .obsCount(obsCount != null ? obsCount : 0)
+                .supCount(supCount != null ? supCount : 0)
+                .expCount(expCount != null ? expCount : 0)
+                .evaluationDurationDays(evaluationDurationDays)
                 .details(details)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -61,7 +72,7 @@ public class QuotationService {
         request.setProgress(60);
         requestRepository.save(request);
         
-        log.info("Devis {} créé pour la demande {} par {}", 
+        log.info("Demande d'établissement du devis {} créée pour la demande {} par {}", 
                 quotationNumber, request.getReferenceNumber(), currentUser.getFullName());
         
         return quotation;
@@ -103,10 +114,10 @@ public class QuotationService {
     }
     
     /**
-     * Approuver le devis par le DAG
+     * Le DAG définit le montant du devis et l'approuve
      */
     @Transactional
-    public Quotation approveQuotationByDAG(Long quotationId, String comments, User currentUser) {
+    public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments, User currentUser) {
         if (currentUser.getRole() != UserRole.valueOf("DAG")) {
             throw new RuntimeException("Seuls les DAG peuvent approuver les devis");
         }
@@ -118,6 +129,11 @@ public class QuotationService {
             throw new RuntimeException("Ce devis n'est pas en attente d'approbation");
         }
         
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Le montant du devis doit être positif");
+        }
+        
+        quotation.setAmount(amount); // Le DAG fixe le montant
         quotation.setStatus(QuotationStatus.APPROVED_BY_DAG);
         quotation.setApprovedByDag(currentUser);
         quotation.setDagComments(comments);

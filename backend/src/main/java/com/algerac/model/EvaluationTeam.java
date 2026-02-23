@@ -2,6 +2,7 @@ package com.algerac.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,15 @@ public class EvaluationTeam {
     private LocalDateTime sentToOEC; // Date d'envoi de la composition à l'OEC
     
     private LocalDateTime oecResponseDeadline; // Délai de réponse OEC (3 jours)
+    
+    private LocalDate proposedEvaluationDate; // Date d'évaluation proposée par RA
+    
+    private LocalDate oecProposedDate; // Date alternative proposée par l'OEC (si refus)
+    
+    private Boolean evaluationDateAccepted; // OEC a accepté la date proposée
+    
+    @Column(columnDefinition = "TEXT")
+    private String dateRefusalReason; // Motif du refus de date par l'OEC
     
     private Boolean oecValidated; // OEC a validé la composition
     

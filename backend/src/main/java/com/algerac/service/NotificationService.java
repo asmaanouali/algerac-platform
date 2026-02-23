@@ -598,7 +598,24 @@ public class NotificationService {
     }
     
     // ===== NOTIFICATIONS DÉCISIONS CAS =====
-    
+
+    @Transactional
+    public void notifyRACASDecisionReceived(AccreditationRequest request, String decision) {
+        User ra = request.getAssignedToRa();
+        if (ra == null) return;
+        Notification notification = Notification.builder()
+                .user(ra)
+                .title("Décision CAS reçue")
+                .message(String.format("Le Président du CAS a rendu sa décision pour la demande %s : %s. " +
+                        "Vous pouvez maintenant transmettre cette décision à l'OEC.",
+                        request.getReferenceNumber(), decision))
+                .type("info")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+
     @Transactional
     public void notifyOECAccreditationGranted(AccreditationRequest request, CASDecisionType type, String scope) {
         String title = "Accréditation accordée!";

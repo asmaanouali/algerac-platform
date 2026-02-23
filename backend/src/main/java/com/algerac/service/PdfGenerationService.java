@@ -224,17 +224,25 @@ public class PdfGenerationService {
                     table.setWidth(UnitValue.createPercentValue(100));
                     table.setMarginBottom(10);
                     
-                    table.addCell(createCell("Diplôme:", boldFont));
-                    table.addCell(createCell(String.valueOf(formation.get("diplome")), font));
+                    String dateDuree = formation.get("dateDuree") != null ? String.valueOf(formation.get("dateDuree")) : "";
+                    if (dateDuree.isEmpty() || "null".equals(dateDuree)) {
+                        dateDuree = (formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "") +
+                                   (formation.get("dateFin") != null ? " - " + String.valueOf(formation.get("dateFin")) : "");
+                    }
                     
-                    table.addCell(createCell("Université:", boldFont));
+                    table.addCell(createCell("Date & durée:", boldFont));
+                    table.addCell(createCell(dateDuree, font));
+                    
+                    table.addCell(createCell("Université / Institution:", boldFont));
                     table.addCell(createCell(String.valueOf(formation.get("universite")), font));
                     
-                    table.addCell(createCell("Spécialité:", boldFont));
-                    table.addCell(createCell(String.valueOf(formation.get("specialite")), font));
+                    table.addCell(createCell("Cours / Spécialité:", boldFont));
+                    String cours = formation.get("cours") != null ? String.valueOf(formation.get("cours")) : "";
+                    String specialite = formation.get("specialite") != null ? String.valueOf(formation.get("specialite")) : "";
+                    table.addCell(createCell(!cours.isEmpty() && !"null".equals(cours) ? cours : specialite, font));
                     
-                    table.addCell(createCell("Date de fin:", boldFont));
-                    table.addCell(createCell(String.valueOf(formation.get("dateFin")), font));
+                    table.addCell(createCell("Diplôme:", boldFont));
+                    table.addCell(createCell(String.valueOf(formation.get("diplome")), font));
                     
                     document.add(table);
                 }
@@ -385,16 +393,25 @@ public class PdfGenerationService {
                     new TypeReference<List<Map<String, Object>>>() {}
                 );
                 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{30, 70}));
+                Table table = new Table(UnitValue.createPercentArray(new float[]{25, 45, 30}));
                 table.setWidth(UnitValue.createPercentValue(100));
                 
                 // En-tête
                 table.addHeaderCell(createCell("Date & Durée", boldFont));
                 table.addHeaderCell(createCell("Formation", boldFont));
+                table.addHeaderCell(createCell("Contrôlé par ALGERAC", boldFont));
                 
                 for (Map<String, Object> formation : formations) {
-                    table.addCell(createCell(formation.get("dateDebut") + " (" + formation.get("duree") + ")", font));
+                    String dateDuree = formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "";
+                    String duree = formation.get("duree") != null ? String.valueOf(formation.get("duree")) : "";
+                    String dateDisplay = !dateDuree.isEmpty() && !"null".equals(dateDuree) ? dateDuree : "";
+                    if (!duree.isEmpty() && !"null".equals(duree) && !duree.equals(dateDisplay)) {
+                        dateDisplay = dateDisplay.isEmpty() ? duree : dateDisplay + " (" + duree + ")";
+                    }
+                    table.addCell(createCell(dateDisplay, font));
                     table.addCell(createCell(String.valueOf(formation.get("intituleFormation")), font));
+                    String controle = formation.get("controleParAlgerac") != null ? String.valueOf(formation.get("controleParAlgerac")) : "";
+                    table.addCell(createCell(!"null".equals(controle) ? controle : "", font));
                 }
                 
                 document.add(table);
@@ -413,7 +430,7 @@ public class PdfGenerationService {
                 .setMarginTop(10);
         document.add(sectionTitle);
         
-        Paragraph note = new Paragraph("1 = Basique | 2 = Bien | 3 = Très bien | 4 = Excellent")
+        Paragraph note = new Paragraph("Niveaux : Basique | Assez bien | Bien | Très bien | Excellent")
                 .setFontSize(8)
                 .setItalic()
                 .setMarginBottom(5);

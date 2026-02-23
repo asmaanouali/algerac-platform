@@ -35,38 +35,16 @@ export default function AuthLeft({ children, bottom }: AuthLeftProps) {
           {/* Description Text - always the same */}
           <div className="space-y-4">
             <p className="text-lg leading-relaxed">
-              Garant de la compétence technique et de la confiance. Accédez à notre portail sécurisé pour gérer vos demandes d'accréditation.
+              Bienvenue sur le portail d'ALGERAC dédié au dépot des demandes d'accréditation ou à la soumission des candidatures en tant que formateurs, évaluateurs ou experts.
             </p>
           </div>
-          {/* Bottom Section with checkmarks */}
-          {bottom ? (
-            <div className="space-y-4">{bottom}</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="text-gray-200">Normes Internationales</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className="text-gray-200">Transparence Totale</span>
-              </div>
-            </div>
-          )}
+         
           {children}
         </div>
         {/* Email & Téléphone tout en bas, hors du container principal */}
         <div className="absolute bottom-4 left-0 w-full text-sm text-gray-300 text-center">
           <div>Email : <a href="mailto:support@algerac.dz" className="hover:text-white no-underline">support@algerac.dz</a></div>
-          <div>Téléphone : <a href="tel:+21321790039" className="hover:text-white no-underline">+213 (0) 21 79 00 39</a></div>
+          <div>Téléphone : <a href="tel:+21321790039" className="hover:text-white no-underline">+213 770133654</a></div>
         </div>
       </div>
     </div>

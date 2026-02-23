@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -143,10 +144,10 @@ public class EvaluationTeamService {
     }
     
     /**
-     * CD/RA transmet la composition de l'équipe à l'OEC (FOR 26)
+     * CD/RA transmet la composition de l'équipe à l'OEC (FOR 26) avec date d'évaluation proposée
      */
     @Transactional
-    public EvaluationTeam sendToOEC(Long teamId, String compositionSheet, User currentUser) {
+    public EvaluationTeam sendToOEC(Long teamId, String compositionSheet, LocalDate proposedEvaluationDate, User currentUser) {
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
         
@@ -163,6 +164,8 @@ public class EvaluationTeamService {
         team.setCompositionSheetFOR26(compositionSheet);
         team.setSentToOEC(LocalDateTime.now());
         team.setOecResponseDeadline(LocalDateTime.now().plusDays(3)); // 3 jours pour répondre
+        team.setProposedEvaluationDate(proposedEvaluationDate);
+        team.setEvaluationDateAccepted(null); // En attente réponse OEC
         team.setStatus(TeamStatus.SENT_TO_OEC);
         team = teamRepository.save(team);
         
@@ -180,11 +183,13 @@ public class EvaluationTeamService {
     }
     
     /**
-     * OEC valide ou récuse la composition de l'équipe
+     * OEC valide ou récuse la composition de l'équipe, et accepte/refuse la date d'évaluation
      */
     @Transactional
     public EvaluationTeam oecResponse(Long teamId, Boolean validated, Long[] recusedMemberIds, 
-                                     String recusationReason, User currentUser) {
+                                     String recusationReason, Boolean dateAccepted,
+                                     LocalDate oecProposedDate, String dateRefusalReason,
+                                     User currentUser) {
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
         
@@ -198,6 +203,16 @@ public class EvaluationTeamService {
             team.setOecValidated(true);
             team.setHasRecusation(false);
             team.setFinalValidationDate(LocalDateTime.now());
+            
+            // Handle date acceptance/refusal
+            if (dateAccepted != null && dateAccepted) {
+                team.setEvaluationDateAccepted(true);
+            } else if (dateAccepted != null && !dateAccepted && oecProposedDate != null) {
+                team.setEvaluationDateAccepted(false);
+                team.setOecProposedDate(oecProposedDate);
+                team.setDateRefusalReason(dateRefusalReason);
+            }
+            
             team.setStatus(TeamStatus.VALIDATED);
             
             request.setStatus(RequestStatus.TEAM_VALIDATED);

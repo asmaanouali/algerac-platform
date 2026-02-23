@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, CheckCircle, Eye } from "lucide-react";
+import { Loader2, FileText, CheckCircle, Eye, Users, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -22,6 +23,13 @@ interface Quotation {
   status: string;
   sentToDagDate: string;
   preparedByRaName: string;
+  reeCount: number;
+  etCount: number;
+  eqCount: number;
+  obsCount: number;
+  supCount: number;
+  expCount: number;
+  evaluationDurationDays: number;
   request: {
     id: number;
     referenceNumber: string;
@@ -41,29 +49,18 @@ export default function DAGDashboard() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [amount, setAmount] = useState("");
   const [comments, setComments] = useState("");
   const [approving, setApproving] = useState(false);
 
   useEffect(() => {
-    if (user && !authLoading) {
-      loadQuotations();
-    }
+    if (user && !authLoading) loadQuotations();
   }, [user, authLoading]);
 
-  // Rediriger vers login si non authentifié
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-4 w-4 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    setLocation("/");
-    return null;
-  }
+  if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
+  if (!user) { setLocation("/"); return null; }
 
   const loadQuotations = async () => {
     try {
@@ -72,55 +69,45 @@ export default function DAGDashboard() {
       const data = await response.json();
       setQuotations(data);
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setLoading(false); }
   };
 
   const openApprovalDialog = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
+    setAmount("");
     setComments("");
     setApprovalDialogOpen(true);
   };
 
+  const openDetailsDialog = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setDetailsDialogOpen(true);
+  };
+
   const handleApprove = async () => {
     if (!selectedQuotation) return;
-
+    if (!amount || parseFloat(amount) <= 0) {
+      toast({ variant: "destructive", title: "Erreur", description: "Le montant du devis est obligatoire et doit \u00EAtre positif" });
+      return;
+    }
     try {
       setApproving(true);
-
-      await apiRequest("POST", `/api/quotations/${selectedQuotation.id}/approve`, { comments });
-
-      toast({
-        title: "Devis approuvé",
-        description: "Le devis a été approuvé. Le RA peut maintenant envoyer à l'OEC.",
+      await apiRequest("POST", `/api/quotations/${selectedQuotation.id}/approve`, { 
+        amount: parseFloat(amount),
+        comments 
       });
-
+      toast({ title: "Devis \u00E9tabli", description: "Le montant du devis a \u00E9t\u00E9 d\u00E9fini. Le RA peut maintenant envoyer \u00E0 l'OEC." });
       setApprovalDialogOpen(false);
       loadQuotations();
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err.message,
-      });
-    } finally {
-      setApproving(false);
-    }
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setApproving(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  const getTotalMembers = (q: Quotation) => (q.reeCount || 0) + (q.etCount || 0) + (q.eqCount || 0) + (q.obsCount || 0) + (q.supCount || 0) + (q.expCount || 0);
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -129,126 +116,133 @@ export default function DAGDashboard() {
         <Navbar />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard - DAG</h1>
-          <p className="text-muted-foreground mt-2">
-            Approuvez les devis soumis par les Responsables d'Accréditation
-          </p>
-        </div>
-
-        {/* Statistiques */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Devis en attente
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{quotations.length}</div>
-              <p className="text-xs text-muted-foreground">
-                À approuver
+            <div>
+              <h1 className="text-3xl font-bold">Dashboard - DAG</h1>
+              <p className="text-muted-foreground mt-2">
+                {"\u00C9"}tablissez les devis sur la base des demandes soumises par les Responsables d'Accr\u00E9ditation
               </p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* Liste des devis */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Devis à approuver</CardTitle>
-            <CardDescription>
-              Vérifiez et approuvez les devis soumis
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {quotations.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                <p className="text-muted-foreground">
-                  Aucun devis en attente d'approbation
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {quotations.map((quotation) => (
-                  <div
-                    key={quotation.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold">{quotation.quotationNumber}</h3>
-                        <Badge variant="outline">{quotation.request.type}</Badge>
-                      </div>
-                      <p className="text-sm font-medium">
-                        Demande : {quotation.request.referenceNumber}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        OEC : {quotation.request.oec.organizationName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Domaine : {quotation.request.domain}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Montant</p>
-                          <p className="text-lg font-bold">
-                            {quotation.amount.toLocaleString()} DA
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Préparé par</p>
-                          <p className="text-sm font-medium">
-                            {quotation.preparedByRaName}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Envoyé le</p>
-                          <p className="text-sm">
-                            {new Date(quotation.sentToDagDate).toLocaleDateString("fr-FR")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Modal pour afficher les détails
-                          alert(`Détails du devis:\n\n${quotation.details || "Aucun détail fourni"}`);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Détails
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => openApprovalDialog(quotation)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approuver
-                      </Button>
-                    </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Demandes de devis en attente</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{quotations.length}</div>
+                  <p className="text-xs text-muted-foreground">\u00C0 traiter</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Demandes d'{"\u00E9"}tablissement de devis</CardTitle>
+                <CardDescription>
+                  V\u00E9rifiez la composition d'{"\u00E9"}quipe propos\u00E9e et d\u00E9finissez le montant du devis
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {quotations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                    <p className="text-muted-foreground">Aucune demande de devis en attente</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {quotations.map((quotation) => (
+                      <div key={quotation.id} className="p-4 border rounded-lg hover:bg-accent transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-semibold">{quotation.quotationNumber}</h3>
+                              <Badge variant="outline">{quotation.request?.type}</Badge>
+                            </div>
+                            <p className="text-sm font-medium">
+                              Demande : {quotation.request?.referenceNumber}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              OEC : {quotation.request?.oec?.organizationName}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Domaine : {quotation.request?.domain}
+                            </p>
+                            
+                            {/* Composition de l'equipe */}
+                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-1">
+                                <Users className="w-4 h-4" /> Composition d'{"\u00E9"}quipe propos{"\u00E9"}e
+                              </h4>
+                              <div className="grid grid-cols-3 gap-2 text-sm">
+                                <div><span className="text-blue-600">REE :</span> <strong>{quotation.reeCount || 1}</strong></div>
+                                <div><span className="text-blue-600">{"\u00C9"}vl. Technique :</span> <strong>{quotation.etCount || 0}</strong></div>
+                                {(quotation.eqCount > 0) && <div><span className="text-blue-600">{"\u00C9"}vl. Qualit{"\u00E9"} :</span> <strong>{quotation.eqCount}</strong></div>}
+                                {(quotation.obsCount > 0) && <div><span className="text-blue-600">Observateur :</span> <strong>{quotation.obsCount}</strong></div>}
+                                {(quotation.supCount > 0) && <div><span className="text-blue-600">Superviseur :</span> <strong>{quotation.supCount}</strong></div>}
+                                {(quotation.expCount > 0) && <div><span className="text-blue-600">Expert :</span> <strong>{quotation.expCount}</strong></div>}
+                              </div>
+                              <div className="mt-2 pt-2 border-t border-blue-200 flex gap-4 text-sm">
+                                <div><span className="text-blue-600">Total membres :</span> <strong>{getTotalMembers(quotation)}</strong></div>
+                                <div><span className="text-blue-600">Dur{"\u00E9"}e {"\u00E9"}valuation :</span> <strong>{quotation.evaluationDurationDays} H/j</strong></div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 mt-2">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Pr{"\u00E9"}par{"\u00E9"} par</p>
+                                <p className="text-sm font-medium">{quotation.preparedByRaName}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Envoy{"\u00E9"} le</p>
+                                <p className="text-sm">
+                                  {quotation.sentToDagDate ? new Date(quotation.sentToDagDate).toLocaleDateString("fr-FR") : "\u2014"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            {quotation.details && (
+                              <Button variant="outline" size="sm" onClick={() => openDetailsDialog(quotation)}>
+                                <Eye className="h-4 w-4 mr-2" />D{"\u00E9"}tails
+                              </Button>
+                            )}
+                            <Button size="sm" onClick={() => openApprovalDialog(quotation)}>
+                              <DollarSign className="h-4 w-4 mr-2" />{"\u00C9"}tablir le devis
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
 
-      {/* Dialog d'approbation */}
+      {/* Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>D\u00E9tails de la demande</DialogTitle>
+          </DialogHeader>
+          {selectedQuotation && (
+            <div className="p-4 border rounded-lg bg-muted/50">
+              <p className="text-sm whitespace-pre-wrap">{selectedQuotation.details || "Aucun d\u00E9tail fourni"}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval Dialog - DAG sets the amount */}
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Approuver le devis</DialogTitle>
+            <DialogTitle>{"\u00C9"}tablir le devis</DialogTitle>
             <DialogDescription>
-              Vérifiez les informations et approuvez le devis
+              Sur la base de la composition d'{"\u00E9"}quipe propos{"\u00E9"}e, d{"\u00E9"}finissez le montant du devis
             </DialogDescription>
           </DialogHeader>
 
@@ -256,64 +250,71 @@ export default function DAGDashboard() {
             <div className="space-y-4 py-4">
               <Alert>
                 <AlertDescription>
-                  <strong>Numéro :</strong> {selectedQuotation.quotationNumber}
+                  <strong>Num{"\u00E9"}ro :</strong> {selectedQuotation.quotationNumber}
                   <br />
-                  <strong>Demande :</strong> {selectedQuotation.request.referenceNumber}
+                  <strong>Demande :</strong> {selectedQuotation.request?.referenceNumber}
                   <br />
-                  <strong>OEC :</strong> {selectedQuotation.request.oec.organizationName}
-                  <br />
-                  <strong>Montant :</strong> {selectedQuotation.amount.toLocaleString()} DA
+                  <strong>OEC :</strong> {selectedQuotation.request?.oec?.organizationName}
                 </AlertDescription>
               </Alert>
 
-              {selectedQuotation.details && (
-                <div className="space-y-2">
-                  <Label>Détails du devis</Label>
-                  <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="text-sm whitespace-pre-wrap">{selectedQuotation.details}</p>
-                  </div>
+              {/* Composition summary */}
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Composition propos{"\u00E9"}e par le RA</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>REE : <strong>{selectedQuotation.reeCount || 1}</strong></div>
+                  <div>{"\u00C9"}vl. Technique : <strong>{selectedQuotation.etCount || 0}</strong></div>
+                  {(selectedQuotation.eqCount > 0) && <div>{"\u00C9"}vl. Qualit{"\u00E9"} : <strong>{selectedQuotation.eqCount}</strong></div>}
+                  {(selectedQuotation.obsCount > 0) && <div>Observateur : <strong>{selectedQuotation.obsCount}</strong></div>}
+                  {(selectedQuotation.supCount > 0) && <div>Superviseur : <strong>{selectedQuotation.supCount}</strong></div>}
+                  {(selectedQuotation.expCount > 0) && <div>Expert : <strong>{selectedQuotation.expCount}</strong></div>}
                 </div>
-              )}
+                <div className="mt-2 pt-2 border-t border-blue-200 text-sm">
+                  <strong>Total : {getTotalMembers(selectedQuotation)} membres</strong> | Dur{"\u00E9"}e : <strong>{selectedQuotation.evaluationDurationDays} H/j</strong>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">Montant du devis (DA) *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="Ex: 150000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  min="0"
+                  step="1000"
+                />
+                <p className="text-xs text-muted-foreground">D{"\u00E9"}finissez le montant en fonction de la composition et de la dur{"\u00E9"}e</p>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="comments">Commentaires (optionnel)</Label>
                 <Textarea
                   id="comments"
-                  placeholder="Ajoutez des commentaires ou remarques..."
+                  placeholder="Justification du montant, remarques..."
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
-                  rows={4}
+                  rows={3}
                 />
               </div>
 
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Une fois approuvé, le RA pourra envoyer le devis et la convention à l'OEC.
+                  Une fois le montant d{"\u00E9"}fini, le RA pourra envoyer le devis et la convention \u00E0 l'OEC.
                 </AlertDescription>
               </Alert>
             </div>
           )}
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setApprovalDialogOpen(false)}
-              disabled={approving}
-            >
-              Annuler
-            </Button>
-            <Button onClick={handleApprove} disabled={approving}>
+            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)} disabled={approving}>Annuler</Button>
+            <Button onClick={handleApprove} disabled={approving || !amount}>
               {approving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Approbation...
-                </>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{"\u00C9"}tablissement...</>
               ) : (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Approuver
-                </>
+                <><DollarSign className="mr-2 h-4 w-4" />{"\u00C9"}tablir le devis</>
               )}
             </Button>
           </DialogFooter>

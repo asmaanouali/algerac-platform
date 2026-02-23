@@ -56,6 +56,7 @@ export function Sidebar() {
     ],
     ra: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/ra/experts", label: "Répertoire Experts", icon: UserCheck },
       { href: "/ra/faisabilite", label: "Recevabilité", icon: ShieldAlert },
       { href: "/quotes", label: "Conventions & Devis", icon: CreditCard },
       { href: "/ra/equipes", label: "Équipes d'Évaluation", icon: Users },
@@ -98,6 +99,7 @@ export function Sidebar() {
       { href: "/ree/planning", label: "Mon Planning", icon: CalendarDays },
       { href: "/ree/engagements", label: "Engagements", icon: FileSignature },
       { href: "/ree/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
+      { href: "/ree/plan-evaluation", label: "Plan FOR 32", icon: FileCheck },
       { href: "/ree/evaluation", label: "Évaluation sur Site", icon: ClipboardList },
       { href: "/ree/rapports", label: "Rapports", icon: FileText },
     ],

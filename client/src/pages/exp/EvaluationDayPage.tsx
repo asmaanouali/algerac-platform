@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, ClipboardCheck, AlertTriangle, Users, MessageSquare, Send, Plus } from "lucide-react";
+import { Loader2, ClipboardCheck, AlertTriangle, Users, MessageSquare, Send, Plus, Lock, CalendarClock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function EvaluationDayPage() {
@@ -133,7 +133,14 @@ export default function EvaluationDayPage() {
                   {teams.map((t: any) => (
                     <div key={t.id} onClick={() => selectTeam(t)}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedTeam?.id === t.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
-                      <p className="font-medium text-sm">{t.requestReferenceNumber || `Équipe #${t.teamId}`}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-sm">{t.requestReferenceNumber || `Équipe #${t.teamId}`}</p>
+                        {t.dossierUnlocked === false ? (
+                          <Lock className="w-3.5 h-3.5 text-amber-500" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                        )}
+                      </div>
                       <Badge variant="outline" className="text-xs mt-1">{t.role}</Badge>
                     </div>
                   ))}
@@ -146,6 +153,35 @@ export default function EvaluationDayPage() {
                   <Card><CardContent className="pt-6">
                     <p className="text-center text-muted-foreground py-8">Sélectionnez une mission</p>
                   </CardContent></Card>
+                ) : selectedTeam.dossierUnlocked === false ? (
+                  <Card className="border-amber-200 bg-amber-50/50">
+                    <CardContent className="pt-8 pb-8">
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                          <Lock className="w-8 h-8 text-amber-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-amber-800">Dossier verrouillé</h3>
+                        <p className="text-amber-700 max-w-md">
+                          Le dossier d'évaluation sera déverrouillé uniquement le jour de l'évaluation.
+                          Vous pourrez alors accéder aux checklists, fiches d'écart et outils d'évaluation.
+                        </p>
+                        <div className="flex items-center gap-2 bg-white rounded-lg px-4 py-3 border border-amber-200">
+                          <CalendarClock className="w-5 h-5 text-amber-600" />
+                          <div className="text-left">
+                            <p className="text-xs text-muted-foreground">Date d'évaluation prévue</p>
+                            <p className="font-semibold text-amber-800">
+                              {(() => {
+                                const d = selectedTeam.evaluationDateAccepted
+                                  ? selectedTeam.proposedEvaluationDate
+                                  : (selectedTeam.oecProposedDate || selectedTeam.proposedEvaluationDate);
+                                return d ? new Date(d).toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "Non définie";
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ) : (
                   <Tabs defaultValue="checklist">
                     <TabsList className="mb-4">

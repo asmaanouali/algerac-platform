@@ -23,6 +23,7 @@ export default function CASPresidentDashboard() {
   const [showDecision, setShowDecision] = useState(false);
   const [decisionForm, setDecisionForm] = useState({ decision: "ACCORDER", presidentNotes: "" });
   const [processing, setProcessing] = useState(false);
+  const [openingVote, setOpeningVote] = useState(false);
 
   useEffect(() => { loadMeetings(); }, []);
 
@@ -40,6 +41,23 @@ export default function CASPresidentDashboard() {
       const vRes = await fetch(`/api/workflow/cas/${meeting.id}/votes`, { credentials: "include" });
       if (vRes.ok) setVotes(await vRes.json());
     } catch (e) { console.error(e); }
+  };
+
+  const openVote = async () => {
+    if (!selectedMeeting) return;
+    setOpeningVote(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/cas/${selectedMeeting.id}/open-vote`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Vote ouvert", description: "Les membres peuvent maintenant voter" });
+        loadMeetings();
+        setSelectedMeeting((prev: any) => ({ ...prev, status: "VOTING" }));
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+    setOpeningVote(false);
   };
 
   const makeDecision = async () => {
@@ -169,6 +187,21 @@ export default function CASPresidentDashboard() {
                             {selectedMeeting.dossierSummary && (
                               <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs font-medium text-muted-foreground mb-1">Synthèse du dossier</p><p className="text-sm">{selectedMeeting.dossierSummary}</p></div>
                             )}
+                            <div className="pt-2 border-t">
+                              {selectedMeeting.status === "VOTING" ? (
+                                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-3 rounded-lg">
+                                  <Vote className="w-4 h-4" />
+                                  <span className="font-medium">Vote ouvert — les membres peuvent voter</span>
+                                </div>
+                              ) : ["DECIDED", "CLOSED"].includes(selectedMeeting.status) ? (
+                                <div className="text-sm text-muted-foreground p-3 bg-gray-50 rounded-lg">Réunion terminée</div>
+                              ) : (
+                                <Button onClick={openVote} disabled={openingVote}>
+                                  {openingVote ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Vote className="w-4 h-4 mr-2" />}
+                                  Ouvrir le Vote
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </TabsContent>
 
@@ -266,9 +299,11 @@ export default function CASPresidentDashboard() {
                 <div><label className="text-sm font-medium">Décision</label>
                   <select className="w-full border rounded-md p-2" value={decisionForm.decision}
                     onChange={(e) => setDecisionForm({ ...decisionForm, decision: e.target.value })}>
-                    <option value="ACCORDER">Accréditation accordée</option>
+                    <option value="ACCORDER">Accréditation accordée (portée complète)</option>
+                    <option value="ACCORDER_REDUIT">Accréditation accordée (portée réduite)</option>
+                    <option value="ACCORDER_RESERVES">Accréditation accordée avec réserves</option>
                     <option value="REFUSER">Accréditation refusée</option>
-                    <option value="AJOURNER">Décision ajournée</option>
+                    <option value="AJOURNER">Décision ajournée — conditions à remplir</option>
                   </select></div>
                 <div><label className="text-sm font-medium">Notes et observations du Président</label>
                   <Textarea value={decisionForm.presidentNotes} onChange={(e) => setDecisionForm({ ...decisionForm, presidentNotes: e.target.value })}

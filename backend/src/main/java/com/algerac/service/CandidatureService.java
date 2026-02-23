@@ -48,7 +48,7 @@ public class CandidatureService {
             throw new RuntimeException("Cette candidature a déjà été traitée");
         }
 
-        user.setStatus(UserStatus.APPROVED);
+        user.setStatus(UserStatus.CANDIDATURE_APPROVED);
         user.setDateApprobation(LocalDateTime.now());
         
         User savedUser = userRepository.save(user);
@@ -59,16 +59,17 @@ public class CandidatureService {
             log.info("Candidature OEC approuvée - notification admin pour création de compte");
             emailService.sendOECApprovedNotificationToAdmin(user);
         } else {
-            // Pour les experts/évaluateurs/formateurs : notifier l'admin pour créer le compte
             log.info("Candidature {} approuvée - notification admin pour création de compte", user.getUserType());
-            emailService.sendOECApprovedNotificationToAdmin(user); // Utilise le même email pour l'instant
+            emailService.sendOECApprovedNotificationToAdmin(user);
         }
         
         return savedUser;
     }
 
     /**
-     * Rejette une candidature avec un motif et supprime l'enregistrement de la base de données
+     * Rejette une candidature avec un motif
+     * Pour les OEC : supprime l'enregistrement
+     * Pour les experts : garde la candidature avec statut REJECTED
      */
     @Transactional
     public void rejectCandidature(Long userId, String rejectionReason) {
@@ -82,13 +83,17 @@ public class CandidatureService {
         // Envoyer email de rejet avec motif selon le type
         if (user.getRole() == UserRole.OEC) {
             emailService.sendOECRejectionByDT(user, rejectionReason);
+            // Supprimer l'enregistrement de la base de données pour les OEC
+            userRepository.delete(user);
+            log.info("Candidature OEC {} rejetée et supprimée de la base de données", userId);
         } else {
             emailService.sendExpertRejectionByGesCompetences(user, rejectionReason);
+            // Pour les experts : garder la candidature avec statut REJECTED
+            user.setStatus(UserStatus.REJECTED);
+            user.setRejectionReason(rejectionReason);
+            userRepository.save(user);
+            log.info("Candidature expert {} rejetée et gardée dans la base de données", userId);
         }
-        
-        // Supprimer l'enregistrement de la base de données
-        userRepository.delete(user);
-        log.info("Candidature {} rejetée et supprimée de la base de données", userId);
     }
 
     /**
@@ -129,7 +134,7 @@ public class CandidatureService {
     public List<User> getApprovedOECCandidatures() {
         return userRepository.findByRoleAndStatusOrderByCreatedAtDesc(
                 UserRole.OEC, 
-                UserStatus.APPROVED
+                UserStatus.CANDIDATURE_APPROVED
         );
     }
     
@@ -146,7 +151,7 @@ public class CandidatureService {
             throw new RuntimeException("Cet utilisateur n'est pas un OEC");
         }
         
-        if (user.getStatus() != UserStatus.APPROVED) {
+        if (user.getStatus() != UserStatus.CANDIDATURE_APPROVED) {
             throw new RuntimeException("Cette candidature n'a pas été approuvée par le DT");
         }
 
@@ -156,8 +161,8 @@ public class CandidatureService {
         // Hasher et sauvegarder le mot de passe
         user.setPassword(passwordEncoder.encode(generatedPassword));
         
-        // Le compte est maintenant actif - on ne change pas le status APPROVED
-        // car il indique que le compte est actif
+        // Activer le compte en mettant le status à APPROVED pour permettre la connexion
+        user.setStatus(UserStatus.APPROVED);
         
         User savedUser = userRepository.save(user);
         
@@ -185,10 +190,10 @@ public class CandidatureService {
     }
     
     /**
-     * Récupère toutes les candidatures d'experts/évaluateurs/formateurs (PENDING uniquement)
+     * Récupère toutes les candidatures d'experts/évaluateurs/formateurs (tous statuts)
      */
     public List<User> getExpertCandidatures() {
-        return userRepository.findByStatusOrderByCreatedAtDesc(UserStatus.PENDING)
+        return userRepository.findAll()
             .stream()
             .filter(user -> user.getUserType() != null && 
                    (user.getUserType().equalsIgnoreCase("EXPERT") || 
@@ -217,15 +222,63 @@ public class CandidatureService {
             throw new RuntimeException("Cette candidature n'est pas une candidature expert/évaluateur/formateur");
         }
 
-        user.setStatus(UserStatus.APPROVED);
+        user.setStatus(UserStatus.CANDIDATURE_APPROVED);
         user.setDateApprobation(LocalDateTime.now());
         
         User savedUser = userRepository.save(user);
         
         // Notifier l'admin pour créer le compte
-        log.info("Candidature {} approuvée - notification admin pour création de compte", user.getUserType());
+        log.info("Candidature {} approuvée par GES_COMPETENCES - notification admin pour création de compte", user.getUserType());
         emailService.sendExpertApprovedNotificationToAdmin(user);
         
         return savedUser;
+    }
+    
+    /**
+     * Récupère les candidatures d'experts/évaluateurs/formateurs approuvées en attente de création de compte
+     */
+    public List<User> getApprovedExpertCandidatures() {
+        return userRepository.findAll()
+            .stream()
+            .filter(user -> user.getUserType() != null && 
+                   (user.getUserType().equalsIgnoreCase("EXPERT") || 
+                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
+                    user.getUserType().equalsIgnoreCase("FORMATEUR")) &&
+                   user.getStatus() == UserStatus.CANDIDATURE_APPROVED)
+            .toList();
+    }
+    
+    /**
+     * Crée un compte pour un expert/évaluateur/formateur approuvé par GES_COMPETENCES
+     * Génère un mot de passe aléatoire et envoie les credentials par email
+     */
+    @Transactional
+    public String createExpertAccount(Long userId, Long adminUserId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        if (user.getUserType() == null ||
+            (!user.getUserType().equalsIgnoreCase("EXPERT") &&
+             !user.getUserType().equalsIgnoreCase("EVALUATEUR") &&
+             !user.getUserType().equalsIgnoreCase("FORMATEUR"))) {
+            throw new RuntimeException("Cet utilisateur n'est pas un Expert/Évaluateur/Formateur");
+        }
+        
+        if (user.getStatus() != UserStatus.CANDIDATURE_APPROVED) {
+            throw new RuntimeException("Cette candidature n'a pas été approuvée par GES_COMPETENCES");
+        }
+
+        String generatedPassword = generateSecurePassword(12);
+        user.setPassword(passwordEncoder.encode(generatedPassword));
+        user.setStatus(UserStatus.APPROVED); // Compte actif
+        
+        userRepository.save(user);
+        
+        log.info("Compte {} créé pour l'utilisateur {} par l'admin {}", user.getUserType(), userId, adminUserId);
+        
+        // Envoyer email avec les credentials
+        emailService.sendOECAccountCredentials(user, generatedPassword);
+        
+        return generatedPassword;
     }
 }

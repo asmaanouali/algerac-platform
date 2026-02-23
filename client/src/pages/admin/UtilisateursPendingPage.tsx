@@ -26,18 +26,28 @@ import { useLocation } from "wouter";
 
 interface PendingOECApplication {
   id: number;
-  organizationName: string;
-  typeOrganisme: string;
-  adresseSiege: string;
-  phone: string;
+  // OEC fields
+  organizationName?: string;
+  typeOrganisme?: string;
+  adresseSiege?: string;
+  nomRepresentant?: string;
+  fonction?: string;
+  porteeAccreditation?: string;
+  // Expert/Évaluateur/Formateur fields
+  fullName?: string;
+  userType?: string;
+  domaineExpertise?: string;
+  telephone?: string;
+  // Common
   email: string;
-  nomRepresentant: string;
-  fonction: string;
-  porteeAccreditation: string;
+  phone?: string;
   status: string;
   createdAt: string;
   dateApprobation?: string;
 }
+
+const getDisplayName = (app: PendingOECApplication) => app.organizationName || app.fullName || app.email;
+const getAppType = (app: PendingOECApplication) => app.userType || "OEC";
 
 export default function UtilisateursPendingPage() {
   const { toast } = useToast();
@@ -72,19 +82,13 @@ export default function UtilisateursPendingPage() {
 
   const fetchPendingApplications = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/candidatures/oec/approved", {
-        credentials: "include"
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setApplications(data);
-      } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les candidatures",
-          variant: "destructive"
-        });
-      }
+      const [oecRes, expertRes] = await Promise.all([
+        fetch("http://localhost:8082/api/candidatures/oec/approved", { credentials: "include" }),
+        fetch("http://localhost:8082/api/candidatures/experts/approved", { credentials: "include" })
+      ]);
+      const oecData = oecRes.ok ? await oecRes.json() : [];
+      const expertData = expertRes.ok ? await expertRes.json() : [];
+      setApplications([...oecData, ...expertData]);
     } catch (error) {
       console.error("Erreur:", error);
       toast({
@@ -99,31 +103,24 @@ export default function UtilisateursPendingPage() {
 
   const handleCreateAccount = async () => {
     if (!selectedApplication) return;
-
-    // Plus besoin de validation car le backend génère le mot de passe
-    if (!confirm("Confirmer la création du compte pour cet OEC ? Un email avec les identifiants sera envoyé.")) {
-      return;
-    }
+    const isExpert = !!selectedApplication.userType;
+    const endpoint = isExpert
+      ? `http://localhost:8082/api/candidatures/experts/${selectedApplication.id}/create-account`
+      : `http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`;
 
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`, {
-        method: "POST",
-        credentials: "include"
-      });
+      const response = await fetch(endpoint, { method: "POST", credentials: "include" });
 
       if (response.ok) {
         const result = await response.json();
         toast({
           title: "Succès",
-          description: "Le compte OEC a été créé avec succès. Les identifiants ont été envoyés par email.",
+          description: `Le compte ${getAppType(selectedApplication)} a été créé avec succès. Les identifiants ont été envoyés par email.`,
         });
-        
-        // Afficher le mot de passe généré pour référence
         if (result.generatedPassword) {
           console.log("Mot de passe généré :", result.generatedPassword);
         }
-        
         fetchPendingApplications();
         setShowCreateAccountDialog(false);
         setShowDetailsDialog(false);
@@ -153,10 +150,11 @@ export default function UtilisateursPendingPage() {
   };
 
   const filteredApplications = applications.filter(app => {
+    const name = getDisplayName(app);
     const matchesSearch = 
-      app.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase());
+      (app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
     
     return matchesSearch;
   });
@@ -211,9 +209,9 @@ export default function UtilisateursPendingPage() {
       {/* Tableau des candidatures */}
       <Card>
         <CardHeader>
-          <CardTitle>Liste des OEC approuvés ({filteredApplications.length})</CardTitle>
+          <CardTitle>Liste des candidats approuvés ({filteredApplications.length})</CardTitle>
           <CardDescription>
-            Ces organismes ont été approuvés par le DT et attendent la création de leur compte
+            Ces candidats (OEC, Experts, Évaluateurs, Formateurs) ont été approuvés et attendent la création de leur compte
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -291,7 +289,7 @@ export default function UtilisateursPendingPage() {
           <DialogHeader>
             <DialogTitle>Détails de la candidature #{selectedApplication?.id}</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.organizationName}
+              {selectedApplication && getDisplayName(selectedApplication)}
             </DialogDescription>
           </DialogHeader>
           
@@ -299,20 +297,41 @@ export default function UtilisateursPendingPage() {
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Organisme</Label>
-                  <p className="font-medium">{selectedApplication.organizationName}</p>
-                </div>
-                
-                <div className="space-y-2">
                   <Label className="text-muted-foreground">Type</Label>
-                  <p>{selectedApplication.typeOrganisme}</p>
+                  <Badge className={selectedApplication.userType ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}>
+                    {getAppType(selectedApplication)}
+                  </Badge>
                 </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-muted-foreground">Adresse</Label>
-                  <p>{selectedApplication.adresseSiege}</p>
-                </div>
-                
+                {selectedApplication.organizationName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Organisme</Label>
+                    <p className="font-medium">{selectedApplication.organizationName}</p>
+                  </div>
+                )}
+                {selectedApplication.fullName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Nom Complet</Label>
+                    <p className="font-medium">{selectedApplication.fullName}</p>
+                  </div>
+                )}
+                {selectedApplication.typeOrganisme && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Type d&apos;organisme</Label>
+                    <p>{selectedApplication.typeOrganisme}</p>
+                  </div>
+                )}
+                {selectedApplication.domaineExpertise && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Domaine d&apos;expertise</Label>
+                    <p>{selectedApplication.domaineExpertise}</p>
+                  </div>
+                )}
+                {selectedApplication.adresseSiege && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-muted-foreground">Adresse</Label>
+                    <p>{selectedApplication.adresseSiege}</p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Email</Label>
                   <p className="flex items-center gap-2">
@@ -320,32 +339,34 @@ export default function UtilisateursPendingPage() {
                     {selectedApplication.email}
                   </p>
                 </div>
-                
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Téléphone</Label>
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {selectedApplication.phone || "Non renseigné"}
+                    {selectedApplication.phone || selectedApplication.telephone || "Non renseigné"}
                   </p>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Représentant</Label>
-                  <p className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    {selectedApplication.nomRepresentant || "Non renseigné"}
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Fonction</Label>
-                  <p>{selectedApplication.fonction || "Non renseigné"}</p>
-                </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-muted-foreground">Portée d'accréditation</Label>
-                  <p>{selectedApplication.porteeAccreditation || "Non renseigné"}</p>
-                </div>
+                {selectedApplication.nomRepresentant && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Représentant</Label>
+                    <p className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {selectedApplication.nomRepresentant}
+                    </p>
+                  </div>
+                )}
+                {selectedApplication.fonction && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Fonction</Label>
+                    <p>{selectedApplication.fonction}</p>
+                  </div>
+                )}
+                {selectedApplication.porteeAccreditation && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-muted-foreground">Portée d&apos;accréditation</Label>
+                    <p>{selectedApplication.porteeAccreditation}</p>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Date de candidature</Label>
@@ -385,21 +406,21 @@ export default function UtilisateursPendingPage() {
       <Dialog open={showCreateAccountDialog} onOpenChange={setShowCreateAccountDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Créer un compte OEC</DialogTitle>
+            <DialogTitle>Créer un compte</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.organizationName}
+              {selectedApplication && getDisplayName(selectedApplication)}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Confirmation :</strong> Un mot de passe sera généré automatiquement et envoyé par email à l'organisme avec ses identifiants de connexion.
+                <strong>Confirmation :</strong> Un mot de passe sera généré automatiquement et envoyé par email au candidat avec ses identifiants de connexion.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Email de l'organisme</Label>
+              <Label>Email du candidat</Label>
               <Input 
                 type="email"
                 disabled

@@ -89,9 +89,11 @@ export default function CDManageRequestsPage() {
     if (!selectedRequest || !selectedRaId) { toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un RA" }); return; }
     try {
       setAssigning(true);
-      await apiRequest("POST", `/api/requests/${selectedRequest.id}/assign`, { raId: parseInt(selectedRaId) });
+      const res = await apiRequest("POST", `/api/requests/${selectedRequest.id}/assign`, { raId: parseInt(selectedRaId) });
       const raName = rasWorkload.find(r => r.id === parseInt(selectedRaId))?.fullName || "RA";
-      toast({ title: "Assignation réussie", description: `Demande assignée à ${raName}` });
+      const result = await res.json();
+      const refNumber = result.data?.referenceNumber || "";
+      toast({ title: "Assignation réussie", description: `Demande assignée à ${raName}. N° dossier : ${refNumber}` });
       setAssignDialogOpen(false);
       loadData();
     } catch (err: any) {

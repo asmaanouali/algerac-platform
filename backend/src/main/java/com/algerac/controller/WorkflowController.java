@@ -201,7 +201,9 @@ public class WorkflowController {
             User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             String compositionSheet = body.getOrDefault("compositionSheet", "Fiche composition équipe FOR 26");
-            EvaluationTeam team = teamService.sendToOEC(teamId, compositionSheet, user);
+            String evalDateStr = (String) body.get("evaluationDate");
+            java.time.LocalDate proposedDate = evalDateStr != null ? java.time.LocalDate.parse(evalDateStr) : null;
+            EvaluationTeam team = teamService.sendToOEC(teamId, compositionSheet, proposedDate, user);
             return ResponseEntity.ok(ApiResponse.success("Équipe envoyée à l'OEC pour validation", team));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -238,6 +240,37 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/teams/members/{memberId}/mandatement")
+    public ResponseEntity<ApiResponse> sendMandatement(@PathVariable Long memberId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String message = (String) body.get("message");
+            Long requestId = ((Number) body.get("requestId")).longValue();
+
+            TeamMember member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
+
+            // Save mandatement on the member record
+            member.setMandatementMessage(message);
+            member.setMandatementSentAt(java.time.LocalDateTime.now());
+            memberRepository.save(member);
+
+            // Send mandatement notification to team member
+            notificationService.createNotification(member.getExpert().getId(),
+                    "Mandatement - Évaluation",
+                    message,
+                    "MANDATEMENT");
+
+            log.info("Mandatement envoyé à {} pour le dossier {}", member.getExpert().getFullName(), requestId);
+            return ResponseEntity.ok(ApiResponse.success("Mandatement envoyé à " + member.getExpert().getFullName(), null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/teams/{teamId}/oec-response")
     public ResponseEntity<ApiResponse> oecTeamResponse(@PathVariable Long teamId, @RequestBody Map<String, Object> body, HttpSession session) {
         try {
@@ -251,7 +284,13 @@ public class WorkflowController {
             List<Number> recusedIds = (List<Number>) body.get("recusedMemberIds");
             Long[] recusedMemberIds = recusedIds != null ? recusedIds.stream().map(Number::longValue).toArray(Long[]::new) : null;
 
-            EvaluationTeam team = teamService.oecResponse(teamId, validated, recusedMemberIds, recusationReason, user);
+            // Date negotiation fields
+            Boolean dateAccepted = (Boolean) body.get("dateAccepted");
+            String oecDateStr = (String) body.get("oecProposedDate");
+            java.time.LocalDate oecProposedDate = oecDateStr != null ? java.time.LocalDate.parse(oecDateStr) : null;
+            String dateRefusalReason = (String) body.get("dateRefusalReason");
+
+            EvaluationTeam team = teamService.oecResponse(teamId, validated, recusedMemberIds, recusationReason, dateAccepted, oecProposedDate, dateRefusalReason, user);
             return ResponseEntity.ok(ApiResponse.success(validated ? "Équipe validée" : "Récusation enregistrée", team));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -349,6 +388,32 @@ public class WorkflowController {
 
     // ========== EVALUATION PLAN (STEP 6) ==========
 
+    @PostMapping("/evaluation-plan/{id}/submit-to-ra")
+    public ResponseEntity<ApiResponse> submitPlanToRA(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan non trouvé"));
+            plan.setStatus(EvaluationPlanStatus.SUBMITTED_TO_CD);
+            evalPlanRepository.save(plan);
+
+            // Notify the RA assigned to the request
+            AccreditationRequest request = plan.getRequest();
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(
+                    request.getAssignedToRa().getId(),
+                    "Plan d'évaluation FOR 32 soumis",
+                    "Le REE a soumis le plan d'évaluation FOR 32 pour le dossier " + request.getReferenceNumber() + ". Veuillez le valider.",
+                    "EVALUATION_PLAN"
+                );
+            }
+            return ResponseEntity.ok(ApiResponse.success("Plan soumis au RA pour validation", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/evaluation-plan/create")
     public ResponseEntity<ApiResponse> createEvaluationPlan(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
@@ -361,13 +426,21 @@ public class WorkflowController {
 
             String planCode = "PLAN-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
+            String dailyProgram = (String) body.get("dailyProgram");
+            String activityDistribution = (String) body.get("activityDistribution");
+            String schedules = (String) body.get("schedules");
+
             EvaluationPlan plan = EvaluationPlan.builder()
                     .request(request)
                     .team(teams.isEmpty() ? null : teams.get(0))
                     .planCode(planCode)
-                    .dailyProgram((String) body.get("dailyProgram"))
-                    .activityDistribution((String) body.get("activityDistribution"))
-                    .schedules((String) body.get("schedules"))
+                    .planFOR32(String.join("\n", 
+                        dailyProgram != null ? dailyProgram : "",
+                        activityDistribution != null ? activityDistribution : "",
+                        schedules != null ? schedules : ""))
+                    .dailyProgram(dailyProgram)
+                    .activityDistribution(activityDistribution)
+                    .schedules(schedules)
                     .documentsToExamine((String) body.get("documentsToExamine"))
                     .status(EvaluationPlanStatus.DRAFT)
                     .build();
@@ -520,6 +593,27 @@ public class WorkflowController {
         List<MissionOrder> pending = new ArrayList<>();
         pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
         pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
+        return ResponseEntity.ok(pending);
+    }
+
+    @GetMapping("/mission-orders/pending-approval")
+    public ResponseEntity<?> getPendingApprovalOrders(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        User user = userRepository.findById(userId).orElse(null);
+        List<MissionOrder> pending = new ArrayList<>();
+        // DT sees orders needing DT approval; DG sees orders needing DG approval; others see all
+        if (user != null && user.getRole() == UserRole.DT) {
+            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
+        } else if (user != null && user.getRole() == UserRole.DG) {
+            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
+        } else {
+            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
+            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
+        }
+        // Also include processed orders for history
+        pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.FULLY_APPROVED));
+        pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.SENT_TO_MEMBER));
         return ResponseEntity.ok(pending);
     }
 
@@ -807,6 +901,25 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/cas/{meetingId}/open-vote")
+    public ResponseEntity<ApiResponse> openVote(@PathVariable Long meetingId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+            if (meeting.getStatus() == CASMeetingStatus.VOTING) {
+                return ResponseEntity.ok(ApiResponse.success("Le vote est déjà ouvert", meeting));
+            }
+            meeting.setStatus(CASMeetingStatus.VOTING);
+            casMeetingRepository.save(meeting);
+
+            return ResponseEntity.ok(ApiResponse.success("Vote ouvert — les membres peuvent maintenant voter", meeting));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/cas/{meetingId}/vote")
     public ResponseEntity<ApiResponse> castVote(@PathVariable Long meetingId, @RequestBody Map<String, String> body, HttpSession session) {
         try {
@@ -845,7 +958,7 @@ public class WorkflowController {
 
             AccreditationRequest request = meeting.getRequest();
             String decision = body.get("decision");
-            if ("ACCORDER".equals(decision)) {
+            if (decision != null && decision.startsWith("ACCORDER")) {
                 request.setStatus(RequestStatus.CAS_DECISION_GRANT);
             } else if ("REFUSER".equals(decision)) {
                 request.setStatus(RequestStatus.CAS_DECISION_REFUSAL);
@@ -853,14 +966,59 @@ public class WorkflowController {
                 request.setStatus(RequestStatus.CAS_DECISION_POSTPONEMENT);
             }
             request.setCasDecisionDate(LocalDateTime.now());
-            request.setCurrentStep("Décision CAS : " + decision);
+            request.setCurrentStep("Décision CAS reçue — en attente de transmission RA→OEC");
             requestRepository.save(request);
 
-            return ResponseEntity.ok(ApiResponse.success("Décision CAS enregistrée", meeting));
+            // Notify RA to forward the decision to OEC
+            notificationService.notifyRACASDecisionReceived(request, decision);
+
+            return ResponseEntity.ok(ApiResponse.success("Décision CAS enregistrée — le RA a été notifié pour transmission à l'OEC", meeting));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    @PostMapping("/cas/by-request/{requestId}/send-decision-to-oec")
+    public ResponseEntity<ApiResponse> sendCASDecisionToOEC(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId)
+                    .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+            // Find the decided meeting for this request
+            List<CASMeeting> meetings = casMeetingRepository.findByRequest_Id(requestId);
+            CASMeeting meeting = meetings.stream()
+                    .filter(m -> m.getFinalDecision() != null)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Aucune décision CAS trouvée pour cette demande"));
+
+            String decision = meeting.getFinalDecision();
+            String notes = meeting.getPresidentNotes() != null ? meeting.getPresidentNotes() : "";
+
+            // Notify OEC and transition request status
+            if (decision.startsWith("ACCORDER")) {
+                notificationService.notifyOECAccreditationGranted(request, com.algerac.model.CASDecisionType.GRANT_FULL, notes);
+                request.setStatus(RequestStatus.CERTIFICATE_PREPARATION);
+                request.setCurrentStep("Accréditation accordée — certificat en préparation");
+            } else if ("REFUSER".equals(decision)) {
+                notificationService.notifyOECAccreditationRefused(request, notes);
+                request.setStatus(RequestStatus.CAS_DECISION_REFUSAL);
+                request.setCurrentStep("Accréditation refusée — OEC informé");
+            } else {
+                notificationService.notifyOECAccreditationPostponed(request, notes);
+                request.setStatus(RequestStatus.CAS_DECISION_POSTPONEMENT);
+                request.setCurrentStep("Décision ajournée — OEC informé");
+            }
+            requestRepository.save(request);
+
+            return ResponseEntity.ok(ApiResponse.success("Décision CAS transmise à l'OEC", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
 
     @GetMapping("/cas/meetings")
     public ResponseEntity<?> getAllCASMeetings() {
@@ -875,9 +1033,26 @@ public class WorkflowController {
     // ========== EVALUATION START/COMPLETE (STEP 7) ==========
 
     @PostMapping("/evaluation/start/{requestId}")
-    public ResponseEntity<ApiResponse> startEvaluation(@PathVariable Long requestId) {
+    public ResponseEntity<ApiResponse> startEvaluation(@PathVariable Long requestId, HttpSession session) {
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
             AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+            // Check that evaluation date has arrived
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (!teams.isEmpty()) {
+                EvaluationTeam team = teams.get(0);
+                java.time.LocalDate evalDate = Boolean.TRUE.equals(team.getEvaluationDateAccepted())
+                        ? team.getProposedEvaluationDate()
+                        : (team.getOecProposedDate() != null ? team.getOecProposedDate() : team.getProposedEvaluationDate());
+                if (evalDate != null && java.time.LocalDate.now().isBefore(evalDate)) {
+                    return ResponseEntity.badRequest().body(ApiResponse.error(
+                            "Le dossier ne peut être déverrouillé qu'à partir de la date d'évaluation (" + evalDate + ")"));
+                }
+            }
+
             request.setStatus(RequestStatus.EVALUATION_IN_PROGRESS);
             request.setEvaluationStartDate(LocalDateTime.now());
             request.setCurrentStep("Évaluation en cours");
@@ -931,7 +1106,72 @@ public class WorkflowController {
     }
 
     // ========== HELPER ==========
-    
+
+    @GetMapping("/experts-directory")
+    public ResponseEntity<?> getExpertsDirectory() {
+        List<UserRole> evaluatorRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR, UserRole.FORMATEUR);
+        List<User> experts = userRepository.findAll().stream()
+                .filter(u -> evaluatorRoles.contains(u.getRole()) && u.getStatus() == UserStatus.APPROVED)
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> result = experts.stream().map(e -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", e.getId());
+            map.put("fullName", e.getFullName());
+            map.put("email", e.getEmail());
+            map.put("phone", e.getPhone());
+            map.put("role", e.getRole() != null ? e.getRole().name() : null);
+            map.put("specialite", e.getSpecialite());
+            map.put("experience", e.getExperience());
+            map.put("diplomes", e.getDiplomes());
+            map.put("langues", e.getLangues());
+            map.put("disponibilite", e.getDisponibilite());
+            map.put("domaineExpertise", e.getDomaineExpertise());
+            map.put("sousDomaineExpertise", e.getSousDomaineExpertise());
+            map.put("registrationId", e.getRegistrationId());
+            map.put("createdAt", e.getCreatedAt());
+
+            // Current team assignments (missions)
+            List<TeamMember> memberships = memberRepository.findAll().stream()
+                    .filter(m -> m.getExpert() != null && m.getExpert().getId().equals(e.getId()))
+                    .collect(Collectors.toList());
+
+            List<Map<String, Object>> missions = memberships.stream().map(m -> {
+                Map<String, Object> mission = new HashMap<>();
+                mission.put("teamMemberId", m.getId());
+                mission.put("teamRole", m.getRole() != null ? m.getRole().name() : null);
+                mission.put("specialization", m.getSpecialization());
+                mission.put("available", m.getAvailable());
+                mission.put("mandatementSentAt", m.getMandatementSentAt());
+                if (m.getTeam() != null) {
+                    EvaluationTeam team = m.getTeam();
+                    mission.put("teamId", team.getId());
+                    mission.put("proposedEvaluationDate", team.getProposedEvaluationDate());
+                    mission.put("oecProposedDate", team.getOecProposedDate());
+                    if (team.getRequest() != null) {
+                        mission.put("requestId", team.getRequest().getId());
+                        mission.put("requestRef", team.getRequest().getReferenceNumber());
+                        mission.put("orgName", team.getRequest().getOecOrganizationName());
+                        mission.put("requestStatus", team.getRequest().getStatus() != null ? team.getRequest().getStatus().name() : null);
+                    }
+                }
+                return mission;
+            }).collect(Collectors.toList());
+
+            map.put("missions", missions);
+            map.put("totalMissions", missions.size());
+            long activeMissions = missions.stream()
+                    .filter(m -> m.get("requestStatus") != null &&
+                            !Set.of("CLOSED", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT", "WITHDRAWN").contains(m.get("requestStatus").toString()))
+                    .count();
+            map.put("activeMissions", activeMissions);
+            return map;
+        }).sorted(Comparator.comparing(m -> m.get("fullName") != null ? m.get("fullName").toString() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
     private ResponseEntity<ApiResponse> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
     }

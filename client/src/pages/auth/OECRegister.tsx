@@ -330,6 +330,7 @@ export default function OECRegister() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
   
   const [formData, setFormData] = useState<FormData>({
     // Étape 1
@@ -580,6 +581,37 @@ export default function OECRegister() {
 
     setLoading(true);
     try {
+      // Convertir les fichiers joints en base64
+      const fileToBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+      const docsList: Array<{key: string, name: string, base64?: string, mimeType?: string}> = [];
+      for (const [key, checked] of Object.entries(formData.documentsChecked)) {
+        if (checked) {
+          const file = documentFiles[key];
+          if (file) {
+            docsList.push({ key, name: file.name, base64: await fileToBase64(file), mimeType: file.type });
+          } else {
+            docsList.push({ key, name: key });
+          }
+        }
+      }
+      for (const [doc, checked] of Object.entries(formData.docsAdminChecked)) {
+        if (checked) {
+          const file = documentFiles[`admin-${doc}`];
+          if (file) {
+            docsList.push({ key: `admin-${doc}`, name: file.name, base64: await fileToBase64(file), mimeType: file.type });
+          } else {
+            docsList.push({ key: `admin-${doc}`, name: doc });
+          }
+        }
+      }
+
       // Mapper les données du formulaire vers le format attendu par le backend
       const payload = {
         nomOrganisme: formData.nomLegal,
@@ -592,7 +624,8 @@ export default function OECRegister() {
         telephoneDirect: formData.contactTelephone,
         emailProfessionnel: formData.contactEmail,
         porteeAccreditation: formData.activites.join(", "),
-        userType: "OEC"
+        userType: "OEC",
+        documents: docsList.length > 0 ? docsList : undefined
       };
 
       const response = await fetch("http://localhost:8082/api/auth/signup/oec", {
@@ -1513,9 +1546,27 @@ export default function OECRegister() {
                           checked={!!formData.documentsChecked[`${activity}-${doc}`]}
                           onCheckedChange={() => toggleDocumentCheck(`${activity}-${doc}`)}
                         />
-                        <Label htmlFor={`doc-${activity}-${idx}`} className="cursor-pointer text-sm flex-1">
-                          {doc}
-                        </Label>
+                        <div className="flex-1">
+                          <Label htmlFor={`doc-${activity}-${idx}`} className="cursor-pointer text-sm">
+                            {doc}
+                          </Label>
+                          {!!formData.documentsChecked[`${activity}-${doc}`] && (
+                            <div className="mt-1">
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) setDocumentFiles(prev => ({ ...prev, [`${activity}-${doc}`]: file }));
+                                }}
+                                className="text-xs w-full"
+                              />
+                              {documentFiles[`${activity}-${doc}`] && (
+                                <p className="text-xs text-green-600 mt-0.5">{documentFiles[`${activity}-${doc}`].name}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1536,9 +1587,27 @@ export default function OECRegister() {
                         checked={!!formData.documentsChecked[`transfert-${doc}`]}
                         onCheckedChange={() => toggleDocumentCheck(`transfert-${doc}`)}
                       />
-                      <Label htmlFor={`doc-transfert-${idx}`} className="cursor-pointer text-sm flex-1">
-                        {doc}
-                      </Label>
+                      <div className="flex-1">
+                        <Label htmlFor={`doc-transfert-${idx}`} className="cursor-pointer text-sm">
+                          {doc}
+                        </Label>
+                        {!!formData.documentsChecked[`transfert-${doc}`] && (
+                          <div className="mt-1">
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) setDocumentFiles(prev => ({ ...prev, [`transfert-${doc}`]: file }));
+                              }}
+                              className="text-xs w-full"
+                            />
+                            {documentFiles[`transfert-${doc}`] && (
+                              <p className="text-xs text-green-600 mt-0.5">{documentFiles[`transfert-${doc}`].name}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1578,9 +1647,27 @@ export default function OECRegister() {
                 checked={!!formData.docsAdminChecked[doc]}
                 onCheckedChange={() => toggleDocAdminCheck(doc)}
               />
-              <Label htmlFor={`admin-doc-${idx}`} className="cursor-pointer text-sm flex-1">
-                {doc}
-              </Label>
+              <div className="flex-1">
+                <Label htmlFor={`admin-doc-${idx}`} className="cursor-pointer text-sm">
+                  {doc}
+                </Label>
+                {!!formData.docsAdminChecked[doc] && (
+                  <div className="mt-1">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setDocumentFiles(prev => ({ ...prev, [`admin-${doc}`]: file }));
+                      }}
+                      className="text-xs w-full"
+                    />
+                    {documentFiles[`admin-${doc}`] && (
+                      <p className="text-xs text-green-600 mt-0.5">{documentFiles[`admin-${doc}`].name}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

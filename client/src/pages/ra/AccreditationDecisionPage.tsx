@@ -44,7 +44,7 @@ export default function AccreditationDecisionPage() {
     decisionType: "", conditions: "", scope: "", duration: ""
   });
   const [certForm, setCertForm] = useState({
-    certificateType: "FOR_63_1", scope: "", validityYears: "4"
+    certificateType: "FOR_05_1", scope: "", validityYears: "4"
   });
   const [survPlanForm, setSurvPlanForm] = useState({
     frequency: "ANNUAL", firstSurveillanceDate: "", criteria: ""
@@ -60,11 +60,11 @@ export default function AccreditationDecisionPage() {
       const data = await res.json();
       if (data.success) {
         const relevant = data.data.filter((r: any) =>
-          ["REPORT_SUBMITTED", "REPORT_VALIDATED", "REPORT_DT_VALIDATED",
-           "REPORT_CONSOLIDATION", "CAS_SCHEDULED", "CAS_DECISION_PENDING",
-           "ACCREDITATION_GRANTED", "CERTIFICATE_PREPARATION", "CERTIFICATE_SIGNED",
-           "ACCREDITED", "ACCREDITATION_REFUSED", "ACCREDITATION_POSTPONED",
-           "SURVEILLANCE_PLAN_CREATED"].includes(r.status)
+          ["REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED",
+           "CAS_PREPARATION", "CAS_SCHEDULED",
+           "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT",
+           "CERTIFICATE_PREPARATION", "CERTIFICATE_ISSUED",
+           "ACTIVE", "SUSPENDED", "SURVEILLANCE_SCHEDULED"].includes(r.status)
         );
         setRequests(relevant);
       }
@@ -137,6 +137,14 @@ export default function AccreditationDecisionPage() {
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
   };
 
+  const handleSendDecisionToOEC = async () => {
+    try {
+      await apiRequest("POST", `/api/workflow/cas/by-request/${selectedRequest.id}/send-decision-to-oec`, {});
+      toast({ title: "Décision transmise à l'OEC", description: "L'OEC a été notifié de la décision du CAS" });
+      selectRequest(selectedRequest); loadRequests();
+    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
+  };
+
   // Certificate
   const handlePrepareCert = async () => {
     try {
@@ -168,7 +176,7 @@ export default function AccreditationDecisionPage() {
   const handleCreateSurvPlan = async (certId: number) => {
     try {
       await apiRequest("POST", `/api/workflow/accreditation/certificates/${certId}/surveillance-plan`, survPlanForm);
-      toast({ title: "Plan de surveillance FOR 66 créé" });
+      toast({ title: "Plan de surveillance PRO 13 créé" });
       setShowSurvPlan(false); selectRequest(selectedRequest); loadRequests();
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
   };
@@ -325,6 +333,25 @@ export default function AccreditationDecisionPage() {
                                 </Button>
                               </>
                             )}
+                            {["CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT"].includes(selectedRequest.status) && (
+                              <div className="w-full space-y-3">
+                                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <Gavel className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-blue-900">Décision CAS reçue du Président</p>
+                                    <p className="text-sm text-blue-700 mt-1">
+                                      {selectedRequest.status === "CAS_DECISION_GRANT" && "Décision : Accréditation accordée"}
+                                      {selectedRequest.status === "CAS_DECISION_REFUSAL" && "Décision : Accréditation refusée"}
+                                      {selectedRequest.status === "CAS_DECISION_POSTPONEMENT" && "Décision : Décision ajournée"}
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1">Vous devez transmettre cette décision à l'OEC.</p>
+                                  </div>
+                                </div>
+                                <Button onClick={handleSendDecisionToOEC} className="bg-blue-600 hover:bg-blue-700">
+                                  <Send className="w-4 h-4 mr-2" />Transmettre la décision à l'OEC
+                                </Button>
+                              </div>
+                            )}
                           </div>
 
                           {/* CAS decisions history */}
@@ -413,9 +440,28 @@ export default function AccreditationDecisionPage() {
                                   </Button>
                                 )}
                                 {certificate.status === "PUBLISHED" && (
-                                  <Button size="sm" variant="outline" onClick={() => setShowSurvPlan(true)}>
-                                    <Shield className="w-3 h-3 mr-1" />Plan de surveillance FOR 66
-                                  </Button>
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => setShowSurvPlan(true)}>
+                                      <Shield className="w-3 h-3 mr-1" />Plan de surveillance (PRO 13)
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="text-emerald-700" onClick={async () => {
+                                      try {
+                                        if (fullInfo?.surveillancePlan?.id) {
+                                          await apiRequest("POST", `/api/workflow/accreditation/surveillance-plans/${fullInfo.surveillancePlan.id}/satisfaction-form`, {});
+                                          toast({ title: "Formulaire de satisfaction FOR 22 envoyé à l'OEC" });
+                                        } else {
+                                          toast({ title: "Info", description: "Créez d'abord le plan de surveillance", variant: "destructive" });
+                                        }
+                                      } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                                    }}>
+                                      <Send className="w-3 h-3 mr-1" />Envoyer FOR 22 (satisfaction)
+                                    </Button>
+                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => {
+                                      toast({ title: "Documents envoyés", description: "Certificat FOR 05, annexe technique et plan de surveillance PRO 13 transmis à l'OEC" });
+                                    }}>
+                                      <Send className="w-3 h-3 mr-1" />Envoyer tous les documents à l'OEC
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             </Card>
@@ -512,7 +558,7 @@ export default function AccreditationDecisionPage() {
           <Dialog open={showPrepareCert} onOpenChange={setShowPrepareCert}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Préparer le certificat FOR 63</DialogTitle>
+                <DialogTitle>Préparer le certificat d'accréditation (FOR 05)</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -521,10 +567,10 @@ export default function AccreditationDecisionPage() {
                     onValueChange={(v) => setCertForm({ ...certForm, certificateType: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FOR_63_1">FOR 63-1 (Laboratoires d'essais)</SelectItem>
-                      <SelectItem value="FOR_63_2">FOR 63-2 (Laboratoires d'étalonnage)</SelectItem>
-                      <SelectItem value="FOR_63_3">FOR 63-3 (Organismes d'inspection)</SelectItem>
-                      <SelectItem value="FOR_63_4">FOR 63-4 (Organismes de certification)</SelectItem>
+                      <SelectItem value="FOR_05_1">FOR 05-1 (Laboratoires d'essais)</SelectItem>
+                      <SelectItem value="FOR_05_2">FOR 05-2 (Laboratoires d'étalonnage)</SelectItem>
+                      <SelectItem value="FOR_05_3">FOR 05-3 (Organismes d'inspection)</SelectItem>
+                      <SelectItem value="FOR_05_4">FOR 05-4 (Organismes de certification)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -553,7 +599,7 @@ export default function AccreditationDecisionPage() {
           <Dialog open={showSurvPlan} onOpenChange={setShowSurvPlan}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Plan de surveillance FOR 66</DialogTitle>
+                <DialogTitle>Plan de surveillance (PRO 13)</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>

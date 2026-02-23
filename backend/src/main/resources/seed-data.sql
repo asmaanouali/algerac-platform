@@ -9,7 +9,6 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 ('sumsum88.sum23@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Chef Département', 'CD', 'ALGERAC Direction', '0555111111', NOW(), 'APPROVED', NULL, NULL, NULL, NULL),
 ('gr.asmaa98@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Responsable Accréditation 1', 'RA', 'ALGERAC RA', '0555222222', NOW(), 'APPROVED', NULL, NULL, NULL, NULL),
 ('zenmal695@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Responsable Accréditation 2', 'RA', 'ALGERAC RA', '0555333333', NOW(), 'APPROVED', NULL, NULL, NULL, NULL),
-('lynakdr724@gmail.com', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'OEC Test', 'OEC', 'Laboratoire Central', '0555444444', NOW(), 'APPROVED', NULL, NULL, NULL, NULL),
 ('dag@algerac.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'DAG Test', 'DAG', 'ALGERAC DAG', '0555555555', NOW(), 'APPROVED', NULL, NULL, NULL, NULL),
 ('expert1@algerac.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Ahmed Benali', 'EXPERT', NULL, '0555666666', NOW(), 'APPROVED', 'Laboratoire d''essais', '10 ans', 'Benali', 'Ahmed'),
 ('expert2@algerac.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS', 'Fatima Cherif', 'EXPERT', NULL, '0555777777', NOW(), 'APPROVED', 'Inspection', '8 ans', 'Cherif', 'Fatima'),

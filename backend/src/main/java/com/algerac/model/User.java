@@ -124,6 +124,10 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String connaissancesLinguistiquesJson;
     
+    // Documents joints à la candidature (tableau JSON [{name, base64, mimeType}])
+    @Column(columnDefinition = "TEXT")
+    private String documentsJson;
+    
     // STATUS
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

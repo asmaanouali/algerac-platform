@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -49,6 +50,12 @@ public class TeamMember {
     
     @Column(columnDefinition = "TEXT")
     private String recusationReason;
+
+    // Mandatement
+    private LocalDateTime mandatementSentAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String mandatementMessage;
     
     private LocalDateTime addedAt;
     
@@ -78,5 +85,29 @@ public class TeamMember {
     @JsonProperty("requestReferenceNumber")
     public String getRequestReferenceNumber() {
         return team != null && team.getRequest() != null ? team.getRequest().getReferenceNumber() : null;
+    }
+
+    @JsonProperty("proposedEvaluationDate")
+    public LocalDate getProposedEvaluationDate() {
+        return team != null ? team.getProposedEvaluationDate() : null;
+    }
+
+    @JsonProperty("evaluationDateAccepted")
+    public Boolean getEvaluationDateAccepted() {
+        return team != null ? team.getEvaluationDateAccepted() : null;
+    }
+
+    @JsonProperty("oecProposedDate")
+    public LocalDate getOecProposedDate() {
+        return team != null ? team.getOecProposedDate() : null;
+    }
+
+    @JsonProperty("dossierUnlocked")
+    public Boolean getDossierUnlocked() {
+        if (team == null || team.getProposedEvaluationDate() == null) return false;
+        LocalDate evalDate = Boolean.TRUE.equals(team.getEvaluationDateAccepted()) 
+                ? team.getProposedEvaluationDate()
+                : (team.getOecProposedDate() != null ? team.getOecProposedDate() : team.getProposedEvaluationDate());
+        return !LocalDate.now().isBefore(evalDate);
     }
 }

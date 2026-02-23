@@ -192,15 +192,17 @@ export default function CASMemberDashboard() {
                               </div>
                             ) : (
                               <>
-                                <p className="text-sm text-muted-foreground">
-                                  Vous n'avez pas encore voté pour cette réunion. Votez après avoir consulté le dossier complet.
-                                </p>
+                                {["VOTING", "IN_PROGRESS"].includes(selectedMeeting.status) ? (
+                                  <p className="text-sm text-muted-foreground">Vous n'avez pas encore voté pour cette réunion.</p>
+                                ) : (
+                                  <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg">
+                                    <Vote className="w-4 h-4" />
+                                    <span>En attente d'ouverture du vote par le Président du CAS</span>
+                                  </div>
+                                )}
                                 <Button onClick={() => setShowVoteForm(true)} disabled={!["VOTING", "IN_PROGRESS"].includes(selectedMeeting.status)}>
                                   <Vote className="w-4 h-4 mr-2" />Voter
                                 </Button>
-                                {!["VOTING", "IN_PROGRESS"].includes(selectedMeeting.status) && (
-                                  <p className="text-xs text-muted-foreground">Le vote n'est pas encore ouvert pour cette réunion</p>
-                                )}
                               </>
                             )}
                           </div>

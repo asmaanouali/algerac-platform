@@ -47,18 +47,33 @@ interface ActiveUser {
 
 interface PendingApplication {
   id: number;
-  organizationName: string;
-  typeOrganisme: string;
-  adresseSiege: string;
-  phone: string;
+  // OEC fields
+  organizationName?: string;
+  typeOrganisme?: string;
+  adresseSiege?: string;
+  nomRepresentant?: string;
+  fonction?: string;
+  porteeAccreditation?: string;
+  // Expert/Évaluateur/Formateur fields
+  fullName?: string;
+  userType?: string;
+  domaineExpertise?: string;
+  // Common
   email: string;
-  nomRepresentant: string;
-  fonction: string;
-  porteeAccreditation: string;
+  phone?: string;
+  telephone?: string;
   status: string;
   createdAt: string;
   dateApprobation?: string;
 }
+
+const getApplicationDisplayName = (app: PendingApplication): string =>
+  app.organizationName || app.fullName || app.email;
+
+const getApplicationType = (app: PendingApplication): string => {
+  if (app.userType) return app.userType;
+  return "OEC";
+};
 
 export default function UsersManagementPage() {
   const { toast } = useToast();
@@ -135,19 +150,13 @@ export default function UsersManagementPage() {
   const fetchPendingApplications = async () => {
     try {
       setPendingLoading(true);
-      const response = await fetch("http://localhost:8082/api/candidatures/oec/approved", {
-        credentials: "include"
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPendingApplications(data);
-      } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les candidatures",
-          variant: "destructive"
-        });
-      }
+      const [oecRes, expertRes] = await Promise.all([
+        fetch("http://localhost:8082/api/candidatures/oec/approved", { credentials: "include" }),
+        fetch("http://localhost:8082/api/candidatures/experts/approved", { credentials: "include" })
+      ]);
+      const oecData = oecRes.ok ? await oecRes.json() : [];
+      const expertData = expertRes.ok ? await expertRes.json() : [];
+      setPendingApplications([...oecData, ...expertData]);
     } catch (error) {
       console.error("Erreur:", error);
       toast({
@@ -162,24 +171,21 @@ export default function UsersManagementPage() {
 
   const handleCreateAccount = async () => {
     if (!selectedApplication) return;
-
-    if (!confirm("Confirmer la création du compte pour cet OEC ? Un email avec les identifiants sera envoyé.")) {
-      return;
-    }
+    const isExpert = !!selectedApplication.userType;
+    const typeName = isExpert ? selectedApplication.userType : "OEC";
+    const endpoint = isExpert
+      ? `http://localhost:8082/api/candidatures/experts/${selectedApplication.id}/create-account`
+      : `http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`;
 
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`, {
-        method: "POST",
-        credentials: "include"
-      });
+      const response = await fetch(endpoint, { method: "POST", credentials: "include" });
 
       if (response.ok) {
         toast({
           title: "Succès",
-          description: "Le compte OEC a été créé avec succès. Les identifiants ont été envoyés par email.",
+          description: `Le compte ${typeName} a été créé avec succès. Les identifiants ont été envoyés par email.`,
         });
-        
         fetchPendingApplications();
         fetchActiveUsers();
         setShowCreateAccountDialog(false);
@@ -233,6 +239,8 @@ export default function UsersManagementPage() {
     switch (status) {
       case "APPROVED":
         return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
+      case "CANDIDATURE_APPROVED":
+        return <Badge className="bg-blue-100 text-blue-800">Approuvé (compte en attente)</Badge>;
       case "PENDING":
         return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
       case "REJECTED":
@@ -255,10 +263,11 @@ export default function UsersManagementPage() {
   });
 
   const filteredPendingApplications = pendingApplications.filter(app => {
+    const name = getApplicationDisplayName(app);
     const matchesSearch = 
-      app.organizationName.toLowerCase().includes(pendingSearch.toLowerCase()) ||
+      name.toLowerCase().includes(pendingSearch.toLowerCase()) ||
       app.email.toLowerCase().includes(pendingSearch.toLowerCase()) ||
-      app.nomRepresentant?.toLowerCase().includes(pendingSearch.toLowerCase());
+      (app.nomRepresentant?.toLowerCase().includes(pendingSearch.toLowerCase()) ?? false);
     
     return matchesSearch;
   });
@@ -462,7 +471,7 @@ export default function UsersManagementPage() {
                   <CardHeader>
                     <CardTitle>Candidatures approuvées ({filteredPendingApplications.length})</CardTitle>
                     <CardDescription>
-                      Ces organismes ont été approuvés par le DT et attendent la création de leur compte
+                      Candidatures (OEC, Experts, Évaluateurs, Formateurs) approuvées en attente de création de compte
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -482,8 +491,9 @@ export default function UsersManagementPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>ID</TableHead>
-                              <TableHead>Organisme</TableHead>
-                              <TableHead>Représentant</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Nom / Organisme</TableHead>
+                              <TableHead>Contact</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead>Approuvé le</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -494,9 +504,14 @@ export default function UsersManagementPage() {
                               <TableRow key={app.id}>
                                 <TableCell className="font-medium">#{app.id}</TableCell>
                                 <TableCell>
+                                  <Badge className={app.userType ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}>
+                                    {getApplicationType(app)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
                                   <div>
-                                    <p className="font-medium">{app.organizationName}</p>
-                                    <p className="text-sm text-muted-foreground">{app.typeOrganisme}</p>
+                                    <p className="font-medium">{getApplicationDisplayName(app)}</p>
+                                    <p className="text-sm text-muted-foreground">{app.typeOrganisme || app.domaineExpertise || ""}</p>
                                   </div>
                                 </TableCell>
                                 <TableCell>{app.nomRepresentant || "N/A"}</TableCell>
@@ -556,26 +571,51 @@ export default function UsersManagementPage() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails de la candidature #{selectedApplication?.id}</DialogTitle>
-            <DialogDescription>{selectedApplication?.organizationName}</DialogDescription>
+            <DialogDescription>{selectedApplication && getApplicationDisplayName(selectedApplication)}</DialogDescription>
           </DialogHeader>
           
           {selectedApplication && (
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Organisme</Label>
-                  <p className="font-medium">{selectedApplication.organizationName}</p>
-                </div>
-                
-                <div className="space-y-2">
                   <Label className="text-muted-foreground">Type</Label>
-                  <p>{selectedApplication.typeOrganisme}</p>
+                  <Badge className={selectedApplication.userType ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}>
+                    {getApplicationType(selectedApplication)}
+                  </Badge>
                 </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-muted-foreground">Adresse</Label>
-                  <p>{selectedApplication.adresseSiege}</p>
-                </div>
+
+                {selectedApplication.organizationName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Organisme</Label>
+                    <p className="font-medium">{selectedApplication.organizationName}</p>
+                  </div>
+                )}
+                {selectedApplication.fullName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Nom Complet</Label>
+                    <p className="font-medium">{selectedApplication.fullName}</p>
+                  </div>
+                )}
+
+                {selectedApplication.typeOrganisme && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Type d&apos;organisme</Label>
+                    <p>{selectedApplication.typeOrganisme}</p>
+                  </div>
+                )}
+                {selectedApplication.domaineExpertise && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Domaine d&apos;expertise</Label>
+                    <p>{selectedApplication.domaineExpertise}</p>
+                  </div>
+                )}
+
+                {selectedApplication.adresseSiege && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-muted-foreground">Adresse</Label>
+                    <p>{selectedApplication.adresseSiege}</p>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Email</Label>
@@ -589,27 +629,31 @@ export default function UsersManagementPage() {
                   <Label className="text-muted-foreground">Téléphone</Label>
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {selectedApplication.phone || "Non renseigné"}
+                    {selectedApplication.phone || selectedApplication.telephone || "Non renseigné"}
                   </p>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Représentant</Label>
-                  <p className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    {selectedApplication.nomRepresentant || "Non renseigné"}
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Fonction</Label>
-                  <p>{selectedApplication.fonction || "Non renseigné"}</p>
-                </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-muted-foreground">Portée d'accréditation</Label>
-                  <p>{selectedApplication.porteeAccreditation || "Non renseigné"}</p>
-                </div>
+
+                {selectedApplication.nomRepresentant && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Représentant</Label>
+                    <p className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {selectedApplication.nomRepresentant}
+                    </p>
+                  </div>
+                )}
+                {selectedApplication.fonction && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Fonction</Label>
+                    <p>{selectedApplication.fonction}</p>
+                  </div>
+                )}
+                {selectedApplication.porteeAccreditation && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-muted-foreground">Portée d&apos;accréditation</Label>
+                    <p>{selectedApplication.porteeAccreditation}</p>
+                  </div>
+                )}
               </div>
               
               <div className="pt-4 border-t">
@@ -633,19 +677,19 @@ export default function UsersManagementPage() {
       <Dialog open={showCreateAccountDialog} onOpenChange={setShowCreateAccountDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Créer un compte OEC</DialogTitle>
-            <DialogDescription>{selectedApplication?.organizationName}</DialogDescription>
+            <DialogTitle>Créer un compte</DialogTitle>
+            <DialogDescription>{selectedApplication && getApplicationDisplayName(selectedApplication)}</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Confirmation :</strong> Un mot de passe sera généré automatiquement et envoyé par email à l'organisme avec ses identifiants de connexion.
+                <strong>Confirmation :</strong> Un mot de passe sera généré automatiquement et envoyé par email au candidat avec ses identifiants de connexion.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Email de l'organisme</Label>
+              <Label>Email du candidat</Label>
               <Input 
                 type="email"
                 disabled

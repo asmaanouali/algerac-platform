@@ -378,6 +378,54 @@ public class CandidatureController {
     }
     
     /**
+     * Récupère les candidatures d'experts/évaluateurs/formateurs approuvées en attente de création de compte
+     * Accessible par Admin
+     */
+    @GetMapping("/experts/approved")
+    public ResponseEntity<?> getApprovedExpertCandidatures(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            log.info("GET /api/candidatures/experts/approved - Récupération des experts approuvés en attente de compte");
+            List<User> approvedExperts = candidatureService.getApprovedExpertCandidatures();
+            return ResponseEntity.ok(approvedExperts);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des experts approuvés", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Crée un compte pour un expert/évaluateur/formateur approuvé
+     * Accessible par Admin
+     */
+    @PostMapping("/experts/{id}/create-account")
+    public ResponseEntity<?> createExpertAccount(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null)
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+
+            String generatedPassword = candidatureService.createExpertAccount(id, userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Le compte a été créé avec succès. Les identifiants ont été envoyés par email.");
+            response.put("generatedPassword", generatedPassword);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la création du compte expert {}", id, e);
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors de la création du compte expert", e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+
+    /**
      * Approuve une candidature d'expert/évaluateur/formateur
      * Accessible par GES_COMPETENCES
      */

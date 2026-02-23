@@ -18,7 +18,7 @@ import java.util.Optional;
  * Seeds test accreditation requests on startup (after SQL seed-data.sql runs).
  * Only inserts if the requests don't already exist (idempotent).
  */
-@Component
+//@Component
 @Order(10) // Run after Spring SQL init
 @RequiredArgsConstructor
 @Slf4j
@@ -33,7 +33,7 @@ public class TestDataSeeder implements ApplicationRunner {
         log.info("TestDataSeeder: checking for test accreditation requests...");
 
         // Find OEC and RA users
-        Optional<User> oecOpt = userRepository.findByEmail("lynakdr724@gmail.com");
+        Optional<User> oecOpt = userRepository.findByEmail("oec.test@algerac.dz");
         Optional<User> raOpt = userRepository.findByEmail("gr.asmaa98@gmail.com");
 
         if (oecOpt.isEmpty() || raOpt.isEmpty()) {

@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -46,4 +48,18 @@ public class OECSignupRequest {
     
     @NotBlank(message = "Le type d'utilisateur est requis")
     private String userType; // "OEC"
+    
+    // Documents joints (checklisteDocs + fichiers uploadés)
+    private List<DocumentJoint> documents;
+    
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class DocumentJoint {
+        private String key;
+        private String name;
+        private String base64;
+        private String mimeType;
+    }
 }

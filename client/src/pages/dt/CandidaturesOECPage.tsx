@@ -22,7 +22,8 @@ import {
   Phone,
   User,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +44,7 @@ interface OECApplication {
   rejectionReason?: string;
   createdAt: string;
   dateApprobation?: string;
+  documentsJson?: string;
 }
 
 export default function CandidaturesOECPage() {
@@ -470,6 +472,84 @@ export default function CandidaturesOECPage() {
                   </div>
                 )}
               </div>
+
+              {/* Formulaire DOC1 */}
+              <div className="border-t pt-4">
+                <Label className="text-sm font-semibold mb-3 block">Formulaire DOC1</Label>
+                <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                  <span className="text-sm font-medium text-blue-800">DOC1 - Formulaire de demande d'accréditation</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 h-7 px-2 border-blue-300 text-blue-700 hover:bg-blue-100"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/doc1`, {
+                          credentials: "include"
+                        });
+                        if (!response.ok) throw new Error("Erreur lors du téléchargement");
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `DOC1_${selectedApplication.organizationName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        toast({ title: "Erreur", description: "Impossible de télécharger le DOC1", variant: "destructive" });
+                      }
+                    }}
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    Télécharger
+                  </Button>
+                </div>
+              </div>
+
+              {/* Documents joints */}
+              {selectedApplication.documentsJson && (() => {
+                try {
+                  const docs: Array<{key?: string, name: string, base64?: string, mimeType?: string}> = JSON.parse(selectedApplication.documentsJson);
+                  if (!docs || docs.length === 0) return null;
+                  return (
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Documents joints</Label>
+                      <div className="space-y-2">
+                        {docs.map((doc, i) => (
+                          <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
+                            <span className="text-sm truncate flex-1 mr-2">{doc.name}</span>
+                            {doc.base64 ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="shrink-0 h-7 px-2"
+                                onClick={() => {
+                                  const mime = doc.mimeType || "application/octet-stream";
+                                  const byteChars = atob(doc.base64!);
+                                  const byteArr = new Uint8Array(byteChars.length);
+                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                  const blob = new Blob([byteArr], { type: mime });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = doc.name;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                }}
+                              >
+                                <Download className="w-3 h-3 mr-1" />
+                                Télécharger
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Confirmé (sans fichier)</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
               
               {selectedApplication.status === "PENDING" && (
                 <div className="flex gap-3 pt-4 border-t">

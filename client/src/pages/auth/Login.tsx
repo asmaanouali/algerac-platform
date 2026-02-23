@@ -37,7 +37,7 @@ export default function Login() {
           {/* Header */}
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-bold text-gray-900">Bienvenue</h2>
-            <p className="text-gray-600">Connectez-vous à votre espace accréditation</p>
+            <p className="text-gray-600">Connectez-vous à votre compte</p>
           </div>
 
           {/* Form */}
@@ -125,7 +125,7 @@ export default function Login() {
             {/* Divider */}
             <div className="text-center py-0">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                NOUVEAU SUR ALGERAC ?
+                VOUS N'AVEZ PAS DE COMPTE ?
               </span>
             </div>
 

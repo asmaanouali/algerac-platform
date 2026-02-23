@@ -58,8 +58,14 @@ public class AuthService {
     
     @Transactional
     public User registerOEC(OECSignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Un compte avec cet email existe déjà");
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser.isPresent()) {
+            if (existingUser.get().getStatus() == UserStatus.REJECTED) {
+                userRepository.delete(existingUser.get());
+                userRepository.flush();
+            } else {
+                throw new RuntimeException("Un compte avec cet email existe déjà");
+            }
         }
         
         User user = User.builder()
@@ -80,6 +86,15 @@ public class AuthService {
                 .createdAt(LocalDateTime.now())
                 .build();
         
+        // Sauvegarder les documents joints si présents
+        if (request.getDocuments() != null && !request.getDocuments().isEmpty()) {
+            try {
+                user.setDocumentsJson(objectMapper.writeValueAsString(request.getDocuments()));
+            } catch (JsonProcessingException e) {
+                log.warn("Erreur lors de la sérialisation des documents OEC : {}", e.getMessage());
+            }
+        }
+        
         user = userRepository.save(user);
         log.info("Nouvel OEC enregistré : {}", user.getOrganizationName());
         
@@ -88,8 +103,14 @@ public class AuthService {
     
     @Transactional
     public User registerExpert(ExpertSignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Un compte avec cet email existe déjà");
+        Optional<User> existingExpert = userRepository.findByEmail(request.getEmail());
+        if (existingExpert.isPresent()) {
+            if (existingExpert.get().getStatus() == UserStatus.REJECTED) {
+                userRepository.delete(existingExpert.get());
+                userRepository.flush();
+            } else {
+                throw new RuntimeException("Un compte avec cet email existe déjà");
+            }
         }
         
         String fullName = request.getPrenom() + " " + request.getNom();
@@ -160,6 +181,11 @@ public class AuthService {
             if (request.getConnaissancesLinguistiques() != null) {
                 user.setConnaissancesLinguistiquesJson(
                     objectMapper.writeValueAsString(request.getConnaissancesLinguistiques())
+                );
+            }
+            if (request.getDocuments() != null && !request.getDocuments().isEmpty()) {
+                user.setDocumentsJson(
+                    objectMapper.writeValueAsString(request.getDocuments())
                 );
             }
         } catch (JsonProcessingException e) {

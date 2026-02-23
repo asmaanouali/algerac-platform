@@ -28,8 +28,8 @@ export default function RegisterSelection() {
                   <Building2 className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold">Organisme (OEC)</h3>
-                  <p className="text-sm text-muted-foreground text-balance">Laboratoires, organismes d'inspection ou de certification.</p>
+                  <h3 className="text-lg font-bold">Déposer ma demande d'accréditation</h3>
+                  <p className="text-sm text-muted-foreground text-balance">Organismes souhaitant déposer une demande d'accréditation.</p>
                 </div>
               </CardContent>
             </Card>
@@ -42,8 +42,8 @@ export default function RegisterSelection() {
                   <UserRound className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold">Expert / Évaluateur / Formateur</h3>
-                  <p className="text-sm text-muted-foreground text-balance">Professionnels souhaitant collaborer avec ALGERAC.</p>
+                  <h3 className="text-lg font-bold">Déposer ma candidature</h3>
+                  <p className="text-sm text-muted-foreground text-balance">Professionnels souhaitant collaborer avec ALGERAC ( Formateur, Évaluateur, Expert ).</p>
                 </div>
               </CardContent>
             </Card>

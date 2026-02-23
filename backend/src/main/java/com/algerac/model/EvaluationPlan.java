@@ -27,7 +27,7 @@ public class EvaluationPlan {
     @Column(nullable = false, unique = true)
     private String planCode; // Code unique du plan
     
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String planFOR32; // Contenu du plan FOR 32
     
     @Column(columnDefinition = "TEXT")

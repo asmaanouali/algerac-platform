@@ -40,13 +40,36 @@ public class Quotation {
     private QuotationStatus status; // DRAFT, SENT_TO_DAG, APPROVED_BY_DAG, SENT_TO_OEC, VALIDATED_BY_OEC, REJECTED_BY_OEC
     
     @Column(nullable = false)
-    private BigDecimal amount; // Montant du devis
+    private BigDecimal amount; // Montant du devis (défini par le DAG)
     
     @Column(columnDefinition = "TEXT")
     private String details; // Détails du devis
     
     @Column(columnDefinition = "TEXT")
     private String dagComments; // Commentaires du DAG
+    
+    // Composition équipe proposée par le RA (demande d'établissement du devis)
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer reeCount = 1; // REE toujours fixé à 1
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer etCount = 1; // Évaluateur technique, minimum 1
+    
+    @Builder.Default
+    private Integer eqCount = 0; // Évaluateur qualité
+    
+    @Builder.Default
+    private Integer obsCount = 0; // Observateur
+    
+    @Builder.Default
+    private Integer supCount = 0; // Superviseur
+    
+    @Builder.Default
+    private Integer expCount = 0; // Expert
+    
+    private Double evaluationDurationDays; // Durée de l'évaluation en H/j
     
     private LocalDateTime sentToDagDate;
     private LocalDateTime approvedByDagDate;

@@ -156,10 +156,7 @@ public class AuthController {
             // Envoyer email de confirmation à l'OEC
             emailService.sendOECRegistrationConfirmation(user);
             
-            // Envoyer l'email avec le PDF DOC1 à ALGERAC (notification email existant)
-            emailService.sendOECRegistrationNotification(user);
-            
-            // Envoyer notification au DT
+            // Envoyer notification au DT (sans DOC1 en pièce jointe)
             emailService.sendDTNewOECNotification(user);
             
             log.info("Candidature OEC créée avec succès (User PENDING) - ID: {}, Organisme: {}", 

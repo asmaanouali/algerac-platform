@@ -128,6 +128,13 @@ public class RequestService {
         request.setStatus(RequestStatus.ASSIGNED_TO_RA);
         request.setProgress(25);
         
+        // Le CD attribue automatiquement un numéro de dossier séquentiel et unique
+        if (request.getReferenceNumber() == null || request.getReferenceNumber().isEmpty()) {
+            String referenceNumber = generateReferenceNumber();
+            request.setReferenceNumber(referenceNumber);
+            log.info("Numéro de dossier {} attribué automatiquement par le CD", referenceNumber);
+        }
+        
         request = requestRepository.save(request);
         log.info("Demande ID {} assignée au RA {} par {}", 
                 request.getId(), ra.getFullName(), currentUser.getFullName());
@@ -307,11 +314,9 @@ public class RequestService {
         User oec = userRepository.findById(oecId)
                 .orElseThrow(() -> new RuntimeException("OEC non trouvé"));
         
-        // Generate reference number
-        String referenceNumber = generateReferenceNumber();
+        // Le numéro de dossier sera attribué par le CD lors de l'assignation
         
         AccreditationRequest request = AccreditationRequest.builder()
-                .referenceNumber(referenceNumber)
                 .oec(oec)
                 .type(dto.getType())
                 .domain(dto.getDomain())

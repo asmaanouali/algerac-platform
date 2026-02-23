@@ -74,8 +74,8 @@ export default function MissionOrdersPage() {
   if (!user) return null;
 
   const pendingDT = orders.filter((o: any) => o.status === "PENDING_DT_APPROVAL");
-  const pendingDG = orders.filter((o: any) => o.status === "DT_APPROVED");
-  const processed = orders.filter((o: any) => !["PENDING_DT_APPROVAL", "DT_APPROVED"].includes(o.status));
+  const pendingDG = orders.filter((o: any) => o.status === "PENDING_DG_APPROVAL");
+  const processed = orders.filter((o: any) => !["PENDING_DT_APPROVAL", "PENDING_DG_APPROVAL"].includes(o.status));
 
   const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     DRAFT: { label: "Brouillon", variant: "secondary" },
@@ -180,7 +180,7 @@ export default function MissionOrdersPage() {
                               <TableHead>N° Ordre</TableHead>
                               <TableHead>Dossier</TableHead>
                               <TableHead>Dates</TableHead>
-                              <TableHead>Actions</TableHead>
+                              <TableHead>Statut</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -192,9 +192,7 @@ export default function MissionOrdersPage() {
                                   {o.startDate ? `${new Date(o.startDate).toLocaleDateString("fr-FR")} — ${new Date(o.endDate).toLocaleDateString("fr-FR")}` : "—"}
                                 </TableCell>
                                 <TableCell>
-                                  <Button size="sm" onClick={() => handleDGApproval(o.id)}>
-                                    <Stamp className="w-4 h-4 mr-1" />Approuver DG
-                                  </Button>
+                                  <Badge variant="outline" className="text-blue-600 border-blue-300">En attente DG</Badge>
                                 </TableCell>
                               </TableRow>
                             ))}

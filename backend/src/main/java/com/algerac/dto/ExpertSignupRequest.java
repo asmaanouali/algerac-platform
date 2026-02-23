@@ -87,7 +87,19 @@ public class ExpertSignupRequest {
     @NotBlank(message = "Le type d'utilisateur est requis")
     private String userType; // "EXPERT", "EVALUATEUR", "FORMATEUR"
     
+    // Documents joints à la candidature
+    private List<DocumentJoint> documents;
+    
     // Nested Classes
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class DocumentJoint {
+        private String name;
+        private String base64;
+        private String mimeType;
+    }
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -96,6 +108,7 @@ public class ExpertSignupRequest {
         private String dateDebut;
         private String dateFin;
         private String duree;
+        private String dateDuree;
         private String universite;
         private String cours;
         private String specialite;
@@ -149,6 +162,7 @@ public class ExpertSignupRequest {
         private String dateDebut;
         private String duree;
         private String intituleFormation;
+        private String controleParAlgerac;
     }
     
     @Data
@@ -157,8 +171,8 @@ public class ExpertSignupRequest {
     @Builder
     public static class ConnaissanceLinguistique {
         private String langue;
-        private Integer niveauLu;      // 1-4
-        private Integer niveauParle;   // 1-4
-        private Integer niveauEcrit;   // 1-4
+        private String niveauLu;      // Basique, Assez bien, Bien, Très bien, Excellent
+        private String niveauParle;   // Basique, Assez bien, Bien, Très bien, Excellent
+        private String niveauEcrit;   // Basique, Assez bien, Bien, Très bien, Excellent
     }
 }

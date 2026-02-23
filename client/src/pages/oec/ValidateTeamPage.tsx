@@ -6,9 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, CheckCircle, XCircle, Users, AlertTriangle, Shield } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, AlertTriangle, Shield, Calendar, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -24,13 +25,13 @@ interface TeamMember {
 }
 
 const roleLabels: Record<string, string> = {
-  REE: "Responsable Équipe Évaluation",
-  ET: "Évaluateur Technique",
+  REE: "Responsable Equipe Evaluation",
+  ET: "Evaluateur Technique",
   EXP: "Expert",
-  EQ: "Évaluateur Qualité",
+  EQ: "Evaluateur Qualite",
   SUP: "Superviseur",
   OBS: "Observateur",
-  EF: "Évaluateur en Formation",
+  EF: "Evaluateur en Formation",
 };
 
 export default function ValidateTeamPage() {
@@ -47,6 +48,11 @@ export default function ValidateTeamPage() {
   const [recuseDialogOpen, setRecuseDialogOpen] = useState(false);
   const [recusedMemberIds, setRecusedMemberIds] = useState<number[]>([]);
   const [recuseReason, setRecuseReason] = useState("");
+
+  // Date negotiation
+  const [dateAccepted, setDateAccepted] = useState<boolean>(true);
+  const [oecProposedDate, setOecProposedDate] = useState("");
+  const [dateRefusalReason, setDateRefusalReason] = useState("");
 
   useEffect(() => {
     if (user && !authLoading) loadData();
@@ -76,12 +82,30 @@ export default function ValidateTeamPage() {
   };
 
   const handleAccept = async () => {
+    if (!dateAccepted && !oecProposedDate) {
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez proposer une date alternative" });
+      return;
+    }
     setProcessing(true);
     try {
-      await apiRequest("POST", `/api/requests/${requestId}/team-validation`, {
-        accepted: true,
+      if (team) {
+        await apiRequest("POST", `/api/workflow/teams/${team.id}/oec-response`, {
+          validated: true,
+          dateAccepted,
+          oecProposedDate: !dateAccepted ? oecProposedDate : null,
+          dateRefusalReason: !dateAccepted ? dateRefusalReason : null,
+        });
+      } else {
+        await apiRequest("POST", `/api/requests/${requestId}/team-validation`, {
+          accepted: true,
+        });
+      }
+      toast({ 
+        title: "Equipe validee", 
+        description: dateAccepted 
+          ? "L'equipe et la date d'evaluation ont ete validees." 
+          : "L'equipe a ete validee. Vous avez propose une date alternative que le RA examinera."
       });
-      toast({ title: "Équipe validée", description: "L'équipe d'évaluation a été validée. La revue documentaire peut commencer." });
       setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
@@ -94,17 +118,28 @@ export default function ValidateTeamPage() {
 
   const handleRecuse = async () => {
     if (recusedMemberIds.length === 0 || !recuseReason.trim()) {
-      toast({ variant: "destructive", title: "Erreur", description: "Sélectionnez au moins un membre et indiquez la raison" });
+      toast({ variant: "destructive", title: "Erreur", description: "Selectionnez au moins un membre et indiquez la raison" });
       return;
     }
     setProcessing(true);
     try {
-      await apiRequest("POST", `/api/requests/${requestId}/team-validation`, {
-        accepted: false,
-        recusedMemberIds,
-        recuseReason,
-      });
-      toast({ title: "Récusation enregistrée", description: "Le RA sera notifié et devra proposer une nouvelle équipe (PRO 22)" });
+      if (team) {
+        await apiRequest("POST", `/api/workflow/teams/${team.id}/oec-response`, {
+          validated: false,
+          recusedMemberIds,
+          recusationReason: recuseReason,
+          dateAccepted: dateAccepted,
+          oecProposedDate: !dateAccepted ? oecProposedDate : null,
+          dateRefusalReason: !dateAccepted ? dateRefusalReason : null,
+        });
+      } else {
+        await apiRequest("POST", `/api/requests/${requestId}/team-validation`, {
+          accepted: false,
+          recusedMemberIds,
+          recuseReason,
+        });
+      }
+      toast({ title: "Recusation enregistree", description: "Le RA sera notifie et devra proposer une nouvelle equipe (PRO 22)" });
       setRecuseDialogOpen(false);
       setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
     } catch (err: any) {
@@ -114,6 +149,8 @@ export default function ValidateTeamPage() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
+  const proposedDate = team?.proposedEvaluationDate;
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <Sidebar />
@@ -122,36 +159,75 @@ export default function ValidateTeamPage() {
         <main className="p-4 md:p-8">
           <div className="max-w-4xl mx-auto space-y-6">
             <div>
-              <h1 className="text-3xl font-bold">Validation de l'Équipe d'Évaluation</h1>
-              <p className="text-muted-foreground mt-2">Examinez la composition de l'équipe proposée par ALGERAC</p>
+              <h1 className="text-3xl font-bold">Validation de l'Equipe d'Evaluation</h1>
+              <p className="text-muted-foreground mt-2">Examinez la composition de l'equipe et la date d'evaluation proposees par ALGERAC</p>
             </div>
 
             {request && (
-              <Alert><AlertDescription><strong>Référence :</strong> {request.referenceNumber}<br /><strong>Domaine :</strong> {request.domain}</AlertDescription></Alert>
+              <Alert><AlertDescription><strong>Reference :</strong> {request.referenceNumber}<br /><strong>Domaine :</strong> {request.domain}</AlertDescription></Alert>
             )}
 
             <Alert variant="destructive" className="border-amber-300 bg-amber-50 text-amber-900">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Délai :</strong> Vous disposez de <strong>3 jours</strong> pour accepter ou récuser des membres de l'équipe. Sans réponse dans ce délai, la composition sera considérée comme acceptée.
+                <strong>Delai :</strong> Vous disposez de <strong>3 jours</strong> pour accepter ou recuser des membres de l'equipe. Sans reponse dans ce delai, la composition sera consideree comme acceptee.
               </AlertDescription>
             </Alert>
 
+            {/* Proposed evaluation date */}
+            {proposedDate && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800"><CalendarDays className="h-5 w-5" />Date d'Evaluation Proposee</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className="text-2xl font-bold text-blue-900">
+                      {new Date(proposedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <Label className="font-medium">Acceptez-vous cette date ?</Label>
+                    <div className="flex gap-3">
+                      <Button variant={dateAccepted ? "default" : "outline"} size="sm" onClick={() => setDateAccepted(true)}>
+                        <CheckCircle className="w-4 h-4 mr-1" /> Oui, j'accepte cette date
+                      </Button>
+                      <Button variant={!dateAccepted ? "destructive" : "outline"} size="sm" onClick={() => setDateAccepted(false)}>
+                        <XCircle className="w-4 h-4 mr-1" /> Non, proposer une autre date
+                      </Button>
+                    </div>
+                    {!dateAccepted && (
+                      <div className="mt-3 p-4 bg-white rounded-lg border space-y-3">
+                        <div className="space-y-2">
+                          <Label>Date alternative proposee *</Label>
+                          <Input type="date" value={oecProposedDate} onChange={(e) => setOecProposedDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Motif du refus de date</Label>
+                          <Textarea value={dateRefusalReason} onChange={(e) => setDateRefusalReason(e.target.value)} placeholder="Indiquez la raison pour laquelle cette date ne convient pas..." rows={2} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Composition de l'Équipe (FOR 26)</CardTitle>
-                <CardDescription>Fiche de composition de l'équipe d'évaluation</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Composition de l'Equipe (FOR 26)</CardTitle>
+                <CardDescription>Fiche de composition de l'equipe d'evaluation</CardDescription>
               </CardHeader>
               <CardContent>
                 {members.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Aucun membre dans l'équipe</p>
+                  <p className="text-center text-muted-foreground py-8">Aucun membre dans l'equipe</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Évaluateur</TableHead>
-                        <TableHead>Rôle</TableHead>
-                        <TableHead>Spécialisation</TableHead>
+                        <TableHead>Evaluateur</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Specialisation</TableHead>
                         <TableHead>Engagement</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -160,7 +236,7 @@ export default function ValidateTeamPage() {
                         <TableRow key={m.id}>
                           <TableCell><div><p className="font-medium">{m.expert?.fullName}</p><p className="text-xs text-muted-foreground">{m.expert?.email}</p></div></TableCell>
                           <TableCell><Badge variant="outline">{roleLabels[m.role] || m.role}</Badge></TableCell>
-                          <TableCell>{m.specialization || m.expert?.specialite || "—"}</TableCell>
+                          <TableCell>{m.specialization || m.expert?.specialite || "---"}</TableCell>
                           <TableCell>{m.confidentialityAgreementSigned ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Shield className="h-4 w-4 text-gray-300" />}</TableCell>
                         </TableRow>
                       ))}
@@ -174,10 +250,10 @@ export default function ValidateTeamPage() {
               <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button variant="destructive" onClick={() => { setRecuseDialogOpen(true); setRecusedMemberIds([]); setRecuseReason(""); }} disabled={processing} className="flex-1">
-                    <XCircle className="mr-2 h-4 w-4" />Récuser des membres (PRO 22)
+                    <XCircle className="mr-2 h-4 w-4" />Recuser des membres (PRO 22)
                   </Button>
-                  <Button onClick={handleAccept} disabled={processing} className="flex-1">
-                    {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : <><CheckCircle className="mr-2 h-4 w-4" />Accepter l'équipe</>}
+                  <Button onClick={handleAccept} disabled={processing || (!dateAccepted && !oecProposedDate)} className="flex-1">
+                    {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : <><CheckCircle className="mr-2 h-4 w-4" />Accepter l'equipe{!dateAccepted ? " (date alternative)" : ""}</>}
                   </Button>
                 </div>
               </CardContent>
@@ -186,10 +262,10 @@ export default function ValidateTeamPage() {
 
           <Dialog open={recuseDialogOpen} onOpenChange={setRecuseDialogOpen}>
             <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Récusation de membres (PRO 22)</DialogTitle><DialogDescription>Sélectionnez les membres à récuser et indiquez votre justification</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle>Recusation de membres (PRO 22)</DialogTitle><DialogDescription>Selectionnez les membres a recuser et indiquez votre justification</DialogDescription></DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Membres à récuser :</Label>
+                  <Label>Membres a recuser :</Label>
                   {members.map((m) => (
                     <div key={m.id} className="flex items-center gap-3 p-3 border rounded-lg">
                       <input type="checkbox" checked={recusedMemberIds.includes(m.id)} onChange={() => toggleRecuseMember(m.id)} className="h-4 w-4" />
@@ -197,13 +273,13 @@ export default function ValidateTeamPage() {
                     </div>
                   ))}
                 </div>
-                <div className="space-y-2"><Label>Raison de la récusation *</Label><Textarea value={recuseReason} onChange={(e) => setRecuseReason(e.target.value)} placeholder="Justifiez votre récusation (conflit d'intérêts, manque d'impartialité, etc.)..." rows={4} /></div>
-                <Alert><AlertDescription>Conformément à la procédure PRO 22, le RA devra proposer de nouveaux membres pour remplacer les membres récusés.</AlertDescription></Alert>
+                <div className="space-y-2"><Label>Raison de la recusation *</Label><Textarea value={recuseReason} onChange={(e) => setRecuseReason(e.target.value)} placeholder="Justifiez votre recusation (conflit d'interets, manque d'impartialite, etc.)..." rows={4} /></div>
+                <Alert><AlertDescription>Conformement a la procedure PRO 22, le RA devra proposer de nouveaux membres pour remplacer les membres recuses.</AlertDescription></Alert>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRecuseDialogOpen(false)} disabled={processing}>Annuler</Button>
                 <Button variant="destructive" onClick={handleRecuse} disabled={processing || recusedMemberIds.length === 0 || !recuseReason.trim()}>
-                  {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : "Confirmer la récusation"}
+                  {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : "Confirmer la recusation"}
                 </Button>
               </DialogFooter>
             </DialogContent>

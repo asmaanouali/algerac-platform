@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, CheckCircle, XCircle, FileText, Download, Clock, UserCheck, UserX, Users } from "lucide-react";
+import { Search, Eye, CheckCircle, XCircle, FileText, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
@@ -22,14 +22,12 @@ interface Candidature {
   email: string;
   telephone: string;
   dateInscription: string;
-  status: "PENDING" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   photoBase64?: string;
   dateNaissance?: string;
   nationalite?: string;
   adresseDomicile?: string;
   sousDomaineExpertise?: string;
-  rejectionReason?: string;
-  documentsJson?: string;
 }
 
 export default function GesCompetencesCandidaturesPage() {
@@ -76,25 +74,14 @@ export default function GesCompetencesCandidaturesPage() {
     }
   };
 
-  // Stats
-  const stats = useMemo(() => {
-    const pending = candidatures.filter(c => c.status === "PENDING").length;
-    const approved = candidatures.filter(c => c.status === "CANDIDATURE_APPROVED").length;
-    const active = candidatures.filter(c => c.status === "APPROVED").length;
-    const rejected = candidatures.filter(c => c.status === "REJECTED").length;
-    return { pending, approved, active, rejected, total: candidatures.length };
-  }, [candidatures]);
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">En attente</Badge>;
-      case "CANDIDATURE_APPROVED":
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Approuvée (compte en attente)</Badge>;
       case "APPROVED":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Compte actif</Badge>;
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Approuvé</Badge>;
       case "REJECTED":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Refusée</Badge>;
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Rejeté</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -113,7 +100,7 @@ export default function GesCompetencesCandidaturesPage() {
     const matchesSearch = 
       c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.registrationId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.domaineExpertise?.toLowerCase().includes(searchTerm.toLowerCase());
+      c.domaineExpertise.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
     const matchesType = filterType === "all" || c.userType === filterType;
@@ -131,7 +118,7 @@ export default function GesCompetencesCandidaturesPage() {
       if (response.ok) {
         toast({
           title: "Succès",
-          description: "Candidature acceptée. L'administrateur a été notifié pour créer le compte."
+          description: "Candidature approuvée. L'administrateur a été notifié pour créer le compte."
         });
         fetchCandidatures();
         setSelectedCandidature(null);
@@ -157,7 +144,7 @@ export default function GesCompetencesCandidaturesPage() {
     if (!rejectionReason.trim()) {
       toast({
         title: "Erreur",
-        description: "Veuillez saisir un motif de refus",
+        description: "Veuillez saisir un motif de rejet",
         variant: "destructive"
       });
       return;
@@ -166,7 +153,9 @@ export default function GesCompetencesCandidaturesPage() {
     try {
       const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/reject`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         credentials: "include",
         body: JSON.stringify({ rejectionReason })
       });
@@ -174,7 +163,7 @@ export default function GesCompetencesCandidaturesPage() {
       if (response.ok) {
         toast({
           title: "Succès",
-          description: "Candidature refusée. Un email a été envoyé au candidat avec le motif."
+          description: "Candidature rejetée. Un email a été envoyé au candidat."
         });
         fetchCandidatures();
         setSelectedCandidature(null);
@@ -251,55 +240,6 @@ export default function GesCompetencesCandidaturesPage() {
             </Button>
           </div>
 
-          {/* Stat Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("PENDING")}>
-              <CardContent className="pt-4 pb-4 px-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">En attente</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-500 opacity-60" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("CANDIDATURE_APPROVED")}>
-              <CardContent className="pt-4 pb-4 px-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Approuvées</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.approved}</p>
-                  </div>
-                  <UserCheck className="w-8 h-8 text-blue-500 opacity-60" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("REJECTED")}>
-              <CardContent className="pt-4 pb-4 px-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Refusées</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
-                  </div>
-                  <UserX className="w-8 h-8 text-red-500 opacity-60" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("all")}>
-              <CardContent className="pt-4 pb-4 px-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total</p>
-                    <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-slate-500 opacity-60" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
           <Card className="mb-6 w-full">
             <CardContent className="pt-6">
               <div className="grid gap-4 md:grid-cols-3">
@@ -319,9 +259,8 @@ export default function GesCompetencesCandidaturesPage() {
                   <SelectContent>
                     <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="PENDING">En attente</SelectItem>
-                    <SelectItem value="CANDIDATURE_APPROVED">Approuvées</SelectItem>
-                    <SelectItem value="APPROVED">Compte actif</SelectItem>
-                    <SelectItem value="REJECTED">Refusées</SelectItem>
+                    <SelectItem value="APPROVED">Approuvé</SelectItem>
+                    <SelectItem value="REJECTED">Rejeté</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterType} onValueChange={setFilterType}>
@@ -339,7 +278,6 @@ export default function GesCompetencesCandidaturesPage() {
             </CardContent>
           </Card>
 
-          {/* Table */}
           <Card className="w-full overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -448,10 +386,6 @@ export default function GesCompetencesCandidaturesPage() {
                     <p className="font-medium">{selectedCandidature.nationalite}</p>
                   </div>
                 )}
-                <div>
-                  <Label className="text-xs text-muted-foreground">Statut</Label>
-                  <div className="mt-1">{getStatusBadge(selectedCandidature.status)}</div>
-                </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs text-muted-foreground">Domaine d&apos;expertise</Label>
                   <p className="font-medium">{selectedCandidature.domaineExpertise}</p>
@@ -470,14 +404,6 @@ export default function GesCompetencesCandidaturesPage() {
                 )}
               </div>
 
-              {/* Rejection reason if rejected */}
-              {selectedCandidature.status === "REJECTED" && selectedCandidature.rejectionReason && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <Label className="text-sm font-semibold text-red-700 mb-1 block">Motif de refus</Label>
-                  <p className="text-sm text-red-800">{selectedCandidature.rejectionReason}</p>
-                </div>
-              )}
-
               {/* Documents */}
               <div className="border-t pt-4">
                 <Label className="text-sm font-semibold mb-2 block">Documents</Label>
@@ -489,48 +415,9 @@ export default function GesCompetencesCandidaturesPage() {
                   <Download className="w-4 h-4" />
                   Télécharger le formulaire FOR20
                 </Button>
-                {selectedCandidature.documentsJson && (() => {
-                  try {
-                    const docs: Array<{name: string, base64?: string, mimeType?: string}> = JSON.parse(selectedCandidature.documentsJson);
-                    if (!docs || docs.length === 0) return null;
-                    return (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs text-muted-foreground font-medium">Fichiers joints par le candidat :</p>
-                        {docs.map((doc, i) => (
-                          <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
-                            <span className="text-sm truncate flex-1 mr-2">{doc.name}</span>
-                            {doc.base64 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="shrink-0 h-7 px-2"
-                                onClick={() => {
-                                  const mime = doc.mimeType || "application/octet-stream";
-                                  const byteChars = atob(doc.base64!);
-                                  const byteArr = new Uint8Array(byteChars.length);
-                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                                  const blob = new Blob([byteArr], { type: mime });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = doc.name;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                }}
-                              >
-                                <Download className="w-3 h-3 mr-1" />
-                                Télécharger
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  } catch { return null; }
-                })()}
               </div>
 
-              {/* Actions - only for PENDING */}
+              {/* Actions */}
               {selectedCandidature.status === "PENDING" && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button 
@@ -538,7 +425,7 @@ export default function GesCompetencesCandidaturesPage() {
                     onClick={() => handleApprove(selectedCandidature)}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Accepter
+                    Approuver
                   </Button>
                   <Button 
                     variant="destructive"
@@ -546,7 +433,7 @@ export default function GesCompetencesCandidaturesPage() {
                     onClick={() => setShowRejectDialog(true)}
                   >
                     <XCircle className="w-4 h-4 mr-2" />
-                    Refuser
+                    Rejeter
                   </Button>
                 </div>
               )}
@@ -559,18 +446,18 @@ export default function GesCompetencesCandidaturesPage() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Refuser la candidature</DialogTitle>
+            <DialogTitle>Rejeter la candidature</DialogTitle>
             <DialogDescription>
-              Veuillez indiquer le motif de refus. Un email sera envoyé au candidat.
+              Veuillez indiquer le motif de rejet. Un email sera envoyé au candidat.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectionReason">Motif de refus *</Label>
+              <Label htmlFor="rejectionReason">Motif de rejet *</Label>
               <Textarea
                 id="rejectionReason"
-                placeholder="Expliquez la raison du refus..."
+                placeholder="Expliquez la raison du rejet..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={4}
@@ -594,7 +481,7 @@ export default function GesCompetencesCandidaturesPage() {
                 className="flex-1"
                 onClick={() => selectedCandidature && handleReject(selectedCandidature)}
               >
-                Confirmer le refus
+                Confirmer le rejet
               </Button>
             </div>
           </div>

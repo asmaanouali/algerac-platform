@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2 } from "lucide-react";
+import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2, Calendar, Search, Filter, CalendarDays, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface Expert {
@@ -27,7 +27,7 @@ interface Expert {
 
 interface TeamMember {
   id: number;
-  expert: { id: number; fullName: string; email: string };
+  expert: { id: number; fullName: string; email: string; role?: string };
   role: string;
   specialization: string;
   confidentialityAgreementSigned: boolean;
@@ -37,15 +37,24 @@ interface TeamMember {
   recusedByOEC: boolean;
 }
 
-const teamRoles = [
-  { value: "REE", label: "Responsable Équipe Évaluation" },
-  { value: "ET", label: "Évaluateur Technique" },
-  { value: "EQ", label: "Évaluateur Qualité" },
-  { value: "EXP", label: "Expert" },
-  { value: "SUP", label: "Superviseur" },
-  { value: "OBS", label: "Observateur" },
-  { value: "EF", label: "Évaluateur en Formation" },
-];
+const roleLabels: Record<string, string> = {
+  REE: "Responsable Equipe Evaluation",
+  ET: "Evaluateur Technique",
+  EQ: "Evaluateur Qualite",
+  EXP: "Expert",
+  SUP: "Superviseur",
+  OBS: "Observateur",
+  EF: "Evaluateur en Formation",
+};
+
+const platformRoleToTeamRole: Record<string, string> = {
+  REE: "REE",
+  ET: "ET",
+  EQ: "EQ",
+  EXPERT: "EXP",
+  EVALUATEUR: "ET",
+  FORMATEUR: "EF",
+};
 
 export default function TeamCompositionPage() {
   const { user } = useAuth();
@@ -58,12 +67,23 @@ export default function TeamCompositionPage() {
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState<string>("");
-  const [selectedRole, setSelectedRole] = useState<string>("");
   const [specialization, setSpecialization] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Filters
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterSpecialite, setFilterSpecialite] = useState("");
+  const [filterName, setFilterName] = useState("");
+  const [filterAvailability, setFilterAvailability] = useState<string>("all");
+
+  // Calendar popup
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarExpert, setCalendarExpert] = useState<Expert | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+
+  // Evaluation date
+  const [evaluationDate, setEvaluationDate] = useState("");
+
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
@@ -107,7 +127,7 @@ export default function TeamCompositionPage() {
       const res = await apiRequest("POST", "/api/workflow/teams/create", { requestId: selectedRequest.id });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Équipe d'évaluation créée" });
+        toast({ title: "Succes", description: "Equipe d'evaluation creee" });
         selectRequest(selectedRequest);
       }
     } catch (e: any) {
@@ -116,19 +136,21 @@ export default function TeamCompositionPage() {
   };
 
   const addMember = async () => {
-    if (!selectedExpert || !selectedRole) return;
+    if (!selectedExpert) return;
+    const expert = experts.find(e => e.id === parseInt(selectedExpert));
+    if (!expert) return;
+    const teamRole = platformRoleToTeamRole[expert.role] || "ET";
     try {
       const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/add-member`, {
         expertId: parseInt(selectedExpert),
-        role: selectedRole,
+        role: teamRole,
         specialization,
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Membre ajouté à l'équipe" });
+        toast({ title: "Succes", description: `${expert.fullName} ajoute en tant que ${roleLabels[teamRole] || teamRole}` });
         setShowAddMember(false);
         setSelectedExpert("");
-        setSelectedRole("");
         setSpecialization("");
         selectRequest(selectedRequest);
       }
@@ -137,14 +159,29 @@ export default function TeamCompositionPage() {
     }
   };
 
+  const hasMinimumTeam = useMemo(() => {
+    const hasREE = members.some(m => m.role === "REE");
+    const hasET = members.some(m => m.role === "ET");
+    return hasREE && hasET;
+  }, [members]);
+
   const sendToOEC = async () => {
+    if (!hasMinimumTeam) {
+      toast({ title: "Erreur", description: "Equipe doit comprendre min 1 REE et 1 Evaluateur Technique", variant: "destructive" });
+      return;
+    }
+    if (!evaluationDate) {
+      toast({ title: "Erreur", description: "Veuillez selectionner une date d'evaluation", variant: "destructive" });
+      return;
+    }
     try {
       const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/send-to-oec`, {
-        compositionSheet: "Fiche composition équipe FOR 26",
+        compositionSheet: "Fiche composition equipe FOR 26",
+        evaluationDate: evaluationDate,
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Fiche de composition envoyée à l'OEC (délai: 3 jours)" });
+        toast({ title: "Succes", description: "Fiche de composition et date d'evaluation envoyees a l'OEC (delai: 3 jours)" });
         loadData();
       }
     } catch (e: any) {
@@ -153,17 +190,68 @@ export default function TeamCompositionPage() {
   };
 
   const removeMember = async (memberId: number) => {
-    if (!confirm("Voulez-vous vraiment retirer ce membre de l'équipe ?")) return;
+    if (!confirm("Voulez-vous vraiment retirer ce membre ?")) return;
     try {
       const res = await apiRequest("DELETE", `/api/workflow/teams/members/${memberId}`);
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Membre retiré de l'équipe" });
+        toast({ title: "Succes", description: "Membre retire de l'equipe" });
         selectRequest(selectedRequest);
       }
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
     }
+  };
+
+  const filteredExperts = useMemo(() => {
+    return experts.filter(exp => {
+      if (filterRole !== "all" && exp.role !== filterRole) return false;
+      if (filterSpecialite && !exp.specialite?.toLowerCase().includes(filterSpecialite.toLowerCase())) return false;
+      if (filterName && !exp.fullName?.toLowerCase().includes(filterName.toLowerCase())) return false;
+      if (filterAvailability === "available" && exp.unavailableDates?.length > 0) return false;
+      if (filterAvailability === "unavailable" && (!exp.unavailableDates || exp.unavailableDates.length === 0)) return false;
+      return true;
+    });
+  }, [experts, filterRole, filterSpecialite, filterName, filterAvailability]);
+
+  const uniqueRoles = useMemo(() => [...new Set(experts.map(e => e.role).filter(Boolean))], [experts]);
+
+  const openCalendar = (expert: Expert) => {
+    setCalendarExpert(expert);
+    setCalendarMonth(new Date());
+    setShowCalendar(true);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    return { firstDay: firstDay === 0 ? 6 : firstDay - 1, daysInMonth };
+  };
+
+  const isUnavailable = (date: string) => {
+    return calendarExpert?.unavailableDates?.includes(date);
+  };
+
+  const renderCalendar = () => {
+    const { firstDay, daysInMonth } = getDaysInMonth(calendarMonth);
+    const days = [];
+    const today = new Date().toISOString().split("T")[0];
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-8" />);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const unavail = isUnavailable(dateStr);
+      const isToday = dateStr === today;
+      days.push(
+        <div key={d} className={`h-8 w-8 flex items-center justify-center rounded text-xs font-medium cursor-default ${unavail ? "bg-red-100 text-red-700 border border-red-300" : "bg-green-50 text-green-700"} ${isToday ? "ring-2 ring-primary" : ""}`} title={unavail ? "Indisponible" : "Disponible"}>
+          {d}
+        </div>
+      );
+    }
+    return days;
   };
 
   if (!user) return null;
@@ -175,32 +263,26 @@ export default function TeamCompositionPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Constitution de l'Équipe d'Évaluation</h1>
-            <p className="text-muted-foreground mt-1">Désignez les membres de l'équipe d'évaluation (Étape 4)</p>
+            <h1 className="text-2xl font-bold text-slate-800">Constitution de l'Equipe d'Evaluation</h1>
+            <p className="text-muted-foreground mt-1">Designez les membres de l'equipe d'evaluation (Etape 4)</p>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Dossiers éligibles */}
+              {/* Dossiers eligibles */}
               <Card className="lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="text-lg">Dossiers en attente</CardTitle>
-                  <CardDescription>Sélectionnez un dossier pour constituer l'équipe</CardDescription>
+                  <CardDescription>Selectionnez un dossier pour constituer l'equipe</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {requests.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucun dossier en attente de constitution d'équipe</p>
+                    <p className="text-sm text-muted-foreground">Aucun dossier en attente de constitution d'equipe</p>
                   ) : (
                     requests.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => selectRequest(r)}
-                        className={`p-3 rounded-lg border border-gray-200 cursor-pointer transition-all hover:shadow-sm ${
-                          selectedRequest?.id === r.id ? "border-primary bg-primary/5 shadow-sm" : "hover:bg-gray-50 hover:border-primary/30"
-                        }`}
-                      >
+                      <div key={r.id} onClick={() => selectRequest(r)} className={`p-3 rounded-lg border border-gray-200 cursor-pointer transition-all hover:shadow-sm ${selectedRequest?.id === r.id ? "border-primary bg-primary/5 shadow-sm" : "hover:bg-gray-50 hover:border-primary/30"}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-medium text-sm">{r.referenceNumber || `Demande #${r.id}`}</p>
@@ -208,7 +290,7 @@ export default function TeamCompositionPage() {
                             <p className="text-xs text-muted-foreground">{r.oec?.organizationName || r.oec?.fullName}</p>
                           </div>
                           <Badge variant={r.status === "TEAM_RECUSED" ? "destructive" : "secondary"} className="text-xs">
-                            {r.status === "TEAM_RECUSED" ? "Récusée" : r.status === "TEAM_DESIGNATION" ? "En cours" : "À traiter"}
+                            {r.status === "TEAM_RECUSED" ? "Recusee" : r.status === "TEAM_DESIGNATION" ? "En cours" : "A traiter"}
                           </Badge>
                         </div>
                       </div>
@@ -217,195 +299,205 @@ export default function TeamCompositionPage() {
                 </CardContent>
               </Card>
 
-              {/* Composition de l'équipe */}
+              {/* Composition de l'equipe */}
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle className="text-lg">Composition de l'Équipe</CardTitle>
+                      <CardTitle className="text-lg">Composition de l'Equipe</CardTitle>
                       <CardDescription>
-                        {selectedRequest
-                          ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}`
-                          : "Sélectionnez un dossier"}
+                        {selectedRequest ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}` : "Selectionnez un dossier"}
                       </CardDescription>
                     </div>
                     {selectedRequest && !team && (
-                      <Button onClick={createTeam}><Users className="w-4 h-4 mr-2" />Créer l'Équipe</Button>
+                      <Button onClick={createTeam}><Users className="w-4 h-4 mr-2" />Creer l'Equipe</Button>
                     )}
-                    {team && team.status === "DRAFT" && members.length > 0 && (
-                      <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => setShowAddMember(true)}>
-                          <UserPlus className="w-4 h-4 mr-2" />Ajouter
-                        </Button>
-                        <Button 
-                          onClick={sendToOEC}
-                          disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned)}
-                        >
-                          <Send className="w-4 h-4 mr-2" />Envoyer à l'OEC
-                        </Button>
-                      </div>
-                    )}
-                    {team && team.status === "DRAFT" && members.length === 0 && (
-                      <Button onClick={() => setShowAddMember(true)}>
-                        <UserPlus className="w-4 h-4 mr-2" />Ajouter un Membre
+                    {team && team.status === "DRAFT" && (
+                      <Button variant="outline" onClick={() => setShowAddMember(true)}>
+                        <UserPlus className="w-4 h-4 mr-2" />Ajouter
                       </Button>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
                   {!selectedRequest ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Sélectionnez un dossier dans la liste à gauche
-                    </p>
+                    <p className="text-center text-muted-foreground py-8">Selectionnez un dossier dans la liste a gauche</p>
                   ) : !team ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Créez une équipe d'évaluation pour ce dossier
-                    </p>
+                    <p className="text-center text-muted-foreground py-8">Creez une equipe d'evaluation pour ce dossier</p>
                   ) : members.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Aucun membre dans l'équipe. Ajoutez des évaluateurs.
-                    </p>
+                    <p className="text-center text-muted-foreground py-8">Aucun membre. Ajoutez des evaluateurs.</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Membre</TableHead>
-                          <TableHead>Rôle</TableHead>
-                          <TableHead>Engagements</TableHead>
-                          <TableHead>Statut</TableHead>
-                          {team.status === "DRAFT" && <TableHead>Actions</TableHead>}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {members.map((m) => (
-                          <TableRow key={m.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{m.expert?.fullName}</p>
-                                <p className="text-xs text-muted-foreground">{m.expert?.email}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {teamRoles.find((r) => r.value === m.role)?.label || m.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                {m.confidentialityAgreementSigned ? (
-                                  <div className="flex items-center gap-1" title="Engagement de confidentialité signé">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1" title="Engagement de confidentialité non signé">
-                                    <Shield className="w-4 h-4 text-gray-300" />
-                                  </div>
-                                )}
-                                {m.impartialityAgreementSigned ? (
-                                  <div className="flex items-center gap-1" title="Engagement d'impartialité signé">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1" title="Engagement d'impartialité non signé">
-                                    <Shield className="w-4 h-4 text-gray-300" />
-                                  </div>
-                                )}
-                                {m.conflictOfInterestDeclared && (
-                                  <AlertTriangle className="w-4 h-4 text-amber-500" title="Conflit d'intérêt déclaré" />
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {m.recusedByOEC ? (
-                                <Badge variant="destructive">Récusé</Badge>
-                              ) : m.confidentialityAgreementSigned && m.impartialityAgreementSigned ? (
-                                <Badge className="bg-green-100 text-green-800">Confirmé</Badge>
-                              ) : (
-                                <Badge variant="secondary">En attente signature</Badge>
-                              )}
-                            </TableCell>
-                            {team.status === "DRAFT" && (
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeMember(m.id)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            )}
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Membre</TableHead>
+                            <TableHead>Role equipe</TableHead>
+                            <TableHead>Engagements</TableHead>
+                            <TableHead>Statut</TableHead>
+                            {team.status === "DRAFT" && <TableHead>Actions</TableHead>}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
+                        </TableHeader>
+                        <TableBody>
+                          {members.map((m) => (
+                            <TableRow key={m.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{m.expert?.fullName}</p>
+                                  <p className="text-xs text-muted-foreground">{m.expert?.email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell><Badge variant="outline">{roleLabels[m.role] || m.role}</Badge></TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {m.confidentialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" title="Confidentialite signe" /> : <Shield className="w-4 h-4 text-gray-300" title="Confidentialite non signe" />}
+                                  {m.impartialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" title="Impartialite signe" /> : <Shield className="w-4 h-4 text-gray-300" title="Impartialite non signe" />}
+                                  {m.conflictOfInterestDeclared && <AlertTriangle className="w-4 h-4 text-amber-500" title="Conflit d'interet" />}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {m.recusedByOEC ? <Badge variant="destructive">Recuse</Badge> : m.confidentialityAgreementSigned && m.impartialityAgreementSigned ? <Badge className="bg-green-100 text-green-800">Confirme</Badge> : <Badge variant="secondary">En attente signature</Badge>}
+                              </TableCell>
+                              {team.status === "DRAFT" && (
+                                <TableCell>
+                                  <Button variant="ghost" size="sm" onClick={() => removeMember(m.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
 
-                  {team && (
-                    <div className="mt-4 space-y-2">
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm font-medium text-blue-800">
-                          Rappel : L'équipe doit comprendre au minimum 1 REE et 1 ET.
-                          Rôles optionnels : Expert, Évaluateur Qualité, Superviseur, Observateur, Évaluateur en Formation.
-                        </p>
-                      </div>
-                      {members.some(m => !m.confidentialityAgreementSigned || !m.impartialityAgreementSigned) && (
-                        <div className="p-3 bg-amber-50 rounded-lg">
-                          <p className="text-sm font-medium text-amber-800">
-                            ⚠️ Tous les membres doivent signer leurs engagements de confidentialité et d'impartialité avant l'envoi à l'OEC.
+                      {/* Validation checks */}
+                      <div className="mt-4 space-y-2">
+                        <div className={`p-3 rounded-lg flex items-center gap-2 ${hasMinimumTeam ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+                          {hasMinimumTeam ? <CheckCircle className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                          <p className={`text-sm font-medium ${hasMinimumTeam ? "text-green-800" : "text-red-800"}`}>
+                            {hasMinimumTeam ? "L'equipe comprend min 1 REE et 1 ET" : `Il manque : ${!members.some(m => m.role === "REE") ? "1 REE" : ""}${!members.some(m => m.role === "REE") && !members.some(m => m.role === "ET") ? " et " : ""}${!members.some(m => m.role === "ET") ? "1 ET" : ""}`}
                           </p>
                         </div>
+                        {members.some(m => !m.confidentialityAgreementSigned || !m.impartialityAgreementSigned) && (
+                          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                            <p className="text-sm font-medium text-amber-800">Tous les membres doivent signer leurs engagements avant envoi a l'OEC.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Evaluation date + Send to OEC */}
+                      {team.status === "DRAFT" && hasMinimumTeam && (
+                        <div className="mt-6 space-y-4">
+                          <div className="space-y-2">
+                            <Label className="font-medium">Date d'evaluation proposee *</Label>
+                            <Input type="date" value={evaluationDate} onChange={(e) => setEvaluationDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                            <p className="text-xs text-muted-foreground">L'OEC peut refuser et proposer une autre date</p>
+                          </div>
+                          <Button className="w-full" size="lg" onClick={sendToOEC} disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned) || !evaluationDate}>
+                            <Send className="w-4 h-4 mr-2" />Envoyer la fiche de composition et la date a l'OEC
+                          </Button>
+                        </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Liste des évaluateurs disponibles */}
+              {/* Liste evaluateurs avec filtres */}
               <Card className="lg:col-span-3">
                 <CardHeader>
-                  <CardTitle className="text-lg">Évaluateurs Disponibles</CardTitle>
-                  <CardDescription>Vue d'ensemble des évaluateurs et leur charge de travail</CardDescription>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2"><Users className="w-5 h-5" />Evaluateurs Disponibles</CardTitle>
+                      <CardDescription>Filtrez et consultez les disponibilites des evaluateurs</CardDescription>
+                    </div>
+                    <Badge variant="outline">{filteredExperts.length} / {experts.length} evaluateurs</Badge>
+                  </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Filters */}
+                  <div className="mb-4 p-4 bg-muted/50 rounded-lg border space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Filter className="w-4 h-4" /> Filtres
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Recherche par nom</Label>
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input placeholder="Nom..." value={filterName} onChange={(e) => setFilterName(e.target.value)} className="pl-8 h-9" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Role</Label>
+                        <Select value={filterRole} onValueChange={setFilterRole}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tous les roles</SelectItem>
+                            {uniqueRoles.map(r => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Specialite</Label>
+                        <Input placeholder="ISO, metrologie..." value={filterSpecialite} onChange={(e) => setFilterSpecialite(e.target.value)} className="h-9" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Disponibilite</Label>
+                        <Select value={filterAvailability} onValueChange={setFilterAvailability}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tous</SelectItem>
+                            <SelectItem value="available">Disponibles uniquement</SelectItem>
+                            <SelectItem value="unavailable">Avec indisponibilites</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {(filterName || filterRole !== "all" || filterSpecialite || filterAvailability !== "all") && (
+                      <Button variant="ghost" size="sm" onClick={() => { setFilterName(""); setFilterRole("all"); setFilterSpecialite(""); setFilterAvailability("all"); }}>
+                        <X className="w-3 h-3 mr-1" /> Reinitialiser les filtres
+                      </Button>
+                    )}
+                  </div>
+
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Évaluateur</TableHead>
-                        <TableHead>Rôle</TableHead>
-                        <TableHead>Spécialité</TableHead>
-                        <TableHead>Expérience</TableHead>
+                        <TableHead>Evaluateur</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Specialite</TableHead>
+                        <TableHead>Experience</TableHead>
                         <TableHead>Dossiers actifs</TableHead>
-                        <TableHead>Indisponibilités</TableHead>
+                        <TableHead>Disponibilites</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {experts.map((exp) => (
-                        <TableRow key={exp.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{exp.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{exp.email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell><Badge variant="outline" className="text-xs">{exp.role || "—"}</Badge></TableCell>
-                          <TableCell>{exp.specialite || "—"}</TableCell>
-                          <TableCell>{exp.experience || "—"}</TableCell>
-                          <TableCell>
-                            <Badge variant={exp.activeDossiers > 3 ? "destructive" : "secondary"}>
-                              {exp.activeDossiers} dossier(s)
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {exp.unavailableDates?.length > 0 ? (
-                              <span className="text-xs text-amber-600">{exp.unavailableDates.length} jour(s)</span>
-                            ) : (
-                              <span className="text-xs text-green-600">Disponible</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredExperts.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Aucun evaluateur ne correspond aux filtres</TableCell></TableRow>
+                      ) : (
+                        filteredExperts.map((exp) => (
+                          <TableRow key={exp.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{exp.fullName}</p>
+                                <p className="text-xs text-muted-foreground">{exp.email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs">{exp.role || "---"}</Badge></TableCell>
+                            <TableCell className="text-sm">{exp.specialite || "---"}</TableCell>
+                            <TableCell className="text-sm">{exp.experience || "---"}</TableCell>
+                            <TableCell>
+                              <Badge variant={exp.activeDossiers > 3 ? "destructive" : "secondary"}>{exp.activeDossiers} dossier(s)</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="outline" size="sm" onClick={() => openCalendar(exp)} className={exp.unavailableDates?.length > 0 ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-green-300 text-green-700 hover:bg-green-50"}>
+                                <CalendarDays className="w-3 h-3 mr-1" />{exp.unavailableDates?.length > 0 ? `${exp.unavailableDates.length} indispo.` : "Disponible"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -417,43 +509,90 @@ export default function TeamCompositionPage() {
           <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Ajouter un Membre à l'Équipe</DialogTitle>
-                <DialogDescription>Sélectionnez un évaluateur et attribuez-lui un rôle</DialogDescription>
+                <DialogTitle>Ajouter un Membre a l'Equipe</DialogTitle>
+                <DialogDescription>Le role dans l'equipe est determine par le role dans la plateforme</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium">Évaluateur</label>
+                  <Label>Evaluateur</Label>
                   <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                    <SelectTrigger><SelectValue placeholder="Choisir un évaluateur" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Choisir un evaluateur" /></SelectTrigger>
                     <SelectContent>
                       {experts.map((exp) => (
                         <SelectItem key={exp.id} value={String(exp.id)}>
-                          {exp.fullName} [{exp.role}] — {exp.specialite || "Généraliste"} ({exp.activeDossiers} dossiers)
+                          {exp.fullName} [{exp.role}] --- {exp.specialite || "Generaliste"} ({exp.activeDossiers} dossiers)
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+                {selectedExpert && (() => {
+                  const exp = experts.find(e => e.id === parseInt(selectedExpert));
+                  if (!exp) return null;
+                  const assignedRole = platformRoleToTeamRole[exp.role] || "ET";
+                  return (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm"><strong>{exp.fullName}</strong> sera ajoute en tant que <Badge variant="outline" className="ml-1">{roleLabels[assignedRole] || assignedRole}</Badge></p>
+                      <p className="text-xs text-muted-foreground mt-1">Role determine par son role plateforme : {exp.role}</p>
+                      {exp.unavailableDates?.length > 0 && (
+                        <p className="text-xs text-amber-700 mt-1">{exp.unavailableDates.length} jour(s) d'indisponibilite</p>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div>
-                  <label className="text-sm font-medium">Rôle dans l'équipe</label>
-                  <Select value={selectedRole} onValueChange={setSelectedRole}>
-                    <SelectTrigger><SelectValue placeholder="Choisir un rôle" /></SelectTrigger>
-                    <SelectContent>
-                      {teamRoles.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Spécialisation (optionnel)</label>
-                  <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="Ex: ISO 17025, Métrologie..." />
+                  <Label>Specialisation (optionnel)</Label>
+                  <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="Ex: ISO 17025, Metrologie..." />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddMember(false)}>Annuler</Button>
-                <Button onClick={addMember} disabled={!selectedExpert || !selectedRole}>Ajouter</Button>
+                <Button onClick={addMember} disabled={!selectedExpert}>Ajouter</Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Calendar popup disponibilites */}
+          <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
+            <DialogContent className="sm:max-w-[480px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" /> Disponibilites de {calendarExpert?.fullName}
+                </DialogTitle>
+                <DialogDescription>{calendarExpert?.role} --- {calendarExpert?.specialite || "Generaliste"}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" size="sm" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>Prev</Button>
+                  <p className="font-medium">{calendarMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</p>
+                  <Button variant="outline" size="sm" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>Suiv</Button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"].map(d => (
+                    <div key={d} className="text-xs font-medium text-muted-foreground h-6 flex items-center justify-center">{d}</div>
+                  ))}
+                  {renderCalendar()}
+                </div>
+                <div className="flex items-center gap-4 text-xs pt-2 border-t">
+                  <div className="flex items-center gap-1"><div className="w-4 h-4 bg-green-50 border border-green-300 rounded" /><span>Disponible</span></div>
+                  <div className="flex items-center gap-1"><div className="w-4 h-4 bg-red-100 border border-red-300 rounded" /><span>Indisponible</span></div>
+                </div>
+                {calendarExpert?.unavailableDates && calendarExpert.unavailableDates.length > 0 && (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <p className="text-sm font-medium text-amber-800 mb-1">Dates d'indisponibilite :</p>
+                    <div className="flex flex-wrap gap-1">
+                      {calendarExpert.unavailableDates.slice(0, 20).map(d => (
+                        <Badge key={d} variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                          {new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                        </Badge>
+                      ))}
+                      {calendarExpert.unavailableDates.length > 20 && (
+                        <Badge variant="outline" className="text-xs">+{calendarExpert.unavailableDates.length - 20} autres</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
         </main>

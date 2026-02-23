@@ -43,7 +43,13 @@ public class QuotationController {
             
             Quotation quotation = quotationService.createQuotation(
                     dto.getRequestId(),
-                    dto.getAmount(),
+                    dto.getReeCount(),
+                    dto.getEtCount(),
+                    dto.getEqCount(),
+                    dto.getObsCount(),
+                    dto.getSupCount(),
+                    dto.getExpCount(),
+                    dto.getEvaluationDurationDays(),
                     dto.getDetails(),
                     currentUser
             );
@@ -107,6 +113,7 @@ public class QuotationController {
             
             Quotation quotation = quotationService.approveQuotationByDAG(
                     id,
+                    dto.getAmount(),
                     dto.getComments(),
                     currentUser
             );

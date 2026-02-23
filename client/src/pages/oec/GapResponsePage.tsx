@@ -288,6 +288,22 @@ export default function GapResponsePage() {
                                 Requalification: {gap.reclassificationReason}
                               </p>
                             )}
+
+                            {/* Show rejection feedback when plan was rejected */}
+                            {gap.status === "PLAN_REJECTED" && (
+                              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-xs font-semibold text-red-800 mb-1">⚠ Plan d'action rejeté</p>
+                                {gap.actionPlan?.rejectionReason && (
+                                  <p className="text-xs text-red-700"><strong>Motif :</strong> {gap.actionPlan.rejectionReason}</p>
+                                )}
+                                {gap.actionPlan?.teamFeedback && (
+                                  <p className="text-xs text-red-700 mt-1"><strong>Commentaires :</strong> {gap.actionPlan.teamFeedback}</p>
+                                )}
+                                <p className="text-xs text-red-600 mt-1 italic">
+                                  Veuillez soumettre un nouveau plan d'action corrigé.
+                                </p>
+                              </div>
+                            )}
                           </Card>
                         ))}
                       </div>

@@ -50,11 +50,14 @@ import ExpertEvaluationDayPage from "@/pages/exp/EvaluationDayPage";
 import ExpertReportDraftingPage from "@/pages/exp/ReportDraftingPage";
 import DTMissionOrdersPage from "@/pages/dt/MissionOrdersPage";
 import REEDashboard from "@/pages/ree/Dashboard";
+import REEEvaluationPlanPage from "@/pages/ree/EvaluationPlanPage";
 import ETDashboard from "@/pages/et/Dashboard";
+import ETGapEvaluationPage from "@/pages/et/GapEvaluationPage";
 import EQDashboard from "@/pages/eq/Dashboard";
 import CASMemberDashboard from "@/pages/cas/MemberDashboard";
 import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
+import DGMissionOrdersPage from "@/pages/dg/MissionOrdersPage";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import CandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 
@@ -69,6 +72,7 @@ import AccreditationDecisionPage from "@/pages/ra/AccreditationDecisionPage";
 
 // Phase IV - Surveillance périodique
 import SurveillanceManagementPage from "@/pages/ra/SurveillanceManagementPage";
+import ExpertDirectoryPage from "@/pages/ra/ExpertDirectoryPage";
 
 function Router() {
   return (
@@ -112,6 +116,7 @@ function Router() {
       <Route path="/ra/preparation-cas" component={CASPreparationPage} />
       <Route path="/ra/decision-accreditation" component={AccreditationDecisionPage} />
       <Route path="/ra/surveillance" component={SurveillanceManagementPage} />
+      <Route path="/ra/experts" component={ExpertDirectoryPage} />
       
       {/* CD Routes */}
       <Route path="/cd" component={CDDashboard} />
@@ -148,6 +153,7 @@ function Router() {
       <Route path="/ree/planning" component={ExpertPlanningPage} />
       <Route path="/ree/engagements" component={ExpertCommitmentsPage} />
       <Route path="/ree/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
+      <Route path="/ree/plan-evaluation" component={REEEvaluationPlanPage} />
       <Route path="/ree/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/ree/rapports" component={ExpertReportDraftingPage} />
       <Route path="/ree/evaluation-site" component={SiteEvaluationPage} />
@@ -160,6 +166,7 @@ function Router() {
       <Route path="/et/engagements" component={ExpertCommitmentsPage} />
       <Route path="/et/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/et/evaluation" component={ExpertEvaluationDayPage} />
+      <Route path="/et/evaluation-plans" component={ETGapEvaluationPage} />
       
       {/* EQ Routes */}
       <Route path="/eq" component={EQDashboard} />
@@ -183,7 +190,7 @@ function Router() {
       {/* DG Routes */}
       <Route path="/dg" component={DGDashboard} />
       <Route path="/dg/dashboard" component={DGDashboard} />
-      <Route path="/dg/ordres-mission" component={DGDashboard} />
+      <Route path="/dg/ordres-mission" component={DGMissionOrdersPage} />
       
       {/* GES_COMPETENCES Routes */}
       <Route path="/ges-competences" component={GesCompetencesDashboard} />

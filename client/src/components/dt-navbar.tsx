@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrateur",
@@ -17,7 +18,7 @@ export function Navbar() {
     <nav className="bg-white border-b px-4 md:px-8 py-4 sticky top-0 z-20">
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-3">
-            
+          <NotificationBell />
           <div className="text-right">
             <p className="text-sm font-medium text-slate-900">{fullName}</p>
             <p className="text-xs text-muted-foreground">{roleLabel}</p>

@@ -1,5 +1,7 @@
 package com.algerac.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,8 +21,9 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
     
     @Column(nullable = false)
@@ -50,6 +53,7 @@ public class Notification {
         }
     }
     
+    @JsonProperty("userId")
     public Long getUserId() {
         return user != null ? user.getId() : null;
     }

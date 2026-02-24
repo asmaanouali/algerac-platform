@@ -99,6 +99,27 @@ export const api = {
         200: z.array(z.custom<typeof notifications.$inferSelect>()),
       },
     },
+    unreadCount: {
+      method: 'GET' as const,
+      path: '/api/notifications/unread-count',
+      responses: {
+        200: z.object({ count: z.number() }),
+      },
+    },
+    markRead: {
+      method: 'PUT' as const,
+      path: '/api/notifications/:id/read',
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
+    markAllRead: {
+      method: 'PUT' as const,
+      path: '/api/notifications/read-all',
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
   },
   stats: {
     admin: {

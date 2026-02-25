@@ -818,55 +818,43 @@ public class EmailService {
     
     /**
      * Envoie un email de confirmation à l'expert/évaluateur/formateur après soumission
+     * Ton professionnel, mentionne que le profil sera évalué par rapport aux besoins actuels
      */
     public void sendExpertRegistrationConfirmation(User user) {
         try {
-            String typeLabel = "Expert";
-            if (user.getUserType() != null) {
-                switch (user.getUserType().toUpperCase()) {
-                    case "FORMATEUR":
-                        typeLabel = "Formateur";
-                        break;
-                    case "EVALUATEUR":
-                        typeLabel = "Évaluateur";
-                        break;
-                }
-            }
+            String typeLabel = getExpertTypeLabel(user);
             
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
-            message.setSubject("Confirmation de réception - Candidature " + typeLabel);
+            message.setSubject("Accusé de réception de votre candidature - ALGERAC");
             
             String emailBody = String.format("""
                 Bonjour %s %s,
                 
-                Nous avons bien reçu votre candidature en tant que %s.
+                Nous accusons réception de votre candidature en tant que %s au sein de l'organisme ALGERAC.
                 
-                Votre dossier est actuellement en cours d'examen par notre service de Gestion des Compétences.
-                Vous serez informé(e) par email de l'évolution de votre candidature.
+                Nous vous remercions pour l'intérêt que vous portez à notre organisation et pour le temps consacré à la constitution de votre dossier.
                 
-                Informations de votre candidature :
-                   • ID : %s
-                   • Nom complet : %s %s
-                   • Email : %s
-                   • Domaine d'expertise : %s
-                   • Date de soumission : %s
+                Votre profil sera examiné avec attention par notre équipe de Gestion des Compétences afin d'évaluer son adéquation avec nos besoins actuels en matière d'accréditation et d'évaluation de la conformité.
                 
-                Si vous avez des questions, n'hésitez pas à nous contacter.
+                Référence de votre candidature : %s
+                
+                Si votre profil correspond à nos critères de sélection, vous serez contacté(e) pour la suite du processus de recrutement. Dans tous les cas, nous vous tiendrons informé(e) de l'évolution de votre candidature.
+                
+                Nous vous prions de bien vouloir noter que le traitement de votre dossier peut prendre quelques jours ouvrables.
+                
+                Pour toute question relative à votre candidature, n'hésitez pas à nous contacter.
                 
                 Cordialement,
-                L'équipe ALGERAC
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
                 """,
                 user.getPrenom(),
                 user.getNom(),
                 typeLabel,
-                user.getRegistrationId(),
-                user.getPrenom(),
-                user.getNom(),
-                user.getEmail(),
-                user.getDomaineExpertise() != null ? user.getDomaineExpertise() : "Non renseigné",
-                user.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"))
+                user.getRegistrationId()
             );
             
             message.setText(emailBody);
@@ -939,111 +927,237 @@ public class EmailService {
     }
     
     /**
-     * Envoie un email de rejet à l'expert/évaluateur/formateur
+     * Envoie un email de rejet IMPLICITE/OPTIMISTE à l'expert/évaluateur/formateur
+     * quand le dossier n'est pas retenu (avant entretien)
      */
     public void sendExpertRejectionByGesCompetences(User user, String rejectionReason) {
+        sendExpertDossierNotRetained(user);
+    }
+    
+    /**
+     * Email de refus implicite - dossier non retenu (avant entretien) 
+     * Ton optimiste, pas de mention directe de "rejet"
+     */
+    public void sendExpertDossierNotRetained(User user) {
         try {
-            String typeLabel = "Expert";
-            if (user.getUserType() != null) {
-                switch (user.getUserType().toUpperCase()) {
-                    case "FORMATEUR":
-                        typeLabel = "Formateur";
-                        break;
-                    case "EVALUATEUR":
-                        typeLabel = "Évaluateur";
-                        break;
-                }
-            }
+            String typeLabel = getExpertTypeLabel(user);
             
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
-            message.setSubject("Candidature non retenue - " + typeLabel);
+            message.setSubject("Suite donnée à votre candidature - ALGERAC");
             
             String emailBody = String.format("""
                 Bonjour %s %s,
                 
-                Nous vous informons que votre candidature en tant que %s n'a pas été retenue.
+                Nous tenons à vous remercier sincèrement pour l'intérêt que vous portez à ALGERAC et pour le temps que vous avez consacré à la constitution de votre dossier de candidature en tant que %s.
                 
-                Motif :
-                %s
+                Après un examen attentif de votre profil, nous avons le regret de vous informer que votre candidature n'a pas pu être retenue dans le cadre de nos besoins actuels.
                 
-                Nous vous remercions pour l'intérêt que vous portez à ALGERAC.
-                Si vous souhaitez obtenir plus d'informations, n'hésitez pas à nous contacter.
+                Cette décision ne remet en aucun cas en question la qualité de votre parcours professionnel ni vos compétences. Nos critères de sélection sont étroitement liés aux spécificités de nos programmes d'accréditation en cours et à la configuration de nos équipes d'évaluation.
+                
+                Votre dossier sera conservé dans notre vivier de compétences et pourra être reconsidéré lors de futures opportunités correspondant davantage à votre profil. Nous vous encourageons à suivre nos appels à candidatures et à renouveler votre intérêt le moment venu.
+                
+                Nous vous souhaitons plein succès dans la poursuite de votre parcours professionnel.
                 
                 Cordialement,
-                L'équipe ALGERAC
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
                 """,
                 user.getPrenom(),
                 user.getNom(),
-                typeLabel,
-                rejectionReason
+                typeLabel
             );
             
             message.setText(emailBody);
             mailSender.send(message);
-            log.info("Email de rejet {} envoyé à : {}", typeLabel, user.getEmail());
+            log.info("Email de refus implicite (dossier) envoyé à : {}", user.getEmail());
         } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de l'email de rejet expert", e);
-            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+            log.error("Erreur lors de l'envoi de l'email de refus implicite", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de refus", e);
         }
     }
     
     /**
-     * Envoie une notification à l'admin quand un expert/évaluateur/formateur est approuvé
-     * L'admin doit créer le compte
+     * Email de convocation à un entretien
+     * Ton professionnel haut niveau, type big company
      */
-    public void sendExpertApprovedNotificationToAdmin(User user) {
+    public void sendInterviewConvocationEmail(User user, java.time.LocalDateTime interviewDate) {
         try {
-            String typeLabel = "Expert";
-            if (user.getUserType() != null) {
-                switch (user.getUserType().toUpperCase()) {
-                    case "FORMATEUR":
-                        typeLabel = "Formateur";
-                        break;
-                    case "EVALUATEUR":
-                        typeLabel = "Évaluateur";
-                        break;
-                }
-            }
+            String typeLabel = getExpertTypeLabel(user);
             
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
-            message.setTo(notificationEmail); // Email de l'admin
-            message.setSubject(String.format("[ACTION REQUISE] Nouveau %s approuvé - %s %s", typeLabel, user.getNom(), user.getPrenom()));
+            message.setTo(user.getEmail());
+            message.setSubject("Convocation à un entretien - Candidature " + typeLabel + " ALGERAC");
+            
+            String formattedDate = interviewDate.format(DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy 'à' HH'h'mm", java.util.Locale.FRENCH));
             
             String emailBody = String.format("""
-                Bonjour Administrateur,
+                Bonjour %s %s,
                 
-                Une nouvelle candidature %s a été approuvée par le Gestionnaire de Compétences.
+                Nous avons le plaisir de vous informer que votre profil a retenu toute notre attention dans le cadre de votre candidature en tant que %s au sein d'ALGERAC.
                 
-                Informations :
-                - ID d'inscription : %s
-                - Nom : %s %s
-                - Email : %s
-                - Téléphone : %s
-                - Domaine d'expertise : %s
+                À la suite de l'examen de votre dossier, nous souhaitons vous convier à un entretien de sélection afin d'approfondir notre connaissance de votre parcours, de vos compétences techniques et de votre adéquation avec les missions que nous proposons.
                 
-                Veuillez vous connecter à la plateforme pour créer le compte utilisateur.
+                ═══════════════════════════════════════
+                  DÉTAILS DE L'ENTRETIEN
+                ═══════════════════════════════════════
+                
+                  Date et heure : %s
+                  Lieu : Siège ALGERAC
+                  Référence : %s
+                
+                ═══════════════════════════════════════
+                
+                Nous vous prions de bien vouloir confirmer votre présence à cet entretien en répondant à ce mail dans les meilleurs délais. Si la date proposée ne vous convient pas, merci de nous proposer une alternative et nous ferons notre possible pour nous adapter.
+                
+                Documents à apporter le jour de l'entretien :
+                   • Une pièce d'identité en cours de validité
+                   • Les originaux de vos diplômes et certifications
+                   • Tout document complémentaire attestant de votre expérience professionnelle
+                
+                Nous nous réjouissons de vous rencontrer et restons à votre disposition pour toute information complémentaire.
                 
                 Cordialement,
-                Système ALGERAC
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
                 """,
-                typeLabel,
-                user.getRegistrationId(),
                 user.getPrenom(),
                 user.getNom(),
-                user.getEmail(),
-                user.getTelephoneMobile() != null ? user.getTelephoneMobile() : user.getPhone(),
-                user.getDomaineExpertise()
+                typeLabel,
+                formattedDate,
+                user.getRegistrationId()
             );
             
             message.setText(emailBody);
             mailSender.send(message);
-            log.info("Email de notification admin envoyé pour {} {} ({})", user.getPrenom(), user.getNom(), typeLabel);
+            log.info("Email de convocation entretien envoyé à : {}", user.getEmail());
         } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de l'email de notification admin", e);
-            throw new RuntimeException("Erreur lors de l'envoi de l'email de notification admin", e);
+            log.error("Erreur lors de l'envoi de l'email de convocation", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de convocation", e);
         }
+    }
+    
+    /**
+     * Email de refus implicite après entretien
+     * Ton très professionnel et optimiste, sans mentionner directement le rejet
+     */
+    public void sendExpertInterviewNotRetained(User user) {
+        try {
+            String typeLabel = getExpertTypeLabel(user);
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Suite de votre processus de candidature - ALGERAC");
+            
+            String emailBody = String.format("""
+                Bonjour %s %s,
+                
+                Nous tenons à vous remercier chaleureusement pour le temps que vous nous avez accordé lors de notre entretien dans le cadre de votre candidature en tant que %s.
+                
+                Cet échange nous a permis de mieux apprécier la richesse de votre parcours professionnel et vos compétences techniques. Nous avons été sensibles à la qualité de votre profil et à votre motivation.
+                
+                Cependant, après une analyse approfondie de l'ensemble des candidatures reçues et au regard de la configuration actuelle de nos équipes d'évaluation, nous ne sommes pas en mesure de donner une suite favorable à votre candidature pour le moment.
+                
+                Nous tenons à souligner que cette décision est exclusivement liée à nos contraintes opérationnelles actuelles et ne reflète en rien un jugement sur vos qualifications professionnelles.
+                
+                Votre dossier sera conservé dans notre base de données de compétences qualifiées. Nous ne manquerons pas de vous recontacter si une opportunité correspondant à votre profil se présente à l'avenir. Nous vous encourageons également à consulter régulièrement nos appels à candidatures.
+                
+                Nous vous souhaitons beaucoup de succès dans la suite de votre parcours.
+                
+                Bien cordialement,
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
+                """,
+                user.getPrenom(),
+                user.getNom(),
+                typeLabel
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de refus implicite (post-entretien) envoyé à : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email post-entretien", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email post-entretien", e);
+        }
+    }
+    
+    /**
+     * Email de félicitations et envoi des credentials après acceptation
+     * Envoyé quand l'admin crée le compte après validation par GES_COMPETENCES
+     */
+    public void sendExpertAccountAccepted(User user, String generatedPassword) {
+        try {
+            String typeLabel = getExpertTypeLabel(user);
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Félicitations ! Votre candidature a été retenue - ALGERAC");
+            
+            String emailBody = String.format("""
+                Bonjour %s %s,
+                
+                Nous avons le grand plaisir de vous informer que votre candidature en tant que %s au sein d'ALGERAC a été retenue.
+                
+                Au terme de notre processus de sélection, votre profil a été jugé en parfaite adéquation avec nos exigences en matière de compétences techniques et d'expertise dans le domaine de l'accréditation et de l'évaluation de la conformité.
+                
+                Votre compte sur la plateforme ALGERAC est désormais actif. Vous trouverez ci-dessous vos identifiants de connexion :
+                
+                ═══════════════════════════════════════
+                  VOS IDENTIFIANTS
+                ═══════════════════════════════════════
+                
+                  Email : %s
+                  Mot de passe : %s
+                
+                ═══════════════════════════════════════
+                
+                Actions recommandées :
+                   1. Connectez-vous à la plateforme : http://localhost:5173
+                   2. Modifiez votre mot de passe dès votre première connexion
+                   3. Complétez votre profil professionnel
+                
+                Notre équipe se tient à votre disposition pour vous accompagner dans vos premières étapes sur la plateforme.
+                
+                Bienvenue dans l'équipe ALGERAC !
+                
+                Cordialement,
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
+                """,
+                user.getPrenom(),
+                user.getNom(),
+                typeLabel,
+                user.getEmail(),
+                generatedPassword
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de félicitations avec credentials envoyé à : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de félicitations", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email d'acceptation", e);
+        }
+    }
+
+    /**
+     * Helper: get expert type label
+     */
+    private String getExpertTypeLabel(User user) {
+        if (user.getUserType() == null) return "Expert";
+        return switch (user.getUserType().toUpperCase()) {
+            case "FORMATEUR" -> "Formateur";
+            case "EVALUATEUR" -> "Évaluateur";
+            default -> "Expert";
+        };
     }
 }

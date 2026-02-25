@@ -131,9 +131,21 @@ public class User {
     // STATUS
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserStatus status; // PENDING, APPROVED, REJECTED
+    private UserStatus status; // PENDING, INTERVIEW_SCHEDULED, INTERVIEW_CONFIRMED, INTERVIEW_COMPLETED, CANDIDATURE_APPROVED, APPROVED, REJECTED
     private LocalDateTime dateApprobation;
     private String rejectionReason; // Motif de refus si rejeté
+    
+    // INTERVIEW FIELDS
+    private LocalDateTime interviewDate;
+    
+    @Column(columnDefinition = "TEXT")
+    private String interviewNotes;
+    
+    @Column(columnDefinition = "TEXT")
+    private String interviewChecklistJson; // JSON array of checklist items
+    
+    private String interviewDecision; // "ACCEPTED" or "REJECTED"
+    private LocalDateTime interviewDecisionDate;
     
     @PrePersist
     protected void onCreate() {

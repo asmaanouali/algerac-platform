@@ -133,7 +133,7 @@ export function Sidebar() {
     ges_competences: [
       { href: "/ges-competences/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/ges-competences/candidatures", label: "Candidatures", icon: UserPlus },
-      { href: "/ges-competences/experts", label: "Experts Certifiés", icon: UserCheck },
+      { href: "/ges-competences/entretiens", label: "Planning Entretiens", icon: CalendarDays },
     ],
   };
 

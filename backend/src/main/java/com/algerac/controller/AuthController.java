@@ -8,6 +8,7 @@ import com.algerac.model.User;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
+import com.algerac.service.NotificationService;
 import com.algerac.service.OECApplicationService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final OECApplicationService oecApplicationService;
 
@@ -202,14 +204,27 @@ public class AuthController {
             // Le status sera automatiquement PENDING grâce au @PrePersist
             User user = authService.registerExpert(request);
             
-            // Envoyer email de confirmation au candidat
+            // Envoyer email de confirmation au candidat (ton professionnel, profil sera évalué)
             emailService.sendExpertRegistrationConfirmation(user);
             
-            // Envoyer l'email avec le PDF FOR 20 à ALGERAC (notification email existant)
-            emailService.sendExpertRegistrationNotification(user);
+            // Envoyer notification IN-APP au gestionnaire de compétences (PAS d'email)
+            String typeLabel = user.getUserType() != null ? switch (user.getUserType().toUpperCase()) {
+                case "FORMATEUR" -> "Formateur";
+                case "EVALUATEUR" -> "Évaluateur";
+                default -> "Expert";
+            } : "Expert";
             
-            // Envoyer notification au gestionnaire de compétences
-            emailService.sendGesCompetencesNotification(user);
+            java.util.List<com.algerac.model.User> gesUsers = userRepository.findByRole(com.algerac.model.UserRole.GES_COMPETENCES);
+            for (com.algerac.model.User ges : gesUsers) {
+                notificationService.createNotification(
+                    ges.getId(),
+                    "Nouvelle candidature " + typeLabel,
+                    String.format("Nouvelle candidature %s de %s %s (%s). Domaine : %s. Veuillez examiner le dossier.",
+                        typeLabel, user.getPrenom(), user.getNom(), user.getRegistrationId(),
+                        user.getDomaineExpertise() != null ? user.getDomaineExpertise() : "Non renseigné"),
+                    "info"
+                );
+            }
             
             log.info("Candidature Expert créée avec succès (User PENDING) - ID: {}, Nom: {} {}", 
                     user.getId(), user.getNom(), user.getPrenom());

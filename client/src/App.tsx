@@ -60,6 +60,8 @@ import DGDashboard from "@/pages/dg/Dashboard";
 import DGMissionOrdersPage from "@/pages/dg/MissionOrdersPage";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import CandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
+import InterviewPlanningPage from "@/pages/ges_competences/InterviewPlanningPage";
+import InterviewEvaluationPage from "@/pages/ges_competences/InterviewEvaluationPage";
 
 // Phase II - Évaluation sur site
 import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
@@ -196,6 +198,8 @@ function Router() {
       <Route path="/ges-competences" component={GesCompetencesDashboard} />
       <Route path="/ges-competences/dashboard" component={GesCompetencesDashboard} />
       <Route path="/ges-competences/candidatures" component={CandidaturesPage} />
+      <Route path="/ges-competences/entretiens" component={InterviewPlanningPage} />
+      <Route path="/ges-competences/entretien/:id" component={InterviewEvaluationPage} />
       
       <Route component={NotFound} />
     </Switch>

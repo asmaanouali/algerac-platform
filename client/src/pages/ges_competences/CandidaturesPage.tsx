@@ -6,8 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, CheckCircle, XCircle, FileText, Download, Clock, UserCheck, UserX, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ interface Candidature {
   email: string;
   telephone: string;
   dateInscription: string;
-  status: "PENDING" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "INTERVIEW_SCHEDULED" | "INTERVIEW_CONFIRMED" | "INTERVIEW_COMPLETED" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
   photoBase64?: string;
   dateNaissance?: string;
   nationalite?: string;
@@ -30,6 +30,11 @@ interface Candidature {
   sousDomaineExpertise?: string;
   rejectionReason?: string;
   documentsJson?: string;
+  interviewDate?: string;
+  interviewNotes?: string;
+  interviewChecklistJson?: string;
+  interviewDecision?: string;
+  createdAt?: string;
 }
 
 export default function GesCompetencesCandidaturesPage() {
@@ -40,10 +45,19 @@ export default function GesCompetencesCandidaturesPage() {
   const [selectedCandidature, setSelectedCandidature] = useState<Candidature | null>(null);
   const [candidatures, setCandidatures] = useState<Candidature[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Interview scheduling dialog
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [interviewDate, setInterviewDate] = useState("");
+  const [interviewTime, setInterviewTime] = useState("");
+  const [schedulingCandidature, setSchedulingCandidature] = useState<Candidature | null>(null);
+  
+  // Reject dialog
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
+    document.title = "Candidatures - Gestion des Compétences | ALGERAC";
     fetchCandidatures();
   }, []);
 
@@ -58,61 +72,52 @@ export default function GesCompetencesCandidaturesPage() {
         const data = await response.json();
         setCandidatures(data);
       } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les candidatures",
-          variant: "destructive"
-        });
+        toast({ title: "Erreur", description: "Impossible de charger les candidatures", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des candidatures:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue",
-        variant: "destructive"
-      });
+      console.error("Erreur:", error);
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Stats
   const stats = useMemo(() => {
     const pending = candidatures.filter(c => c.status === "PENDING").length;
-    const approved = candidatures.filter(c => c.status === "CANDIDATURE_APPROVED").length;
-    const active = candidatures.filter(c => c.status === "APPROVED").length;
+    const interviewing = candidatures.filter(c => ["INTERVIEW_SCHEDULED", "INTERVIEW_CONFIRMED", "INTERVIEW_COMPLETED"].includes(c.status)).length;
+    const approved = candidatures.filter(c => c.status === "CANDIDATURE_APPROVED" || c.status === "APPROVED").length;
     const rejected = candidatures.filter(c => c.status === "REJECTED").length;
-    return { pending, approved, active, rejected, total: candidatures.length };
+    return { pending, interviewing, approved, rejected, total: candidatures.length };
   }, [candidatures]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">En attente</Badge>;
-      case "CANDIDATURE_APPROVED":
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Approuvée (compte en attente)</Badge>;
-      case "APPROVED":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Compte actif</Badge>;
-      case "REJECTED":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Refusée</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    const map: Record<string, { class: string; label: string }> = {
+      PENDING: { class: "bg-amber-50 text-amber-700 border-amber-300", label: "En attente" },
+      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
+      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
+      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
+      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: "Acceptée (compte en attente)" },
+      APPROVED: { class: "bg-green-50 text-green-700 border-green-300", label: "Compte actif" },
+      REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: "Non retenue" },
+    };
+    const s = map[status] || { class: "", label: status };
+    return <Badge variant="outline" className={s.class}>{s.label}</Badge>;
   };
 
   const getTypeBadge = (type: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       EXPERT: "bg-blue-100 text-blue-800",
       EVALUATEUR: "bg-purple-100 text-purple-800",
       FORMATEUR: "bg-indigo-100 text-indigo-800",
     };
-    return <Badge className={colors[type as keyof typeof colors]}>{type}</Badge>;
+    const labels: Record<string, string> = { EXPERT: "Expert", EVALUATEUR: "Évaluateur", FORMATEUR: "Formateur" };
+    return <Badge className={colors[type]}>{labels[type] || type}</Badge>;
   };
 
   const filteredCandidatures = candidatures.filter(c => {
     const matchesSearch = 
-      c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.registrationId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.registrationId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.domaineExpertise?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
@@ -121,80 +126,64 @@ export default function GesCompetencesCandidaturesPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleApprove = async (candidature: Candidature) => {
-    try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/approve`, {
-        method: "POST",
-        credentials: "include"
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Succès",
-          description: "Candidature acceptée. L'administrateur a été notifié pour créer le compte."
-        });
-        fetchCandidatures();
-        setSelectedCandidature(null);
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Erreur",
-          description: error.message || "Impossible d'approuver la candidature",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleReject = async (candidature: Candidature) => {
-    if (!rejectionReason.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez saisir un motif de refus",
-        variant: "destructive"
-      });
+  // Schedule interview
+  const handleScheduleInterview = async () => {
+    if (!schedulingCandidature || !interviewDate || !interviewTime) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner une date et une heure", variant: "destructive" });
       return;
     }
 
+    const dateTime = `${interviewDate}T${interviewTime}:00`;
+
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${schedulingCandidature.id}/schedule-interview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ interviewDate: dateTime })
+      });
+      
+      if (response.ok) {
+        toast({ title: "Succès", description: "Entretien planifié. Un email de convocation a été envoyé au candidat." });
+        fetchCandidatures();
+        setShowScheduleDialog(false);
+        setSelectedCandidature(null);
+        setInterviewDate("");
+        setInterviewTime("");
+        setSchedulingCandidature(null);
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Impossible de planifier l'entretien", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
+  // Reject dossier (implicit rejection)
+  const handleRejectDossier = async (candidature: Candidature) => {
     try {
       const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ rejectionReason })
+        body: JSON.stringify({ rejectionReason: rejectionReason || "Profil non retenu dans le cadre des besoins actuels" })
       });
       
       if (response.ok) {
-        toast({
-          title: "Succès",
-          description: "Candidature refusée. Un email a été envoyé au candidat avec le motif."
-        });
+        toast({ title: "Traitement effectué", description: "Le candidat a été notifié par email de manière appropriée." });
         fetchCandidatures();
         setSelectedCandidature(null);
         setShowRejectDialog(false);
         setRejectionReason("");
       } else {
         const error = await response.json();
-        toast({
-          title: "Erreur",
-          description: error.message || "Impossible de rejeter la candidature",
-          variant: "destructive"
-        });
+        toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
       }
     } catch (error) {
       console.error("Erreur:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue",
-        variant: "destructive"
-      });
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };
 
@@ -215,19 +204,11 @@ export default function GesCompetencesCandidaturesPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de télécharger le FOR20",
-          variant: "destructive"
-        });
+        toast({ title: "Erreur", description: "Impossible de télécharger le FOR20", variant: "destructive" });
       }
     } catch (error) {
       console.error("Erreur:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue",
-        variant: "destructive"
-      });
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };
 
@@ -252,15 +233,26 @@ export default function GesCompetencesCandidaturesPage() {
           </div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("PENDING")}>
               <CardContent className="pt-4 pb-4 px-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">En attente</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                    <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
                   </div>
-                  <Clock className="w-8 h-8 text-yellow-500 opacity-60" />
+                  <Clock className="w-8 h-8 text-amber-500 opacity-60" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterStatus("INTERVIEW_SCHEDULED")}>
+              <CardContent className="pt-4 pb-4 px-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Entretiens</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.interviewing}</p>
+                  </div>
+                  <CalendarDays className="w-8 h-8 text-blue-500 opacity-60" />
                 </div>
               </CardContent>
             </Card>
@@ -268,10 +260,10 @@ export default function GesCompetencesCandidaturesPage() {
               <CardContent className="pt-4 pb-4 px-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Approuvées</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.approved}</p>
+                    <p className="text-sm text-muted-foreground">Acceptées</p>
+                    <p className="text-2xl font-bold text-emerald-600">{stats.approved}</p>
                   </div>
-                  <UserCheck className="w-8 h-8 text-blue-500 opacity-60" />
+                  <UserCheck className="w-8 h-8 text-emerald-500 opacity-60" />
                 </div>
               </CardContent>
             </Card>
@@ -279,10 +271,10 @@ export default function GesCompetencesCandidaturesPage() {
               <CardContent className="pt-4 pb-4 px-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Refusées</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+                    <p className="text-sm text-muted-foreground">Non retenues</p>
+                    <p className="text-2xl font-bold text-slate-500">{stats.rejected}</p>
                   </div>
-                  <UserX className="w-8 h-8 text-red-500 opacity-60" />
+                  <UserX className="w-8 h-8 text-slate-400 opacity-60" />
                 </div>
               </CardContent>
             </Card>
@@ -305,29 +297,23 @@ export default function GesCompetencesCandidaturesPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher par nom, ID, domaine..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
+                  <Input placeholder="Rechercher par nom, ID, domaine..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
                 </div>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Statut" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Statut" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="PENDING">En attente</SelectItem>
-                    <SelectItem value="CANDIDATURE_APPROVED">Approuvées</SelectItem>
+                    <SelectItem value="INTERVIEW_SCHEDULED">Entretien planifié</SelectItem>
+                    <SelectItem value="INTERVIEW_CONFIRMED">Entretien confirmé</SelectItem>
+                    <SelectItem value="INTERVIEW_COMPLETED">Entretien terminé</SelectItem>
+                    <SelectItem value="CANDIDATURE_APPROVED">Acceptées</SelectItem>
                     <SelectItem value="APPROVED">Compte actif</SelectItem>
-                    <SelectItem value="REJECTED">Refusées</SelectItem>
+                    <SelectItem value="REJECTED">Non retenues</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les types</SelectItem>
                     <SelectItem value="EXPERT">Expert</SelectItem>
@@ -356,17 +342,9 @@ export default function GesCompetencesCandidaturesPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        Chargement...
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8">Chargement...</TableCell></TableRow>
                   ) : filteredCandidatures.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Aucune candidature trouvée
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune candidature trouvée</TableCell></TableRow>
                   ) : (
                     filteredCandidatures.map((candidature) => (
                       <TableRow key={candidature.id}>
@@ -374,14 +352,10 @@ export default function GesCompetencesCandidaturesPage() {
                         <TableCell className="font-medium whitespace-nowrap">{candidature.fullName}</TableCell>
                         <TableCell>{getTypeBadge(candidature.userType)}</TableCell>
                         <TableCell className="max-w-xs truncate">{candidature.domaineExpertise}</TableCell>
-                        <TableCell className="whitespace-nowrap">{candidature.dateInscription}</TableCell>
+                        <TableCell className="whitespace-nowrap">{candidature.createdAt ? new Date(candidature.createdAt).toLocaleDateString("fr-FR") : candidature.dateInscription}</TableCell>
                         <TableCell>{getStatusBadge(candidature.status)}</TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setSelectedCandidature(candidature)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedCandidature(candidature)}>
                             <Eye className="w-4 h-4" />
                           </Button>
                         </TableCell>
@@ -395,99 +369,58 @@ export default function GesCompetencesCandidaturesPage() {
         </main>
       </div>
 
-      {/* Dialog de détails */}
+      {/* Detail Dialog */}
       <Dialog open={!!selectedCandidature} onOpenChange={() => setSelectedCandidature(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails de la Candidature</DialogTitle>
-            <DialogDescription>
-              {selectedCandidature && `ID: ${selectedCandidature.registrationId}`}
-            </DialogDescription>
+            <DialogDescription>{selectedCandidature && `Référence : ${selectedCandidature.registrationId}`}</DialogDescription>
           </DialogHeader>
 
           {selectedCandidature && (
             <div className="space-y-6">
-              {/* Photo */}
               {selectedCandidature.photoBase64 && (
                 <div className="flex justify-center">
-                  <img 
-                    src={`data:image/jpeg;base64,${selectedCandidature.photoBase64}`}
-                    alt="Photo du candidat"
-                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
-                  />
+                  <img src={`data:image/jpeg;base64,${selectedCandidature.photoBase64}`} alt="Photo" className="w-32 h-32 rounded-full object-cover border-4 border-gray-200" />
                 </div>
               )}
 
-              {/* Informations personnelles */}
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Nom Complet</Label>
-                  <p className="font-medium">{selectedCandidature.fullName}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Type</Label>
-                  <div className="mt-1">{getTypeBadge(selectedCandidature.userType)}</div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Email</Label>
-                  <p className="font-medium">{selectedCandidature.email}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Téléphone</Label>
-                  <p className="font-medium">{selectedCandidature.telephone}</p>
-                </div>
-                {selectedCandidature.dateNaissance && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Date de naissance</Label>
-                    <p className="font-medium">{selectedCandidature.dateNaissance}</p>
-                  </div>
-                )}
-                {selectedCandidature.nationalite && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Nationalité</Label>
-                    <p className="font-medium">{selectedCandidature.nationalite}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-xs text-muted-foreground">Statut</Label>
-                  <div className="mt-1">{getStatusBadge(selectedCandidature.status)}</div>
-                </div>
-                <div className="md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">Domaine d&apos;expertise</Label>
-                  <p className="font-medium">{selectedCandidature.domaineExpertise}</p>
-                </div>
-                {selectedCandidature.sousDomaineExpertise && (
-                  <div className="md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Sous-domaine</Label>
-                    <p className="font-medium">{selectedCandidature.sousDomaineExpertise}</p>
-                  </div>
-                )}
-                {selectedCandidature.adresseDomicile && (
-                  <div className="md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Adresse</Label>
-                    <p className="font-medium">{selectedCandidature.adresseDomicile}</p>
-                  </div>
-                )}
+                <div><Label className="text-xs text-muted-foreground">Nom Complet</Label><p className="font-medium">{selectedCandidature.fullName}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Type</Label><div className="mt-1">{getTypeBadge(selectedCandidature.userType)}</div></div>
+                <div><Label className="text-xs text-muted-foreground">Email</Label><p className="font-medium">{selectedCandidature.email}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Téléphone</Label><p className="font-medium">{selectedCandidature.telephone}</p></div>
+                {selectedCandidature.dateNaissance && (<div><Label className="text-xs text-muted-foreground">Date de naissance</Label><p className="font-medium">{selectedCandidature.dateNaissance}</p></div>)}
+                {selectedCandidature.nationalite && (<div><Label className="text-xs text-muted-foreground">Nationalité</Label><p className="font-medium">{selectedCandidature.nationalite}</p></div>)}
+                <div><Label className="text-xs text-muted-foreground">Statut</Label><div className="mt-1">{getStatusBadge(selectedCandidature.status)}</div></div>
+                <div className="md:col-span-2"><Label className="text-xs text-muted-foreground">Domaine d&apos;expertise</Label><p className="font-medium">{selectedCandidature.domaineExpertise}</p></div>
+                {selectedCandidature.sousDomaineExpertise && (<div className="md:col-span-2"><Label className="text-xs text-muted-foreground">Sous-domaine</Label><p className="font-medium">{selectedCandidature.sousDomaineExpertise}</p></div>)}
+                {selectedCandidature.adresseDomicile && (<div className="md:col-span-2"><Label className="text-xs text-muted-foreground">Adresse</Label><p className="font-medium">{selectedCandidature.adresseDomicile}</p></div>)}
               </div>
 
-              {/* Rejection reason if rejected */}
+              {/* Interview info if scheduled */}
+              {selectedCandidature.interviewDate && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Label className="text-sm font-semibold text-blue-700 mb-1 block">Entretien planifié</Label>
+                  <p className="text-sm text-blue-800">
+                    {new Date(selectedCandidature.interviewDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              )}
+
+              {/* Rejection info */}
               {selectedCandidature.status === "REJECTED" && selectedCandidature.rejectionReason && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <Label className="text-sm font-semibold text-red-700 mb-1 block">Motif de refus</Label>
-                  <p className="text-sm text-red-800">{selectedCandidature.rejectionReason}</p>
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <Label className="text-sm font-semibold text-slate-700 mb-1 block">Note interne</Label>
+                  <p className="text-sm text-slate-600">{selectedCandidature.rejectionReason}</p>
                 </div>
               )}
 
               {/* Documents */}
               <div className="border-t pt-4">
                 <Label className="text-sm font-semibold mb-2 block">Documents</Label>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start gap-2"
-                  onClick={() => handleDownloadFor20(selectedCandidature)}
-                >
-                  <Download className="w-4 h-4" />
-                  Télécharger le formulaire FOR20
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => handleDownloadFor20(selectedCandidature)}>
+                  <Download className="w-4 h-4" /> Télécharger le formulaire FOR20
                 </Button>
                 {selectedCandidature.documentsJson && (() => {
                   try {
@@ -495,31 +428,23 @@ export default function GesCompetencesCandidaturesPage() {
                     if (!docs || docs.length === 0) return null;
                     return (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs text-muted-foreground font-medium">Fichiers joints par le candidat :</p>
+                        <p className="text-xs text-muted-foreground font-medium">Fichiers joints :</p>
                         {docs.map((doc, i) => (
                           <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
                             <span className="text-sm truncate flex-1 mr-2">{doc.name}</span>
                             {doc.base64 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="shrink-0 h-7 px-2"
-                                onClick={() => {
-                                  const mime = doc.mimeType || "application/octet-stream";
-                                  const byteChars = atob(doc.base64!);
-                                  const byteArr = new Uint8Array(byteChars.length);
-                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                                  const blob = new Blob([byteArr], { type: mime });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = doc.name;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                }}
-                              >
-                                <Download className="w-3 h-3 mr-1" />
-                                Télécharger
+                              <Button variant="ghost" size="sm" className="shrink-0 h-7 px-2" onClick={() => {
+                                const mime = doc.mimeType || "application/octet-stream";
+                                const byteChars = atob(doc.base64!);
+                                const byteArr = new Uint8Array(byteChars.length);
+                                for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                const blob = new Blob([byteArr], { type: mime });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url; a.download = doc.name; a.click();
+                                URL.revokeObjectURL(url);
+                              }}>
+                                <Download className="w-3 h-3 mr-1" /> Télécharger
                               </Button>
                             )}
                           </div>
@@ -530,23 +455,19 @@ export default function GesCompetencesCandidaturesPage() {
                 })()}
               </div>
 
-              {/* Actions - only for PENDING */}
+              {/* Actions for PENDING candidatures */}
               {selectedCandidature.status === "PENDING" && (
                 <div className="flex gap-3 pt-4 border-t">
-                  <Button 
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => handleApprove(selectedCandidature)}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Accepter
+                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => {
+                    setSchedulingCandidature(selectedCandidature);
+                    setShowScheduleDialog(true);
+                  }}>
+                    <CalendarPlus className="w-4 h-4 mr-2" />
+                    Planifier un Entretien
                   </Button>
-                  <Button 
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => setShowRejectDialog(true)}
-                  >
+                  <Button variant="outline" className="flex-1 text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => setShowRejectDialog(true)}>
                     <XCircle className="w-4 h-4 mr-2" />
-                    Refuser
+                    Dossier Non Retenu
                   </Button>
                 </div>
               )}
@@ -555,46 +476,70 @@ export default function GesCompetencesCandidaturesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de rejet avec motif */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
+      {/* Schedule Interview Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Refuser la candidature</DialogTitle>
+            <DialogTitle>Planifier un Entretien</DialogTitle>
             <DialogDescription>
-              Veuillez indiquer le motif de refus. Un email sera envoyé au candidat.
+              {schedulingCandidature && `Candidat(e) : ${schedulingCandidature.fullName}`}
+              <br />
+              Un email de convocation sera envoyé au candidat avec les détails de l'entretien.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectionReason">Motif de refus *</Label>
-              <Textarea
-                id="rejectionReason"
-                placeholder="Expliquez la raison du refus..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                rows={4}
-                className="mt-2"
-              />
+              <Label htmlFor="interviewDate">Date de l'entretien *</Label>
+              <Input id="interviewDate" type="date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className="mt-2" min={new Date().toISOString().split('T')[0]} />
+            </div>
+            <div>
+              <Label htmlFor="interviewTime">Heure de l'entretien *</Label>
+              <Input id="interviewTime" type="time" value={interviewTime} onChange={(e) => setInterviewTime(e.target.value)} className="mt-2" />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDate(""); setInterviewTime(""); }}>
+              Annuler
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleScheduleInterview} disabled={!interviewDate || !interviewTime}>
+              <CalendarPlus className="w-4 h-4 mr-2" />
+              Confirmer & Envoyer la Convocation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dossier Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dossier Non Retenu</DialogTitle>
+            <DialogDescription>
+              Le candidat recevra un email professionnel indiquant que son profil ne correspond pas aux besoins actuels, 
+              tout en gardant son dossier pour de futures opportunités.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rejectionReason">Note interne (non visible par le candidat)</Label>
+              <Textarea id="rejectionReason" placeholder="Raison interne du refus (pour vos archives uniquement)..." value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} rows={3} className="mt-2" />
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-700">
+                <strong>Note :</strong> Le candidat recevra un email optimiste mentionnant que son dossier sera conservé dans le vivier de compétences pour de futures opportunités. Aucune mention directe de refus.
+              </p>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowRejectDialog(false);
-                  setRejectionReason("");
-                }}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => { setShowRejectDialog(false); setRejectionReason(""); }}>
                 Annuler
               </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => selectedCandidature && handleReject(selectedCandidature)}
-              >
-                Confirmer le refus
+              <Button variant="outline" className="flex-1 text-slate-600" onClick={() => selectedCandidature && handleRejectDossier(selectedCandidature)}>
+                Confirmer
               </Button>
             </div>
           </div>

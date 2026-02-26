@@ -323,8 +323,6 @@ public class EmailService {
                 
                 Veuillez consulter cette demande sur la plateforme pour l'approuver ou la refuser.
                 
-                Lien : http://localhost:5173/dt/candidatures-oec
-                
                 Cordialement,
                 Système ALGERAC
                 """,
@@ -458,7 +456,6 @@ public class EmailService {
                 
                 Veuillez créer le compte utilisateur pour cet organisme sur la plateforme.
                 
-                Lien : http://localhost:5173/admin/utilisateurs-pending
                 
                 Cordialement,
                 Système ALGERAC
@@ -503,8 +500,6 @@ public class EmailService {
                    • Date d'approbation : %s
                 
                 Votre compte est maintenant actif. Vous pouvez vous connecter à la plateforme ALGERAC avec vos identifiants.
-                
-                Se connecter : http://localhost:5173/auth/login
                 
                 Bienvenue dans l'équipe ALGERAC !
                 
@@ -622,8 +617,6 @@ public class EmailService {
                 Veuillez vous connecter à la plateforme pour créer le compte utilisateur pour cet organisme.
                 Les identifiants seront générés automatiquement et envoyés à l'OEC par email.
                 
-                Lien : http://localhost:5173/admin/oec-pending
-                
                 Cordialement,
                 Système ALGERAC
                 """,
@@ -668,9 +661,7 @@ public class EmailService {
                 Pour des raisons de sécurité, nous vous recommandons fortement de :
                    1. Vous connecter dès que possible
                    2. Changer votre mot de passe après la première connexion
-                
-                Se connecter à la plateforme : http://localhost:5173/auth/login
-                
+                                
                 Si vous n'êtes pas à l'origine de cette demande ou si vous avez des questions, veuillez nous contacter immédiatement.
                 
                 Bienvenue sur ALGERAC !
@@ -901,8 +892,7 @@ public class EmailService {
                    • Domaine d'expertise : %s
                    • Date de soumission : %s
                 
-                Veuillez vous connecter à la plateforme pour examiner la candidature et le formulaire FOR20 :
-                http://localhost:5173/dt/candidatures
+                Veuillez vous connecter à la plateforme pour examiner la candidature et le formulaire FOR20
                 
                 Cordialement,
                 Système ALGERAC
@@ -1120,7 +1110,7 @@ public class EmailService {
                 ═══════════════════════════════════════
                 
                 Actions recommandées :
-                   1. Connectez-vous à la plateforme : http://localhost:5173
+                   1. Connectez-vous à la plateforme
                    2. Modifiez votre mot de passe dès votre première connexion
                    3. Complétez votre profil professionnel
                 

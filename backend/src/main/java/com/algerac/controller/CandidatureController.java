@@ -11,7 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -427,207 +426,7 @@ public class CandidatureController {
     }
 
     /**
-     * Approuve une candidature d'expert/évaluateur/formateur ET planifie un entretien
-     * Accessible par GES_COMPETENCES
-     */
-    @PostMapping("/experts/{id}/schedule-interview")
-    public ResponseEntity<?> scheduleInterview(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> request,
-            HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            String dateStr = request.get("interviewDate");
-            if (dateStr == null || dateStr.trim().isEmpty()) {
-                return ResponseEntity.status(400).body(Map.of("success", false, "message", "La date d'entretien est obligatoire"));
-            }
-            
-            LocalDateTime interviewDate = LocalDateTime.parse(dateStr);
-            
-            log.info("POST /api/candidatures/experts/{}/schedule-interview - Planification entretien", id);
-            
-            User updatedUser = candidatureService.scheduleInterview(id, interviewDate);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Entretien planifié. Un email de convocation a été envoyé au candidat.");
-            response.put("user", updatedUser);
-            
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            log.error("Erreur lors de la planification de l'entretien {}", id, e);
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Erreur serveur", e);
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * Met à jour la date d'entretien
-     */
-    @PutMapping("/experts/{id}/update-interview-date")
-    public ResponseEntity<?> updateInterviewDate(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> request,
-            HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            String dateStr = request.get("interviewDate");
-            if (dateStr == null || dateStr.trim().isEmpty()) {
-                return ResponseEntity.status(400).body(Map.of("success", false, "message", "La nouvelle date est obligatoire"));
-            }
-            
-            LocalDateTime newDate = LocalDateTime.parse(dateStr);
-            User updatedUser = candidatureService.updateInterviewDate(id, newDate);
-            
-            return ResponseEntity.ok(Map.of("success", true, "message", "Date d'entretien mise à jour", "user", updatedUser));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Confirme l'entretien
-     */
-    @PostMapping("/experts/{id}/confirm-interview")
-    public ResponseEntity<?> confirmInterview(@PathVariable Long id, HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            User updatedUser = candidatureService.confirmInterview(id);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Entretien confirmé", "user", updatedUser));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Sauvegarde les notes et checklist d'entretien
-     */
-    @PutMapping("/experts/{id}/interview-notes")
-    public ResponseEntity<?> saveInterviewNotes(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> request,
-            HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            String notes = request.get("notes");
-            String checklistJson = request.get("checklistJson");
-            
-            User updatedUser = candidatureService.saveInterviewNotes(id, notes, checklistJson);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Notes sauvegardées", "user", updatedUser));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Marque l'entretien comme terminé
-     */
-    @PostMapping("/experts/{id}/complete-interview")
-    public ResponseEntity<?> completeInterview(@PathVariable Long id, HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            User updatedUser = candidatureService.markInterviewCompleted(id);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Entretien marqué comme terminé", "user", updatedUser));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Accepte un candidat après l'entretien
-     * Notifie l'admin IN-APP uniquement
-     */
-    @PostMapping("/experts/{id}/interview-accept")
-    public ResponseEntity<?> acceptAfterInterview(@PathVariable Long id, HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            log.info("POST /api/candidatures/experts/{}/interview-accept", id);
-            
-            User acceptedUser = candidatureService.acceptAfterInterview(id, userId);
-            
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Candidature acceptée. L'administrateur a été notifié pour créer le compte.",
-                "user", acceptedUser
-            ));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Rejette un candidat après l'entretien (refus implicite)
-     */
-    @PostMapping("/experts/{id}/interview-reject")
-    public ResponseEntity<?> rejectAfterInterview(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> request,
-            HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
-            
-            String notes = request != null ? request.get("notes") : null;
-            
-            log.info("POST /api/candidatures/experts/{}/interview-reject", id);
-            
-            candidatureService.rejectAfterInterview(id, notes);
-            
-            return ResponseEntity.ok(Map.of("success", true, "message", "Candidature non retenue. Un email a été envoyé au candidat."));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-    
-    /**
-     * Récupère tous les entretiens planifiés pour le planning
-     */
-    @GetMapping("/experts/interviews")
-    public ResponseEntity<?> getScheduledInterviews(HttpSession session) {
-        try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
-            
-            List<User> interviews = candidatureService.getScheduledInterviews();
-            return ResponseEntity.ok(interviews);
-        } catch (Exception e) {
-            log.error("Erreur lors de la récupération des entretiens", e);
-            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
-        }
-    }
-
-    /**
-     * Approuve une candidature d'expert/évaluateur/formateur (legacy - kept for compatibility)
+     * Approuve une candidature d'expert/évaluateur/formateur
      * Accessible par GES_COMPETENCES
      */
     @PostMapping("/experts/{id}/approve")
@@ -640,7 +439,7 @@ public class CandidatureController {
             
             log.info("POST /api/candidatures/experts/{}/approve - Approbation candidature expert", id);
             
-            User approvedUser = candidatureService.approveExpertCandidature(id, userId);
+            User approvedUser = candidatureService.approveCandidature(id);
             log.info("Candidature expert {} approuvée avec succès", id);
             
             Map<String, Object> response = new HashMap<>();
@@ -707,6 +506,386 @@ public class CandidatureController {
             ));
         } catch (Exception e) {
             log.error("Erreur serveur lors du rejet", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    // ========== INTERVIEW WORKFLOW ENDPOINTS ==========
+
+    /**
+     * Planifie un entretien pour un candidat expert/évaluateur/formateur
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/schedule-interview")
+    public ResponseEntity<?> scheduleInterview(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String interviewDateStr = request.get("interviewDate");
+            if (interviewDateStr == null || interviewDateStr.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "message", "La date d'entretien est obligatoire"
+                ));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/schedule-interview - Planification entretien", id);
+            
+            User user = candidatureService.scheduleInterview(id, java.time.LocalDateTime.parse(interviewDateStr));
+            log.info("Entretien planifié avec succès pour le candidat {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Entretien planifié. Un email de convocation a été envoyé au candidat.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la planification de l'entretien pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors de la planification", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Modifier la date d'un entretien déjà planifié
+     * Accessible par GES_COMPETENCES
+     */
+    @PutMapping("/experts/{id}/update-interview-date")
+    public ResponseEntity<?> updateInterviewDate(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String newDateStr = request.get("newDate");
+            if (newDateStr == null || newDateStr.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "message", "La nouvelle date est obligatoire"
+                ));
+            }
+
+            log.info("PUT /api/candidatures/experts/{}/update-interview-date - Modification date entretien", id);
+            
+            User user = candidatureService.updateInterviewDate(id, java.time.LocalDateTime.parse(newDateStr));
+            log.info("Date d'entretien modifiée avec succès pour le candidat {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Date d'entretien modifiée avec succès.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la modification de la date d'entretien pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Confirme un entretien planifié
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/confirm-interview")
+    public ResponseEntity<?> confirmInterview(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/confirm-interview - Confirmation entretien", id);
+            
+            User user = candidatureService.confirmInterview(id);
+            log.info("Entretien confirmé avec succès pour le candidat {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Entretien confirmé.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la confirmation de l'entretien pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Sauvegarde les notes et checklist d'entretien
+     * Accessible par GES_COMPETENCES
+     */
+    @PutMapping("/experts/{id}/interview-notes")
+    public ResponseEntity<?> saveInterviewNotes(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String notes = request.get("notes");
+            String checklistJson = request.get("checklistJson");
+
+            log.info("PUT /api/candidatures/experts/{}/interview-notes - Sauvegarde notes entretien", id);
+            
+            User user = candidatureService.saveInterviewNotes(id, notes, checklistJson);
+            log.info("Notes d'entretien sauvegardées avec succès pour le candidat {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Notes sauvegardées.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la sauvegarde des notes pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Marque un entretien comme terminé
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/complete-interview")
+    public ResponseEntity<?> completeInterview(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/complete-interview - Marque entretien terminé", id);
+            
+            User user = candidatureService.markInterviewCompleted(id);
+            log.info("Entretien marqué comme terminé pour le candidat {}", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Entretien marqué comme terminé.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors du marquage de l'entretien terminé pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Accepte un candidat après l'entretien
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/interview-accept")
+    public ResponseEntity<?> acceptAfterInterview(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/interview-accept - Acceptation après entretien", id);
+            
+            User user = candidatureService.acceptAfterInterview(id, userId);
+            log.info("Candidat {} accepté après entretien avec succès", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Candidat accepté. L'administrateur a été notifié pour créer le compte.");
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de l'acceptation après entretien pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Rejette un candidat après l'entretien (email implicite)
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/interview-reject")
+    public ResponseEntity<?> rejectAfterInterview(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String internalNotes = request.get("internalNotes");
+
+            log.info("POST /api/candidatures/experts/{}/interview-reject - Rejet après entretien", id);
+            
+            candidatureService.rejectAfterInterview(id, internalNotes);
+            log.info("Candidat {} rejeté après entretien avec succès", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Candidat rejeté. Un email implicite a été envoyé.");
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors du rejet après entretien pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Erreur serveur : " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Récupère tous les entretiens planifiés/confirmés/terminés
+     * Accessible par GES_COMPETENCES
+     */
+    @GetMapping("/experts/interviews")
+    public ResponseEntity<?> getScheduledInterviews(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+
+            log.info("GET /api/candidatures/experts/interviews - Récupération des entretiens");
+            
+            List<User> interviews = candidatureService.getScheduledInterviews();
+            log.info("Nombre d'entretiens récupérés : {}", interviews.size());
+
+            return ResponseEntity.ok(interviews);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des entretiens", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Rejette une candidature avant l'entretien (dossier non retenu)
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/reject-dossier")
+    public ResponseEntity<?> rejectDossier(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String internalNotes = request.get("internalNotes");
+
+            log.info("POST /api/candidatures/experts/{}/reject-dossier - Rejet dossier avant entretien", id);
+            
+            candidatureService.rejectDossier(id, internalNotes);
+            log.info("Dossier {} rejeté avec succès", id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Dossier rejeté. Un email implicite a été envoyé.");
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors du rejet du dossier pour {}", id, e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Erreur serveur", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Erreur serveur : " + e.getMessage()

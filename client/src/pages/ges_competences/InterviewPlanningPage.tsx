@@ -392,7 +392,12 @@ export default function InterviewPlanningPage() {
                                     ? "bg-teal-100 text-teal-800"
                                     : "bg-blue-100 text-blue-800"
                               }`}
-                              onClick={() => setLocation(`/ges-competences/entretien/${interview.id}`)}
+                              onClick={() => {
+                                setViewMode("list");
+                                setFilterStatus("all");
+                                setSearchTerm("");
+                                // Scroll will happen automatically as list renders
+                              }}
                             >
                               {new Date(interview.interviewDate).toLocaleTimeString("fr-FR", {
                                 hour: "2-digit",
@@ -475,35 +480,35 @@ export default function InterviewPlanningPage() {
                           {/* Actions */}
                           <div className="flex items-center gap-2 shrink-0">
                             {interview.status === "INTERVIEW_SCHEDULED" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-cyan-700 border-cyan-300 hover:bg-cyan-50"
-                                  onClick={() => handleConfirmInterview(interview)}
-                                >
-                                  <CalendarCheck className="w-4 h-4 mr-1" />
-                                  Confirmer
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setRescheduleInterview(interview);
-                                    setShowRescheduleDialog(true);
-                                  }}
-                                >
-                                  <Edit3 className="w-4 h-4 mr-1" />
-                                  Modifier
-                                </Button>
-                              </>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-cyan-700 border-cyan-300 hover:bg-cyan-50"
+                                onClick={() => handleConfirmInterview(interview)}
+                              >
+                                <CalendarCheck className="w-4 h-4 mr-1" />
+                                Confirmer
+                              </Button>
+                            )}
+                            {interview.status !== "INTERVIEW_COMPLETED" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setRescheduleInterview(interview);
+                                  setShowRescheduleDialog(true);
+                                }}
+                              >
+                                <Edit3 className="w-4 h-4 mr-1" />
+                                Modifier
+                              </Button>
                             )}
                             <Button
                               size="sm"
                               onClick={() => setLocation(`/ges-competences/entretien/${interview.id}`)}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              Évaluer
+                              {interview.status === "INTERVIEW_COMPLETED" ? "Évaluer" : "Voir détails"}
                             </Button>
                           </div>
                         </div>

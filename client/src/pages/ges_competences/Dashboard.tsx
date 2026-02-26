@@ -238,7 +238,6 @@ export default function GesCompetencesDashboard() {
                 <Activity className="w-5 h-5 text-primary" />
                 Pipeline de Recrutement
               </CardTitle>
-              <CardDescription>Suivi des étapes du processus de sélection</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2">
@@ -316,7 +315,7 @@ export default function GesCompetencesDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           {getTypeBadge(interview.userType)}
-                          <Link href={`/ges-competences/entretien/${interview.id}`}>
+                          <Link href="/ges-competences/entretiens">
                             <Button variant="outline" size="sm" className="h-8">
                               <Eye className="w-3 h-3" />
                             </Button>
@@ -356,24 +355,26 @@ export default function GesCompetencesDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {upcomingInterviews.map(interview => (
-                      <div key={interview.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                            <span className="text-slate-700 font-semibold text-sm">
-                              {interview.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                            </span>
+                      <Link key={interview.id} href="/ges-competences/entretiens">
+                        <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 transition-colors cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                              <span className="text-slate-700 font-semibold text-sm">
+                                {interview.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">{interview.fullName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {interview.interviewDate && formatDateTime(interview.interviewDate)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-sm">{interview.fullName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {interview.interviewDate && formatDateTime(interview.interviewDate)}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(interview.status)}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(interview.status)}
-                        </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}

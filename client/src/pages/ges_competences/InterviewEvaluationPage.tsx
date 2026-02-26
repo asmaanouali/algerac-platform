@@ -101,27 +101,46 @@ export default function InterviewEvaluationPage() {
   const fetchCandidature = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8082/api/candidatures/experts", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: Candidature[] = await response.json();
-        const found = data.find((c) => c.id === candidateId);
-        if (found) {
-          setCandidature(found);
-          // Restore saved notes / checklist
-          if (found.interviewNotes) setNotes(found.interviewNotes);
-          if (found.interviewChecklistJson) {
-            try {
-              const saved = JSON.parse(found.interviewChecklistJson);
-              if (Array.isArray(saved) && saved.length > 0) setChecklist(saved);
-            } catch {
-              // keep default
-            }
+      // Try both endpoints to find the candidature
+      const [expertsRes, interviewsRes] = await Promise.all([
+        fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
+        fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" })
+      ]);
+      
+      let allData: Candidature[] = [];
+      if (expertsRes.ok) {
+        const data = await expertsRes.json();
+        allData = [...allData, ...data];
+      }
+      if (interviewsRes.ok) {
+        const data = await interviewsRes.json();
+        // Merge without duplicates
+        data.forEach((item: Candidature) => {
+          if (!allData.some(existing => String(existing.id) === String(item.id))) {
+            allData.push(item);
           }
-        } else {
-          toast({ title: "Erreur", description: "Candidature introuvable", variant: "destructive" });
+        });
+      }
+      
+      console.log("Looking for candidateId:", candidateId, "Type:", typeof candidateId);
+      console.log("Available IDs:", allData.map(c => ({ id: c.id, type: typeof c.id, status: c.status })));
+      
+      // Compare both as strings to handle type mismatch
+      const found = allData.find((c) => String(c.id) === String(candidateId));
+      if (found) {
+        setCandidature(found);
+        // Restore saved notes / checklist
+        if (found.interviewNotes) setNotes(found.interviewNotes);
+        if (found.interviewChecklistJson) {
+          try {
+            const saved = JSON.parse(found.interviewChecklistJson);
+            if (Array.isArray(saved) && saved.length > 0) setChecklist(saved);
+          } catch {
+            // keep default
+          }
         }
+      } else {
+        toast({ title: "Erreur", description: "Candidature introuvable", variant: "destructive" });
       }
     } catch (error) {
       console.error("Erreur:", error);
@@ -649,6 +668,7 @@ export default function InterviewEvaluationPage() {
                       <Button
                         className="h-auto py-4 bg-emerald-600 hover:bg-emerald-700"
                         onClick={() => setShowAcceptDialog(true)}
+                        disabled={candidature.status !== "INTERVIEW_COMPLETED"}
                       >
                         <div className="text-center">
                           <CheckCircle className="w-6 h-6 mx-auto mb-1" />
@@ -662,6 +682,7 @@ export default function InterviewEvaluationPage() {
                         variant="outline"
                         className="h-auto py-4 text-slate-600 border-slate-300 hover:bg-slate-50"
                         onClick={() => setShowRejectDialog(true)}
+                        disabled={candidature.status !== "INTERVIEW_COMPLETED"}
                       >
                         <div className="text-center">
                           <XCircle className="w-6 h-6 mx-auto mb-1" />

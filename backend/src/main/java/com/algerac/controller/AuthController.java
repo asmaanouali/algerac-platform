@@ -245,6 +245,31 @@ public class AuthController {
         }
     }
     
+    /**
+     * Endpoint public pour qu'un candidat blacklisté puisse introduire un recours
+     */
+    @PostMapping("/appeal")
+    public ResponseEntity<ApiResponse> submitAppeal(@RequestBody java.util.Map<String, String> request) {
+        String email = request.get("email");
+        String message = request.get("message");
+        
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("L'email est requis"));
+        }
+        
+        log.info("Réception d'un recours pour l'email : {}", email);
+        
+        try {
+            authService.submitBlacklistAppeal(email, message);
+            return ResponseEntity.ok(ApiResponse.success(
+                "Votre recours a bien été enregistré. Vous recevrez une réponse par email dans les meilleurs délais."
+            ));
+        } catch (RuntimeException e) {
+            log.error("Erreur lors du recours : {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     @GetMapping("/health")
     public ResponseEntity<ApiResponse> healthCheck() {
         return ResponseEntity.ok(ApiResponse.success("API is running"));

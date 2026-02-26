@@ -82,6 +82,7 @@ public class AuthService {
                 .telephoneDirect(request.getTelephoneDirect())
                 .emailProfessionnel(request.getEmailProfessionnel())
                 .porteeAccreditation(request.getPorteeAccreditation())
+                .typeDemande(request.getTypeDemande())
                 .status(UserStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -101,13 +102,41 @@ public class AuthService {
         return user;
     }
     
+    /**
+     * Soumet un recours pour un candidat blacklisté
+     */
+    @Transactional
+    public void submitBlacklistAppeal(String email, String message) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Aucun compte trouvé avec cet email");
+        }
+        User user = userOpt.get();
+        if (user.getBlacklisted() == null || !user.getBlacklisted()) {
+            throw new RuntimeException("Ce compte n'est pas concerné par un recours");
+        }
+        
+        // Notify GES_COMPETENCES managers about the appeal
+        java.util.List<User> gesUsers = userRepository.findByRole(UserRole.GES_COMPETENCES);
+        String appealMessage = message != null && !message.isBlank() ? message : "Aucun message fourni";
+        for (User ges : gesUsers) {
+            try {
+                emailService.sendBlacklistAppealNotification(ges, user, appealMessage);
+            } catch (Exception e) {
+                log.warn("Erreur envoi email recours à {} : {}", ges.getEmail(), e.getMessage());
+            }
+        }
+        
+        log.info("Recours soumis par {} (blacklisté)", email);
+    }
+    
     @Transactional
     public User registerExpert(ExpertSignupRequest request) {
         Optional<User> existingExpert = userRepository.findByEmail(request.getEmail());
         if (existingExpert.isPresent()) {
             User existing = existingExpert.get();
             if (existing.getBlacklisted() != null && existing.getBlacklisted()) {
-                throw new RuntimeException("Cette adresse email est bloquée. Veuillez contacter ALGERAC.");
+                throw new RuntimeException("BLACKLISTED:Cette adresse email est bloquée suite à une décision précédente.");
             }
             if (existing.getStatus() == UserStatus.REJECTED) {
                 // Keep old record: change email to archive it

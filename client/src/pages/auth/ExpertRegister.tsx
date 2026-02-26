@@ -7,9 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, ChevronLeft, FileText, AlertCircle, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowRight, ChevronLeft, FileText, AlertCircle, Plus, Trash2, Upload, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { fr } from "date-fns/locale";
@@ -140,7 +142,10 @@ const validateChronologicalOrder = (
 
 export default function ExpertRegisterWizard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
+  const [showBlacklistDialog, setShowBlacklistDialog] = useState(false);
+  const [appealLoading, setAppealLoading] = useState(false);
 
   const userTypes = [
     { value: "EXPERT", label: "Expert" },
@@ -649,7 +654,13 @@ export default function ExpertRegisterWizard() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de l'inscription");
+        const errorMsg = errorData.message || errorData.error || "Erreur lors de l'inscription";
+        // Check for blacklist error
+        if (errorMsg.startsWith("BLACKLISTED:")) {
+          setShowBlacklistDialog(true);
+          return;
+        }
+        throw new Error(errorMsg);
       }
 
       setLocation("/auth/success");
@@ -2055,6 +2066,7 @@ export default function ExpertRegisterWizard() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
@@ -2173,5 +2185,76 @@ export default function ExpertRegisterWizard() {
         </Card>
       </div>
     </div>
+
+    {/* Blacklist Appeal Dialog */}
+    <Dialog open={showBlacklistDialog} onOpenChange={setShowBlacklistDialog}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-700">
+            <ShieldAlert className="w-5 h-5" />
+            Inscription impossible
+          </DialogTitle>
+          <DialogDescription>
+            Votre adresse email est associée à un compte qui a fait l'objet d'une décision de blocage.
+            Si vous estimez que cette décision est injustifiée, vous pouvez introduire un recours.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-800">
+            En introduisant un recours, votre demande sera examinée par le service compétent.
+            Vous recevrez une réponse par email dans les meilleurs délais.
+          </p>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setShowBlacklistDialog(false)}>
+            Fermer
+          </Button>
+          <Button
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+            disabled={appealLoading}
+            onClick={async () => {
+              setAppealLoading(true);
+              try {
+                const response = await fetch("/api/auth/appeal", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    email: formData.email,
+                    message: `Recours introduit par ${formData.prenom} ${formData.nom} (${formData.email}) - Type: ${formData.userType}`
+                  }),
+                });
+                if (response.ok) {
+                  setShowBlacklistDialog(false);
+                  toast({
+                    title: "Recours enregistré",
+                    description: "Votre recours a bien été pris en compte. Vous recevrez une réponse par email dans les meilleurs délais.",
+                  });
+                } else {
+                  const err = await response.json();
+                  toast({
+                    title: "Erreur",
+                    description: err.error || "Impossible de soumettre le recours",
+                    variant: "destructive",
+                  });
+                }
+              } catch {
+                toast({
+                  title: "Erreur",
+                  description: "Une erreur est survenue lors de l'envoi du recours",
+                  variant: "destructive",
+                });
+              } finally {
+                setAppealLoading(false);
+              }
+            }}
+          >
+            {appealLoading ? "Envoi en cours..." : "Introduire un recours"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

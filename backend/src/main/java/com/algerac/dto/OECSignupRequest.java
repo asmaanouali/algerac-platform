@@ -46,6 +46,8 @@ public class OECSignupRequest {
     
     private String porteeAccreditation;
     
+    private String typeDemande; // "initiale", "extension", "renouvellement", "transfert"
+    
     @NotBlank(message = "Le type d'utilisateur est requis")
     private String userType; // "OEC"
     

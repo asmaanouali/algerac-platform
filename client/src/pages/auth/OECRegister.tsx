@@ -624,6 +624,7 @@ export default function OECRegister() {
         telephoneDirect: formData.contactTelephone,
         emailProfessionnel: formData.contactEmail,
         porteeAccreditation: formData.activites.join(", "),
+        typeDemande: formData.typeDemande,
         userType: "OEC",
         documents: docsList.length > 0 ? docsList : undefined
       };

@@ -1140,6 +1140,47 @@ public class EmailService {
     }
 
     /**
+     * Notification de recours (blacklist appeal) envoyée au gestionnaire de compétences
+     */
+    public void sendBlacklistAppealNotification(User gesUser, User blacklistedUser, String appealMessage) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(gesUser.getEmail());
+            helper.setSubject("Recours d'un candidat blacklisté - " + blacklistedUser.getFullName());
+            
+            String body = String.format("""
+                <h2>Recours reçu</h2>
+                <p>Un candidat blacklisté a introduit un recours :</p>
+                <ul>
+                    <li><strong>Nom :</strong> %s</li>
+                    <li><strong>Email :</strong> %s</li>
+                    <li><strong>Type :</strong> %s</li>
+                    <li><strong>Motif de blacklist :</strong> %s</li>
+                    <li><strong>Date de blacklist :</strong> %s</li>
+                </ul>
+                <h3>Message du candidat :</h3>
+                <p>%s</p>
+                <p>Veuillez examiner ce recours et prendre les mesures appropriées.</p>
+                """,
+                blacklistedUser.getFullName(),
+                blacklistedUser.getEmail(),
+                getExpertTypeLabel(blacklistedUser),
+                blacklistedUser.getBlacklistReason() != null ? blacklistedUser.getBlacklistReason() : "Non spécifié",
+                blacklistedUser.getBlacklistedAt() != null ? blacklistedUser.getBlacklistedAt().toString() : "Non spécifié",
+                appealMessage
+            );
+            
+            helper.setText(body, true);
+            mailSender.send(mimeMessage);
+            log.info("Email de notification de recours envoyé à {}", gesUser.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de recours : {}", e.getMessage());
+        }
+    }
+
+    /**
      * Helper: get expert type label
      */
     private String getExpertTypeLabel(User user) {

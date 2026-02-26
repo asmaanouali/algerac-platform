@@ -231,39 +231,6 @@ export default function GesCompetencesDashboard() {
             </Card>
           </div>
 
-          {/* Pipeline Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                Pipeline de Recrutement
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2">
-                {[
-                  { label: "Dossiers reçus", count: stats.pending, color: "bg-amber-500", icon: Clock },
-                  { label: "Entretiens planifiés", count: stats.interviewScheduled, color: "bg-blue-500", icon: Calendar },
-                  { label: "Entretiens confirmés", count: stats.interviewConfirmed, color: "bg-cyan-500", icon: CalendarDays },
-                  { label: "Entretiens terminés", count: stats.interviewCompleted, color: "bg-teal-500", icon: ClipboardCheck },
-                  { label: "Acceptés", count: stats.approved, color: "bg-emerald-500", icon: UserCheck },
-                  { label: "Comptes actifs", count: stats.active, color: "bg-green-500", icon: FileCheck },
-                ].map((step, i, arr) => (
-                  <div key={i} className="flex items-center gap-2 min-w-0">
-                    <div className="flex flex-col items-center min-w-[100px]">
-                      <div className={`w-10 h-10 ${step.color} rounded-full flex items-center justify-center text-white font-bold text-sm mb-1`}>
-                        {step.count}
-                      </div>
-                      <span className="text-xs text-muted-foreground text-center whitespace-nowrap">{step.label}</span>
-                    </div>
-                    {i < arr.length - 1 && (
-                      <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Today's Interviews */}

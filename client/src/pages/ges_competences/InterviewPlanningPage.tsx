@@ -23,7 +23,11 @@ import {
   Edit3,
   User,
   MapPin,
+  FileText,
+  ChevronDown,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportToCsv, exportToXlsx } from "@/lib/export-utils";
 
 interface Interview {
   id: string;
@@ -248,6 +252,34 @@ export default function InterviewPlanningPage() {
   };
 
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
+
+  // Export interviews
+  const handleExport = (format: "csv" | "xlsx") => {
+    const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Entretien", "Statut"];
+    const statusLabels: Record<string, string> = {
+      INTERVIEW_SCHEDULED: "Planifié",
+      INTERVIEW_CONFIRMED: "Confirmé",
+      INTERVIEW_COMPLETED: "Terminé",
+    };
+    const rows = filteredInterviews.map(i => [
+      i.registrationId || "",
+      i.fullName || "",
+      getTypeLabel(i.userType),
+      i.domaineExpertise || "",
+      i.email || "",
+      i.telephone || "",
+      i.interviewDate ? new Date(i.interviewDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "",
+      statusLabels[i.status] || i.status,
+    ]);
+    
+    const filename = `entretiens_${new Date().toISOString().slice(0, 10)}`;
+    if (format === "xlsx") {
+      exportToXlsx(headers, rows, filename);
+    } else {
+      exportToCsv(headers, rows, filename);
+    }
+    toast({ title: "Export effectué", description: `${filteredInterviews.length} entretien(s) exporté(s) en ${format.toUpperCase()}` });
+  };
   const isPast = (dateStr: string) => new Date(dateStr) < new Date();
 
   return (
@@ -264,6 +296,25 @@ export default function InterviewPlanningPage() {
               <p className="text-muted-foreground mt-1">Vue d'ensemble et gestion des entretiens planifiés</p>
             </div>
             <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <FileText className="w-4 h-4 mr-1" />
+                    Exporter
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport("csv")}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Exporter en CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Exporter en XLSX
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="sm"

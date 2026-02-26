@@ -1,8 +1,7 @@
 package com.algerac.service;
 
-import com.algerac.model.User;
-import com.algerac.model.UserRole;
-import com.algerac.model.UserStatus;
+import com.algerac.model.*;
+import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +28,9 @@ public class CandidatureService {
     
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private RequestRepository requestRepository;
 
     /**
      * Récupère toutes les candidatures en attente (PENDING)
@@ -161,10 +163,51 @@ public class CandidatureService {
         
         userRepository.save(user);
         
+        // Auto-créer une demande d'accréditation à partir des données d'inscription
+        try {
+            RequestType requestType = mapTypeDemande(user.getTypeDemande());
+            String domain = user.getPorteeAccreditation() != null ? user.getPorteeAccreditation() : "Non spécifié";
+            
+            AccreditationRequest accreditationRequest = AccreditationRequest.builder()
+                    .oec(user)
+                    .type(requestType)
+                    .domain(domain)
+                    .description("Demande d'accréditation issue de l'inscription de l'organisme " + user.getOrganizationName())
+                    .status(RequestStatus.SUBMITTED)
+                    .progress(10)
+                    .submissionDate(user.getCreatedAt())
+                    .createdAt(LocalDateTime.now())
+                    .currentPhase("Soumission")
+                    .currentStep("Demande soumise")
+                    .nextAction("En attente de paiement")
+                    .pendingWith("OEC")
+                    .build();
+            
+            accreditationRequest = requestRepository.save(accreditationRequest);
+            log.info("Demande d'accréditation #{} créée automatiquement pour l'OEC {}", 
+                    accreditationRequest.getId(), user.getOrganizationName());
+        } catch (Exception e) {
+            log.error("Erreur lors de la création automatique de la demande d'accréditation pour l'OEC {} : {}", 
+                    userId, e.getMessage());
+        }
+        
         log.info("Compte OEC créé pour l'utilisateur {} par l'admin {}", userId, adminUserId);
         emailService.sendOECAccountCredentials(user, generatedPassword);
         
         return generatedPassword;
+    }
+    
+    /**
+     * Mappe le typeDemande string vers le RequestType enum
+     */
+    private RequestType mapTypeDemande(String typeDemande) {
+        if (typeDemande == null) return RequestType.INITIAL;
+        return switch (typeDemande.toLowerCase()) {
+            case "extension" -> RequestType.EXTENSION;
+            case "renouvellement" -> RequestType.RENOUVELLEMENT;
+            case "transfert" -> RequestType.EXTENSION; // Transfert maps to extension
+            default -> RequestType.INITIAL;
+        };
     }
     
     /**

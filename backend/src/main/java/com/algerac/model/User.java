@@ -71,6 +71,9 @@ public class User {
     private String emailProfessionnel;
     private String porteeAccreditation;
     
+    // Type de demande d'accréditation choisi à l'inscription (initiale, extension, renouvellement, transfert)
+    private String typeDemande;
+    
     // EXPERT SPECIFIC FIELDS
     private String nom;
     private String prenom;

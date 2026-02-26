@@ -6,12 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle, ShieldBan, ShieldCheck } from "lucide-react";
+import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle, ShieldBan, ShieldCheck, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { exportToXlsx } from "@/lib/export-utils";
 
 interface Candidature {
   id: string;
@@ -231,8 +233,8 @@ export default function GesCompetencesCandidaturesPage() {
     }
   };
 
-  // Export candidatures to CSV
-  const handleExport = () => {
+  // Export candidatures to CSV or XLSX
+  const handleExport = (format: "csv" | "xlsx" = "csv") => {
     const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Inscription", "Statut", "Type de rejet", "Blacklisté"];
     const statusLabels: Record<string, string> = {
       PENDING: "En attente", INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
@@ -246,15 +248,19 @@ export default function GesCompetencesCandidaturesPage() {
       c.blacklisted ? "Oui" : "Non"
     ]);
     
-    const csvContent = "\uFEFF" + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    if (format === "xlsx") {
+      exportToXlsx(headers, rows, `candidatures_${new Date().toISOString().slice(0,10)}`);
+    } else {
+      const csvContent = "\uFEFF" + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `candidatures_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Export effectué", description: `${filteredCandidatures.length} candidature(s) exportée(s)` });
+    }
+    toast({ title: "Export effectué", description: `${filteredCandidatures.length} candidature(s) exportée(s) en ${format.toUpperCase()}` });
   };
 
   // Blacklist a candidate
@@ -319,10 +325,25 @@ export default function GesCompetencesCandidaturesPage() {
                 Gérer les demandes d'inscription des Experts, Évaluateurs et Formateurs
               </p>
             </div>
-            <Button className="shrink-0" onClick={handleExport}>
-              <FileText className="w-4 h-4 mr-2" />
-              Exporter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="shrink-0">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exporter
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exporter en CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exporter en XLSX
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Stat Cards */}

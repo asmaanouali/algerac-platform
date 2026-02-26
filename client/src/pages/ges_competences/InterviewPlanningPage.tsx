@@ -57,6 +57,11 @@ export default function InterviewPlanningPage() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
 
+  // Day detail dialog (calendar day click)
+  const [selectedDayInterviews, setSelectedDayInterviews] = useState<Interview[]>([]);
+  const [selectedDayLabel, setSelectedDayLabel] = useState("");
+  const [showDayDialog, setShowDayDialog] = useState(false);
+
   useEffect(() => {
     document.title = "Planning Entretiens - Gestion des Compétences | ALGERAC";
     fetchData();
@@ -374,44 +379,51 @@ export default function InterviewPlanningPage() {
                     return (
                       <div
                         key={day}
-                        className={`bg-white p-2 min-h-[80px] border-t ${today ? "ring-2 ring-blue-500 ring-inset" : ""}`}
+                        className={`bg-white p-2 min-h-[80px] border-t cursor-pointer hover:bg-slate-50 transition-colors ${today ? "ring-2 ring-blue-500 ring-inset" : ""}`}
+                        onClick={() => {
+                          if (dayInterviews.length > 0) {
+                            setSelectedDayInterviews(dayInterviews);
+                            setSelectedDayLabel(date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+                            setShowDayDialog(true);
+                          }
+                        }}
                       >
                         <span
                           className={`text-sm font-medium ${today ? "text-blue-600 font-bold" : "text-slate-700"}`}
                         >
                           {day}
                         </span>
-                        <div className="mt-1 space-y-1">
-                          {dayInterviews.slice(0, 3).map((interview) => (
-                            <div
-                              key={interview.id}
-                              className={`text-xs p-1 rounded cursor-pointer truncate ${
-                                interview.status === "INTERVIEW_CONFIRMED"
-                                  ? "bg-cyan-100 text-cyan-800"
-                                  : interview.status === "INTERVIEW_COMPLETED"
-                                    ? "bg-teal-100 text-teal-800"
-                                    : "bg-blue-100 text-blue-800"
-                              }`}
-                              onClick={() => {
-                                setViewMode("list");
-                                setFilterStatus("all");
-                                setSearchTerm("");
-                                // Scroll will happen automatically as list renders
-                              }}
-                            >
-                              {new Date(interview.interviewDate).toLocaleTimeString("fr-FR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}{" "}
-                              {interview.fullName?.split(" ")[0]}
-                            </div>
-                          ))}
-                          {dayInterviews.length > 3 && (
-                            <p className="text-xs text-muted-foreground text-center">
-                              +{dayInterviews.length - 3} autres
-                            </p>
-                          )}
-                        </div>
+                        {dayInterviews.length > 0 && (
+                          <div className="mt-1 space-y-1">
+                            {dayInterviews.slice(0, 3).map((interview) => (
+                              <div
+                                key={interview.id}
+                                className={`text-xs p-1 rounded cursor-pointer truncate ${
+                                  interview.status === "INTERVIEW_CONFIRMED"
+                                    ? "bg-cyan-100 text-cyan-800 hover:bg-cyan-200"
+                                    : interview.status === "INTERVIEW_COMPLETED"
+                                      ? "bg-teal-100 text-teal-800 hover:bg-teal-200"
+                                      : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLocation(`/ges-competences/entretien/${interview.id}`);
+                                }}
+                              >
+                                {new Date(interview.interviewDate).toLocaleTimeString("fr-FR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}{" "}
+                                {interview.fullName?.split(" ")[0]}
+                              </div>
+                            ))}
+                            {dayInterviews.length > 3 && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                +{dayInterviews.length - 3} autres
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -564,6 +576,62 @@ export default function InterviewPlanningPage() {
               Enregistrer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Day Detail Dialog (calendar day click) */}
+      <Dialog open={showDayDialog} onOpenChange={setShowDayDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5" />
+              Entretiens du {selectedDayLabel}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDayInterviews.length} entretien(s) planifié(s) pour cette journée
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {selectedDayInterviews
+              .sort((a, b) => new Date(a.interviewDate).getTime() - new Date(b.interviewDate).getTime())
+              .map((interview) => (
+              <div
+                key={interview.id}
+                className="p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                onClick={() => {
+                  setShowDayDialog(false);
+                  setLocation(`/ges-competences/entretien/${interview.id}`);
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {interview.photoBase64 ? (
+                      <img
+                        src={`data:image/jpeg;base64,${interview.photoBase64}`}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                        <User className="w-5 h-5 text-slate-400" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{interview.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{getTypeLabel(interview.userType)} - {interview.domaineExpertise}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-slate-700">
+                      {new Date(interview.interviewDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    {getStatusBadge(interview.status)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

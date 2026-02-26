@@ -892,4 +892,62 @@ public class CandidatureController {
             ));
         }
     }
+    
+    // ========== BLACKLIST ENDPOINTS ==========
+    
+    /**
+     * Blackliste un candidat (spam / abus)
+     */
+    @PostMapping("/experts/{id}/blacklist")
+    public ResponseEntity<?> blacklistCandidate(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            String reason = request.get("reason");
+            if (reason == null || reason.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of("success", false, "message", "Le motif de blacklist est obligatoire"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/blacklist - Blacklist candidat", id);
+            candidatureService.blacklistCandidate(id, reason);
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Candidat blacklisté avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Retire un candidat de la blacklist
+     */
+    @PostMapping("/experts/{id}/unblacklist")
+    public ResponseEntity<?> unblacklistCandidate(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/unblacklist - Retrait blacklist", id);
+            candidatureService.unblacklistCandidate(id);
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Candidat retiré de la blacklist"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
 }

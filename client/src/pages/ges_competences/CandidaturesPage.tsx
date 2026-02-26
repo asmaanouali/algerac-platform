@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle } from "lucide-react";
+import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle, ShieldBan, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,10 @@ interface Candidature {
   interviewChecklistJson?: string;
   interviewDecision?: string;
   createdAt?: string;
+  rejectionType?: string;
+  blacklisted?: boolean;
+  blacklistReason?: string;
+  blacklistedAt?: string;
 }
 
 export default function GesCompetencesCandidaturesPage() {
@@ -55,6 +59,14 @@ export default function GesCompetencesCandidaturesPage() {
   // Reject dialog
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  
+  // Blacklist dialog
+  const [showBlacklistDialog, setShowBlacklistDialog] = useState(false);
+  const [blacklistReason, setBlacklistReason] = useState("");
+  const [blacklistingCandidature, setBlacklistingCandidature] = useState<Candidature | null>(null);
+  
+  // Rejection type filter
+  const [filterRejectionType, setFilterRejectionType] = useState<string>("all");
 
   useEffect(() => {
     document.title = "Candidatures - Gestion des Compétences | ALGERAC";
@@ -123,7 +135,14 @@ export default function GesCompetencesCandidaturesPage() {
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
     const matchesType = filterType === "all" || c.userType === filterType;
     
-    return matchesSearch && matchesStatus && matchesType;
+    // Rejection type filter (only applies when viewing REJECTED status)
+    const matchesRejectionType = filterRejectionType === "all" || 
+      c.status !== "REJECTED" || 
+      (filterRejectionType === "dossier" && c.rejectionType === "dossier") ||
+      (filterRejectionType === "interview" && c.rejectionType === "interview") ||
+      (filterRejectionType === "blacklisted" && c.blacklisted);
+    
+    return matchesSearch && matchesStatus && matchesType && matchesRejectionType;
   });
 
   // Schedule interview
@@ -212,6 +231,80 @@ export default function GesCompetencesCandidaturesPage() {
     }
   };
 
+  // Export candidatures to CSV
+  const handleExport = () => {
+    const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Inscription", "Statut", "Type de rejet", "Blacklisté"];
+    const statusLabels: Record<string, string> = {
+      PENDING: "En attente", INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
+      INTERVIEW_COMPLETED: "Entretien terminé", CANDIDATURE_APPROVED: "Acceptée", APPROVED: "Compte actif", REJECTED: "Non retenue"
+    };
+    const rows = filteredCandidatures.map(c => [
+      c.registrationId, c.fullName, c.userType, c.domaineExpertise || "", c.email, c.telephone || "",
+      c.createdAt ? new Date(c.createdAt).toLocaleDateString("fr-FR") : c.dateInscription || "",
+      statusLabels[c.status] || c.status,
+      c.rejectionType || "",
+      c.blacklisted ? "Oui" : "Non"
+    ]);
+    
+    const csvContent = "\uFEFF" + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `candidatures_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Export effectué", description: `${filteredCandidatures.length} candidature(s) exportée(s)` });
+  };
+
+  // Blacklist a candidate
+  const handleBlacklist = async () => {
+    if (!blacklistingCandidature || !blacklistReason.trim()) {
+      toast({ title: "Erreur", description: "Le motif de blacklist est obligatoire", variant: "destructive" });
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${blacklistingCandidature.id}/blacklist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reason: blacklistReason })
+      });
+      if (response.ok) {
+        toast({ title: "Succès", description: "Candidat blacklisté. Il ne pourra plus se réinscrire." });
+        fetchCandidatures();
+        setShowBlacklistDialog(false);
+        setBlacklistReason("");
+        setBlacklistingCandidature(null);
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Échec du blacklist", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
+  // Unblacklist a candidate
+  const handleUnblacklist = async (candidature: Candidature) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/unblacklist`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (response.ok) {
+        toast({ title: "Succès", description: "Candidat retiré de la blacklist" });
+        fetchCandidatures();
+        setSelectedCandidature(null);
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
@@ -226,7 +319,7 @@ export default function GesCompetencesCandidaturesPage() {
                 Gérer les demandes d'inscription des Experts, Évaluateurs et Formateurs
               </p>
             </div>
-            <Button className="shrink-0">
+            <Button className="shrink-0" onClick={handleExport}>
               <FileText className="w-4 h-4 mr-2" />
               Exporter
             </Button>
@@ -294,7 +387,7 @@ export default function GesCompetencesCandidaturesPage() {
           {/* Filters */}
           <Card className="mb-6 w-full">
             <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Rechercher par nom, ID, domaine..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -319,6 +412,15 @@ export default function GesCompetencesCandidaturesPage() {
                     <SelectItem value="EXPERT">Expert</SelectItem>
                     <SelectItem value="EVALUATEUR">Évaluateur</SelectItem>
                     <SelectItem value="FORMATEUR">Formateur</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterRejectionType} onValueChange={setFilterRejectionType}>
+                  <SelectTrigger><SelectValue placeholder="Type de rejet" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les rejets</SelectItem>
+                    <SelectItem value="dossier">Rejet dossier</SelectItem>
+                    <SelectItem value="interview">Rejet après entretien</SelectItem>
+                    <SelectItem value="blacklisted">Blacklistés</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -353,7 +455,7 @@ export default function GesCompetencesCandidaturesPage() {
                         <TableCell>{getTypeBadge(candidature.userType)}</TableCell>
                         <TableCell className="max-w-xs truncate">{candidature.domaineExpertise}</TableCell>
                         <TableCell className="whitespace-nowrap">{candidature.createdAt ? new Date(candidature.createdAt).toLocaleDateString("fr-FR") : candidature.dateInscription}</TableCell>
-                        <TableCell>{getStatusBadge(candidature.status)}</TableCell>
+                        <TableCell>{getStatusBadge(candidature.status)}{candidature.blacklisted && <Badge variant="destructive" className="ml-1 text-[10px]">BL</Badge>}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setSelectedCandidature(candidature)}>
                             <Eye className="w-4 h-4" />
@@ -411,8 +513,26 @@ export default function GesCompetencesCandidaturesPage() {
               {/* Rejection info */}
               {selectedCandidature.status === "REJECTED" && selectedCandidature.rejectionReason && (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                  <Label className="text-sm font-semibold text-slate-700 mb-1 block">Note interne</Label>
+                  <Label className="text-sm font-semibold text-slate-700 mb-1 block">
+                    Motif de refus {selectedCandidature.rejectionType === "interview" ? "(après entretien)" : "(dossier)"}
+                  </Label>
                   <p className="text-sm text-slate-600">{selectedCandidature.rejectionReason}</p>
+                </div>
+              )}
+
+              {/* Blacklist info */}
+              {selectedCandidature.blacklisted && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <Label className="text-sm font-semibold text-red-700 mb-1 flex items-center gap-2">
+                    <ShieldBan className="w-4 h-4" /> Candidat blacklisté
+                  </Label>
+                  <p className="text-sm text-red-600">{selectedCandidature.blacklistReason}</p>
+                  {selectedCandidature.blacklistedAt && (
+                    <p className="text-xs text-red-400 mt-1">Depuis le {new Date(selectedCandidature.blacklistedAt).toLocaleDateString("fr-FR")}</p>
+                  )}
+                  <Button variant="outline" size="sm" className="mt-2 text-green-700 border-green-300" onClick={() => handleUnblacklist(selectedCandidature)}>
+                    <ShieldCheck className="w-3 h-3 mr-1" /> Retirer de la blacklist
+                  </Button>
                 </div>
               )}
 
@@ -457,8 +577,8 @@ export default function GesCompetencesCandidaturesPage() {
 
               {/* Actions for PENDING candidatures */}
               {selectedCandidature.status === "PENDING" && (
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => {
+                <div className="flex gap-3 pt-4 border-t flex-wrap">
+                  <Button className="flex-1 bg-[#00A63E] hover:bg-[#009235]" onClick={() => {
                     setSchedulingCandidature(selectedCandidature);
                     setShowScheduleDialog(true);
                   }}>
@@ -468,6 +588,28 @@ export default function GesCompetencesCandidaturesPage() {
                   <Button variant="outline" className="flex-1 text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => setShowRejectDialog(true)}>
                     <XCircle className="w-4 h-4 mr-2" />
                     Dossier Non Retenu
+                  </Button>
+                  {!selectedCandidature.blacklisted && (
+                    <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => {
+                      setBlacklistingCandidature(selectedCandidature);
+                      setShowBlacklistDialog(true);
+                    }}>
+                      <ShieldBan className="w-4 h-4 mr-1" />
+                      Blacklist
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Blacklist action for other statuses */}
+              {selectedCandidature.status !== "PENDING" && !selectedCandidature.blacklisted && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => {
+                    setBlacklistingCandidature(selectedCandidature);
+                    setShowBlacklistDialog(true);
+                  }}>
+                    <ShieldBan className="w-4 h-4 mr-1" />
+                    Blacklister ce candidat
                   </Button>
                 </div>
               )}
@@ -503,7 +645,7 @@ export default function GesCompetencesCandidaturesPage() {
             <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDate(""); setInterviewTime(""); }}>
               Annuler
             </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleScheduleInterview} disabled={!interviewDate || !interviewTime}>
+            <Button className="bg-[#00A63E] hover:bg-[#009235]" onClick={handleScheduleInterview} disabled={!interviewDate || !interviewTime}>
               <CalendarPlus className="w-4 h-4 mr-2" />
               Confirmer & Envoyer la Convocation
             </Button>
@@ -524,13 +666,13 @@ export default function GesCompetencesCandidaturesPage() {
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectionReason">Note interne (non visible par le candidat)</Label>
+              <Label htmlFor="rejectionReason">Motif de refus (non visible par le candidat)</Label>
               <Textarea id="rejectionReason" placeholder="Raison interne du refus (pour vos archives uniquement)..." value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} rows={3} className="mt-2" />
             </div>
 
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-xs text-amber-700">
-                <strong>Note :</strong> Le candidat recevra un email optimiste mentionnant que son dossier sera conservé dans le vivier de compétences pour de futures opportunités. Aucune mention directe de refus.
+                <strong>Note :</strong> Le candidat recevra un email mentionnant que son dossier sera conservé dans le vivier de compétences pour de futures opportunités. Aucune mention directe de refus.
               </p>
             </div>
 
@@ -542,6 +684,45 @@ export default function GesCompetencesCandidaturesPage() {
                 Confirmer
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blacklist Dialog */}
+      <Dialog open={showBlacklistDialog} onOpenChange={setShowBlacklistDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <ShieldBan className="w-5 h-5" /> Blacklister un candidat
+            </DialogTitle>
+            <DialogDescription>
+              {blacklistingCandidature && `Candidat(e) : ${blacklistingCandidature.fullName}`}
+              <br />
+              Un candidat blacklisté ne pourra plus se réinscrire avec la même adresse email.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="blacklistReason">Motif du blacklist *</Label>
+              <Textarea id="blacklistReason" placeholder="Raison du blacklist (spam, abus, fausse identité...)" value={blacklistReason} onChange={(e) => setBlacklistReason(e.target.value)} rows={3} className="mt-2" />
+            </div>
+
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-700">
+                <strong>Attention :</strong> Cette action empêchera ce candidat de se réinscrire. Elle peut être annulée ultérieurement.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { setShowBlacklistDialog(false); setBlacklistReason(""); setBlacklistingCandidature(null); }}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={handleBlacklist} disabled={!blacklistReason.trim()}>
+                <ShieldBan className="w-4 h-4 mr-2" />
+                Confirmer le blacklist
+              </Button>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

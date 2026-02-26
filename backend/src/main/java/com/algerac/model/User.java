@@ -105,6 +105,21 @@ public class User {
     private String domaineExpertise;
     private String sousDomaineExpertise;
     
+    // OEC Data consent
+    private String consentOecData; // "full", "partial", "none"
+    @Column(columnDefinition = "TEXT")
+    private String consentOecDataDetails;
+    
+    // Blacklist
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean blacklisted = false;
+    private String blacklistReason;
+    private LocalDateTime blacklistedAt;
+    
+    // Rejection type tracking
+    private String rejectionType; // "dossier" or "interview"
+    
     // Données structurées (JSON)
     @Column(columnDefinition = "TEXT")
     private String formationsAcademiquesJson;

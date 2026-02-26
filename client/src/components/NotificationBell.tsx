@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,6 +45,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [, navigate] = useLocation();
 
   const { data: notifications = [], isLoading } = useNotifications();
   const markAsRead = useMarkAsRead();
@@ -122,7 +124,7 @@ export function NotificationBell() {
           </div>
 
           {/* Body */}
-          <ScrollArea className="max-h-[26rem]">
+          <ScrollArea className="h-[20rem]">
             {isLoading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -168,6 +170,17 @@ export function NotificationBell() {
               </ul>
             )}
           </ScrollArea>
+
+          {/* Footer */}
+          <div className="border-t px-4 py-2.5">
+            <button
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              onClick={() => { setOpen(false); navigate("/notifications"); }}
+            >
+              Voir toutes les notifications
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
     </div>

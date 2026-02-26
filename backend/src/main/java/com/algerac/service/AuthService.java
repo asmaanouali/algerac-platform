@@ -105,8 +105,15 @@ public class AuthService {
     public User registerExpert(ExpertSignupRequest request) {
         Optional<User> existingExpert = userRepository.findByEmail(request.getEmail());
         if (existingExpert.isPresent()) {
-            if (existingExpert.get().getStatus() == UserStatus.REJECTED) {
-                userRepository.delete(existingExpert.get());
+            User existing = existingExpert.get();
+            if (existing.getBlacklisted() != null && existing.getBlacklisted()) {
+                throw new RuntimeException("Cette adresse email est bloquée. Veuillez contacter ALGERAC.");
+            }
+            if (existing.getStatus() == UserStatus.REJECTED) {
+                // Keep old record: change email to archive it
+                String archivedEmail = existing.getEmail() + "_archived_" + System.currentTimeMillis();
+                existing.setEmail(archivedEmail);
+                userRepository.save(existing);
                 userRepository.flush();
             } else {
                 throw new RuntimeException("Un compte avec cet email existe déjà");
@@ -140,6 +147,9 @@ public class AuthService {
             // Domaine d'expertise
             .domaineExpertise(request.getDomaineExpertise())
             .sousDomaineExpertise(request.getSousDomaineExpertise())
+            // OEC Data consent
+            .consentOecData(request.getConsentOecData())
+            .consentOecDataDetails(request.getConsentOecDataDetails())
             // Section 8: Divers
             .informationsComplementaires(request.getInformationsComplementaires())
             // Ajout userType

@@ -224,14 +224,15 @@ public class PdfGenerationService {
                     table.setWidth(UnitValue.createPercentValue(100));
                     table.setMarginBottom(10);
                     
-                    String dateDuree = formation.get("dateDuree") != null ? String.valueOf(formation.get("dateDuree")) : "";
-                    if (dateDuree.isEmpty() || "null".equals(dateDuree)) {
-                        dateDuree = (formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "") +
-                                   (formation.get("dateFin") != null ? " - " + String.valueOf(formation.get("dateFin")) : "");
+                    String dateDebut = formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "";
+                    String dateFin = formation.get("dateFin") != null ? String.valueOf(formation.get("dateFin")) : "";
+                    String dateDisplay = !dateDebut.isEmpty() && !"null".equals(dateDebut) ? dateDebut : "";
+                    if (!dateFin.isEmpty() && !"null".equals(dateFin)) {
+                        dateDisplay = dateDisplay + " - " + dateFin;
                     }
                     
-                    table.addCell(createCell("Date & durée:", boldFont));
-                    table.addCell(createCell(dateDuree, font));
+                    table.addCell(createCell("Date début - Date fin:", boldFont));
+                    table.addCell(createCell(dateDisplay, font));
                     
                     table.addCell(createCell("Université / Institution:", boldFont));
                     table.addCell(createCell(String.valueOf(formation.get("universite")), font));
@@ -253,7 +254,7 @@ public class PdfGenerationService {
     }
     
     private void addAutresFormationsSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("3 BIS - AUTRES FORMATIONS")
+        Paragraph sectionTitle = new Paragraph("4 - AUTRES FORMATIONS")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -268,21 +269,36 @@ public class PdfGenerationService {
                     new TypeReference<List<Map<String, Object>>>() {}
                 );
                 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{30, 40, 30}));
-                table.setWidth(UnitValue.createPercentValue(100));
-                
-                // En-tête
-                table.addHeaderCell(createCell("Date & Durée", boldFont));
-                table.addHeaderCell(createCell("Formation", boldFont));
-                table.addHeaderCell(createCell("Organisme", boldFont));
-                
                 for (Map<String, Object> formation : formations) {
-                    table.addCell(createCell(formation.get("dateDebut") + " (" + formation.get("duree") + ")", font));
-                    table.addCell(createCell(String.valueOf(formation.get("intituleFormation")), font));
-                    table.addCell(createCell(String.valueOf(formation.get("organisme")), font));
+                    Table table = new Table(UnitValue.createPercentArray(new float[]{30, 70}));
+                    table.setWidth(UnitValue.createPercentValue(100));
+                    table.setMarginBottom(10);
+                    
+                    String dateDebut = formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "";
+                    String dateFin = formation.get("dateFin") != null ? String.valueOf(formation.get("dateFin")) : "";
+                    String dateDisplay = (!dateDebut.isEmpty() && !"null".equals(dateDebut) ? dateDebut : "");
+                    if (!dateFin.isEmpty() && !"null".equals(dateFin)) {
+                        dateDisplay = dateDisplay + " - " + dateFin;
+                    }
+                    
+                    table.addCell(createCell("Date début - Date fin:", boldFont));
+                    table.addCell(createCell(dateDisplay, font));
+                    
+                    table.addCell(createCell("Institution / Organisme:", boldFont));
+                    String institution = formation.get("institution") != null ? String.valueOf(formation.get("institution")) : "";
+                    table.addCell(createCell(!"null".equals(institution) ? institution : "", font));
+                    
+                    table.addCell(createCell("Cours / Spécialité:", boldFont));
+                    String cours = formation.get("cours") != null ? String.valueOf(formation.get("cours")) : "";
+                    String specialite = formation.get("specialite") != null ? String.valueOf(formation.get("specialite")) : "";
+                    table.addCell(createCell(!cours.isEmpty() && !"null".equals(cours) ? cours : specialite, font));
+                    
+                    table.addCell(createCell("Certificat / Diplôme:", boldFont));
+                    String certificat = formation.get("certificat") != null ? String.valueOf(formation.get("certificat")) : "";
+                    table.addCell(createCell(!"null".equals(certificat) ? certificat : "", font));
+                    
+                    document.add(table);
                 }
-                
-                document.add(table);
             }
         } catch (Exception e) {
             log.error("Erreur lors du parsing des autres formations", e);
@@ -290,7 +306,7 @@ public class PdfGenerationService {
     }
     
     private void addExperienceProfessionnelleSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("4 - EXPÉRIENCE PROFESSIONNELLE")
+        Paragraph sectionTitle = new Paragraph("5 - EXPÉRIENCE PROFESSIONNELLE")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -339,7 +355,7 @@ public class PdfGenerationService {
     }
     
     private void addEvaluationsAuditsSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("5 - ÉVALUATION OU AUDIT DE SM RÉALISÉS")
+        Paragraph sectionTitle = new Paragraph("6 - ÉVALUATIONS / AUDITS RÉALISÉS")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -354,17 +370,27 @@ public class PdfGenerationService {
                     new TypeReference<List<Map<String, Object>>>() {}
                 );
                 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{15, 25, 25, 35}));
+                Table table = new Table(UnitValue.createPercentArray(new float[]{10, 15, 20, 20, 35}));
                 table.setWidth(UnitValue.createPercentValue(100));
                 
                 // En-tête
-                table.addHeaderCell(createCell("Mois/Année", boldFont));
+                table.addHeaderCell(createCell("Type", boldFont));
+                table.addHeaderCell(createCell("Période", boldFont));
                 table.addHeaderCell(createCell("Type d'évaluation", boldFont));
                 table.addHeaderCell(createCell("Rôle tenu", boldFont));
                 table.addHeaderCell(createCell("Normes référentiels", boldFont));
                 
                 for (Map<String, Object> eval : evaluations) {
-                    table.addCell(createCell(String.valueOf(eval.get("moisAnnee")), font));
+                    String type = eval.get("type") != null ? String.valueOf(eval.get("type")) : "";
+                    String typeLabel = "evaluation".equals(type) ? "Évaluation" : "audit".equals(type) ? "Audit" : type;
+                    table.addCell(createCell(typeLabel, font));
+                    String dateDebut = eval.get("dateDebut") != null ? String.valueOf(eval.get("dateDebut")) : "";
+                    String dateFin = eval.get("dateFin") != null ? String.valueOf(eval.get("dateFin")) : "";
+                    String periode = !"null".equals(dateDebut) ? dateDebut : "";
+                    if (!dateFin.isEmpty() && !"null".equals(dateFin)) {
+                        periode = periode + " - " + dateFin;
+                    }
+                    table.addCell(createCell(periode, font));
                     table.addCell(createCell(String.valueOf(eval.get("typeEvaluation")), font));
                     table.addCell(createCell(String.valueOf(eval.get("roleTenu")), font));
                     table.addCell(createCell(String.valueOf(eval.get("normesReferentiels")), font));
@@ -378,7 +404,7 @@ public class PdfGenerationService {
     }
     
     private void addFormationsDispenseesSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("6 - FORMATIONS DISPENSÉES")
+        Paragraph sectionTitle = new Paragraph("7 - FORMATIONS DISPENSÉES")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -393,25 +419,28 @@ public class PdfGenerationService {
                     new TypeReference<List<Map<String, Object>>>() {}
                 );
                 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{25, 45, 30}));
+                Table table = new Table(UnitValue.createPercentArray(new float[]{20, 10, 40, 30}));
                 table.setWidth(UnitValue.createPercentValue(100));
                 
                 // En-tête
-                table.addHeaderCell(createCell("Date & Durée", boldFont));
+                table.addHeaderCell(createCell("Période", boldFont));
+                table.addHeaderCell(createCell("Durée", boldFont));
                 table.addHeaderCell(createCell("Formation", boldFont));
-                table.addHeaderCell(createCell("Contrôlé par ALGERAC", boldFont));
+                table.addHeaderCell(createCell("Organisme bénéficiaire", boldFont));
                 
                 for (Map<String, Object> formation : formations) {
-                    String dateDuree = formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "";
-                    String duree = formation.get("duree") != null ? String.valueOf(formation.get("duree")) : "";
-                    String dateDisplay = !dateDuree.isEmpty() && !"null".equals(dateDuree) ? dateDuree : "";
-                    if (!duree.isEmpty() && !"null".equals(duree) && !duree.equals(dateDisplay)) {
-                        dateDisplay = dateDisplay.isEmpty() ? duree : dateDisplay + " (" + duree + ")";
+                    String dateDebut = formation.get("dateDebut") != null ? String.valueOf(formation.get("dateDebut")) : "";
+                    String dateFin = formation.get("dateFin") != null ? String.valueOf(formation.get("dateFin")) : "";
+                    String periode = !dateDebut.isEmpty() && !"null".equals(dateDebut) ? dateDebut : "";
+                    if (!dateFin.isEmpty() && !"null".equals(dateFin)) {
+                        periode = periode + " - " + dateFin;
                     }
-                    table.addCell(createCell(dateDisplay, font));
+                    table.addCell(createCell(periode, font));
+                    String duree = formation.get("duree") != null ? String.valueOf(formation.get("duree")) : "";
+                    table.addCell(createCell(!"null".equals(duree) ? duree : "", font));
                     table.addCell(createCell(String.valueOf(formation.get("intituleFormation")), font));
-                    String controle = formation.get("controleParAlgerac") != null ? String.valueOf(formation.get("controleParAlgerac")) : "";
-                    table.addCell(createCell(!"null".equals(controle) ? controle : "", font));
+                    String organisme = formation.get("organismeBeneficiaire") != null ? String.valueOf(formation.get("organismeBeneficiaire")) : "";
+                    table.addCell(createCell(!"null".equals(organisme) ? organisme : "", font));
                 }
                 
                 document.add(table);
@@ -422,7 +451,7 @@ public class PdfGenerationService {
     }
     
     private void addConnaissancesLinguistiquesSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("7 - CONNAISSANCE LINGUISTIQUE")
+        Paragraph sectionTitle = new Paragraph("8 - CONNAISSANCE LINGUISTIQUE")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -467,7 +496,7 @@ public class PdfGenerationService {
     }
     
     private void addDiversSection(Document document, User user, PdfFont font, PdfFont boldFont) {
-        Paragraph sectionTitle = new Paragraph("8 - DIVERS")
+        Paragraph sectionTitle = new Paragraph("9 - DIVERS")
                 .setFont(boldFont)
                 .setFontSize(12)
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
@@ -480,22 +509,6 @@ public class PdfGenerationService {
                 .setFontSize(10)
                 .setMarginTop(5);
         document.add(divers);
-        
-        // Ajout du domaine d'expertise
-        if (user.getDomaineExpertise() != null) {
-            Paragraph domaine = new Paragraph("Domaine d'expertise : " + user.getDomaineExpertise())
-                    .setFont(boldFont)
-                    .setFontSize(10)
-                    .setMarginTop(10);
-            document.add(domaine);
-        }
-        
-        if (user.getSousDomaineExpertise() != null && !user.getSousDomaineExpertise().isEmpty()) {
-            Paragraph sousDomaine = new Paragraph("Sous-domaine : " + user.getSousDomaineExpertise())
-                    .setFont(font)
-                    .setFontSize(10);
-            document.add(sousDomaine);
-        }
     }
     
     private void addFooter(Document document, PdfFont font) {

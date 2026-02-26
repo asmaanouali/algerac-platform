@@ -77,11 +77,14 @@ public class ExpertSignupRequest {
     // === SECTION 8: DIVERS ===
     private String informationsComplementaires;
     
-    // === DOMAINE D'EXPERTISE (NOUVEAU) ===
-    @NotBlank(message = "Le domaine d'expertise est requis")
+    // === DOMAINE D'EXPERTISE ===
     private String domaineExpertise;
     
     private String sousDomaineExpertise;
+    
+    // === OEC DATA CONSENT ===
+    private String consentOecData; // "full", "partial", "none"
+    private String consentOecDataDetails; // Details when "partial"
     
     // === METADATA ===
     @NotBlank(message = "Le type d'utilisateur est requis")
@@ -148,6 +151,9 @@ public class ExpertSignupRequest {
     @AllArgsConstructor
     @Builder
     public static class EvaluationAudit {
+        private String dateDebut;
+        private String dateFin;
+        private String type; // "evaluation" or "audit"
         private String moisAnnee;
         private String typeEvaluation;
         private String roleTenu;
@@ -160,9 +166,10 @@ public class ExpertSignupRequest {
     @Builder
     public static class FormationDispensee {
         private String dateDebut;
+        private String dateFin;
         private String duree;
         private String intituleFormation;
-        private String controleParAlgerac;
+        private String organismeBeneficiaire;
     }
     
     @Data

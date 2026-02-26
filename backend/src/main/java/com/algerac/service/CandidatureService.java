@@ -91,6 +91,7 @@ public class CandidatureService {
             emailService.sendExpertDossierNotRetained(user);
             user.setStatus(UserStatus.REJECTED);
             user.setRejectionReason(rejectionReason);
+            user.setRejectionType("dossier");
             userRepository.save(user);
             log.info("Candidature expert {} rejetée (dossier non retenu)", userId);
         }
@@ -358,7 +359,7 @@ public class CandidatureService {
     }
     
     /**
-     * Rejette le candidat après l'entretien (refus implicite/optimiste)
+     * Rejette le candidat après l'entretien 
      */
     @Transactional
     public void rejectAfterInterview(Long userId, String notes) {
@@ -374,6 +375,7 @@ public class CandidatureService {
         user.setStatus(UserStatus.REJECTED);
         user.setInterviewDecision("REJECTED");
         user.setInterviewDecisionDate(LocalDateTime.now());
+        user.setRejectionType("interview");
         if (notes != null) {
             user.setRejectionReason(notes);
         }
@@ -402,6 +404,7 @@ public class CandidatureService {
 
         user.setStatus(UserStatus.REJECTED);
         user.setRejectionReason(internalReason);
+        user.setRejectionType("dossier");
         
         userRepository.save(user);
         
@@ -467,6 +470,42 @@ public class CandidatureService {
         emailService.sendExpertAccountAccepted(user, generatedPassword);
         
         return generatedPassword;
+    }
+    
+    // ===================================================================
+    // BLACKLIST METHODS
+    // ===================================================================
+    
+    /**
+     * Blackliste un candidat (spam ou abus)
+     */
+    @Transactional
+    public void blacklistCandidate(Long userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        user.setBlacklisted(true);
+        user.setBlacklistReason(reason);
+        user.setBlacklistedAt(LocalDateTime.now());
+        
+        userRepository.save(user);
+        log.info("Candidat {} blacklisté. Raison: {}", userId, reason);
+    }
+    
+    /**
+     * Retire un candidat de la blacklist
+     */
+    @Transactional
+    public void unblacklistCandidate(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        user.setBlacklisted(false);
+        user.setBlacklistReason(null);
+        user.setBlacklistedAt(null);
+        
+        userRepository.save(user);
+        log.info("Candidat {} retiré de la blacklist", userId);
     }
     
     // ===================================================================

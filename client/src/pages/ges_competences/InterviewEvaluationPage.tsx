@@ -372,6 +372,57 @@ export default function InterviewEvaluationPage() {
     );
   }
 
+  // Require interview confirmation before accessing preparation page
+  if (candidature.status === "INTERVIEW_SCHEDULED") {
+    return (
+      <div className="flex h-screen bg-slate-50 overflow-hidden">
+        <Sidebar />
+        <div className="flex-1 flex flex-col w-full md:ml-64">
+          <Navbar />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <Clock className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Entretien non confirmé</h2>
+              <p className="text-muted-foreground mb-2">
+                L'entretien avec <strong>{candidature.fullName}</strong> n'a pas encore été confirmé.
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Vous devez d'abord confirmer la date d'entretien avant de pouvoir accéder à la page de préparation et d'évaluation.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" onClick={() => setLocation("/ges-competences/entretiens")}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Retour au planning
+                </Button>
+                <Button
+                  className="bg-cyan-600 hover:bg-cyan-700"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(
+                        `http://localhost:8082/api/candidatures/experts/${candidature.id}/confirm-interview`,
+                        { method: "POST", credentials: "include" }
+                      );
+                      if (response.ok) {
+                        toast({ title: "Succès", description: "Entretien confirmé" });
+                        fetchCandidature();
+                      } else {
+                        const error = await response.json();
+                        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+                      }
+                    } catch {
+                      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+                    }
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" /> Confirmer l'entretien
+                </Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   const statusInfo = getStatusInfo(candidature.status);
 
   return (
@@ -670,13 +721,15 @@ export default function InterviewEvaluationPage() {
                         onClick={() => setShowAcceptDialog(true)}
                         disabled={candidature.status !== "INTERVIEW_COMPLETED"}
                       >
-                        <div className="text-center">
-                          <CheckCircle className="w-6 h-6 mx-auto mb-1" />
-                          <span className="font-semibold">Accepter la Candidature</span>
-                          <p className="text-xs font-normal opacity-80 mt-1">
-                            L'administrateur sera notifié pour créer le compte
-                          </p>
-                        </div>
+                        <div className="text-center px-2 break-words">
+  <CheckCircle className="w-6 h-6 mx-auto mb-1" />
+  <span className="font-semibold text-sm block">
+    Accepter la Candidature
+  </span>
+  <p className="text-xs font-normal opacity-80 mt-1">
+    L'administrateur sera notifié pour créer le compte
+  </p>
+</div>
                       </Button>
                       <Button
                         variant="outline"

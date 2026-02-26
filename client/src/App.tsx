@@ -75,6 +75,7 @@ import AccreditationDecisionPage from "@/pages/ra/AccreditationDecisionPage";
 // Phase IV - Surveillance périodique
 import SurveillanceManagementPage from "@/pages/ra/SurveillanceManagementPage";
 import ExpertDirectoryPage from "@/pages/ra/ExpertDirectoryPage";
+import NotificationsPage from "@/pages/notifications-page";
 
 function Router() {
   return (
@@ -133,6 +134,7 @@ function Router() {
       <Route path="/dag/dashboard" component={DAGDashboard} />
       
       {/* Admin & Other Routes */}
+      <Route path="/notifications" component={NotificationsPage} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/users" component={UsersManagementPage} />

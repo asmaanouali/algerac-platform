@@ -133,6 +133,34 @@ public class AuthController {
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
     
+    // === SWITCH ROLE endpoint (for multi-role users) ===
+    @PostMapping("/switch-role")
+    public ResponseEntity<?> switchRole(
+            @RequestBody java.util.Map<String, String> request,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+        
+        String roleName = request.get("role");
+        if (roleName == null || roleName.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Le rôle est requis"));
+        }
+        
+        try {
+            com.algerac.model.UserRole newRole = com.algerac.model.UserRole.valueOf(roleName.toUpperCase());
+            session.setAttribute("userRole", newRole);
+            log.info("User {} switched role to {}", userId, newRole);
+            return ResponseEntity.ok(ApiResponse.success("Rôle changé avec succès", newRole.name()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Rôle invalide: " + roleName));
+        }
+    }
+    
     // === OEC REGISTRATION (UPDATED - Creates PENDING User) ===
     @PostMapping("/signup/oec")
     public ResponseEntity<ApiResponse> registerOEC(

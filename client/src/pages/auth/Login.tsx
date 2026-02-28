@@ -1,19 +1,25 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import AuthLeft from "@/components/layout/AuthLeft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, LogIn, MessageSquareWarning, FileSearch } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import RoleSelector from "@/components/RoleSelector";
+import { ComplaintTrackingDialog } from "@/components/ComplaintTrackingDialog";
 
 export default function Login() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const { loginMutation } = useAuth();
+  const { loginMutation, user, needsRoleSelection, availableRoles, setActiveRole } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,22 +28,59 @@ export default function Login() {
 
   // Redirection après succès du login
   useEffect(() => {
-    if (loginMutation.isSuccess) {
+    if (loginMutation.isSuccess && user && !needsRoleSelection) {
       setLocation("/dashboard");
     }
-  }, [loginMutation.isSuccess, setLocation]);
+  }, [loginMutation.isSuccess, user, needsRoleSelection, setLocation]);
+
+  // If user is logged in but needs role selection, show role selector
+  if (user && needsRoleSelection) {
+    const fullName = user.fullName || `${user.prenom || ''} ${user.nom || ''}`.trim() || '';
+    return (
+      <RoleSelector
+        roles={availableRoles}
+        userName={fullName}
+        onSelectRole={(role) => {
+          setActiveRole(role);
+          const rolePaths: Record<string, string> = {
+            ADMIN: '/admin',
+            OEC: '/oec/dashboard',
+            RA: '/ra/dashboard',
+            DT: '/dashboard',
+            CD: '/cd/dashboard',
+            DAG: '/dag/dashboard',
+            EXPERT: '/expert/dashboard',
+            REE: '/ree/dashboard',
+            ET: '/et/dashboard',
+            EQ: '/eq/dashboard',
+            CAS_MEMBER: '/cas/dashboard',
+            CAS_PRESIDENT: '/cas-president/dashboard',
+            DG: '/dg/dashboard',
+            GES_COMPETENCES: '/ges-competences/dashboard',
+            RQ: '/rq/dashboard',
+          };
+          setLocation(rolePaths[role] || '/dashboard');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
       <AuthLeft />
 
       {/* Right Section - White Form */}
-      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen">
+      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen relative">
+        {/* Language Switcher - top right */}
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageSwitcher variant="compact" />
+        </div>
+
         <div className="w-full max-w-md space-y-8">
           {/* Header */}
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold text-gray-900">Bienvenue</h2>
-            <p className="text-gray-600">Connectez-vous à votre compte</p>
+            <h2 className="text-3xl font-bold text-gray-900">{t('auth.welcome')}</h2>
+            <p className="text-gray-600">{t('auth.loginTitle')}</p>
           </div>
 
           {/* Form */}
@@ -45,11 +88,11 @@ export default function Login() {
             {/* Email Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-900 block">
-                Email
+                {t('auth.email')}
               </label>
               <Input
                 type="text"
-                placeholder="nom@exemple.com"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
@@ -60,12 +103,12 @@ export default function Login() {
             {/* Password Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-900 block">
-                Mot de passe
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-10 bg-white border-gray-300 text-gray-900 pr-10"
@@ -74,7 +117,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 ltr:right-3 rtl:left-3"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -84,7 +127,7 @@ export default function Login() {
 
             {/* Remember me & Forgot password */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <Checkbox
                   id="remember"
                   checked={remember}
@@ -96,16 +139,15 @@ export default function Login() {
                   htmlFor="remember"
                   className="text-sm text-gray-700 cursor-pointer select-none"
                 >
-                  Se souvenir de moi
+                  {t('auth.rememberMe')}
                 </label>
               </div>
               <Link href="/auth/forgot-password">
                 <span className="text-sm text-[#00A63E] hover:text-[#008a35] font-medium">
-                  Mot de passe oublié ?
+                  {t('auth.forgotPassword')}
                 </span>
               </Link>
             </div>
-
 
             {/* Login Button */}
             <Button
@@ -114,10 +156,10 @@ export default function Login() {
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? (
-                <span>Connexion...</span>
+                <span>{t('auth.loggingIn')}</span>
               ) : (
                 <>
-                  <LogIn className="w-5 h-5" /> Se connecter
+                  <LogIn className="w-5 h-5" /> {t('auth.login')}
                 </>
               )}
             </Button>
@@ -125,12 +167,12 @@ export default function Login() {
             {/* Divider */}
             <div className="text-center py-0">
               <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                VOUS N'AVEZ PAS DE COMPTE ?
+                {t('auth.noAccount')}
               </span>
             </div>
 
             {/* Registration Buttons */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Button
                 variant="outline"
                 className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
@@ -138,20 +180,49 @@ export default function Login() {
                 disabled={loginMutation.isPending}
               >
                 <Link href="/auth/register">
-                  <span>Créer un compte</span>
+                  <span>{t('auth.createAccount')}</span>
                 </Link>
               </Button>
+
+              {/* Public Complaint & Tracking Links */}
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  className="flex-1 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-sm"
+                  asChild
+                >
+                  <Link href="/complaints/public">
+                    <MessageSquareWarning className="w-4 h-4 mr-1.5" />
+                    <span>{t('auth.publicComplaint')}</span>
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 h-10 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-sm"
+                  onClick={() => setTrackingDialogOpen(true)}
+                >
+                  <FileSearch className="w-4 h-4 mr-1.5" />
+                  <span>{t('auth.trackComplaint')}</span>
+                </Button>
+              </div>
             </div>
           </form>
 
           {/* Footer */}
           <div className="text-center pt-8">
             <p className="text-xs text-gray-500">
-              © 2026 ALGERAC. Tous droits réservés.
+              {t('common.copyright')}
             </p>
           </div>
         </div>
       </div>
+
+      {/* Complaint Tracking Dialog */}
+      <ComplaintTrackingDialog
+        open={trackingDialogOpen}
+        onOpenChange={setTrackingDialogOpen}
+      />
     </div>
   );
 }

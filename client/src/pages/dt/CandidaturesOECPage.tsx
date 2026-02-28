@@ -108,7 +108,7 @@ export default function CandidaturesOECPage() {
   };
 
   const handleApprove = async (id: number) => {
-    if (!confirm("Êtes-vous sûr de vouloir approuver cette candidature ?")) return;
+    if (!confirm("Êtes-vous sûr de vouloir approuver cette candidature ? Le dossier sera transmis au DAG pour fixation des frais de dépôt.")) return;
     
     setActionLoading(true);
     try {
@@ -120,7 +120,7 @@ export default function CandidaturesOECPage() {
       if (response.ok) {
         toast({
           title: "Succès",
-          description: "La candidature a été approuvée. L'administrateur a été notifié.",
+          description: "La candidature a été approuvée. Le DAG a été notifié pour fixer les frais de dépôt.",
         });
         fetchApplications();
         setShowDetailsDialog(false);

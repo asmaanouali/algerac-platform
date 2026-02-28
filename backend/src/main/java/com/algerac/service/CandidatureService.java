@@ -60,7 +60,20 @@ public class CandidatureService {
         
         // Comportement différent selon le rôle
         if (user.getRole() == UserRole.OEC) {
-            log.info("Candidature OEC approuvée - notification admin pour création de compte");
+            log.info("Candidature OEC approuvée - notification DAG pour fixation des frais de dépôt");
+            // Notify all DAG users via in-app notification
+            List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+            for (User dag : dagUsers) {
+                notificationService.createNotification(
+                    dag.getId(),
+                    "Candidature OEC approuvée - Frais de dépôt à fixer",
+                    String.format("La candidature de %s a été approuvée par la Direction Technique. " +
+                            "Veuillez fixer les frais de dépôt et communiquer les modalités de paiement.",
+                            user.getOrganizationName() != null ? user.getOrganizationName() : user.getFullName()),
+                    "info"
+                );
+            }
+            // Also send email to admin as backup
             emailService.sendOECApprovedNotificationToAdmin(user);
         } else {
             log.info("Candidature {} approuvée - notification admin pour création de compte", user.getUserType());

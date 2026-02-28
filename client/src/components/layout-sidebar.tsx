@@ -29,6 +29,9 @@ import {
   ShieldCheck,
   Crown,
   Vote,
+  MessageSquareWarning,
+  DollarSign,
+  UserMinus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -52,6 +55,7 @@ export function Sidebar() {
       { href: "/actions", label: "Écarts & Actions", icon: AlertCircle },
       { href: "/oec/payments", label: "Facturation", icon: CreditCard },
       { href: "/certificates", label: "Mes Certificats", icon: Award },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
       { href: "/profile", label: "Profil OEC", icon: User },
     ],
     ra: [
@@ -60,6 +64,7 @@ export function Sidebar() {
       { href: "/ra/faisabilite", label: "Recevabilité", icon: ShieldAlert },
       { href: "/quotes", label: "Conventions & Devis", icon: CreditCard },
       { href: "/ra/equipes", label: "Équipes d'Évaluation", icon: Users },
+      { href: "/ra/recusations", label: "Récusations", icon: UserMinus },
       { href: "/ra/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/ra/preparation-evaluation", label: "Préparation Évaluation", icon: CalendarDays },
       { href: "/ra/gestion-ecarts", label: "Gestion des Écarts", icon: AlertCircle },
@@ -77,9 +82,11 @@ export function Sidebar() {
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cd/manage-requests", label: "Gérer Demandes", icon: Files },
       { href: "/cd/accreditations", label: "Accréditations", icon: FileCheck },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dag: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/dag/paiements", label: "Suivi Paiements", icon: DollarSign },
     ],
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -93,6 +100,7 @@ export function Sidebar() {
       { href: "/expert/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/expert/evaluation", label: "Évaluation sur Site", icon: ClipboardList },
       { href: "/expert/rapports", label: "Rapports", icon: FileText },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     ree: [
       { href: "/ree/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -102,6 +110,7 @@ export function Sidebar() {
       { href: "/ree/plan-evaluation", label: "Plan FOR 32", icon: FileCheck },
       { href: "/ree/evaluation", label: "Évaluation sur Site", icon: ClipboardList },
       { href: "/ree/rapports", label: "Rapports", icon: FileText },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     et: [
       { href: "/et/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -109,6 +118,7 @@ export function Sidebar() {
       { href: "/et/engagements", label: "Engagements", icon: FileSignature },
       { href: "/et/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/et/evaluation", label: "Évaluation sur Site", icon: ClipboardList },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     eq: [
       { href: "/eq/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -116,10 +126,12 @@ export function Sidebar() {
       { href: "/eq/engagements", label: "Engagements", icon: FileSignature },
       { href: "/eq/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/eq/evaluation", label: "Évaluation sur Site", icon: ShieldCheck },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     cas_member: [
       { href: "/cas/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cas/reunions", label: "Réunions CAS", icon: Gavel },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     cas_president: [
       { href: "/cas-president/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -134,6 +146,10 @@ export function Sidebar() {
       { href: "/ges-competences/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/ges-competences/candidatures", label: "Candidatures", icon: UserPlus },
       { href: "/ges-competences/entretiens", label: "Planning Entretiens", icon: CalendarDays },
+    ],
+    rq: [
+      { href: "/rq/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/rq/plaintes", label: "Gestion Plaintes", icon: MessageSquareWarning },
     ],
   };
 
@@ -152,6 +168,7 @@ export function Sidebar() {
     'CAS_PRESIDENT': 'cas_president',
     'DG': 'dg',
     'GES_COMPETENCES': 'ges_competences',
+    'RQ': 'rq',
   };
 
   const normalizedRole = role?.toUpperCase() || '';

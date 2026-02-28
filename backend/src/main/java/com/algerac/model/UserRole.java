@@ -16,5 +16,6 @@ public enum UserRole {
     DG,             // Directrice Générale
     GES_COMPETENCES, // Gestionnaire de Compétences
     EVALUATEUR,     // Évaluateur
-    FORMATEUR       // Formateur
+    FORMATEUR,      // Formateur
+    RQ              // Responsable Qualité
 }

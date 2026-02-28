@@ -77,6 +77,17 @@ import SurveillanceManagementPage from "@/pages/ra/SurveillanceManagementPage";
 import ExpertDirectoryPage from "@/pages/ra/ExpertDirectoryPage";
 import NotificationsPage from "@/pages/notifications-page";
 
+// Complaints system
+import PublicComplaintPage from "@/pages/complaints/PublicComplaintPage";
+import InternalComplaintsPage from "@/pages/complaints/InternalComplaintsPage";
+import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
+
+// DAG Payment Tracking
+import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
+
+// RA Recusation
+import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
+
 function Router() {
   return (
     <Switch>
@@ -88,6 +99,9 @@ function Router() {
       <Route path="/auth/verify-otp" component={OTPVerification} />
       <Route path="/auth/new-password" component={NewPassword} />
       <Route path="/auth/success" component={RegistrationSuccess} />
+      
+      {/* Public routes (no auth required) */}
+      <Route path="/complaints/public" component={PublicComplaintPage} />
       
       {/* OEC Routes */}
       <Route path="/oec" component={OECDashboard} />
@@ -112,6 +126,7 @@ function Router() {
       <Route path="/ra/faisabilite" component={RAFeasibilityPage} />
       <Route path="/ra/demandes/:requestId/devis" component={QuotationConventionPage} />
       <Route path="/ra/equipes" component={TeamCompositionPage} />
+      <Route path="/ra/recusations" component={RecusationAnalysisPage} />
       <Route path="/ra/revue-documentaire" component={DocumentaryReviewPage} />
       <Route path="/ra/preparation-evaluation" component={EvaluationPrepPage} />
       <Route path="/ra/gestion-ecarts" component={GapsManagementPage} />
@@ -132,6 +147,7 @@ function Router() {
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
       <Route path="/dag/dashboard" component={DAGDashboard} />
+      <Route path="/dag/paiements" component={DAGPaymentTracking} />
       
       {/* Admin & Other Routes */}
       <Route path="/notifications" component={NotificationsPage} />
@@ -202,6 +218,14 @@ function Router() {
       <Route path="/ges-competences/candidatures" component={CandidaturesPage} />
       <Route path="/ges-competences/entretiens" component={InterviewPlanningPage} />
       <Route path="/ges-competences/entretien/:id" component={InterviewEvaluationPage} />
+      
+      {/* RQ Routes */}
+      <Route path="/rq" component={RQComplaintsDashboard} />
+      <Route path="/rq/dashboard" component={RQComplaintsDashboard} />
+      <Route path="/rq/plaintes" component={RQComplaintsDashboard} />
+      
+      {/* Complaints (internal - for authenticated roles) */}
+      <Route path="/complaints/internal" component={InternalComplaintsPage} />
       
       <Route component={NotFound} />
     </Switch>

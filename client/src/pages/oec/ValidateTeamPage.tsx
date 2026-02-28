@@ -9,12 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, CheckCircle, XCircle, Users, AlertTriangle, Shield, Calendar, CalendarDays } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, AlertTriangle, Shield, Calendar, CalendarDays, Upload, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
+
+interface ProofFile {
+  name: string;
+  size: number;
+  base64: string;
+  mimeType: string;
+}
 
 interface TeamMember {
   id: number;
@@ -48,6 +55,7 @@ export default function ValidateTeamPage() {
   const [recuseDialogOpen, setRecuseDialogOpen] = useState(false);
   const [recusedMemberIds, setRecusedMemberIds] = useState<number[]>([]);
   const [recuseReason, setRecuseReason] = useState("");
+  const [proofFiles, setProofFiles] = useState<ProofFile[]>([]);
 
   // Date negotiation
   const [dateAccepted, setDateAccepted] = useState<boolean>(true);
@@ -116,6 +124,25 @@ export default function ValidateTeamPage() {
     setRecusedMemberIds(prev => prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]);
   };
 
+  const handleProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      if (file.size > 10 * 1024 * 1024) return; // 10MB max
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        setProofFiles(prev => [...prev, { name: file.name, size: file.size, base64, mimeType: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const removeProofFile = (index: number) => {
+    setProofFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleRecuse = async () => {
     if (recusedMemberIds.length === 0 || !recuseReason.trim()) {
       toast({ variant: "destructive", title: "Erreur", description: "Selectionnez au moins un membre et indiquez la raison" });
@@ -128,6 +155,7 @@ export default function ValidateTeamPage() {
           validated: false,
           recusedMemberIds,
           recusationReason: recuseReason,
+          proofDocuments: proofFiles.map(f => ({ name: f.name, base64: f.base64, mimeType: f.mimeType })),
           dateAccepted: dateAccepted,
           oecProposedDate: !dateAccepted ? oecProposedDate : null,
           dateRefusalReason: !dateAccepted ? dateRefusalReason : null,
@@ -137,6 +165,7 @@ export default function ValidateTeamPage() {
           accepted: false,
           recusedMemberIds,
           recuseReason,
+          proofDocuments: proofFiles.map(f => ({ name: f.name, base64: f.base64, mimeType: f.mimeType })),
         });
       }
       toast({ title: "Recusation enregistree", description: "Le RA sera notifie et devra proposer une nouvelle equipe (PRO 22)" });
@@ -249,7 +278,7 @@ export default function ValidateTeamPage() {
             <Card className="border-primary">
               <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button variant="destructive" onClick={() => { setRecuseDialogOpen(true); setRecusedMemberIds([]); setRecuseReason(""); }} disabled={processing} className="flex-1">
+                  <Button variant="destructive" onClick={() => { setRecuseDialogOpen(true); setRecusedMemberIds([]); setRecuseReason(""); setProofFiles([]); }} disabled={processing} className="flex-1">
                     <XCircle className="mr-2 h-4 w-4" />Recuser des membres (PRO 22)
                   </Button>
                   <Button onClick={handleAccept} disabled={processing || (!dateAccepted && !oecProposedDate)} className="flex-1">
@@ -274,6 +303,33 @@ export default function ValidateTeamPage() {
                   ))}
                 </div>
                 <div className="space-y-2"><Label>Raison de la recusation *</Label><Textarea value={recuseReason} onChange={(e) => setRecuseReason(e.target.value)} placeholder="Justifiez votre recusation (conflit d'interets, manque d'impartialite, etc.)..." rows={4} /></div>
+                
+                {/* Proof documents upload */}
+                <div className="space-y-2">
+                  <Label>Documents de preuve (recommandé)</Label>
+                  <p className="text-xs text-muted-foreground">Joignez tout document justifiant votre récusation (contrats, emails, preuves de conflit d'intérêts...)</p>
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                    <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-1" />
+                    <p className="text-sm text-muted-foreground">Cliquez pour ajouter des fichiers</p>
+                    <p className="text-xs text-muted-foreground">PDF, Word, Images — 10 MB max</p>
+                    <input type="file" multiple onChange={handleProofUpload} className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+                  </div>
+                  {proofFiles.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {proofFiles.map((file, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm">{file.name}</span>
+                            <span className="text-xs text-muted-foreground">({(file.size / 1024).toFixed(0)} KB)</span>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => removeProofFile(i)}><X className="w-4 h-4" /></Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <Alert><AlertDescription>Conformement a la procedure PRO 22, le RA devra proposer de nouveaux membres pour remplacer les membres recuses.</AlertDescription></Alert>
               </div>
               <DialogFooter>

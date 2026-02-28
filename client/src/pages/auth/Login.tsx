@@ -70,23 +70,23 @@ export default function Login() {
       <AuthLeft />
 
       {/* Right Section - White Form */}
-      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen relative">
+      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-8 lg:p-12 flex items-center justify-center overflow-y-auto min-h-screen relative">
         {/* Language Switcher - top right */}
         <div className="absolute top-4 right-4 z-10">
           <LanguageSwitcher variant="compact" />
         </div>
 
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-md space-y-5">
           {/* Header */}
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold text-gray-900">{t('auth.welcome')}</h2>
-            <p className="text-gray-600">{t('auth.loginTitle')}</p>
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold text-gray-900">{t('auth.welcome')}</h2>
+            <p className="text-sm text-gray-600">{t('auth.loginTitle')}</p>
           </div>
 
           {/* Form */}
-          <form className="space-y-6" onSubmit={handleLogin}>
+          <form className="space-y-4" onSubmit={handleLogin}>
             {/* Email Input */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-900 block">
                 {t('auth.email')}
               </label>
@@ -95,13 +95,13 @@ export default function Login() {
                 placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                className="h-9 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                 disabled={loginMutation.isPending}
               />
             </div>
 
             {/* Password Input */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-900 block">
                 {t('auth.password')}
               </label>
@@ -111,7 +111,7 @@ export default function Login() {
                   placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 bg-white border-gray-300 text-gray-900 pr-10"
+                  className="h-9 bg-white border-gray-300 text-gray-900 pr-10"
                   disabled={loginMutation.isPending}
                 />
                 <button
@@ -151,7 +151,7 @@ export default function Login() {
 
             {/* Login Button */}
             <Button
-              className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base flex items-center justify-center gap-2"
+              className="w-full h-9 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm flex items-center justify-center gap-2"
               type="submit"
               disabled={loginMutation.isPending}
             >
@@ -159,7 +159,7 @@ export default function Login() {
                 <span>{t('auth.loggingIn')}</span>
               ) : (
                 <>
-                  <LogIn className="w-5 h-5" /> {t('auth.login')}
+                  <LogIn className="w-4 h-4" /> {t('auth.login')}
                 </>
               )}
             </Button>
@@ -175,7 +175,7 @@ export default function Login() {
             <div className="space-y-2">
               <Button
                 variant="outline"
-                className="w-full h-10 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-base"
+                className="w-full h-9 border-2 border-[#00A63E] text-[#00A63E] hover:bg-[#00A63E]/10 font-semibold text-sm"
                 asChild
                 disabled={loginMutation.isPending}
               >
@@ -184,11 +184,18 @@ export default function Login() {
                 </Link>
               </Button>
 
+              {/* Elegant separator */}
+              <div className="flex items-center gap-3 py-1">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+                <span className="text-[10px] text-gray-400 uppercase tracking-widest whitespace-nowrap">Plaintes</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+              </div>
+
               {/* Public Complaint & Tracking Links */}
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
-                  className="flex-1 h-10 text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-sm"
+                  className="flex-1 h-9 text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-xs"
                   asChild
                 >
                   <Link href="/complaints/public">
@@ -199,7 +206,7 @@ export default function Login() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="flex-1 h-10 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-sm"
+                  className="flex-1 h-9 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-xs"
                   onClick={() => setTrackingDialogOpen(true)}
                 >
                   <FileSearch className="w-4 h-4 mr-1.5" />
@@ -210,7 +217,7 @@ export default function Login() {
           </form>
 
           {/* Footer */}
-          <div className="text-center pt-8">
+          <div className="text-center pt-4">
             <p className="text-xs text-gray-500">
               {t('common.copyright')}
             </p>

@@ -86,8 +86,10 @@ export default function RQComplaintsDashboard() {
     try {
       setLoading(true);
       const res = await apiRequest("GET", "/api/complaints/all");
-      const data = await res.json();
-      setComplaints(data);
+      const json = await res.json();
+      // Backend returns ApiResponse { success, message, data: [...] }
+      const list = Array.isArray(json) ? json : (json.data && Array.isArray(json.data) ? json.data : []);
+      setComplaints(list);
     } catch {
       // Mock data for development
       setComplaints([
@@ -437,7 +439,7 @@ export default function RQComplaintsDashboard() {
               <Textarea value={decisionForm.decision} onChange={(e) => setDecisionForm(p => ({ ...p, decision: e.target.value }))} placeholder="Résumé de l'analyse réalisée et conclusion..." rows={4} />
             </div>
             <div className="space-y-2">
-              <Label>Notes RQ</Label>
+              <Label>Notes RQ ( visible uniquement pour vous )</Label>
               <Textarea value={decisionForm.notes} onChange={(e) => setDecisionForm(p => ({ ...p, notes: e.target.value }))} placeholder="Notes internes du responsable qualité..." rows={3} />
             </div>
             <div className="space-y-2">

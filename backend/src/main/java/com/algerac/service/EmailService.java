@@ -1191,4 +1191,70 @@ public class EmailService {
             default -> "Expert";
         };
     }
+
+    /**
+     * Envoie un email de confirmation de plainte au plaignant avec le code de suivi
+     */
+    public void sendComplaintConfirmationEmail(String recipientEmail, String complainantName, String trackingCode, String subject) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(recipientEmail);
+            helper.setSubject("Confirmation de plainte - " + trackingCode + " | ALGERAC");
+
+            String body = String.format("""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; padding: 20px 0; border-bottom: 3px solid #00A63E;">
+                        <h1 style="color: #00A63E; margin: 0;">ALGERAC</h1>
+                        <p style="color: #666; margin: 5px 0 0 0; font-size: 13px;">Organisme Algérien d'Accréditation</p>
+                    </div>
+                    
+                    <div style="padding: 30px 0;">
+                        <p>Bonjour <strong>%s</strong>,</p>
+                        
+                        <p>Nous accusons réception de votre plainte et vous confirmons qu'elle a été enregistrée dans notre système.</p>
+                        
+                        <div style="background: #f0f7ff; border: 2px solid #3b82f6; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
+                            <p style="color: #666; margin: 0 0 8px 0; font-size: 14px;">Votre code de suivi</p>
+                            <p style="font-size: 28px; font-weight: bold; color: #1e40af; font-family: monospace; margin: 0; letter-spacing: 2px;">%s</p>
+                            <p style="color: #888; font-size: 12px; margin: 8px 0 0 0;">Conservez ce code précieusement pour suivre l'état de votre plainte</p>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px;"><strong>Objet :</strong> %s</p>
+                        </div>
+                        
+                        <p>Votre plainte sera examinée par le Responsable Qualité d'ALGERAC conformément à la norme ISO 17011. 
+                           Vous serez informé(e) de l'avancement du traitement.</p>
+                        
+                        <p>Vous pouvez à tout moment consulter l'état de votre plainte en vous rendant sur notre portail 
+                           et en utilisant la fonction <strong>« Suivre ma plainte »</strong> avec votre code de suivi.</p>
+                        
+                        <p style="color: #666; font-size: 13px; margin-top: 30px;">
+                            Pour toute question complémentaire, n'hésitez pas à nous contacter à 
+                            <a href="mailto:support@algerac.dz" style="color: #00A63E;">support@algerac.dz</a>
+                        </p>
+                    </div>
+                    
+                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; text-align: center; color: #999; font-size: 12px;">
+                        <p>ALGERAC — Organisme Algérien d'Accréditation</p>
+                        <p>Site Web : <a href="https://algerac.dz" style="color: #00A63E;">algerac.dz</a></p>
+                    </div>
+                </div>
+                """,
+                complainantName,
+                trackingCode,
+                subject
+            );
+
+            helper.setText(body, true);
+            mailSender.send(mimeMessage);
+            log.info("Email de confirmation de plainte envoyé à {} (code: {})", recipientEmail, trackingCode);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de confirmation de plainte à {}: {}", recipientEmail, e.getMessage());
+            // Don't throw - complaint should still be registered even if email fails
+        }
+    }
 }

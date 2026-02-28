@@ -20,6 +20,7 @@ public class ComplaintService {
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     /**
      * Submit a public complaint (no authentication required)
@@ -55,6 +56,18 @@ public class ComplaintService {
 
         complaint = complaintRepository.save(complaint);
         log.info("Public complaint submitted: {} - {}", trackingCode, complaint.getSubject());
+
+        // Send confirmation email with tracking code to the complainant
+        try {
+            emailService.sendComplaintConfirmationEmail(
+                    complaint.getComplainantEmail(),
+                    complaint.getComplainantName(),
+                    trackingCode,
+                    complaint.getSubject()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send complaint confirmation email: {}", e.getMessage());
+        }
 
         // Notify all RQ users
         notifyRQUsers(complaint);
@@ -99,6 +112,18 @@ public class ComplaintService {
 
         complaint = complaintRepository.save(complaint);
         log.info("Internal complaint submitted by user {}: {} - {}", userId, trackingCode, complaint.getSubject());
+
+        // Send confirmation email with tracking code
+        try {
+            emailService.sendComplaintConfirmationEmail(
+                    complaint.getComplainantEmail(),
+                    complaint.getComplainantName(),
+                    trackingCode,
+                    complaint.getSubject()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send complaint confirmation email: {}", e.getMessage());
+        }
 
         notifyRQUsers(complaint);
 

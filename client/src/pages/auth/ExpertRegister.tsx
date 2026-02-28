@@ -2067,45 +2067,46 @@ export default function ExpertRegisterWizard() {
 
   return (
     <>
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#f5f6f8]">
+      {/* Fixed top header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logoalgerac.png" alt="ALGERAC" className="w-12 h-12 object-contain" />
+            <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: "#00A63E" }}>
-                ALGERAC
-              </h1>
-              <p className="text-sm text-slate-600">
+              <h1 className="text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
+              <p className="text-xs text-gray-500">
                 Inscription Expert / Évaluateur / Formateur
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
             <Link href="/auth/register">
               <ChevronLeft className="w-4 h-4 mr-1" /> Retour
             </Link>
           </Button>
         </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Progress Bar */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-5">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-base font-semibold text-gray-900">
                 Étape {currentStep} sur {STEPS.length}
               </h2>
-              <p className="text-sm text-slate-600">{STEPS[currentStep - 1].title}</p>
+              <p className="text-sm text-gray-500">{STEPS[currentStep - 1].title}</p>
             </div>
-            <span className="text-sm font-medium text-slate-500">
-              {Math.round((currentStep / STEPS.length) * 100)}% complété
+            <span className="text-sm font-medium text-[#00A63E] bg-[#00A63E]/8 px-3 py-1 rounded-full">
+              {Math.round((currentStep / STEPS.length) * 100)}%
             </span>
           </div>
 
-          <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00A63E] to-[#00D44A] transition-all duration-500"
+              className="absolute top-0 left-0 h-full bg-[#00A63E] rounded-full transition-all duration-500"
               style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
             />
           </div>
@@ -2121,17 +2122,19 @@ export default function ExpertRegisterWizard() {
               >
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
                     step.id < currentStep
                       ? "bg-[#00A63E] text-white"
                       : step.id === currentStep
-                        ? "bg-[#00A63E] text-white ring-4 ring-[#00A63E]/20"
-                        : "bg-slate-200 text-slate-400"
+                        ? "bg-[#00A63E] text-white ring-2 ring-[#00A63E]/20 ring-offset-2"
+                        : "bg-gray-100 text-gray-400 border border-gray-200"
                   )}
                 >
-                  {step.id}
+                  {step.id < currentStep ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  ) : step.id}
                 </div>
-                <span className="text-[10px] mt-1 text-center hidden md:block max-w-[80px]">
+                <span className="text-[10px] mt-1.5 text-center hidden md:block max-w-[80px] text-gray-600">
                   {step.title}
                 </span>
               </div>
@@ -2141,21 +2144,21 @@ export default function ExpertRegisterWizard() {
 
         {/* Error alert */}
         {apiError && (
-          <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-xl flex items-start gap-3">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-            <p className="flex-1">{apiError}</p>
+            <p className="flex-1 text-sm">{apiError}</p>
           </div>
         )}
 
         {/* Form Content */}
-        <Card className="shadow-lg">
-          <CardContent className="p-8 md:p-12">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200/60">
+          <div className="p-6 md:p-10">
             {renderStep()}
 
             {/* Navigation */}
-            <div className="flex justify-between mt-8 pt-6 border-t">
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
               {currentStep > 1 && (
-                <Button type="button" variant="outline" onClick={prevStep} className="gap-2">
+                <Button type="button" variant="outline" onClick={prevStep} className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50">
                   <ChevronLeft className="w-4 h-4" /> Précédent
                 </Button>
               )}
@@ -2164,8 +2167,7 @@ export default function ExpertRegisterWizard() {
                 <Button
                   type="button"
                   onClick={nextStep}
-                  className="gap-2 ml-auto"
-                  style={{ backgroundColor: "#00A63E" }}
+                  className="gap-2 ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm"
                 >
                   Suivant <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -2174,15 +2176,14 @@ export default function ExpertRegisterWizard() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={loading || !consent1 || !consent2 || !consent3Type}
-                  className="ml-auto"
-                  style={{ backgroundColor: "#00A63E" }}
+                  className="ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm"
                 >
                   {loading ? "Envoi en cours..." : "Soumettre ma candidature"}
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
 

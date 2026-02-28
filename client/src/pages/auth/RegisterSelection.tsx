@@ -1,67 +1,86 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Building2, UserRound, ArrowLeft  } from "lucide-react";
+import { Building2, UserRound, ArrowLeft } from "lucide-react";
+import AuthLeft from "@/components/layout/AuthLeft";
 
 export default function RegisterSelection() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-3xl space-y-8">
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <img 
-              src="/logoalgerac.png" 
-              alt="ALGERAC Logo" 
-              className="w-10 h-10 object-contain"
-            />
-            <h1 className="text-xl font-bold" style={{ color: '#00A63E' }}>ALGERAC</h1>
+    <div className="min-h-screen flex bg-[#f5f6f8]">
+      <AuthLeft />
+
+      {/* Right Section */}
+      <div className="w-full lg:w-1/2 lg:ml-[50%] flex flex-col min-h-screen">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src="/logoalgerac.png" alt="ALGERAC" className="h-8 w-auto" />
+            <span className="text-lg font-bold text-[#00A63E]">ALGERAC</span>
           </div>
-          <h2 className="text-3xl font-bold">Créer un compte</h2>
-          <p className="text-slate-600">Sélectionnez votre type de profil pour commencer</p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <Link href="/auth/register/oec">
-            <Card className="hover:border-primary cursor-pointer transition-colors group">
-              <CardContent className="pt-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary/10 transition-colors">
-                  <Building2 className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold">Déposer ma demande d'accréditation</h3>
-                  <p className="text-sm text-muted-foreground text-balance">Organismes souhaitant déposer une demande d'accréditation.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/auth/register/expert">
-            <Card className="hover:border-primary cursor-pointer transition-colors group">
-              <CardContent className="pt-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary/10 transition-colors">
-                  <UserRound className="w-8 h-8 text-slate-600 group-hover:text-primary transition-colors" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold">Déposer ma candidature</h3>
-                  <p className="text-sm text-muted-foreground text-balance">Professionnels souhaitant collaborer avec ALGERAC ( Formateur, Évaluateur, Expert ).</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
-        <div className="pt-4">
+          <div className="ml-auto">
             <Button 
               variant="ghost" 
               asChild 
-              className="text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              className="text-gray-500 hover:text-gray-700 hover:bg-white text-sm"
             >
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-1.5">
                 <ArrowLeft className="w-4 h-4" />
                 <span>Retour à la connexion</span>
               </Link>
             </Button>
           </div>
+        </div>
+
+        {/* Centered content */}
+        <div className="flex-1 flex items-center justify-center px-6 py-8">
+          <div className="w-full max-w-lg">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Créer un compte</h2>
+              <p className="text-sm text-gray-500">Sélectionnez votre type de profil pour commencer</p>
+            </div>
+
+            {/* Selection cards */}
+            <div className="grid gap-4">
+              <Link href="/auth/register/oec">
+                <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-6 hover:border-[#00A63E]/40 hover:shadow-md cursor-pointer transition-all group">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-[#00A63E]/8 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-[#00A63E]/15 transition-colors">
+                      <Building2 className="w-6 h-6 text-[#00A63E]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">Déposer ma demande d'accréditation</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed">Organismes souhaitant déposer une demande d'accréditation.</p>
+                    </div>
+                    <ArrowLeft className="w-4 h-4 text-gray-300 rotate-180 mt-1 group-hover:text-[#00A63E] transition-colors flex-shrink-0" />
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/auth/register/expert">
+                <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-6 hover:border-[#00A63E]/40 hover:shadow-md cursor-pointer transition-all group">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-[#00A63E]/8 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-[#00A63E]/15 transition-colors">
+                      <UserRound className="w-6 h-6 text-[#00A63E]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">Déposer ma candidature</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed">Professionnels souhaitant collaborer avec ALGERAC (Formateur, Évaluateur, Expert).</p>
+                    </div>
+                    <ArrowLeft className="w-4 h-4 text-gray-300 rotate-180 mt-1 group-hover:text-[#00A63E] transition-colors flex-shrink-0" />
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Footer */}
+            <div className="text-center mt-8">
+              <p className="text-xs text-gray-400">
+                © {new Date().getFullYear()} ALGERAC. Tous droits réservés.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

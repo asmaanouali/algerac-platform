@@ -11,92 +11,91 @@ export default function RegistrationSuccess() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen flex">
-      <AuthLeft
-        bottom={
-          <>
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-gray-200">Normes Internationales</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-gray-200">Transparence Totale</span>
-            </div>
-          </>
-        }
-      />
+    <div className="min-h-screen flex bg-[#f5f6f8]">
+      <AuthLeft />
 
-      {/* Right Section - White Form */}
-      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen relative">
-        <div className="absolute top-4 right-4 z-10">
-          <LanguageSwitcher variant="compact" />
+      {/* Right Section */}
+      <div className="w-full lg:w-1/2 lg:ml-[50%] flex flex-col min-h-screen">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src="/logoalgerac.png" alt="ALGERAC" className="h-8 w-auto" />
+            <span className="text-lg font-bold text-[#00A63E]">ALGERAC</span>
+          </div>
+          <div className="ml-auto">
+            <LanguageSwitcher variant="compact" />
+          </div>
         </div>
 
-        <div className="w-full max-w-md space-y-6">
-          <div className="space-y-4 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600">
-              <CheckCircle2 className="w-10 h-10" />
+        {/* Centered content */}
+        <div className="flex-1 flex items-center justify-center px-6 py-8">
+          <div className="w-full max-w-[480px]">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-[#00A63E] to-[#00A63E]/60" />
+              
+              <div className="p-8">
+                {/* Success icon */}
+                <div className="flex justify-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-[#00A63E]/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-9 h-9 text-[#00A63E]" />
+                  </div>
+                </div>
+
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.oecRegister.submitted')}</h2>
+                  <p className="text-sm text-gray-500">
+                    {t('auth.oecRegister.submittedMessage')}
+                  </p>
+                </div>
+
+                {/* Workflow steps */}
+                <div className="bg-gray-50 border border-gray-200/60 rounded-lg p-5 space-y-4">
+                  <h3 className="font-semibold text-gray-800 text-sm">{t('auth.oecRegister.ackMessage')}</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 bg-[#00A63E]/10 rounded-full flex items-center justify-center mt-0.5">
+                        <Clock className="w-3.5 h-3.5 text-[#00A63E]" />
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-800">Étape 1 - Étude du dossier</p>
+                        <p className="text-gray-500 text-xs mt-0.5">La Direction Technique va examiner votre demande.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 bg-[#00A63E]/10 rounded-full flex items-center justify-center mt-0.5">
+                        <CreditCard className="w-3.5 h-3.5 text-[#00A63E]" />
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-800">Étape 2 - Frais de dépôt</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Si votre demande est retenue, vous recevrez les frais de dépôt de dossier à payer.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 bg-[#00A63E]/10 rounded-full flex items-center justify-center mt-0.5">
+                        <Mail className="w-3.5 h-3.5 text-[#00A63E]" />
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-800">Étape 3 - Preuve de paiement</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Après validation du paiement, votre compte sera créé et activé.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button className="w-full h-11 mt-6 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm transition-all" asChild>
+                  <Link href="/">{t('auth.oecRegister.backToLogin')}</Link>
+                </Button>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold">{t('auth.oecRegister.submitted')}</h2>
-            <p className="text-slate-600">
-              {t('auth.oecRegister.submittedMessage')}
-            </p>
-          </div>
 
-          {/* Detailed acknowledgment - New accreditation workflow */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-4">
-            <h3 className="font-semibold text-blue-900 text-sm">{t('auth.oecRegister.ackMessage')}</h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium">Étape 1 - Étude du dossier</p>
-                  <p className="text-blue-600">La Direction Technique va examiner votre demande.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <CreditCard className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium">Étape 2 - Frais de dépôt</p>
-                  <p className="text-blue-600">Si votre demande est retenue, vous recevrez les frais de dépôt de dossier à payer.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium">Étape 3 - Preuve de paiement</p>
-                  <p className="text-blue-600">Après validation du paiement, votre compte sera créé et activé.</p>
-                </div>
-              </div>
+            <div className="text-center mt-6">
+              <p className="text-xs text-gray-400">
+                {t('common.copyright')}
+              </p>
             </div>
-          </div>
-
-          <Button className="w-full h-10 mt-8 bg-[#00A63E] hover:bg-[#008a35]" asChild>
-            <Link href="/">{t('auth.oecRegister.backToLogin')}</Link>
-          </Button>
-        
-          <div className="text-center pt-8">
-            <p className="text-xs text-gray-500">
-              {t('common.copyright')}
-            </p>
           </div>
         </div>
       </div>

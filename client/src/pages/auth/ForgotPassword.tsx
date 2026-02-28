@@ -56,61 +56,69 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <AuthLeft
-        bottom={
-          <>
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-gray-200">Normes Internationales</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-[#00A63E] flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#00A63E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-gray-200">Transparence Totale</span>
-            </div>
-          </>
-        }
-      />
-      {/* Right Section - Form */}
-      <div className="w-full lg:w-1/2 lg:ml-[50%] bg-white p-12 lg:p-16 flex items-center justify-center overflow-y-auto min-h-screen">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold text-gray-900">Réinitialisation</h2>
-            <p className="text-gray-600">Entrez votre email pour recevoir le lien de réinitialisation</p>
+    <div className="min-h-screen flex bg-[#f5f6f8]">
+      <AuthLeft />
+
+      {/* Right Section */}
+      <div className="w-full lg:w-1/2 lg:ml-[50%] flex flex-col min-h-screen">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src="/logoalgerac.png" alt="ALGERAC" className="h-8 w-auto" />
+            <span className="text-lg font-bold text-[#00A63E]">ALGERAC</span>
           </div>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-900 block">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                <Input
-                  type="email"
-                  placeholder="nom@exemple.com"
-                  className="pl-10 h-10 bg-white border-gray-300 text-gray-900"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+          <div className="ml-auto">
+            <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
+              <Link href="/" className="flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" /> Retour</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Centered form */}
+        <div className="flex-1 flex items-center justify-center px-6 py-8">
+          <div className="w-full max-w-[420px]">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-[#00A63E] to-[#00A63E]/60" />
+              
+              <div className="p-8">
+                {/* Icon */}
+                <div className="flex justify-center mb-6">
+                  <div className="w-14 h-14 rounded-full bg-[#00A63E]/10 flex items-center justify-center">
+                    <Mail className="w-7 h-7 text-[#00A63E]" />
+                  </div>
+                </div>
+
+                <div className="text-center mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">Réinitialisation</h2>
+                  <p className="text-sm text-gray-500">Entrez votre email pour recevoir le code de vérification</p>
+                </div>
+
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 block">Adresse email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        type="email"
+                        placeholder="nom@exemple.com"
+                        className="pl-10 h-11 bg-gray-50 border-gray-200 text-gray-900 focus:bg-white focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-colors"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                  <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm transition-all" type="submit" disabled={loading}>
+                    {loading ? "Envoi en cours..." : "Envoyer le code"}
+                  </Button>
+                </form>
               </div>
             </div>
-            <Button className="w-full h-10 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-base" type="submit" disabled={loading}>
-              {loading ? "Envoi en cours..." : "Envoyer le code"}
-            </Button>
-            <Button variant="ghost" className="w-full gap-2" asChild>
-              <Link href="/"><ArrowLeft className="w-4 h-4" /> Retour à la connexion</Link>
-            </Button>
-          </form>
-          <div className="text-center pt-8">
-            <p className="text-xs text-gray-500">© 2026 ALGERAC. Tous droits réservés.</p>
+
+            <div className="text-center mt-6">
+              <p className="text-xs text-gray-400">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
+            </div>
           </div>
         </div>
       </div>

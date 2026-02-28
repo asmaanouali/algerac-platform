@@ -54,7 +54,7 @@
     "forgotPassword": "Mot de passe oublié ?",
     "login": "Se connecter",
     "loggingIn": "Connexion...",
-    "noAccount": "VOUS N'AVEZ PAS DE COMPTE ?",
+    "noAccount": "Vous n'avez pas de compte ?",
     "createAccount": "Créer un compte",
     "loginSuccess": "Connexion réussie",
     "welcomeUser": "Bienvenue, {{name}}",

@@ -36,6 +36,10 @@ export default function DocumentaryDecisionPage() {
   const [sendMode, setSendMode] = useState<"as_is" | "synthesis">("as_is");
   const [synthesis, setSynthesis] = useState("");
 
+  // Validate no deficiency form
+  const [showValidateDialog, setShowValidateDialog] = useState(false);
+  const [validateComments, setValidateComments] = useState("");
+
   // Decision form
   const [showDecisionDialog, setShowDecisionDialog] = useState(false);
   const [decision, setDecision] = useState<"CONTINUE" | "STOP">("CONTINUE");
@@ -60,6 +64,30 @@ export default function DocumentaryDecisionPage() {
       const res = await fetch(`/api/workflow/documentary-review/by-request/${req.id}`, { credentials: "include" });
       if (res.ok) setReviews(await res.json());
     } catch (e) { console.error(e); }
+  };
+
+  const validateNoDeficiency = async () => {
+    const review = reviews[0];
+    if (!review) return;
+    setActionLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/documentary-review/${review.id}/cd-validate-no-deficiency`, {
+        comments: validateComments || null,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: "Revue documentaire validée. Aucun manquement — le RA peut préparer l'évaluation." });
+        setShowValidateDialog(false);
+        setValidateComments("");
+        await loadData();
+        await selectRequest(selectedRequest);
+      } else {
+        toast({ title: "Erreur", description: data.message, variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+    setActionLoading(false);
   };
 
   const sendToOEC = async () => {
@@ -190,16 +218,34 @@ export default function DocumentaryDecisionPage() {
                         </Alert>
                       )}
 
-                      {/* Action: Send to OEC */}
-                      {reqStatus === "DOC_REVIEW_RESULTS_SENT_TO_CD" && (
+                      {/* Action based on deficiencies */}
+                      {reqStatus === "DOC_REVIEW_RESULTS_SENT_TO_CD" && !review.deficienciesIdentified && (
+                        <Card className="border-green-200 bg-green-50/50">
+                          <CardContent className="pt-6 text-center space-y-4">
+                            <CheckCircle className="w-10 h-10 mx-auto text-green-600" />
+                            <div>
+                              <h3 className="font-semibold text-green-800">Aucun manquement identifié</h3>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                L'équipe d'évaluation n'a relevé aucun manquement documentaire.
+                                Vous pouvez valider la revue et passer directement à la préparation de l'évaluation.
+                              </p>
+                            </div>
+                            <Button onClick={() => setShowValidateDialog(true)} size="lg" className="bg-green-600 hover:bg-green-700">
+                              <CheckCircle className="w-4 h-4 mr-2" />Valider — Passer à l'évaluation
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {reqStatus === "DOC_REVIEW_RESULTS_SENT_TO_CD" && review.deficienciesIdentified && (
                         <Card className="border-blue-200 bg-blue-50/50">
                           <CardContent className="pt-6 text-center space-y-4">
                             <Send className="w-10 h-10 mx-auto text-blue-600" />
                             <div>
-                              <h3 className="font-semibold">Transmettre à l'OEC</h3>
+                              <h3 className="font-semibold">Manquements identifiés — Transmettre à l'OEC</h3>
                               <p className="text-sm text-muted-foreground mt-1">
-                                Vous pouvez rédiger votre propre synthèse ou envoyer les résultats de l'équipe tels quels.
-                                L'OEC aura 3 mois pour répondre.
+                                Des manquements ont été relevés. Transmettez les résultats à l'OEC qui pourra
+                                poursuivre l'évaluation ou corriger les manquements dans un délai de 3 mois.
                               </p>
                             </div>
                             <Button onClick={() => setShowSendDialog(true)} size="lg">
@@ -281,6 +327,12 @@ export default function DocumentaryDecisionPage() {
                           <CardContent className="pt-6 text-center space-y-3">
                             <CheckCircle className="w-12 h-12 mx-auto text-green-600" />
                             <h3 className="text-lg font-semibold text-green-800">Revue documentaire terminée — Processus poursuivi</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {review?.deficienciesIdentified
+                                ? "Des manquements avaient été identifiés. Le processus continue après réponse de l'OEC."
+                                : "Aucun manquement identifié — Le RA peut passer à la préparation de l'évaluation."
+                              }
+                            </p>
                           </CardContent>
                         </Card>
                       )}
@@ -290,6 +342,34 @@ export default function DocumentaryDecisionPage() {
               </Card>
             </div>
           )}
+
+          {/* Validate No Deficiency Dialog */}
+          <Dialog open={showValidateDialog} onOpenChange={setShowValidateDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Valider la revue documentaire</DialogTitle>
+                <DialogDescription>
+                  Aucun manquement n'a été identifié. La revue sera clôturée et le RA pourra passer à la préparation de l'évaluation.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label>Commentaires (optionnel)</Label>
+                <Textarea
+                  value={validateComments}
+                  onChange={(e) => setValidateComments(e.target.value)}
+                  placeholder="Ajoutez des commentaires sur la validation..."
+                  rows={4}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowValidateDialog(false)}>Annuler</Button>
+                <Button onClick={validateNoDeficiency} disabled={actionLoading} className="bg-green-600 hover:bg-green-700">
+                  {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                  Confirmer la validation
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Send to OEC Dialog */}
           <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>

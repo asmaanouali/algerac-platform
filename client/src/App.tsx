@@ -89,6 +89,10 @@ import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
 // RA Recusation
 import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
 
+// Étape 6 - Préparation de l'Évaluation
+import CDEvaluationPrepPage from "@/pages/cd/EvaluationPrepPage";
+import MandateMeetingsPage from "@/pages/shared/MandateMeetingsPage";
+
 function Router() {
   return (
     <Switch>
@@ -145,6 +149,7 @@ function Router() {
       <Route path="/cd/accreditations" component={CDAccreditations} />
       <Route path="/cd/pilotage-evaluation" component={EvaluationOversightPage} />
       <Route path="/cd/revue-documentaire" component={CDDocumentaryDecisionPage} />
+      <Route path="/cd/preparation-evaluation" component={CDEvaluationPrepPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
@@ -168,6 +173,7 @@ function Router() {
       <Route path="/expert/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/expert/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/expert/rapports" component={ExpertReportDraftingPage} />
+      <Route path="/expert/mandatements" component={MandateMeetingsPage} />
       
       {/* REE Routes */}
       <Route path="/ree" component={REEDashboard} />
@@ -175,6 +181,7 @@ function Router() {
       <Route path="/ree/planning" component={ExpertPlanningPage} />
       <Route path="/ree/engagements" component={ExpertCommitmentsPage} />
       <Route path="/ree/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
+      <Route path="/ree/mandatements" component={MandateMeetingsPage} />
       <Route path="/ree/plan-evaluation" component={REEEvaluationPlanPage} />
       <Route path="/ree/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/ree/rapports" component={ExpertReportDraftingPage} />
@@ -187,6 +194,7 @@ function Router() {
       <Route path="/et/planning" component={ExpertPlanningPage} />
       <Route path="/et/engagements" component={ExpertCommitmentsPage} />
       <Route path="/et/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
+      <Route path="/et/mandatements" component={MandateMeetingsPage} />
       <Route path="/et/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/et/evaluation-plans" component={ETGapEvaluationPage} />
       
@@ -196,6 +204,7 @@ function Router() {
       <Route path="/eq/planning" component={ExpertPlanningPage} />
       <Route path="/eq/engagements" component={ExpertCommitmentsPage} />
       <Route path="/eq/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
+      <Route path="/eq/mandatements" component={MandateMeetingsPage} />
       <Route path="/eq/evaluation" component={ExpertEvaluationDayPage} />
       
       {/* CAS Member Routes */}

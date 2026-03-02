@@ -585,12 +585,7 @@ export default function QuotationAndConventionPage() {
                       <div><p className="text-sm font-medium text-green-800">Convention</p><p className="text-xs text-green-600">Créée</p></div>
                     </div>
                   </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Important :</strong> Ni vous ni le CD n'avez accès au montant du devis. Seuls le DAG et l'OEC peuvent voir le montant.
-                    </AlertDescription>
-                  </Alert>
+                  
                   <Button className="w-full" size="lg" onClick={handleSendToCD} disabled={sendingToCD}>
                     {sendingToCD ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer au CD pour validation</>}
                   </Button>

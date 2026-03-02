@@ -395,7 +395,12 @@ export default function DocumentaryReviewPage() {
                           <CardContent className="pt-6 text-center space-y-3">
                             <CheckCircle className="w-12 h-12 mx-auto text-green-600" />
                             <h3 className="text-lg font-semibold text-green-800">Revue documentaire terminée</h3>
-                            <p className="text-sm text-muted-foreground">Le CD a décidé de poursuivre. Passez à la préparation de l'évaluation.</p>
+                            <p className="text-sm text-muted-foreground">
+                              {review?.deficienciesIdentified
+                                ? "Le CD a décidé de poursuivre le processus malgré les manquements identifiés. Passez à la préparation de l'évaluation."
+                                : "Aucun manquement n'a été identifié. Vous pouvez directement passer à la préparation de l'évaluation."
+                              }
+                            </p>
                           </CardContent>
                         </Card>
                       )}

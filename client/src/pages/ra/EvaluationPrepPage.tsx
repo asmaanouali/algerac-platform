@@ -11,22 +11,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, ArrowRight, Mail, Users } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+
+const EVAL_PREP_STATUSES = [
+  "DOCUMENTARY_REVIEW_COMPLETED",
+  "MANDATES_PREPARATION", "MANDATES_PENDING_CD", "MANDATES_CD_MODIFICATION", "MANDATES_SENT_TO_TEAM",
+  "MISSION_ORDERS_PENDING", "MISSION_ORDERS_PENDING_DT", "MISSION_ORDERS_PENDING_DG", "MISSION_ORDERS_SENT",
+  "EVALUATION_PLAN_PREPARATION", "EVALUATION_PLAN_PENDING_RA", "EVALUATION_PLAN_RA_APPROVED",
+  "EVALUATION_PLAN_PENDING_CD", "EVALUATION_PLAN_VALIDATION", "EVALUATION_PLANNED",
+];
 
 export default function EvaluationPrepPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [missionOrders, setMissionOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateMission, setShowCreateMission] = useState(false);
-  const [showMandatement, setShowMandatement] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [mandatementMessages, setMandatementMessages] = useState<Record<number, string>>({});
+  const [mandates, setMandates] = useState<any[]>([]);
+  const [showMandateDialog, setShowMandateDialog] = useState(false);
+  const [mandateEntries, setMandateEntries] = useState<Record<number, { tasks: string; missions: string; objectives: string }>>({});
+
+  const [missionOrders, setMissionOrders] = useState<any[]>([]);
+  const [showCreateMission, setShowCreateMission] = useState(false);
   const [missionForm, setMissionForm] = useState({ teamMemberId: "", missionDetails: "", checklistTasks: "" });
+
+  const [plans, setPlans] = useState<any[]>([]);
+  const [showPlanReviewDialog, setShowPlanReviewDialog] = useState(false);
+  const [planReviewApproved, setPlanReviewApproved] = useState(true);
+  const [planReviewComments, setPlanReviewComments] = useState("");
+  const [reviewingPlanId, setReviewingPlanId] = useState<number | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -35,9 +53,7 @@ export default function EvaluationPrepPage() {
       const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const all = await res.json();
-        setRequests(all.filter((r: any) =>
-          ["DOCUMENTARY_REVIEW_COMPLETED", "EVALUATION_PLAN_PREPARATION", "EVALUATION_PLAN_VALIDATION", "EVALUATION_PLANNED"].includes(r.status)
-        ));
+        setRequests(all.filter((r: any) => EVAL_PREP_STATUSES.includes(r.status)));
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -46,13 +62,15 @@ export default function EvaluationPrepPage() {
   const selectRequest = async (req: any) => {
     setSelectedRequest(req);
     try {
-      const [plansRes, missionsRes, teamsRes] = await Promise.all([
-        fetch(`/api/workflow/evaluation-plan/by-request/${req.id}`, { credentials: "include" }),
+      const [mandatesRes, missionsRes, teamsRes, plansRes] = await Promise.all([
+        fetch(`/api/workflow/mandates/by-request/${req.id}`, { credentials: "include" }),
         fetch(`/api/workflow/mission-orders/by-request/${req.id}`, { credentials: "include" }),
         fetch(`/api/workflow/teams/by-request/${req.id}`, { credentials: "include" }),
+        fetch(`/api/workflow/evaluation-plan/by-request/${req.id}`, { credentials: "include" }),
       ]);
-      if (plansRes.ok) setPlans(await plansRes.json());
+      if (mandatesRes.ok) setMandates(await mandatesRes.json());
       if (missionsRes.ok) setMissionOrders(await missionsRes.json());
+      if (plansRes.ok) setPlans(await plansRes.json());
       if (teamsRes.ok) {
         const teams = await teamsRes.json();
         if (teams.length > 0) {
@@ -60,39 +78,53 @@ export default function EvaluationPrepPage() {
           if (memRes.ok) {
             const mems = await memRes.json();
             setTeamMembers(mems);
-            const msgs: Record<number, string> = {};
-            mems.forEach((m: any) => { msgs[m.id] = ""; });
-            setMandatementMessages(msgs);
+            const entries: Record<number, { tasks: string; missions: string; objectives: string }> = {};
+            mems.forEach((m: any) => { entries[m.id] = { tasks: "", missions: "", objectives: "" }; });
+            setMandateEntries(entries);
           }
         }
       }
     } catch (e) { console.error(e); }
   };
 
-  // Step 6.1: RA sends mandatement (custom message per team member)
-  const sendMandatement = async () => {
-    const entries = Object.entries(mandatementMessages).filter(([_, msg]) => msg.trim());
-    if (entries.length === 0) {
-      toast({ title: "Erreur", description: "Redigez au moins un message de mandatement", variant: "destructive" });
+  const createMandates = async () => {
+    const mandatesData = Object.entries(mandateEntries)
+      .filter(([_, v]) => v.tasks.trim() || v.missions.trim())
+      .map(([memberId, v]) => ({ memberId: parseInt(memberId), ...v }));
+    if (mandatesData.length === 0) {
+      toast({ title: "Erreur", description: "Renseignez au moins un mandatement", variant: "destructive" });
       return;
     }
+    setActionLoading(true);
     try {
-      for (const [memberId, message] of entries) {
-        await apiRequest("POST", `/api/workflow/teams/members/${memberId}/mandatement`, {
-          message,
-          requestId: selectedRequest.id,
-        });
-      }
-      toast({ title: "Succes", description: `Mandatement envoye a ${entries.length} membre(s)` });
-      setShowMandatement(false);
-      selectRequest(selectedRequest);
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e.message, variant: "destructive" });
-    }
+      const res = await apiRequest("POST", "/api/workflow/mandates/create-all", {
+        requestId: selectedRequest.id, mandates: mandatesData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: `${mandatesData.length} mandatement(s) créé(s)` });
+        setShowMandateDialog(false);
+        await selectRequest(selectedRequest); await loadData();
+      } else toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setActionLoading(false);
   };
 
-  // Step 6.2: RA creates mission orders
+  const sendMandatesToCD = async () => {
+    setActionLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/workflow/mandates/send-to-cd", { requestId: selectedRequest.id });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: "Mandatements envoyés au CD" });
+        await selectRequest(selectedRequest); await loadData();
+      } else toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setActionLoading(false);
+  };
+
   const createMissionOrder = async () => {
+    setActionLoading(true);
     try {
       const res = await apiRequest("POST", "/api/workflow/mission-orders/create", {
         requestId: selectedRequest.id,
@@ -102,43 +134,13 @@ export default function EvaluationPrepPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succes", description: "Ordre de mission cree - en attente approbation DT/DG" });
+        toast({ title: "Succès", description: "Ordre de mission créé — en attente DT" });
         setShowCreateMission(false);
         setMissionForm({ teamMemberId: "", missionDetails: "", checklistTasks: "" });
-        selectRequest(selectedRequest);
-      }
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e.message, variant: "destructive" });
-    }
-  };
-
-  // Step 6.4: RA validates FOR 32 plan from REE
-  const validatePlan = async (planId: number) => {
-    try {
-      const res = await apiRequest("POST", `/api/workflow/evaluation-plan/${planId}/validate`, { approved: true });
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Succes", description: "Plan FOR 32 valide" });
-        selectRequest(selectedRequest);
-      }
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e.message, variant: "destructive" });
-    }
-  };
-
-  // Step 6.5: REE sends plan to OEC
-  const sendPlanToOEC = async (planId: number) => {
-    try {
-      const res = await apiRequest("POST", `/api/workflow/evaluation-plan/${planId}/send-to-oec`, {});
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Succes", description: "Plan FOR 32 envoye a l'OEC (min 5 jours avant evaluation)" });
-        loadData();
-        selectRequest(selectedRequest);
-      }
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e.message, variant: "destructive" });
-    }
+        await selectRequest(selectedRequest);
+      } else toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setActionLoading(false);
   };
 
   const sendMissionToMember = async (orderId: number) => {
@@ -146,54 +148,75 @@ export default function EvaluationPrepPage() {
       const res = await apiRequest("POST", `/api/workflow/mission-orders/${orderId}/send-to-member`, {});
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succes", description: "Ordre de mission envoye au membre" });
-        selectRequest(selectedRequest);
+        toast({ title: "Succès", description: "Ordre de mission envoyé au membre" });
+        await selectRequest(selectedRequest);
       }
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e.message, variant: "destructive" });
-    }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+  };
+
+  const reviewPlan = async () => {
+    if (reviewingPlanId === null) return;
+    setActionLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation-plan/${reviewingPlanId}/ra-validate`, {
+        approved: planReviewApproved, comments: planReviewComments,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: planReviewApproved ? "Plan validé — transmis au CD" : "Ajustements demandés au REE" });
+        setShowPlanReviewDialog(false); setPlanReviewComments("");
+        await selectRequest(selectedRequest); await loadData();
+      } else toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setActionLoading(false);
   };
 
   if (!user) return null;
 
   const missionStatusLabels: Record<string, string> = {
-    DRAFT: "Brouillon", PENDING_DT_APPROVAL: "Attente DT", DT_APPROVED: "Approuve DT",
-    PENDING_DG_APPROVAL: "Attente DG", DG_APPROVED: "Approuve DG", FULLY_APPROVED: "Approuve",
-    SENT_TO_MEMBER: "Envoye", IN_PROGRESS: "En cours", COMPLETED: "Termine",
+    DRAFT: "Brouillon", PENDING_DT_APPROVAL: "Attente DT", DT_APPROVED: "Approuvé DT",
+    PENDING_DG_APPROVAL: "Attente DG", FULLY_APPROVED: "Approuvé", SENT_TO_MEMBER: "Envoyé",
   };
-
+  const mandateStatusLabels: Record<string, string> = {
+    DRAFT: "Brouillon", SENT_TO_CD: "Envoyé au CD", CD_APPROVED: "Approuvé CD",
+    CD_MODIFICATION_REQUESTED: "Modifications demandées", SENT_TO_MEMBERS: "Envoyé aux membres",
+  };
   const planStatusLabels: Record<string, string> = {
-    DRAFT: "Brouillon (REE)", SUBMITTED_TO_CD: "Soumis au RA", ADJUSTMENTS_NEEDED: "Ajustements",
-    VALIDATED: "Valide par RA", SENT_TO_OEC: "Envoye a l'OEC", ACTIVE: "Actif",
+    DRAFT: "Brouillon (REE)", SUBMITTED_TO_RA: "En attente RA", SUBMITTED_TO_CD: "En attente RA",
+    RA_ADJUSTMENTS_NEEDED: "Ajustements REE", PENDING_CD: "Attente CD",
+    ADJUSTMENTS_NEEDED: "Ajustements CD", CD_VALIDATED: "Validé CD", VALIDATED: "Validé",
+    SENT_TO_OEC: "Envoyé OEC", ACTIVE: "Actif",
   };
 
-  // Determine current sub-step
-  const allMissionsApproved = missionOrders.length > 0 && missionOrders.every((o: any) => ["FULLY_APPROVED", "SENT_TO_MEMBER", "IN_PROGRESS", "COMPLETED"].includes(o.status));
+  const mandatesDone = mandates.length > 0 && mandates.every((m: any) => m.status === "SENT_TO_MEMBERS");
+  const mandatesPendingCD = mandates.some((m: any) => m.status === "SENT_TO_CD");
+  const mandatesNeedModif = mandates.some((m: any) => m.status === "CD_MODIFICATION_REQUESTED");
+  const allMissionsApproved = missionOrders.length > 0 && missionOrders.every((o: any) => ["FULLY_APPROVED", "SENT_TO_MEMBER"].includes(o.status));
   const hasPlan = plans.length > 0;
-  const planValidated = plans.some((p: any) => p.status === "VALIDATED" || p.status === "SENT_TO_OEC" || p.status === "ACTIVE");
-  const planSentToOEC = plans.some((p: any) => p.status === "SENT_TO_OEC" || p.status === "ACTIVE");
+  const planPendingRA = plans.some((p: any) => ["SUBMITTED_TO_RA", "SUBMITTED_TO_CD"].includes(p.status));
+  const planPendingCD = plans.some((p: any) => p.status === "PENDING_CD");
+  const planValidated = plans.some((p: any) => ["CD_VALIDATED", "VALIDATED", "SENT_TO_OEC", "ACTIVE"].includes(p.status));
+  const planSentToOEC = plans.some((p: any) => ["SENT_TO_OEC", "ACTIVE"].includes(p.status));
 
   const steps = [
-    { num: 1, label: "Mandatement", desc: "RA envoie mandatement aux membres", icon: Mail },
-    { num: 2, label: "Ordres de mission", desc: "RA etablit les ordres de mission", icon: ClipboardList },
-    { num: 3, label: "Approbation DT/DG", desc: "DT et DG valident les ordres", icon: CheckCircle },
-    { num: 4, label: "Plan FOR 32", desc: "REE elabore le plan d'evaluation", icon: FileCheck },
-    { num: 5, label: "Validation RA", desc: "RA valide le plan FOR 32", icon: CheckCircle },
-    { num: 6, label: "Envoi OEC", desc: "REE envoie a l'OEC (5j avant)", icon: Send },
+    { num: 1, label: "Mandatements" }, { num: 2, label: "CD valide" },
+    { num: 3, label: "Ordres mission" }, { num: 4, label: "DT/DG" },
+    { num: 5, label: "Plan FOR 32" }, { num: 6, label: "RA vérifie" },
+    { num: 7, label: "CD valide plan" }, { num: 8, label: "Envoi OEC" },
   ];
 
-  const mandatementDone = teamMembers.some((m: any) => m.mandatementSentAt);
-
   const getCurrentStep = () => {
-    if (planSentToOEC) return 7;
-    if (planValidated) return 6;
+    if (planSentToOEC) return 9;
+    if (planValidated) return 8;
+    if (planPendingCD) return 7;
+    if (planPendingRA) return 6;
     if (hasPlan) return 5;
-    if (allMissionsApproved) return 4;
-    if (missionOrders.length > 0) return 3;
-    if (mandatementDone) return 2;
+    if (allMissionsApproved) return 5;
+    if (missionOrders.length > 0) return 4;
+    if (mandatesDone) return 3;
+    if (mandatesPendingCD || mandates.length > 0) return 2;
     return 1;
   };
-
   const currentStep = selectedRequest ? getCurrentStep() : 0;
 
   return (
@@ -203,20 +226,19 @@ export default function EvaluationPrepPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Preparation de l'Evaluation (Etape 6)</h1>
-            <p className="text-muted-foreground mt-1">Mandatement, ordres de mission, plan FOR 32</p>
+            <h1 className="text-2xl font-bold text-slate-800">Préparation de l'Évaluation (Étape 6)</h1>
+            <p className="text-muted-foreground mt-1">Mandatements, ordres de mission FOR 18, plan d'évaluation FOR 32</p>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Dossiers list */}
               <Card className="lg:col-span-1">
                 <CardHeader><CardTitle className="text-lg">Dossiers</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-2 max-h-[75vh] overflow-y-auto">
                   {requests.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucun dossier en preparation</p>
+                    <p className="text-sm text-muted-foreground">Aucun dossier en préparation</p>
                   ) : requests.map((r) => (
                     <div key={r.id} onClick={() => selectRequest(r)}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedRequest?.id === r.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
@@ -230,194 +252,151 @@ export default function EvaluationPrepPage() {
 
               <div className="lg:col-span-3 space-y-6">
                 {!selectedRequest ? (
-                  <Card><CardContent className="pt-6"><p className="text-center text-muted-foreground py-8">Selectionnez un dossier</p></CardContent></Card>
+                  <Card><CardContent className="pt-6"><p className="text-center text-muted-foreground py-8">Sélectionnez un dossier</p></CardContent></Card>
                 ) : (
                   <>
-                    {/* Step progress indicator */}
+                    {/* Step progress */}
                     <Card>
                       <CardContent className="pt-6">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between overflow-x-auto pb-2">
                           {steps.map((step, i) => (
-                            <div key={step.num} className="flex items-center flex-1">
+                            <div key={step.num} className="flex items-center flex-1 min-w-0">
                               <div className={`flex flex-col items-center ${currentStep > step.num ? "text-green-600" : currentStep === step.num ? "text-primary" : "text-gray-300"}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${currentStep > step.num ? "bg-green-100 border-green-500" : currentStep === step.num ? "bg-primary/10 border-primary" : "border-gray-200"}`}>
-                                  {currentStep > step.num ? <CheckCircle className="w-4 h-4" /> : step.num}
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${currentStep > step.num ? "bg-green-100 border-green-500" : currentStep === step.num ? "bg-primary/10 border-primary" : "border-gray-200"}`}>
+                                  {currentStep > step.num ? <CheckCircle className="w-3.5 h-3.5" /> : step.num}
                                 </div>
-                                <span className="text-[10px] mt-1 text-center leading-tight max-w-[80px]">{step.label}</span>
+                                <span className="text-[9px] mt-1 text-center leading-tight max-w-[70px]">{step.label}</span>
                               </div>
-                              {i < steps.length - 1 && (
-                                <div className={`flex-1 h-0.5 mx-1 ${currentStep > step.num ? "bg-green-400" : "bg-gray-200"}`} />
-                              )}
+                              {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-0.5 ${currentStep > step.num ? "bg-green-400" : "bg-gray-200"}`} />}
                             </div>
                           ))}
                         </div>
                       </CardContent>
                     </Card>
 
-                    {/* Step 6.1: Mandatement */}
-                    <Card className={currentStep === 1 ? "border-primary" : ""}>
+                    {/* 6.1 Mandatements */}
+                    <Card className={currentStep <= 2 ? "border-primary" : ""}>
                       <CardHeader>
                         <div className="flex justify-between items-center">
                           <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <Mail className="w-5 h-5" /> 6.1 Mandatement
-                            </CardTitle>
-                            <CardDescription>Envoyez un message personnalise a chaque membre de l'equipe</CardDescription>
+                            <CardTitle className="text-lg flex items-center gap-2"><Mail className="w-5 h-5" /> 6.1 Mandatements</CardTitle>
+                            <CardDescription>Tâches et missions de chaque membre → CD valide → envoi aux membres</CardDescription>
                           </div>
-                          {currentStep <= 1 && (
-                            <Button onClick={() => setShowMandatement(true)}>
-                              <Send className="w-4 h-4 mr-2" />Envoyer mandatement
-                            </Button>
-                          )}
-                          {currentStep > 1 && <Badge className="bg-green-100 text-green-800">Fait</Badge>}
+                          <div className="flex gap-2">
+                            {mandates.length === 0 && <Button onClick={() => setShowMandateDialog(true)} size="sm"><Plus className="w-4 h-4 mr-1" />Préparer</Button>}
+                            {mandates.length > 0 && mandates.every((m: any) => m.status === "DRAFT") && (
+                              <Button onClick={sendMandatesToCD} disabled={actionLoading} size="sm"><Send className="w-4 h-4 mr-1" />Envoyer au CD</Button>
+                            )}
+                            {mandatesNeedModif && <Button onClick={() => setShowMandateDialog(true)} size="sm" variant="outline"><Pencil className="w-4 h-4 mr-1" />Modifier</Button>}
+                            {mandatesDone && <Badge className="bg-green-100 text-green-800">Envoyés ✓</Badge>}
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-2">
-                          {teamMembers.map((m: any) => (
-                            <div key={m.id} className="flex items-center justify-between p-2 border rounded">
-                              <div>
-                                <p className="font-medium text-sm">{m.expert?.fullName}</p>
-                                <p className="text-xs text-muted-foreground">{m.role}</p>
+                        {mandatesNeedModif && mandates[0]?.cdComments && (
+                          <Alert className="mb-4 border-amber-300 bg-amber-50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription><strong>CD demande modifications:</strong><p className="mt-1">{mandates[0].cdComments}</p></AlertDescription>
+                          </Alert>
+                        )}
+                        {mandates.length > 0 ? (
+                          <Table>
+                            <TableHeader><TableRow><TableHead>Membre</TableHead><TableHead>Rôle</TableHead><TableHead>Tâches</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                              {mandates.map((m: any) => (
+                                <TableRow key={m.id}>
+                                  <TableCell className="font-medium">{m.memberName}</TableCell>
+                                  <TableCell><Badge variant="outline">{m.memberRole}</Badge></TableCell>
+                                  <TableCell className="text-sm max-w-[200px] truncate">{m.tasks || "-"}</TableCell>
+                                  <TableCell><Badge variant={m.status === "SENT_TO_MEMBERS" ? "default" : "outline"}>{mandateStatusLabels[m.status] || m.status}</Badge></TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <div className="space-y-2">
+                            {teamMembers.map((m: any) => (
+                              <div key={m.id} className="flex items-center justify-between p-2 border rounded">
+                                <div><p className="font-medium text-sm">{m.expert?.fullName}</p><p className="text-xs text-muted-foreground">{m.role}</p></div>
                               </div>
-                              <Badge variant="secondary" className="text-xs">{m.expert?.email}</Badge>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
+                        {mandatesPendingCD && <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200"><p className="text-sm text-blue-800">En attente de validation par le CD.</p></div>}
                       </CardContent>
                     </Card>
 
-                    {/* Step 6.2 & 6.3: Mission Orders + DT/DG Approval */}
-                    <Card className={currentStep >= 2 && currentStep <= 3 ? "border-primary" : ""}>
+                    {/* 6.3 Mission Orders */}
+                    <Card className={currentStep >= 3 && currentStep <= 4 ? "border-primary" : ""}>
                       <CardHeader>
                         <div className="flex justify-between items-center">
                           <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <ClipboardList className="w-5 h-5" /> 6.2 / 6.3 Ordres de Mission + Approbation DT/DG
-                            </CardTitle>
-                            <CardDescription>Creez les ordres de mission - DT et DG doivent les valider</CardDescription>
+                            <CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="w-5 h-5" /> 6.3 Ordres de Mission (FOR 18)</CardTitle>
+                            <CardDescription>RA établit → DT valide → DG valide → RA transmet à l'équipe</CardDescription>
                           </div>
-                          {currentStep >= 2 && !allMissionsApproved && (
-                            <Button onClick={() => setShowCreateMission(true)}>
-                              <Plus className="w-4 h-4 mr-2" />Nouvel Ordre
-                            </Button>
-                          )}
-                          {currentStep < 2 && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-                              Envoyez d'abord le mandatement
-                            </Badge>
-                          )}
+                          {mandatesDone && !allMissionsApproved && <Button onClick={() => setShowCreateMission(true)} size="sm"><Plus className="w-4 h-4 mr-1" />Nouvel Ordre</Button>}
+                          {!mandatesDone && currentStep < 3 && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Mandatements d'abord</Badge>}
                         </div>
                       </CardHeader>
                       <CardContent>
                         <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>N Ordre</TableHead>
-                              <TableHead>Membre</TableHead>
-                              <TableHead>Statut</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
+                          <TableHeader><TableRow><TableHead>N°</TableHead><TableHead>Membre</TableHead><TableHead>Statut</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {missionOrders.map((order: any) => (
                               <TableRow key={order.id}>
                                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                                <TableCell>{order.teamMemberName || "---"}</TableCell>
+                                <TableCell>{order.teamMemberName || "—"}</TableCell>
+                                <TableCell><Badge variant={["FULLY_APPROVED", "SENT_TO_MEMBER"].includes(order.status) ? "default" : "outline"}>{missionStatusLabels[order.status] || order.status}</Badge></TableCell>
                                 <TableCell>
-                                  <Badge variant={order.status === "FULLY_APPROVED" ? "default" : "outline"}>
-                                    {missionStatusLabels[order.status] || order.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {order.status === "FULLY_APPROVED" && (
-                                    <Button size="sm" variant="outline" onClick={() => sendMissionToMember(order.id)}>
-                                      <Send className="w-3 h-3 mr-1" />Envoyer au membre
-                                    </Button>
-                                  )}
+                                  {order.status === "FULLY_APPROVED" && <Button size="sm" variant="outline" onClick={() => sendMissionToMember(order.id)}><Send className="w-3 h-3 mr-1" />Transmettre</Button>}
+                                  {order.status === "SENT_TO_MEMBER" && <Badge className="bg-green-100 text-green-800 text-xs">Envoyé ✓</Badge>}
                                 </TableCell>
                               </TableRow>
                             ))}
-                            {missionOrders.length === 0 && (
-                              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-4">Aucun ordre de mission cree</TableCell></TableRow>
-                            )}
+                            {missionOrders.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-4">Aucun ordre</TableCell></TableRow>}
                           </TableBody>
                         </Table>
-                        {missionOrders.some((o: any) => ["PENDING_DT_APPROVAL", "DT_APPROVED", "PENDING_DG_APPROVAL"].includes(o.status)) && (
-                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                            <p className="text-sm text-amber-800">En attente d'approbation DT/DG. Les ordres seront valides apres approbation du DT puis du DG.</p>
-                          </div>
+                        {missionOrders.some((o: any) => ["PENDING_DT_APPROVAL", "PENDING_DG_APPROVAL"].includes(o.status)) && (
+                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200"><p className="text-sm text-amber-800">En attente d'approbation DT / DG.</p></div>
                         )}
                       </CardContent>
                     </Card>
 
-                    {/* Step 6.4 & 6.5: Plan FOR 32 (REE creates, RA validates) */}
-                    <Card className={currentStep >= 4 && currentStep <= 5 ? "border-primary" : ""}>
+                    {/* 6.4-6.6 Plan FOR 32 */}
+                    <Card className={currentStep >= 5 && currentStep <= 7 ? "border-primary" : ""}>
                       <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <FileCheck className="w-5 h-5" /> 6.4 / 6.5 Plan d'Evaluation FOR 32
-                        </CardTitle>
-                        <CardDescription>Le REE elabore le plan FOR 32 - Le RA le valide</CardDescription>
+                        <CardTitle className="text-lg flex items-center gap-2"><FileCheck className="w-5 h-5" /> 6.4-6.6 Plan FOR 32</CardTitle>
+                        <CardDescription>REE élabore → RA vérifie alignement norme → CD valide → REE envoie OEC (5j avant)</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {!hasPlan ? (
                           <div className="text-center py-6 text-muted-foreground">
-                            <p>En attente que le REE elabore le plan d'evaluation FOR 32...</p>
-                            <p className="text-xs mt-1">Le REE peut creer le plan depuis son espace</p>
+                            <p>En attente que le REE élabore le plan FOR 32...</p>
                           </div>
-                        ) : (
-                          plans.map((plan: any) => (
-                            <div key={plan.id} className="border rounded-lg p-4 space-y-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium">{plan.planCode || "Plan FOR 32"}</p>
-                                  <Badge variant="outline" className="mt-1">{planStatusLabels[plan.status] || plan.status}</Badge>
-                                </div>
-                                <div className="flex gap-2">
-                                  {(plan.status === "DRAFT" || plan.status === "SUBMITTED_TO_CD") && (
-                                    <Button size="sm" onClick={() => validatePlan(plan.id)}>
-                                      <CheckCircle className="w-4 h-4 mr-1" />Valider FOR 32
-                                    </Button>
-                                  )}
-                                  {plan.status === "VALIDATED" && (
-                                    <Button size="sm" onClick={() => sendPlanToOEC(plan.id)}>
-                                      <Send className="w-4 h-4 mr-1" />Envoyer a l'OEC (5j avant)
-                                    </Button>
-                                  )}
-                                  {plan.status === "SENT_TO_OEC" && (
-                                    <Badge className="bg-green-100 text-green-800">Envoye a l'OEC</Badge>
-                                  )}
-                                </div>
+                        ) : plans.map((plan: any) => (
+                          <div key={plan.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{plan.planCode || "Plan FOR 32"}</p>
+                                <Badge variant="outline" className="mt-1">{planStatusLabels[plan.status] || plan.status}</Badge>
                               </div>
-                              {plan.dailyProgram && (
-                                <div className="bg-gray-50 p-3 rounded">
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Programme journalier</p>
-                                  <p className="text-sm whitespace-pre-line">{plan.dailyProgram}</p>
-                                </div>
-                              )}
-                              {plan.activityDistribution && (
-                                <div className="bg-gray-50 p-3 rounded">
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Repartition des activites</p>
-                                  <p className="text-sm whitespace-pre-line">{plan.activityDistribution}</p>
-                                </div>
-                              )}
-                              {plan.evaluationDate && (
-                                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                                  <p className="text-sm font-medium text-blue-800">
-                                    Date d'evaluation: {new Date(plan.evaluationDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                                  </p>
-                                </div>
-                              )}
+                              <div className="flex gap-2">
+                                {["SUBMITTED_TO_RA", "SUBMITTED_TO_CD"].includes(plan.status) && (
+                                  <Button size="sm" onClick={() => { setReviewingPlanId(plan.id); setPlanReviewApproved(true); setShowPlanReviewDialog(true); }}>
+                                    <CheckCircle className="w-4 h-4 mr-1" />Vérifier
+                                  </Button>
+                                )}
+                                {["SENT_TO_OEC", "ACTIVE"].includes(plan.status) && <Badge className="bg-green-100 text-green-800">Envoyé OEC ✓</Badge>}
+                              </div>
                             </div>
-                          ))
-                        )}
-                        {planSentToOEC && (
-                          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-sm font-medium text-green-800">
-                              Le plan FOR 32 a ete envoye a l'OEC. L'evaluation peut se derouler selon le planning prevu.
-                            </p>
+                            {plan.dailyProgram && <div className="bg-gray-50 p-3 rounded"><p className="text-xs font-medium text-muted-foreground mb-1">Programme</p><p className="text-sm whitespace-pre-line">{plan.dailyProgram}</p></div>}
+                            {plan.activityDistribution && <div className="bg-gray-50 p-3 rounded"><p className="text-xs font-medium text-muted-foreground mb-1">Répartition</p><p className="text-sm whitespace-pre-line">{plan.activityDistribution}</p></div>}
+                            {plan.cdAdjustmentRequests && !["CD_VALIDATED", "VALIDATED", "SENT_TO_OEC"].includes(plan.status) && (
+                              <Alert className="border-amber-300 bg-amber-50"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Ajustements:</strong> {plan.cdAdjustmentRequests}</AlertDescription></Alert>
+                            )}
                           </div>
-                        )}
+                        ))}
+                        {planSentToOEC && <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200"><p className="text-sm font-medium text-green-800">Plan FOR 32 envoyé à l'OEC — L'évaluation peut se dérouler.</p></div>}
                       </CardContent>
                     </Card>
                   </>
@@ -426,75 +405,96 @@ export default function EvaluationPrepPage() {
             </div>
           )}
 
-          {/* Dialog Mandatement */}
-          <Dialog open={showMandatement} onOpenChange={setShowMandatement}>
-            <DialogContent className="max-w-2xl">
+          {/* Dialog: Mandatements */}
+          <Dialog open={showMandateDialog} onOpenChange={setShowMandateDialog}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Mandatement de l'Equipe</DialogTitle>
-                <DialogDescription>Redigez un message personnalise pour chaque membre de l'equipe d'evaluation</DialogDescription>
+                <DialogTitle>Préparer les Mandatements</DialogTitle>
+                <DialogDescription>Définissez les tâches et missions de chaque membre</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-4">
                 {teamMembers.map((m: any) => (
-                  <div key={m.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{m.expert?.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{m.role} - {m.expert?.email}</p>
-                      </div>
-                      <Badge variant="outline">{m.role}</Badge>
+                  <div key={m.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{m.expert?.fullName}</p>
+                      <Badge variant="outline" className="text-xs">{m.role}</Badge>
                     </div>
-                    <Textarea
-                      value={mandatementMessages[m.id] || ""}
-                      onChange={(e) => setMandatementMessages({ ...mandatementMessages, [m.id]: e.target.value })}
-                      placeholder={`Message de mandatement pour ${m.expert?.fullName}...`}
-                      rows={3}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Tâches</Label>
+                        <Textarea value={mandateEntries[m.id]?.tasks || ""} onChange={(e) => setMandateEntries({ ...mandateEntries, [m.id]: { ...mandateEntries[m.id], tasks: e.target.value } })} placeholder="Tâches..." rows={3} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Missions</Label>
+                        <Textarea value={mandateEntries[m.id]?.missions || ""} onChange={(e) => setMandateEntries({ ...mandateEntries, [m.id]: { ...mandateEntries[m.id], missions: e.target.value } })} placeholder="Missions..." rows={3} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Objectifs (optionnel)</Label>
+                      <Input value={mandateEntries[m.id]?.objectives || ""} onChange={(e) => setMandateEntries({ ...mandateEntries, [m.id]: { ...mandateEntries[m.id], objectives: e.target.value } })} placeholder="Objectifs..." />
+                    </div>
                   </div>
                 ))}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowMandatement(false)}>Annuler</Button>
-                <Button onClick={sendMandatement}>
-                  <Send className="w-4 h-4 mr-2" />Envoyer les mandatements
-                </Button>
+                <Button variant="outline" onClick={() => setShowMandateDialog(false)}>Annuler</Button>
+                <Button onClick={createMandates} disabled={actionLoading}>{actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}Enregistrer</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Dialog Create Mission Order */}
+          {/* Dialog: Mission Order */}
           <Dialog open={showCreateMission} onOpenChange={setShowCreateMission}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nouvel Ordre de Mission</DialogTitle>
-                <DialogDescription>L'ordre sera soumis au DT puis au DG pour approbation</DialogDescription>
+                <DialogTitle>Nouvel Ordre de Mission (FOR 18)</DialogTitle>
+                <DialogDescription>Soumis au DT puis au DG pour approbation</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Membre de l'equipe</Label>
-                  <select className="w-full border rounded-md p-2 text-sm" value={missionForm.teamMemberId}
-                    onChange={(e) => setMissionForm({ ...missionForm, teamMemberId: e.target.value })}>
-                    <option value="">Selectionner...</option>
-                    {teamMembers.map((m: any) => (
-                      <option key={m.id} value={m.expert?.id}>{m.expert?.fullName} ({m.role})</option>
-                    ))}
+                  <Label>Membre</Label>
+                  <select className="w-full border rounded-md p-2 text-sm" value={missionForm.teamMemberId} onChange={(e) => setMissionForm({ ...missionForm, teamMemberId: e.target.value })}>
+                    <option value="">Sélectionner...</option>
+                    {teamMembers.map((m: any) => <option key={m.id} value={m.expert?.id}>{m.expert?.fullName} ({m.role})</option>)}
                   </select>
                 </div>
-                <div>
-                  <Label>Details de la mission</Label>
-                  <Textarea value={missionForm.missionDetails} onChange={(e) => setMissionForm({ ...missionForm, missionDetails: e.target.value })}
-                    placeholder="Objectifs, lieu, duree..." rows={3} />
-                </div>
-                <div>
-                  <Label>Checklist des taches</Label>
-                  <Textarea value={missionForm.checklistTasks} onChange={(e) => setMissionForm({ ...missionForm, checklistTasks: e.target.value })}
-                    placeholder="1. Verifier les equipements\n2. Examiner les enregistrements..." rows={3} />
-                </div>
-                <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
-Workflow: Ordre cree {"-->"} DT approuve {"-->"} DG approuve {"-->"} Envoye au membre                </div>
+                <div><Label>Détails de la mission</Label><Textarea value={missionForm.missionDetails} onChange={(e) => setMissionForm({ ...missionForm, missionDetails: e.target.value })} placeholder="Objectifs, lieu, durée..." rows={3} /></div>
+                <div><Label>Checklist</Label><Textarea value={missionForm.checklistTasks} onChange={(e) => setMissionForm({ ...missionForm, checklistTasks: e.target.value })} placeholder="1. Vérifier...\n2. Examiner..." rows={3} /></div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowCreateMission(false)}>Annuler</Button>
-                <Button onClick={createMissionOrder} disabled={!missionForm.teamMemberId}>Creer l'ordre</Button>
+                <Button onClick={createMissionOrder} disabled={actionLoading || !missionForm.teamMemberId}>Créer</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog: Plan Review */}
+          <Dialog open={showPlanReviewDialog} onOpenChange={setShowPlanReviewDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Vérification du Plan FOR 32</DialogTitle>
+                <DialogDescription>Vérifiez l'alignement avec la norme d'accréditation. Votre validation sera transmise au CD.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <Button variant={planReviewApproved ? "default" : "outline"} onClick={() => setPlanReviewApproved(true)} className={planReviewApproved ? "bg-green-600 hover:bg-green-700" : ""}>
+                    <CheckCircle className="w-4 h-4 mr-2" />Conforme
+                  </Button>
+                  <Button variant={!planReviewApproved ? "destructive" : "outline"} onClick={() => setPlanReviewApproved(false)}>
+                    <XCircle className="w-4 h-4 mr-2" />Ajustements
+                  </Button>
+                </div>
+                <div>
+                  <Label>{planReviewApproved ? "Commentaires (optionnel)" : "Détails des ajustements"}</Label>
+                  <Textarea value={planReviewComments} onChange={(e) => setPlanReviewComments(e.target.value)} placeholder={planReviewApproved ? "Commentaires..." : "Incohérences à corriger..."} rows={4} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPlanReviewDialog(false)}>Annuler</Button>
+                <Button onClick={reviewPlan} disabled={actionLoading || (!planReviewApproved && !planReviewComments.trim())} className={planReviewApproved ? "bg-green-600 hover:bg-green-700" : ""} variant={planReviewApproved ? "default" : "destructive"}>
+                  {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {planReviewApproved ? "Transmettre au CD" : "Demander ajustements"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

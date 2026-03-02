@@ -13,12 +13,18 @@ import { apiRequest } from "@/lib/queryClient";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  DRAFT:            { label: "Brouillon",              color: "bg-gray-100 text-gray-700",    icon: FileCheck },
-  SUBMITTED_TO_CD:  { label: "En attente du RA",       color: "bg-blue-100 text-blue-700",    icon: Clock },
-  ADJUSTMENTS_NEEDED: { label: "Ajustements demandés", color: "bg-amber-100 text-amber-700",  icon: AlertCircle },
-  VALIDATED:        { label: "Validé par le RA",       color: "bg-green-100 text-green-700",  icon: CheckCircle },
-  SENT_TO_OEC:      { label: "Envoyé à l'OEC",         color: "bg-primary/10 text-primary",   icon: Send },
-  ACTIVE:           { label: "Actif",                  color: "bg-green-100 text-green-700",  icon: CheckCircle },
+  DRAFT:                { label: "Brouillon",              color: "bg-gray-100 text-gray-700",    icon: FileCheck },
+  SUBMITTED_TO_RA:      { label: "Soumis au RA",           color: "bg-blue-100 text-blue-700",    icon: Clock },
+  RA_ADJUSTMENTS_NEEDED:{ label: "Ajustements RA demandés",color: "bg-amber-100 text-amber-700",  icon: AlertCircle },
+  RA_APPROVED:          { label: "Approuvé par le RA",     color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  PENDING_CD:           { label: "En attente validation CD",color: "bg-indigo-100 text-indigo-700", icon: Clock },
+  CD_VALIDATED:         { label: "Validé par le CD",       color: "bg-green-100 text-green-700",  icon: CheckCircle },
+  SENT_TO_OEC:          { label: "Envoyé à l'OEC",         color: "bg-primary/10 text-primary",   icon: Send },
+  // Legacy statuses
+  SUBMITTED_TO_CD:      { label: "En attente du RA",       color: "bg-blue-100 text-blue-700",    icon: Clock },
+  ADJUSTMENTS_NEEDED:   { label: "Ajustements demandés",   color: "bg-amber-100 text-amber-700",  icon: AlertCircle },
+  VALIDATED:            { label: "Validé",                 color: "bg-green-100 text-green-700",  icon: CheckCircle },
+  ACTIVE:               { label: "Actif",                  color: "bg-green-100 text-green-700",  icon: CheckCircle },
 };
 
 const emptyForm = { dailyProgram: "", activityDistribution: "", schedules: "", documentsToExamine: "" };
@@ -148,9 +154,9 @@ export default function EvaluationPlanPage() {
 
   if (!user) return null;
 
-  const canEdit = !plan || plan.status === "DRAFT" || plan.status === "ADJUSTMENTS_NEEDED";
-  const canSubmitToRA = plan && (plan.status === "DRAFT" || plan.status === "ADJUSTMENTS_NEEDED");
-  const canSendToOEC = plan && plan.status === "VALIDATED";
+  const canEdit = !plan || plan.status === "DRAFT" || plan.status === "ADJUSTMENTS_NEEDED" || plan.status === "RA_ADJUSTMENTS_NEEDED";
+  const canSubmitToRA = plan && (plan.status === "DRAFT" || plan.status === "ADJUSTMENTS_NEEDED" || plan.status === "RA_ADJUSTMENTS_NEEDED");
+  const canSendToOEC = plan && (plan.status === "VALIDATED" || plan.status === "CD_VALIDATED");
   const statusCfg = plan ? (STATUS_CONFIG[plan.status] ?? { label: plan.status, color: "bg-gray-100 text-gray-700", icon: FileCheck }) : null;
 
   return (
@@ -224,13 +230,13 @@ export default function EvaluationPlanPage() {
                       </Card>
                     )}
 
-                    {/* Adjustment feedback */}
-                    {plan?.status === "ADJUSTMENTS_NEEDED" && plan.cdAdjustmentRequests && (
+                    {/* Adjustment feedback from RA */}
+                    {(plan?.status === "ADJUSTMENTS_NEEDED" || plan?.status === "RA_ADJUSTMENTS_NEEDED") && (plan.cdAdjustmentRequests || plan.raAdjustmentNotes) && (
                       <Alert variant="destructive" className="border-amber-300 bg-amber-50 text-amber-800">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
                           <p className="font-semibold mb-1">Ajustements demandés par le RA :</p>
-                          <p>{plan.cdAdjustmentRequests}</p>
+                          <p>{plan.raAdjustmentNotes || plan.cdAdjustmentRequests}</p>
                         </AlertDescription>
                       </Alert>
                     )}
@@ -321,12 +327,28 @@ export default function EvaluationPlanPage() {
                       </CardContent>
                     </Card>
 
-                    {/* Workflow hint */}
-                    {plan?.status === "SUBMITTED_TO_CD" && (
+                    {/* Workflow hints */}
+                    {(plan?.status === "SUBMITTED_TO_CD" || plan?.status === "SUBMITTED_TO_RA") && (
                       <Alert className="border-blue-200 bg-blue-50">
                         <Clock className="h-4 w-4 text-blue-600" />
                         <AlertDescription className="text-blue-700">
-                          Plan soumis au RA. En attente de validation. Vous serez notifié si des ajustements sont requis.
+                          Plan soumis au RA. En attente de vérification de conformité aux normes d'accréditation.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {(plan?.status === "RA_APPROVED" || plan?.status === "PENDING_CD") && (
+                      <Alert className="border-indigo-200 bg-indigo-50">
+                        <Clock className="h-4 w-4 text-indigo-600" />
+                        <AlertDescription className="text-indigo-700">
+                          Plan approuvé par le RA, transmis au CD pour validation finale.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {plan?.status === "CD_VALIDATED" && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-700">
+                          Plan validé par le CD. Vous pouvez maintenant l'envoyer à l'OEC (au moins 5 jours avant l'évaluation sur site).
                         </AlertDescription>
                       </Alert>
                     )}

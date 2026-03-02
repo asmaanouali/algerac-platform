@@ -71,7 +71,18 @@ public enum RequestStatus {
     DOCUMENTARY_REVIEW_DEFICIENCIES,    // Manquements identifiés (legacy)
     
     // Préparation évaluation
+    MANDATES_PREPARATION,               // RA prépare les mandatements
+    MANDATES_PENDING_CD,                // Mandatements envoyés au CD pour validation
+    MANDATES_CD_MODIFICATION,           // CD demande des modifications sur les mandatements
+    MANDATES_SENT_TO_TEAM,              // CD a approuvé et envoyé aux membres
+    MISSION_ORDERS_PENDING,             // RA établit les demandes d'ordre de mission
+    MISSION_ORDERS_PENDING_DT,          // Ordres de mission en attente validation DT
+    MISSION_ORDERS_PENDING_DG,          // Ordres de mission en attente validation DG
+    MISSION_ORDERS_SENT,                // Ordres de mission envoyés à l'équipe
     EVALUATION_PLAN_PREPARATION,        // Préparation du plan d'évaluation
+    EVALUATION_PLAN_PENDING_RA,         // Plan FOR 32 soumis au RA
+    EVALUATION_PLAN_RA_APPROVED,        // Plan validé par le RA
+    EVALUATION_PLAN_PENDING_CD,         // Plan en attente de validation CD
     EVALUATION_PLAN_VALIDATION,         // Plan en validation par CD
     EVALUATION_PLANNED,                 // Évaluation planifiée
     

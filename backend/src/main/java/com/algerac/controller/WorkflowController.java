@@ -41,6 +41,8 @@ public class WorkflowController {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
+    private final MandateRepository mandateRepository;
+    private final PreparationMeetingRepository prepMeetingRepository;
 
     // ========== AVAILABILITY / PLANNING ==========
 
@@ -691,8 +693,63 @@ public class WorkflowController {
     }
 
     /**
+     * CD valide la revue documentaire lorsqu'aucun manquement n'a été identifié.
+     * Le processus passe directement à la phase suivante sans impliquer l'OEC.
+     */
+    @PostMapping("/documentary-review/{id}/cd-validate-no-deficiency")
+    public ResponseEntity<ApiResponse> cdValidateNoDeficiency(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            String comments = body.get("comments");
+
+            review.setCdFinalDecision("CONTINUE");
+            review.setCdDecisionComments(comments);
+            review.setStatus(DocumentaryReviewStatus.CD_DECISION_CONTINUE);
+            docReviewRepository.save(review);
+
+            AccreditationRequest request = review.getRequest();
+            request.setStatus(RequestStatus.DOCUMENTARY_REVIEW_COMPLETED);
+            request.setCurrentStep("Revue documentaire terminée - Aucun manquement - Préparation évaluation");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
+            // Notifier le RA
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(
+                    request.getAssignedToRa().getId(),
+                    "Revue documentaire terminée — Aucun manquement",
+                    "La revue documentaire pour le dossier " + request.getReferenceNumber()
+                        + " est terminée. Aucun manquement n'a été identifié. Vous pouvez passer à la préparation de l'évaluation.",
+                    "ACTION_REQUIRED"
+                );
+            }
+
+            // Notifier l'OEC
+            if (request.getOec() != null) {
+                notificationService.createNotification(
+                    request.getOec().getId(),
+                    "Revue documentaire terminée",
+                    "La revue documentaire pour votre dossier " + request.getReferenceNumber()
+                        + " est terminée. Aucun manquement n'a été identifié. La phase d'évaluation sera prochainement planifiée.",
+                    "INFO"
+                );
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Revue documentaire validée — Aucun manquement", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * CD envoie les résultats/synthèse à l'OEC.
      * Le CD peut écrire sa propre synthèse ou envoyer les résultats de l'équipe tels quels.
+     * Utilisé uniquement quand des manquements ont été identifiés.
      */
     @PostMapping("/documentary-review/{id}/cd-send-to-oec")
     public ResponseEntity<ApiResponse> cdSendDocReviewToOEC(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpSession session) {
@@ -878,6 +935,342 @@ public class WorkflowController {
         return ResponseEntity.ok(paymentRepository.findById(review.getPaymentId()).orElse(null));
     }
 
+    // ========== MANDATEMENTS (STEP 6.1) ==========
+
+    /**
+     * RA crée les mandatements pour les membres de l'équipe.
+     */
+    @PostMapping("/mandates/create-all")
+    public ResponseEntity<ApiResponse> createMandates(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            AccreditationRequest request = requestRepository.findById(requestId)
+                    .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (teams.isEmpty()) throw new RuntimeException("Aucune équipe trouvée pour ce dossier");
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> mandatesData = (List<Map<String, Object>>) body.get("mandates");
+
+            List<Mandate> created = new ArrayList<>();
+            for (Map<String, Object> m : mandatesData) {
+                Long memberId = ((Number) m.get("memberId")).longValue();
+                TeamMember member = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new RuntimeException("Membre non trouvé: " + memberId));
+
+                Mandate mandate = Mandate.builder()
+                        .request(request)
+                        .teamMember(member)
+                        .tasks((String) m.get("tasks"))
+                        .missions((String) m.get("missions"))
+                        .objectives((String) m.get("objectives"))
+                        .status(MandateStatus.DRAFT)
+                        .build();
+                created.add(mandateRepository.save(mandate));
+            }
+
+            request.setStatus(RequestStatus.MANDATES_PREPARATION);
+            request.setCurrentStep("Mandatements en préparation");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
+            return ResponseEntity.ok(ApiResponse.success("Mandatements créés: " + created.size(), created));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA envoie les mandatements au CD pour validation.
+     */
+    @PostMapping("/mandates/send-to-cd")
+    public ResponseEntity<ApiResponse> sendMandatesToCD(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            List<Mandate> mandates = mandateRepository.findByRequest_Id(requestId);
+            if (mandates.isEmpty()) throw new RuntimeException("Aucun mandatement trouvé");
+
+            for (Mandate m : mandates) {
+                if (m.getStatus() == MandateStatus.DRAFT || m.getStatus() == MandateStatus.CD_MODIFICATION_REQUESTED) {
+                    m.setStatus(MandateStatus.SENT_TO_CD);
+                    m.setSentToCdAt(LocalDateTime.now());
+                    mandateRepository.save(m);
+                }
+            }
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            request.setStatus(RequestStatus.MANDATES_PENDING_CD);
+            request.setCurrentStep("Mandatements envoyés au CD pour validation");
+            request.setPendingWith("CD");
+            requestRepository.save(request);
+
+            // Notifier les CD
+            List<User> cdUsers = userRepository.findByRole(UserRole.CD);
+            for (User cd : cdUsers) {
+                notificationService.createNotification(cd.getId(),
+                        "Mandatements à valider",
+                        "Les mandatements pour le dossier " + request.getReferenceNumber() + " sont prêts pour validation.",
+                        "ACTION_REQUIRED");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Mandatements envoyés au CD", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD approuve les mandatements et les envoie aux membres.
+     */
+    @PostMapping("/mandates/cd-approve")
+    public ResponseEntity<ApiResponse> cdApproveMandates(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            List<Mandate> mandates = mandateRepository.findByRequest_Id(requestId);
+
+            for (Mandate m : mandates) {
+                m.setStatus(MandateStatus.CD_APPROVED);
+                m.setCdApprovedAt(LocalDateTime.now());
+                mandateRepository.save(m);
+            }
+
+            // Envoyer les mandatements à chaque membre
+            for (Mandate m : mandates) {
+                m.setStatus(MandateStatus.SENT_TO_MEMBERS);
+                m.setSentToMemberAt(LocalDateTime.now());
+                mandateRepository.save(m);
+
+                // Le mandatement est aussi inscrit sur le TeamMember
+                TeamMember member = m.getTeamMember();
+                member.setMandatementMessage(m.getTasks() + "\n---\n" + m.getMissions());
+                member.setMandatementSentAt(LocalDateTime.now());
+                memberRepository.save(member);
+
+                notificationService.createNotification(
+                        member.getExpert().getId(),
+                        "Mandatement reçu",
+                        "Vous avez reçu votre mandatement pour le dossier " + m.getRequestReference()
+                                + ". Consultez vos tâches et missions.",
+                        "MANDATEMENT");
+            }
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            request.setStatus(RequestStatus.MANDATES_SENT_TO_TEAM);
+            request.setCurrentStep("Mandatements approuvés et envoyés à l'équipe");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
+            // Notifier le RA
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(request.getAssignedToRa().getId(),
+                        "Mandatements approuvés par le CD",
+                        "Le CD a approuvé et envoyé les mandatements pour le dossier " + request.getReferenceNumber(),
+                        "INFO");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Mandatements approuvés et envoyés", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD demande des modifications sur les mandatements.
+     */
+    @PostMapping("/mandates/cd-request-modifications")
+    public ResponseEntity<ApiResponse> cdRequestMandateModifications(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            String comments = (String) body.get("comments");
+            List<Mandate> mandates = mandateRepository.findByRequest_Id(requestId);
+
+            for (Mandate m : mandates) {
+                m.setStatus(MandateStatus.CD_MODIFICATION_REQUESTED);
+                m.setCdComments(comments);
+                mandateRepository.save(m);
+            }
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            request.setStatus(RequestStatus.MANDATES_CD_MODIFICATION);
+            request.setCurrentStep("CD demande modifications sur les mandatements");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(request.getAssignedToRa().getId(),
+                        "Modifications demandées sur mandatements",
+                        "Le CD demande des modifications sur les mandatements du dossier " + request.getReferenceNumber()
+                                + ". Commentaires: " + (comments != null ? comments : "-"),
+                        "ACTION_REQUIRED");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Modifications demandées", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA met à jour un mandatement.
+     */
+    @PostMapping("/mandates/{id}/update")
+    public ResponseEntity<ApiResponse> updateMandate(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Mandate mandate = mandateRepository.findById(id).orElseThrow(() -> new RuntimeException("Mandatement non trouvé"));
+            if (body.containsKey("tasks")) mandate.setTasks(body.get("tasks"));
+            if (body.containsKey("missions")) mandate.setMissions(body.get("missions"));
+            if (body.containsKey("objectives")) mandate.setObjectives(body.get("objectives"));
+            mandate.setStatus(MandateStatus.DRAFT);
+            mandateRepository.save(mandate);
+
+            return ResponseEntity.ok(ApiResponse.success("Mandatement mis à jour", mandate));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/mandates/by-request/{requestId}")
+    public ResponseEntity<?> getMandatesByRequest(@PathVariable Long requestId) {
+        return ResponseEntity.ok(mandateRepository.findByRequest_Id(requestId));
+    }
+
+    @GetMapping("/mandates/my-mandates")
+    public ResponseEntity<?> getMyMandates(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        return ResponseEntity.ok(mandateRepository.findByTeamMember_Expert_Id(userId));
+    }
+
+    @GetMapping("/mandates/pending-cd")
+    public ResponseEntity<?> getMandatesPendingCD() {
+        return ResponseEntity.ok(mandateRepository.findByStatus(MandateStatus.SENT_TO_CD));
+    }
+
+    // ========== PREPARATION MEETING (STEP 6.2 - CD) ==========
+
+    /**
+     * CD organise une réunion de préparation.
+     */
+    @PostMapping("/preparation-meeting/create")
+    public ResponseEntity<ApiResponse> createPreparationMeeting(@RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User organizer = userRepository.findById(userId).orElseThrow();
+
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+
+            String dateStr = (String) body.get("meetingDate");
+            LocalDate meetingDate = LocalDate.parse(dateStr);
+
+            PreparationMeeting meeting = PreparationMeeting.builder()
+                    .request(request)
+                    .organizedBy(organizer)
+                    .meetingDate(meetingDate)
+                    .meetingTime((String) body.get("meetingTime"))
+                    .location((String) body.get("location"))
+                    .description((String) body.get("description"))
+                    .agenda((String) body.get("agenda"))
+                    .status(PreparationMeetingStatus.PLANNED)
+                    .build();
+            prepMeetingRepository.save(meeting);
+
+            return ResponseEntity.ok(ApiResponse.success("Réunion de préparation planifiée", meeting));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD envoie les invitations de réunion aux membres de l'équipe.
+     */
+    @PostMapping("/preparation-meeting/{id}/send-invitations")
+    public ResponseEntity<ApiResponse> sendMeetingInvitations(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            PreparationMeeting meeting = prepMeetingRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Réunion non trouvée"));
+
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(meeting.getRequest().getId());
+            if (teams.isEmpty()) throw new RuntimeException("Aucune équipe trouvée");
+
+            List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+            for (TeamMember member : members) {
+                notificationService.createNotification(
+                        member.getExpert().getId(),
+                        "Réunion de préparation d'évaluation",
+                        "Vous êtes invité(e) à une réunion de préparation pour le dossier "
+                                + meeting.getRequestReference() + ".\nDate: " + meeting.getMeetingDate()
+                                + " à " + meeting.getMeetingTime()
+                                + "\nLieu: " + meeting.getLocation()
+                                + (meeting.getAgenda() != null ? "\nOrdre du jour: " + meeting.getAgenda() : ""),
+                        "MEETING_INVITATION");
+            }
+
+            meeting.setStatus(PreparationMeetingStatus.INVITATIONS_SENT);
+            meeting.setInvitationsSentAt(LocalDateTime.now());
+            prepMeetingRepository.save(meeting);
+
+            return ResponseEntity.ok(ApiResponse.success("Invitations envoyées à " + members.size() + " membre(s)", meeting));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/preparation-meeting/by-request/{requestId}")
+    public ResponseEntity<?> getMeetingsByRequest(@PathVariable Long requestId) {
+        return ResponseEntity.ok(prepMeetingRepository.findByRequest_Id(requestId));
+    }
+
+    /**
+     * Récupérer les disponibilités de tous les membres d'une équipe.
+     */
+    @GetMapping("/preparation-meeting/team-availability/{requestId}")
+    public ResponseEntity<?> getTeamAvailability(@PathVariable Long requestId) {
+        try {
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (teams.isEmpty()) return ResponseEntity.ok(List.of());
+
+            List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (TeamMember member : members) {
+                Map<String, Object> memberData = new HashMap<>();
+                memberData.put("memberId", member.getId());
+                memberData.put("expertId", member.getExpert().getId());
+                memberData.put("name", member.getExpert().getFullName());
+                memberData.put("role", member.getRole().name());
+                List<UserAvailability> unavailable = availabilityRepository.findByUser_Id(member.getExpert().getId());
+                memberData.put("unavailableDates", unavailable.stream()
+                        .map(a -> Map.of("date", a.getUnavailableDate().toString(), "reason", a.getReason() != null ? a.getReason() : ""))
+                        .collect(Collectors.toList()));
+                result.add(memberData);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // ========== EVALUATION PLAN (STEP 6) ==========
 
     @PostMapping("/evaluation-plan/{id}/submit-to-ra")
@@ -887,16 +1280,20 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan non trouvé"));
-            plan.setStatus(EvaluationPlanStatus.SUBMITTED_TO_CD);
+            plan.setStatus(EvaluationPlanStatus.SUBMITTED_TO_RA);
             evalPlanRepository.save(plan);
 
-            // Notify the RA assigned to the request
             AccreditationRequest request = plan.getRequest();
+            request.setStatus(RequestStatus.EVALUATION_PLAN_PENDING_RA);
+            request.setCurrentStep("Plan FOR 32 soumis au RA pour validation");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
             if (request.getAssignedToRa() != null) {
                 notificationService.createNotification(
                     request.getAssignedToRa().getId(),
                     "Plan d'évaluation FOR 32 soumis",
-                    "Le REE a soumis le plan d'évaluation FOR 32 pour le dossier " + request.getReferenceNumber() + ". Veuillez le valider.",
+                    "Le REE a soumis le plan d'évaluation FOR 32 pour le dossier " + request.getReferenceNumber() + ". Vérifiez l'alignement avec la norme d'accréditation.",
                     "EVALUATION_PLAN"
                 );
             }
@@ -948,6 +1345,136 @@ public class WorkflowController {
         }
     }
 
+    /**
+     * RA valide le plan FOR 32 (vérifie alignement norme) puis demande validation CD.
+     */
+    @PostMapping("/evaluation-plan/{id}/ra-validate")
+    public ResponseEntity<ApiResponse> raValidateEvaluationPlan(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan d'évaluation non trouvé"));
+            Boolean approved = (Boolean) body.getOrDefault("approved", true);
+            String comments = (String) body.get("comments");
+
+            if (approved) {
+                plan.setStatus(EvaluationPlanStatus.PENDING_CD);
+
+                AccreditationRequest request = plan.getRequest();
+                request.setStatus(RequestStatus.EVALUATION_PLAN_PENDING_CD);
+                request.setCurrentStep("Plan FOR 32 validé par RA - En attente validation CD");
+                request.setPendingWith("CD");
+                requestRepository.save(request);
+
+                // Notifier les CD
+                List<User> cdUsers = userRepository.findByRole(UserRole.CD);
+                for (User cd : cdUsers) {
+                    notificationService.createNotification(cd.getId(),
+                            "Plan FOR 32 à valider",
+                            "Le RA a validé le plan FOR 32 pour le dossier " + request.getReferenceNumber() + ". Veuillez donner votre validation.",
+                            "ACTION_REQUIRED");
+                }
+            } else {
+                plan.setCdAdjustmentRequests(comments);
+                plan.setStatus(EvaluationPlanStatus.RA_ADJUSTMENTS_NEEDED);
+
+                AccreditationRequest request = plan.getRequest();
+                request.setStatus(RequestStatus.EVALUATION_PLAN_PREPARATION);
+                request.setCurrentStep("RA demande ajustements sur le plan FOR 32");
+                request.setPendingWith("REE");
+                requestRepository.save(request);
+            }
+            evalPlanRepository.save(plan);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    approved ? "Plan validé par le RA - transmis au CD" : "Ajustements demandés au REE", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD valide le plan FOR 32.
+     */
+    @PostMapping("/evaluation-plan/{id}/cd-validate")
+    public ResponseEntity<ApiResponse> cdValidateEvaluationPlan(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            EvaluationPlan plan = evalPlanRepository.findById(id).orElseThrow(() -> new RuntimeException("Plan d'évaluation non trouvé"));
+            Boolean approved = (Boolean) body.getOrDefault("approved", true);
+            String comments = (String) body.get("comments");
+
+            if (approved) {
+                plan.setValidatedByCD(true);
+                plan.setCdValidationDate(LocalDateTime.now());
+                plan.setStatus(EvaluationPlanStatus.CD_VALIDATED);
+
+                AccreditationRequest request = plan.getRequest();
+                request.setStatus(RequestStatus.EVALUATION_PLAN_VALIDATION);
+                request.setCurrentStep("Plan FOR 32 validé par le CD — REE peut envoyer à l'OEC");
+                request.setPendingWith("REE");
+                requestRepository.save(request);
+
+                // Notifier le RA
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(request.getAssignedToRa().getId(),
+                            "Plan FOR 32 validé par le CD",
+                            "Le CD a validé le plan d'évaluation pour le dossier " + request.getReferenceNumber(),
+                            "INFO");
+                }
+
+                // Notifier le REE pour qu'il envoie le plan à l'OEC
+                if (plan.getTeam() != null) {
+                    for (TeamMember member : plan.getTeam().getMembers()) {
+                        if (member.getRole() == TeamRole.REE && member.getExpert() != null) {
+                            notificationService.createNotification(member.getExpert().getId(),
+                                    "Plan FOR 32 validé — À envoyer à l'OEC",
+                                    "Le CD a validé votre plan d'évaluation FOR 32 pour le dossier " + request.getReferenceNumber()
+                                        + ". Vous pouvez maintenant l'envoyer à l'OEC (au moins 5 jours avant l'évaluation sur site).",
+                                    "ACTION");
+                            break;
+                        }
+                    }
+                }
+            } else {
+                plan.setCdAdjustmentRequests(comments);
+                plan.setStatus(EvaluationPlanStatus.RA_ADJUSTMENTS_NEEDED);
+
+                AccreditationRequest request = plan.getRequest();
+                request.setStatus(RequestStatus.EVALUATION_PLAN_PREPARATION);
+                request.setCurrentStep("CD demande ajustements sur le plan FOR 32");
+                request.setPendingWith("REE");
+                requestRepository.save(request);
+
+                // Notifier le REE des ajustements demandés
+                if (plan.getTeam() != null) {
+                    for (TeamMember member : plan.getTeam().getMembers()) {
+                        if (member.getRole() == TeamRole.REE && member.getExpert() != null) {
+                            notificationService.createNotification(member.getExpert().getId(),
+                                    "Ajustements demandés sur le plan FOR 32",
+                                    "Le CD demande des ajustements sur votre plan d'évaluation pour le dossier " + request.getReferenceNumber()
+                                        + (comments != null ? " : " + comments : ""),
+                                    "WARNING");
+                            break;
+                        }
+                    }
+                }
+            }
+            evalPlanRepository.save(plan);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    approved ? "Plan validé par le CD" : "Ajustements demandés", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Legacy: RA validates plan (backward compatibility).
+     */
     @PostMapping("/evaluation-plan/{id}/validate")
     public ResponseEntity<ApiResponse> validateEvaluationPlan(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
@@ -957,7 +1484,7 @@ public class WorkflowController {
             if (approved) {
                 plan.setValidatedByCD(true);
                 plan.setCdValidationDate(LocalDateTime.now());
-                plan.setStatus(EvaluationPlanStatus.VALIDATED);
+                plan.setStatus(EvaluationPlanStatus.CD_VALIDATED);
 
                 AccreditationRequest request = plan.getRequest();
                 request.setStatus(RequestStatus.EVALUATION_PLAN_VALIDATION);
@@ -986,8 +1513,19 @@ public class WorkflowController {
 
             AccreditationRequest request = plan.getRequest();
             request.setStatus(RequestStatus.EVALUATION_PLANNED);
-            request.setCurrentStep("Plan d'évaluation envoyé à l'OEC");
+            request.setCurrentStep("Plan d'évaluation envoyé à l'OEC (5j avant évaluation)");
+            request.setPendingWith("OEC");
             requestRepository.save(request);
+
+            // Notifier l'OEC
+            if (request.getOec() != null) {
+                notificationService.createNotification(
+                    request.getOec().getId(),
+                    "Plan d'évaluation FOR 32 reçu",
+                    "Le plan d'évaluation FOR 32 pour votre dossier " + request.getReferenceNumber()
+                        + " vous a été transmis. L'évaluation est prévue prochainement.",
+                    "INFO");
+            }
 
             return ResponseEntity.ok(ApiResponse.success("Plan envoyé à l'OEC", plan));
         } catch (Exception e) {

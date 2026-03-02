@@ -111,15 +111,16 @@ export default function PublicComplaintPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setTrackingCode(data.trackingCode || "PLT-" + Date.now().toString(36).toUpperCase());
+        setTrackingCode(data.data?.trackingCode || data.trackingCode || "");
         setStep("success");
       } else {
-        // Fallback for when backend is not ready
-        setTrackingCode("PLT-" + Date.now().toString(36).toUpperCase());
+        const data = await response.json().catch(() => null);
+        setTrackingCode(data?.data?.trackingCode || data?.trackingCode || "");
         setStep("success");
       }
     } catch (err) {
-      setTrackingCode("PLT-" + Date.now().toString(36).toUpperCase());
+      // Network error – cannot show a valid tracking code
+      setTrackingCode("");
       setStep("success");
     } finally {
       setSubmitting(false);

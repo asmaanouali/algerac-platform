@@ -72,26 +72,31 @@ export function Sidebar() {
       { href: "/ra/preparation-cas", label: "Préparation CAS", icon: Gavel },
       { href: "/dossiers", label: "Dossiers", icon: Files },
       { href: "/planning", label: "Planning", icon: CalendarDays },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dt: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dt/ordres-mission", label: "Ordres de Mission", icon: Stamp },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     cd: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cd/manage-requests", label: "Gérer Demandes", icon: Files },
       { href: "/cd/accreditations", label: "Accréditations", icon: FileCheck },
+      { href: "/cd/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dag: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dag/paiements", label: "Suivi Paiements", icon: DollarSign },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
       { href: "/admin/utilisateurs-pending", label: "Candidatures", icon: UserPlus },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     expert: [
       { href: "/expert/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -137,15 +142,18 @@ export function Sidebar() {
       { href: "/cas-president/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cas-president/reunions", label: "Réunions CAS", icon: Gavel },
       { href: "/cas-president/decisions", label: "Décisions", icon: Crown },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dg: [
       { href: "/dg/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dg/ordres-mission", label: "Ordres de Mission", icon: Stamp },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     ges_competences: [
       { href: "/ges-competences/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/ges-competences/candidatures", label: "Candidatures", icon: UserPlus },
       { href: "/ges-competences/entretiens", label: "Planning Entretiens", icon: CalendarDays },
+      { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     rq: [
       { href: "/rq/dashboard", label: "Tableau de bord", icon: LayoutDashboard },

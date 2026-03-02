@@ -22,4 +22,13 @@ public class PaymentDTO {
     private String paymentMethod;
     private LocalDateTime paymentDate;
     private LocalDateTime createdAt;
+    
+    // New fields for DAG workflow
+    private String proofDocumentName;
+    private Boolean dagValidated;
+    private String dagComments;
+    private LocalDateTime dagValidatedDate;
+    private String oecName;
+    private String oecEmail;
+    private String requestRef;
 }

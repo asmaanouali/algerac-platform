@@ -36,6 +36,7 @@ import DashboardPage from "@/pages/dashboard-page";
 import CandidaturesOECPage from "@/pages/dt/CandidaturesOECPage";
 import UsersManagementPage from "@/pages/admin/UsersManagementPage";
 import CDAccreditations from "@/pages/cd/Accreditations";
+import CDDocumentaryDecisionPage from "@/pages/cd/DocumentaryDecisionPage";
 import TeamCompositionPage from "@/pages/ra/TeamCompositionPage";
 import DocumentaryReviewPage from "@/pages/ra/DocumentaryReviewPage";
 import EvaluationPrepPage from "@/pages/ra/EvaluationPrepPage";
@@ -143,6 +144,7 @@ function Router() {
       <Route path="/cd/gerer-demandes" component={CDManageRequestsPage} />
       <Route path="/cd/accreditations" component={CDAccreditations} />
       <Route path="/cd/pilotage-evaluation" component={EvaluationOversightPage} />
+      <Route path="/cd/revue-documentaire" component={CDDocumentaryDecisionPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />

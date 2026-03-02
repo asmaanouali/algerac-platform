@@ -34,7 +34,18 @@ public class CreateQuotationDTO {
     
     @NotNull(message = "La durée de l'évaluation est obligatoire")
     @Positive(message = "La durée doit être positive")
-    private Double evaluationDurationDays; // Durée en H/j
+    private Double evaluationDurationDays; // Durée totale en H/j
+    
+    // Durée par type de membre (H/j)
+    private Double reeDurationDays;
+    private Double etDurationDays;
+    private Double eqDurationDays;
+    private Double obsDurationDays;
+    private Double supDurationDays;
+    private Double expDurationDays;
+    
+    private Boolean cdHelpRequested; // Si le RA demande l'aide du CD
+    private String cdHelpMessage; // Message pour le CD
     
     private String details; // Notes/détails supplémentaires
 }

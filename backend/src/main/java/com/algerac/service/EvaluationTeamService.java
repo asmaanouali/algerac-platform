@@ -144,7 +144,100 @@ public class EvaluationTeamService {
     }
     
     /**
+     * RA transmet la composition de l'équipe au CD pour validation (première étape)
+     */
+    @Transactional
+    public EvaluationTeam sendToCD(Long teamId, String compositionSheet, LocalDate proposedEvaluationDate, User currentUser) {
+        EvaluationTeam team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+        
+        // Vérifier que tous les membres ont signé
+        List<TeamMember> members = memberRepository.findByTeam_Id(teamId);
+        boolean allSigned = members.stream()
+                .allMatch(m -> m.getConfidentialityAgreementSigned() && 
+                              m.getImpartialityAgreementSigned());
+        
+        if (!allSigned) {
+            throw new RuntimeException("Tous les membres doivent avoir signé les engagements");
+        }
+        
+        team.setCompositionSheetFOR26(compositionSheet);
+        team.setProposedEvaluationDate(proposedEvaluationDate);
+        team.setStatus(TeamStatus.SENT_TO_CD);
+        team = teamRepository.save(team);
+        
+        AccreditationRequest request = team.getRequest();
+        request.setStatus(RequestStatus.TEAM_SENT_TO_CD);
+        request.setCurrentStep("Composition de l'équipe en attente de validation CD");
+        request.setPendingWith("CD");
+        requestRepository.save(request);
+        
+        // Notifier le CD
+        notificationService.notifyCDTeamCompositionForReview(request);
+        
+        log.info("Composition d'équipe {} envoyée au CD pour validation", team.getTeamCode());
+        return team;
+    }
+    
+    /**
+     * CD valide la composition et la date → envoie à l'OEC
+     */
+    @Transactional
+    public EvaluationTeam cdApproveAndSendToOEC(Long teamId, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seul le CD peut approuver la composition");
+        }
+        
+        EvaluationTeam team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+        
+        team.setSentToOEC(LocalDateTime.now());
+        team.setOecResponseDeadline(LocalDateTime.now().plusDays(3));
+        team.setEvaluationDateAccepted(null);
+        team.setStatus(TeamStatus.SENT_TO_OEC);
+        team = teamRepository.save(team);
+        
+        AccreditationRequest request = team.getRequest();
+        request.setStatus(RequestStatus.TEAM_SENT_TO_OEC);
+        request.setCurrentStep("Équipe envoyée à l'OEC pour validation");
+        request.setPendingWith("OEC");
+        requestRepository.save(request);
+        
+        notificationService.notifyOECTeamComposition(request);
+        
+        log.info("CD a approuvé et envoyé la composition d'équipe {} à l'OEC", team.getTeamCode());
+        return team;
+    }
+    
+    /**
+     * CD demande des changements au RA sur la composition
+     */
+    @Transactional
+    public EvaluationTeam cdRequestChanges(Long teamId, String comments, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seul le CD peut demander des changements");
+        }
+        
+        EvaluationTeam team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+        
+        team.setStatus(TeamStatus.CD_CHANGES_REQUESTED);
+        team.setRecusationDecisionReason(comments); // Reuse field for CD change request comments
+        team = teamRepository.save(team);
+        
+        AccreditationRequest request = team.getRequest();
+        request.setStatus(RequestStatus.TEAM_CD_CHANGES_REQUESTED);
+        request.setCurrentStep("Le CD demande des modifications sur la composition");
+        request.setPendingWith("RA");
+        requestRepository.save(request);
+        
+        log.info("CD a demandé des changements sur la composition d'équipe {}", team.getTeamCode());
+        return team;
+    }
+    
+    /**
      * CD/RA transmet la composition de l'équipe à l'OEC (FOR 26) avec date d'évaluation proposée
+     * (Legacy direct send, kept for backward compatibility)
      */
     @Transactional
     public EvaluationTeam sendToOEC(Long teamId, String compositionSheet, LocalDate proposedEvaluationDate, User currentUser) {
@@ -183,7 +276,11 @@ public class EvaluationTeamService {
     }
     
     /**
-     * OEC valide ou récuse la composition de l'équipe, et accepte/refuse la date d'évaluation
+     * OEC responds to team composition and evaluation date SEPARATELY:
+     * - dateAccepted: whether OEC accepts the proposed date
+     * - membersAccepted: whether OEC accepts all team members
+     * - Can refuse date + accept members → RA changes date → resend
+     * - Can accept date + recuse member → CD examines recusation
      */
     @Transactional
     public EvaluationTeam oecResponse(Long teamId, Boolean validated, Long[] recusedMemberIds, 
@@ -199,62 +296,89 @@ public class EvaluationTeamService {
             throw new RuntimeException("Seul l'OEC concerné peut répondre");
         }
         
-        if (validated) {
-            team.setOecValidated(true);
-            team.setHasRecusation(false);
-            team.setFinalValidationDate(LocalDateTime.now());
-            
-            // Handle date acceptance/refusal
-            if (dateAccepted != null && dateAccepted) {
-                team.setEvaluationDateAccepted(true);
-            } else if (dateAccepted != null && !dateAccepted && oecProposedDate != null) {
-                team.setEvaluationDateAccepted(false);
+        // Handle date acceptance
+        if (dateAccepted != null) {
+            team.setEvaluationDateAccepted(dateAccepted);
+            if (!dateAccepted && oecProposedDate != null) {
                 team.setOecProposedDate(oecProposedDate);
                 team.setDateRefusalReason(dateRefusalReason);
             }
-            
+        }
+        
+        boolean membersAccepted = validated != null && validated;
+        boolean hasRecusedMembers = recusedMemberIds != null && recusedMemberIds.length > 0;
+        
+        // Case 1: OEC accepts both date and members - fully validated
+        if (membersAccepted && (dateAccepted == null || dateAccepted)) {
+            team.setOecValidated(true);
+            team.setHasRecusation(false);
+            team.setFinalValidationDate(LocalDateTime.now());
             team.setStatus(TeamStatus.VALIDATED);
             
             request.setStatus(RequestStatus.TEAM_VALIDATED);
             request.setCurrentStep("Équipe validée - revue documentaire");
             request.setPendingWith("CD/RA");
-        } else {
-            // OEC récuse des membres
+        }
+        // Case 2: OEC accepts members but refuses date → RA changes date
+        else if (membersAccepted && dateAccepted != null && !dateAccepted) {
+            team.setOecValidated(false);
+            team.setHasRecusation(false);
+            team.setStatus(TeamStatus.DATE_REFUSED);
+            
+            request.setStatus(RequestStatus.TEAM_DATE_REFUSED);
+            request.setCurrentStep("OEC refuse la date - RA doit proposer nouvelle date");
+            request.setPendingWith("RA");
+        }
+        // Case 3: OEC recuses member(s) - regardless of date → CD examines recusation
+        else if (hasRecusedMembers) {
+            team.setHasRecusation(true);
+            team.setRecusationReason(recusationReason);
+            team.setRecusationDate(LocalDateTime.now());
+            team.setRecusationDecision(RecusationDecision.PENDING);
+            team.setStatus(TeamStatus.MEMBER_RECUSED);
+            
+            // Mark recused members
+            for (Long memberId : recusedMemberIds) {
+                TeamMember member = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
+                member.setRecusedByOEC(true);
+                member.setRecusationReason(recusationReason);
+                memberRepository.save(member);
+            }
+            
+            request.setStatus(RequestStatus.TEAM_MEMBER_RECUSED);
+            request.setCurrentStep("Membre(s) récusé(s) - CD doit examiner la récusation");
+            request.setPendingWith("CD");
+        }
+        // Fallback: validated=false with no specific recused members (legacy support)  
+        else {
+            team.setOecValidated(false);
             team.setHasRecusation(true);
             team.setRecusationReason(recusationReason);
             team.setRecusationDate(LocalDateTime.now());
             team.setRecusationDecision(RecusationDecision.PENDING);
             team.setStatus(TeamStatus.RECUSED);
             
-            // Marquer les membres récusés
-            if (recusedMemberIds != null) {
-                for (Long memberId : recusedMemberIds) {
-                    TeamMember member = memberRepository.findById(memberId)
-                            .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
-                    member.setRecusedByOEC(true);
-                    member.setRecusationReason(recusationReason);
-                    memberRepository.save(member);
-                }
-            }
-            
             request.setStatus(RequestStatus.TEAM_RECUSED);
-            request.setCurrentStep("Membre(s) récusé(s) - remplacement nécessaire");
-            request.setPendingWith("ALGERAC/CD");
+            request.setCurrentStep("Membre(s) récusé(s) - examen nécessaire");
+            request.setPendingWith("CD");
         }
         
         team = teamRepository.save(team);
         requestRepository.save(request);
         
         // Notifier CD/RA
-        notificationService.notifyCDTeamResponse(request, validated, recusationReason);
+        notificationService.notifyCDTeamResponse(request, membersAccepted, recusationReason);
         
-        log.info("Réponse OEC équipe : {} pour {}", validated ? "VALIDÉE" : "RÉCUSÉE", 
-                team.getTeamCode());
+        log.info("Réponse OEC équipe : dateAccepted={}, membersAccepted={} pour {}", 
+                dateAccepted, membersAccepted, team.getTeamCode());
         return team;
     }
     
     /**
-     * ALGERAC examine la récusation (PRO 22)
+     * CD examine la récusation (PRO 22):
+     * - If accepted (valid recusation): RA must replace member, sign engagement, resend to CD
+     * - If rejected (invalid recusation): team maintained, OEC notified that recusation is invalid
      */
     @Transactional
     public EvaluationTeam examineRecusation(Long teamId, Boolean accepted, 
@@ -267,22 +391,40 @@ public class EvaluationTeamService {
         }
         
         if (accepted) {
+            // Récusation valide → RA doit remplacer le membre récusé
             team.setRecusationDecision(RecusationDecision.ACCEPTED);
             team.setRecusationDecisionReason(decisionReason);
             team.setStatus(TeamStatus.DRAFT); // Retour en constitution pour remplacer les membres
             
             AccreditationRequest request = team.getRequest();
             request.setStatus(RequestStatus.TEAM_DESIGNATION);
-            request.setCurrentStep("Remplacement des membres récusés");
+            request.setCurrentStep("Remplacement du membre récusé - RA doit remplacer, faire signer et renvoyer au CD");
+            request.setPendingWith("RA");
             requestRepository.save(request);
         } else {
+            // Récusation non valide → équipe maintenue, notifier OEC
             team.setRecusationDecision(RecusationDecision.REJECTED);
             team.setRecusationDecisionReason(decisionReason);
-            team.setStatus(TeamStatus.VALIDATED); // Équipe maintenue
+            team.setStatus(TeamStatus.RECUSATION_INVALID);
+            
+            // Unmark recused members since recusation is invalid
+            List<TeamMember> members = memberRepository.findByTeam_Id(teamId);
+            for (TeamMember m : members) {
+                if (m.getRecusedByOEC() != null && m.getRecusedByOEC()) {
+                    m.setRecusedByOEC(false);
+                    m.setRecusationReason(null);
+                    memberRepository.save(m);
+                }
+            }
+            
+            // Move to validated - team maintained
+            team.setOecValidated(true);
+            team.setFinalValidationDate(LocalDateTime.now());
             
             AccreditationRequest request = team.getRequest();
-            request.setStatus(RequestStatus.TEAM_VALIDATED);
-            request.setCurrentStep("Équipe maintenue - revue documentaire");
+            request.setStatus(RequestStatus.TEAM_RECUSATION_INVALID);
+            request.setCurrentStep("Récusation jugée non valide - équipe maintenue");
+            request.setPendingWith("CD/RA");
             requestRepository.save(request);
         }
         
@@ -292,7 +434,33 @@ public class EvaluationTeamService {
         notificationService.notifyOECRecusationDecision(team.getRequest(), accepted, decisionReason);
         
         log.info("Décision récusation : {} pour équipe {}", 
-                accepted ? "ACCEPTÉE" : "REJETÉE", team.getTeamCode());
+                accepted ? "ACCEPTÉE (valide)" : "REJETÉE (non valide, équipe maintenue)", team.getTeamCode());
+        return team;
+    }
+    
+    /**
+     * RA changes the proposed evaluation date (when OEC refused the date)
+     */
+    @Transactional
+    public EvaluationTeam changeProposedDate(Long teamId, LocalDate newDate, User currentUser) {
+        EvaluationTeam team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+        
+        team.setProposedEvaluationDate(newDate);
+        team.setEvaluationDateAccepted(null);
+        team.setOecProposedDate(null);
+        team.setDateRefusalReason(null);
+        // Send back to CD for validation before sending to OEC again
+        team.setStatus(TeamStatus.SENT_TO_CD);
+        team = teamRepository.save(team);
+        
+        AccreditationRequest request = team.getRequest();
+        request.setStatus(RequestStatus.TEAM_SENT_TO_CD);
+        request.setCurrentStep("Nouvelle date proposée - en attente validation CD");
+        request.setPendingWith("CD");
+        requestRepository.save(request);
+        
+        log.info("RA a proposé une nouvelle date {} pour l'équipe {}", newDate, team.getTeamCode());
         return team;
     }
 }

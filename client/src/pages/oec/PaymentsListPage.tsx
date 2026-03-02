@@ -15,6 +15,7 @@ interface Payment {
   requestId: number;
   amount: number;
   status: string;
+  paymentType?: string;
   paymentDate?: string;
   createdAt: string;
   request?: {
@@ -114,7 +115,11 @@ export default function PaymentsListPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
-      PENDING: { label: "En attente", className: "bg-yellow-100 text-yellow-800" },
+      AWAITING_FEE_SETTING: { label: "En attente des frais", className: "bg-amber-100 text-amber-800" },
+      PENDING: { label: "À payer", className: "bg-yellow-100 text-yellow-800" },
+      PROOF_SUBMITTED: { label: "Preuve envoyée", className: "bg-blue-100 text-blue-800" },
+      DAG_VALIDATED: { label: "Validé", className: "bg-green-100 text-green-800" },
+      DAG_REJECTED: { label: "Rejeté - À resoumettre", className: "bg-red-100 text-red-800" },
       COMPLETED: { label: "Payé", className: "bg-green-100 text-green-800" },
       FAILED: { label: "Échoué", className: "bg-red-100 text-red-800" },
       CANCELLED: { label: "Annulé", className: "bg-gray-100 text-gray-800" }
@@ -140,7 +145,7 @@ export default function PaymentsListPage() {
                   Mes Paiements
                 </CardTitle>
                 <CardDescription>
-                  Historique et statut de vos paiements de frais d'enregistrement
+                  Historique et statut de vos paiements (frais d'enregistrement, frais d'évaluation, etc.)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -171,7 +176,11 @@ export default function PaymentsListPage() {
                           <TableCell className="font-medium">
                             {payment.request?.referenceNumber || `#${payment.request?.id}`}
                           </TableCell>
-                          <TableCell>{payment.request?.type}</TableCell>
+                          <TableCell>
+                            {payment.paymentType === "EVALUATION_FEE" ? "Frais d'évaluation" 
+                              : payment.paymentType === "REGISTRATION_FEE" ? "Frais d'enregistrement" 
+                              : payment.paymentType || payment.request?.type}
+                          </TableCell>
                           <TableCell className="font-bold">{payment.amount.toLocaleString()} DA</TableCell>
                           <TableCell>{getStatusBadge(payment.status)}</TableCell>
                           <TableCell>
@@ -181,7 +190,7 @@ export default function PaymentsListPage() {
                             }
                           </TableCell>
                           <TableCell className="text-right">
-                            {payment.status === 'PENDING' && (
+                            {(payment.status === 'PENDING' || payment.status === 'DAG_REJECTED') && (
                               <Button
                                 size="sm"
                                 onClick={() => setLocation(`/oec/payment/${payment.requestId}`)}
@@ -189,7 +198,7 @@ export default function PaymentsListPage() {
                                 Payer
                               </Button>
                             )}
-                            {payment.status === 'COMPLETED' && (
+                            {(payment.status === 'COMPLETED' || payment.status === 'DAG_VALIDATED' || payment.status === 'PROOF_SUBMITTED') && (
                               <Button
                                 size="sm"
                                 variant="outline"

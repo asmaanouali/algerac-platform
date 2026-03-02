@@ -40,6 +40,29 @@ public class Payment {
     
     private LocalDateTime paymentDate;
     
+    // Preuve de paiement (base64 ou chemin)
+    @Column(columnDefinition = "TEXT")
+    private String proofDocumentBase64;
+    
+    private String proofDocumentName;
+    
+    private String proofDocumentMimeType;
+    
+    // Validation par le DAG
+    private Boolean dagValidated;
+    
+    private LocalDateTime dagValidatedDate;
+    
+    @Column(columnDefinition = "TEXT")
+    private String dagComments;
+    
+    private Long dagValidatedById; // ID du DAG qui a validé
+    
+    // Date à laquelle les frais ont été fixés par le DAG
+    private LocalDateTime feeSetDate;
+    
+    private Long feeSetById; // ID du DAG qui a fixé les frais
+    
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

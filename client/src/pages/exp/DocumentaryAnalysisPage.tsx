@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send, Users, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DocumentaryAnalysisPage() {
@@ -16,10 +18,16 @@ export default function DocumentaryAnalysisPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [request, setRequest] = useState<any>(null);
+  const [review, setReview] = useState<any>(null);
+  const [memberProgress, setMemberProgress] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
+  const [results, setResults] = useState("");
+  const [deficiencies, setDeficiencies] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingResults, setSubmittingResults] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   useEffect(() => { loadTeams(); }, []);
 
@@ -36,13 +44,37 @@ export default function DocumentaryAnalysisPage() {
 
   const selectTeam = async (team: any) => {
     setSelectedTeam(team);
+    setReview(null);
+    setMemberProgress([]);
+    setAlreadySubmitted(false);
     try {
-      const [reqRes, notesRes] = await Promise.all([
+      const [reqRes, notesRes, reviewRes] = await Promise.all([
         fetch(`/api/requests/${team.requestId}`, { credentials: "include" }),
         fetch(`/api/workflow/notes/by-request/${team.requestId}`, { credentials: "include" }),
+        fetch(`/api/workflow/documentary-review/by-request/${team.requestId}`, { credentials: "include" }),
       ]);
       if (reqRes.ok) setRequest(await reqRes.json());
       if (notesRes.ok) setNotes(await notesRes.json());
+      if (reviewRes.ok) {
+        const reviews = await reviewRes.json();
+        if (reviews.length > 0) {
+          setReview(reviews[0]);
+          // Charger la progression des membres
+          try {
+            const progRes = await fetch(`/api/workflow/documentary-review/${reviews[0].id}/member-progress`, { credentials: "include" });
+            if (progRes.ok) {
+              const progress = await progRes.json();
+              setMemberProgress(progress);
+              // Vérifier si le membre actuel a déjà soumis
+              const myProgress = progress.find((p: any) => {
+                // Chercher par ID expert ou nom
+                return p.expertName === (user?.fullName || user?.organizationName || "");
+              });
+              if (myProgress?.submitted) setAlreadySubmitted(true);
+            }
+          } catch (_) {}
+        }
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -69,6 +101,30 @@ export default function DocumentaryAnalysisPage() {
     setSubmitting(false);
   };
 
+  const submitResults = async () => {
+    if (!results.trim() || !review) return;
+    setSubmittingResults(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/documentary-review/${review.id}/member-submit`, {
+        results: results.trim(),
+        deficiencies: deficiencies.trim() || null,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Résultats soumis", description: data.message });
+        setAlreadySubmitted(true);
+        setResults("");
+        setDeficiencies("");
+        selectTeam(selectedTeam);
+      } else {
+        toast({ title: "Erreur", description: data.message, variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+    setSubmittingResults(false);
+  };
+
   if (!user) return null;
 
   const documentChecklist = [
@@ -83,6 +139,10 @@ export default function DocumentaryAnalysisPage() {
     { label: "Gestion des risques", key: "risk_management" },
     { label: "Traçabilité métrologique", key: "metrological_traceability" },
   ];
+
+  const isDocReviewActive = request?.status === "DOC_REVIEW_IN_PROGRESS";
+  const submittedCount = memberProgress.filter((m: any) => m.submitted).length;
+  const totalCount = memberProgress.length;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -125,6 +185,101 @@ export default function DocumentaryAnalysisPage() {
                   </Card>
                 ) : (
                   <>
+                    {/* Deadline et progression */}
+                    {isDocReviewActive && review?.teamResultsDeadline && (
+                      <Alert className="border-indigo-300 bg-indigo-50">
+                        <Clock className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Date limite de soumission :</strong>{" "}
+                          {new Date(review.teamResultsDeadline).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                          {totalCount > 0 && (
+                            <span className="ml-3">
+                              — <strong>{submittedCount}/{totalCount}</strong> membres ont soumis leurs résultats
+                            </span>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Progression des membres */}
+                    {isDocReviewActive && memberProgress.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Users className="w-4 h-4" /> Progression de l'équipe
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-2">
+                            {memberProgress.map((m: any) => (
+                              <Badge key={m.memberId} variant="outline" className={`text-xs py-1 ${
+                                m.submitted ? "bg-green-100 text-green-800 border-green-300" : "bg-gray-100 text-gray-600"
+                              }`}>
+                                {m.submitted ? <CheckCircle className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
+                                {m.expertName} ({m.role})
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-green-500 h-2 rounded-full transition-all"
+                              style={{ width: `${totalCount > 0 ? (submittedCount / totalCount) * 100 : 0}%` }} />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Already submitted */}
+                    {alreadySubmitted && (
+                      <Card className="border-green-200 bg-green-50/50">
+                        <CardContent className="pt-6 text-center space-y-2">
+                          <CheckCircle className="w-10 h-10 mx-auto text-green-600" />
+                          <h3 className="font-semibold text-green-800">Résultats soumis</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Vos résultats ont été enregistrés.
+                            {submittedCount < totalCount && (
+                              <> En attente de {totalCount - submittedCount} autre(s) membre(s).</>
+                            )}
+                            {submittedCount === totalCount && (
+                              <> Tous les membres ont soumis — le RA a été notifié.</>
+                            )}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Submit results form */}
+                    {isDocReviewActive && !alreadySubmitted && (
+                      <Card className="border-primary/30">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Send className="w-5 h-5" /> Soumettre vos Résultats
+                          </CardTitle>
+                          <CardDescription>
+                            Soumettez vos résultats d'analyse. Dès que tous les membres auront soumis, le processus avancera automatiquement sans attendre la deadline.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Résultats d'analyse *</Label>
+                            <Textarea value={results} onChange={(e) => setResults(e.target.value)}
+                              placeholder="Décrivez vos observations, constats de conformité et recommandations..."
+                              rows={6} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Manquements identifiés (optionnel)</Label>
+                            <Textarea value={deficiencies} onChange={(e) => setDeficiencies(e.target.value)}
+                              placeholder="Listez les non-conformités ou insuffisances documentaires trouvées..."
+                              rows={4} />
+                          </div>
+                          <Button onClick={submitResults} disabled={submittingResults || !results.trim()} size="lg" className="w-full">
+                            {submittingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                            Soumettre mes Résultats
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Checklist */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -144,6 +299,7 @@ export default function DocumentaryAnalysisPage() {
                       </CardContent>
                     </Card>
 
+                    {/* Notes */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">Observations & Constats</CardTitle>

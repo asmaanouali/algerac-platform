@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users } from "lucide-react";
+import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users, ClipboardCheck, Eye, Send, AlertTriangle, Shield, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -57,6 +57,38 @@ export default function CDManageRequestsPage() {
   const [assigning, setAssigning] = useState(false);
   const [closing, setClosing] = useState(false);
 
+  // Receivability review
+  const [receivabilityRequests, setReceivabilityRequests] = useState<AccreditationRequest[]>([]);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewRequest, setReviewRequest] = useState<AccreditationRequest | null>(null);
+  const [reviewComments, setReviewComments] = useState("");
+  const [reviewing, setReviewing] = useState(false);
+
+  // Quotation/Convention validation
+  const [pendingCDValidation, setPendingCDValidation] = useState<any[]>([]);
+  const [cdValidationDialogOpen, setCdValidationDialogOpen] = useState(false);
+  const [cdModifDialogOpen, setCdModifDialogOpen] = useState(false);
+  const [cdSelectedQuotation, setCdSelectedQuotation] = useState<any>(null);
+  const [cdModifComments, setCdModifComments] = useState("");
+  const [cdValidating, setCdValidating] = useState(false);
+  const [cdRequesting, setCdRequesting] = useState(false);
+
+  // Team composition validation (RA → CD → OEC)
+  const [pendingTeamValidation, setPendingTeamValidation] = useState<any[]>([]);
+  const [teamValidDialogOpen, setTeamValidDialogOpen] = useState(false);
+  const [teamChangesDialogOpen, setTeamChangesDialogOpen] = useState(false);
+  const [selectedTeamRequest, setSelectedTeamRequest] = useState<any>(null);
+  const [teamChangesComments, setTeamChangesComments] = useState("");
+  const [teamValidating, setTeamValidating] = useState(false);
+  const [teamRequesting, setTeamRequesting] = useState(false);
+
+  // Recusation examination (OEC recused member → CD examines)
+  const [pendingRecusations, setPendingRecusations] = useState<any[]>([]);
+  const [recusDialogOpen, setRecusDialogOpen] = useState(false);
+  const [selectedRecusation, setSelectedRecusation] = useState<any>(null);
+  const [recusDecisionReason, setRecusDecisionReason] = useState("");
+  const [recusProcessing, setRecusProcessing] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
     else if (user && !authLoading) loadData();
@@ -68,14 +100,28 @@ export default function CDManageRequestsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [pendingRes, allRes, raRes] = await Promise.all([
+      const [pendingRes, allRes, raRes, recevRes, cdValRes] = await Promise.all([
         apiRequest("GET", "/api/requests/status/PAYMENT_COMPLETED"),
         apiRequest("GET", "/api/requests"),
         apiRequest("GET", "/api/workflow/ra-workload"),
+        apiRequest("GET", "/api/requests/status/RECEIVABILITY_PENDING_CD_REVIEW"),
+        apiRequest("GET", "/api/quotations/pending-cd-validation").catch(() => ({ json: () => [] })),
       ]);
       setPendingRequests(await pendingRes.json());
-      setAllRequests(await allRes.json());
+      const allData = await allRes.json();
+      const allReqs = allData.data || allData;
+      setAllRequests(allReqs);
       setRasWorkload(await raRes.json());
+      setReceivabilityRequests(await recevRes.json());
+      setPendingCDValidation(await cdValRes.json());
+
+      // Filter team composition pending CD validation
+      const teamPending = allReqs.filter((r: any) => r.status === "TEAM_SENT_TO_CD");
+      setPendingTeamValidation(teamPending);
+      
+      // Filter recusations pending CD examination
+      const recusPending = allReqs.filter((r: any) => r.status === "TEAM_MEMBER_RECUSED" || r.status === "TEAM_RECUSED");
+      setPendingRecusations(recusPending);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally {
@@ -102,6 +148,30 @@ export default function CDManageRequestsPage() {
   };
 
   const openCloseDialog = (r: AccreditationRequest) => { setSelectedRequest(r); setCloseReason(""); setCloseDialogOpen(true); };
+  const openReviewDialog = (r: AccreditationRequest) => { setReviewRequest(r); setReviewComments(""); setReviewDialogOpen(true); };
+
+  const handleReviewReceivability = async (approved: boolean) => {
+    if (!reviewRequest) return;
+    if (!approved && !reviewComments.trim()) {
+      toast({ variant: "destructive", title: "Erreur", description: "Indiquez les modifications à apporter" });
+      return;
+    }
+    try {
+      setReviewing(true);
+      await apiRequest("POST", `/api/requests/${reviewRequest.id}/cd-review-receivability`, {
+        approved,
+        comments: reviewComments,
+      });
+      toast({
+        title: approved ? "Étude approuvée" : "Modifications demandées",
+        description: approved ? "La décision a été communiquée à l'OEC." : "Le RA a été notifié des modifications.",
+      });
+      setReviewDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setReviewing(false); }
+  };
 
   const handleClose = async () => {
     if (!selectedRequest || !closeReason.trim()) { toast({ variant: "destructive", title: "Erreur", description: "Indiquez la raison" }); return; }
@@ -114,6 +184,107 @@ export default function CDManageRequestsPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setClosing(false); }
+  };
+
+  const handleCDValidate = async () => {
+    if (!cdSelectedQuotation) return;
+    try {
+      setCdValidating(true);
+      await apiRequest("POST", `/api/quotations/cd-validate/${cdSelectedQuotation.request?.id || cdSelectedQuotation.requestId}`);
+      toast({ title: "Validé et envoyé", description: "Le devis et la convention ont été validés et envoyés à l'OEC." });
+      setCdValidationDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setCdValidating(false); }
+  };
+
+  const handleCDRequestModifications = async () => {
+    if (!cdSelectedQuotation || !cdModifComments.trim()) {
+      toast({ variant: "destructive", title: "Erreur", description: "Indiquez les modifications à apporter" });
+      return;
+    }
+    try {
+      setCdRequesting(true);
+      await apiRequest("POST", `/api/quotations/cd-request-modifications/${cdSelectedQuotation.request?.id || cdSelectedQuotation.requestId}`, {
+        comments: cdModifComments,
+      });
+      toast({ title: "Modifications demandées", description: "Le RA a été notifié des modifications à apporter." });
+      setCdModifDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setCdRequesting(false); }
+  };
+
+  // ===== Team Composition Validation (RA → CD → OEC) =====
+  const handleTeamApprove = async () => {
+    if (!selectedTeamRequest) return;
+    try {
+      setTeamValidating(true);
+      // Find teamId for this request
+      const teamRes = await fetch(`/api/workflow/teams/by-request/${selectedTeamRequest.id}`, { credentials: "include" });
+      const teams = await teamRes.json();
+      if (!teams.length) throw new Error("Équipe non trouvée");
+      
+      await apiRequest("POST", `/api/workflow/teams/${teams[0].id}/cd-approve`);
+      toast({ title: "Composition approuvée", description: "La composition et la date ont été envoyées à l'OEC." });
+      setTeamValidDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setTeamValidating(false); }
+  };
+
+  const handleTeamRequestChanges = async () => {
+    if (!selectedTeamRequest || !teamChangesComments.trim()) {
+      toast({ variant: "destructive", title: "Erreur", description: "Indiquez les modifications à apporter" });
+      return;
+    }
+    try {
+      setTeamRequesting(true);
+      const teamRes = await fetch(`/api/workflow/teams/by-request/${selectedTeamRequest.id}`, { credentials: "include" });
+      const teams = await teamRes.json();
+      if (!teams.length) throw new Error("Équipe non trouvée");
+      
+      await apiRequest("POST", `/api/workflow/teams/${teams[0].id}/cd-request-changes`, {
+        comments: teamChangesComments,
+      });
+      toast({ title: "Modifications demandées", description: "Le RA a été notifié des changements à apporter." });
+      setTeamChangesDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setTeamRequesting(false); }
+  };
+
+  // ===== Recusation Examination =====
+  const handleRecusationDecision = async (accepted: boolean) => {
+    if (!selectedRecusation || !recusDecisionReason.trim()) {
+      toast({ variant: "destructive", title: "Erreur", description: "Indiquez la raison de votre décision" });
+      return;
+    }
+    try {
+      setRecusProcessing(true);
+      const teamRes = await fetch(`/api/workflow/teams/by-request/${selectedRecusation.id}`, { credentials: "include" });
+      const teams = await teamRes.json();
+      if (!teams.length) throw new Error("Équipe non trouvée");
+      
+      await apiRequest("POST", `/api/workflow/teams/${teams[0].id}/examine-recusation`, {
+        accepted,
+        decisionReason: recusDecisionReason,
+      });
+      
+      if (accepted) {
+        toast({ title: "Récusation acceptée", description: "Le RA doit remplacer le membre, faire signer l'engagement, et renvoyer la composition." });
+      } else {
+        toast({ title: "Récusation rejetée", description: "L'équipe est maintenue. L'OEC a été notifié." });
+      }
+      setRecusDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setRecusProcessing(false); }
   };
 
   const assignedCount = allRequests.filter(r => !["DRAFT","PENDING_PAYMENT","PAYMENT_COMPLETED","CLOSED","REJECTED"].includes(r.status)).length;
@@ -142,19 +313,24 @@ export default function CDManageRequestsPage() {
               <p className="text-muted-foreground mt-2">Assignez les demandes aux RAs compétents et gérez les dossiers</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">En attente</CardTitle><FileText className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-amber-600">{pendingRequests.length}</div></CardContent></Card>
+              <Card className={receivabilityRequests.length > 0 ? "ring-2 ring-blue-400" : ""}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Études à valider</CardTitle><ClipboardCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600">{receivabilityRequests.length}</div></CardContent></Card>
               <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Assignés</CardTitle><FolderOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{assignedCount}</div></CardContent></Card>
-              <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Non recevables</CardTitle><XCircle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{nonReceivableRequests.length}</div></CardContent></Card>
+              <Card className={pendingCDValidation.length > 0 ? "ring-2 ring-purple-400" : ""}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Devis/Conv. à valider</CardTitle><Send className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-purple-600">{pendingCDValidation.length}</div></CardContent></Card>
               <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Classés</CardTitle><Archive className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-slate-500">{closedCount}</div></CardContent></Card>
             </div>
 
             <Tabs defaultValue="pending" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="pending">En attente ({pendingRequests.length})</TabsTrigger>
+                <TabsTrigger value="receivability-review"><ClipboardCheck className="h-4 w-4 mr-1" />Études à valider ({receivabilityRequests.length})</TabsTrigger>
+                <TabsTrigger value="cd-validation"><Send className="h-4 w-4 mr-1" />Devis & Convention ({pendingCDValidation.length})</TabsTrigger>
                 <TabsTrigger value="non-receivable">Non recevables ({nonReceivableRequests.length})</TabsTrigger>
                 <TabsTrigger value="all">Tous ({allRequests.length})</TabsTrigger>
                 <TabsTrigger value="ra-workload"><Users className="h-4 w-4 mr-1" />Charge RAs</TabsTrigger>
+                <TabsTrigger value="team-validation"><Shield className="h-4 w-4 mr-1" />Équipes ({pendingTeamValidation.length})</TabsTrigger>
+                <TabsTrigger value="recusations"><AlertTriangle className="h-4 w-4 mr-1" />Récusations ({pendingRecusations.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pending">
@@ -176,6 +352,98 @@ export default function CDManageRequestsPage() {
                               <p className="text-sm text-muted-foreground">Soumise le : {new Date(request.submissionDate).toLocaleDateString("fr-FR")}</p>
                             </div>
                             <Button onClick={() => openAssignDialog(request)}><UserPlus className="h-4 w-4 mr-2" />Assigner</Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="receivability-review">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Études de recevabilité à valider</CardTitle>
+                    <CardDescription>Vérifiez le travail du RA et approuvez ou demandez des modifications avant que la décision ne soit communiquée à l'OEC</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {receivabilityRequests.length === 0 ? (
+                      <div className="text-center py-8"><CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" /><p className="text-muted-foreground">Aucune étude en attente de validation</p></div>
+                    ) : (
+                      <div className="space-y-4">
+                        {receivabilityRequests.map((request) => (
+                          <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-3">
+                                <h3 className="font-semibold">{request.oec?.organizationName || request.oec?.fullName}</h3>
+                                <Badge variant="outline">{request.domain}</Badge>
+                                <Badge className={(request as any).isReceivable ? "bg-green-500" : "bg-red-500"}>
+                                  Proposition : {(request as any).isReceivable ? "Recevable" : "Non recevable"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">Réf : {request.referenceNumber || `#${request.id}`}</p>
+                              <p className="text-sm text-muted-foreground">RA : {request.assignedRa?.fullName || "—"}</p>
+                            </div>
+                            <Button onClick={() => openReviewDialog(request)}><Eye className="h-4 w-4 mr-2" />Examiner</Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="cd-validation">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Devis & Convention à valider</CardTitle>
+                    <CardDescription>
+                      Validez le devis et la convention avant l'envoi à l'OEC. Vous pouvez approuver ou demander des modifications au RA.
+                      <br /><strong className="text-amber-600">Note : Le montant du devis n'est pas visible. Seuls le DAG et l'OEC y ont accès.</strong>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingCDValidation.length === 0 ? (
+                      <div className="text-center py-8"><CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" /><p className="text-muted-foreground">Aucun devis/convention en attente de validation</p></div>
+                    ) : (
+                      <div className="space-y-4">
+                        {pendingCDValidation.map((q: any) => (
+                          <div key={q.id} className="p-4 border rounded-lg hover:bg-accent transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2 flex-1">
+                                <div className="flex items-center gap-3">
+                                  <h3 className="font-semibold">{q.quotationNumber}</h3>
+                                  <Badge variant="outline">{q.request?.type}</Badge>
+                                  <Badge className="bg-purple-100 text-purple-800 border-purple-300">En attente CD</Badge>
+                                </div>
+                                <p className="text-sm font-medium">Demande : {q.request?.referenceNumber}</p>
+                                <p className="text-sm text-muted-foreground">OEC : {q.request?.oec?.organizationName}</p>
+                                <p className="text-sm text-muted-foreground">Domaine : {q.request?.domain}</p>
+                                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <h4 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-1"><Users className="w-4 h-4" /> Composition d'équipe</h4>
+                                  <div className="grid grid-cols-3 gap-2 text-sm">
+                                    <div>REE : <strong>{q.reeCount || 1}</strong></div>
+                                    <div>Évl. Tech : <strong>{q.etCount || 0}</strong></div>
+                                    {(q.eqCount > 0) && <div>Évl. Qualité : <strong>{q.eqCount}</strong></div>}
+                                    {(q.obsCount > 0) && <div>Observateur : <strong>{q.obsCount}</strong></div>}
+                                    {(q.supCount > 0) && <div>Superviseur : <strong>{q.supCount}</strong></div>}
+                                    {(q.expCount > 0) && <div>Expert : <strong>{q.expCount}</strong></div>}
+                                  </div>
+                                  <div className="mt-2 text-sm">Durée totale : <strong>{q.evaluationDurationDays} H/j</strong></div>
+                                </div>
+                                <div className="flex items-center gap-4 mt-2">
+                                  <div><p className="text-xs text-muted-foreground">Préparé par</p><p className="text-sm font-medium">{q.preparedByRaName}</p></div>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 ml-4">
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { setCdSelectedQuotation(q); setCdValidationDialogOpen(true); }}>
+                                  <CheckCircle className="h-4 w-4 mr-1" />Valider
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => { setCdSelectedQuotation(q); setCdModifComments(""); setCdModifDialogOpen(true); }}>
+                                  <AlertTriangle className="h-4 w-4 mr-1" />Modifier
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -250,6 +518,91 @@ export default function CDManageRequestsPage() {
                         ))}
                       </TableBody>
                     </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="team-validation">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Compositions d'équipe à valider</CardTitle>
+                    <CardDescription>Le RA a soumis la composition de l'équipe et la date d'évaluation. Validez pour envoyer à l'OEC ou demandez des modifications.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingTeamValidation.length === 0 ? (
+                      <div className="text-center py-8"><CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" /><p className="text-muted-foreground">Aucune composition en attente de validation</p></div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Réf.</TableHead>
+                            <TableHead>OEC</TableHead>
+                            <TableHead>Domaine</TableHead>
+                            <TableHead>RA</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingTeamValidation.map((r) => (
+                            <TableRow key={r.id}>
+                              <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
+                              <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
+                              <TableCell>{r.domain}</TableCell>
+                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell className="space-x-2">
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { setSelectedTeamRequest(r); setTeamValidDialogOpen(true); }}>
+                                  <CheckCircle className="h-4 w-4 mr-1" />Approuver
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => { setSelectedTeamRequest(r); setTeamChangesComments(""); setTeamChangesDialogOpen(true); }}>
+                                  <XCircle className="h-4 w-4 mr-1" />Demander modifications
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="recusations">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Récusations à examiner</CardTitle>
+                    <CardDescription>L'OEC a récusé un ou plusieurs membres de l'équipe d'évaluation. Examinez la demande conformément à la PRO 22.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingRecusations.length === 0 ? (
+                      <div className="text-center py-8"><CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" /><p className="text-muted-foreground">Aucune récusation en attente</p></div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Réf.</TableHead>
+                            <TableHead>OEC</TableHead>
+                            <TableHead>Domaine</TableHead>
+                            <TableHead>RA</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingRecusations.map((r) => (
+                            <TableRow key={r.id}>
+                              <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
+                              <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
+                              <TableCell>{r.domain}</TableCell>
+                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell>
+                                <Button size="sm" onClick={() => { setSelectedRecusation(r); setRecusDecisionReason(""); setRecusDialogOpen(true); }}>
+                                  <Shield className="h-4 w-4 mr-1" />Examiner
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -329,6 +682,220 @@ export default function CDManageRequestsPage() {
                   {closing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Classement...</> : "Classer le dossier"}
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* RECEIVABILITY REVIEW DIALOG */}
+          <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Validation de l'étude de recevabilité</DialogTitle>
+                <DialogDescription>
+                  Dossier {reviewRequest?.referenceNumber || `#${reviewRequest?.id}`} — {reviewRequest?.oec?.organizationName}
+                </DialogDescription>
+              </DialogHeader>
+              {reviewRequest && (
+                <div className="space-y-4 py-4">
+                  <Alert>
+                    <AlertDescription>
+                      <strong>RA :</strong> {reviewRequest.assignedRa?.fullName || "—"}<br />
+                      <strong>Domaine :</strong> {reviewRequest.domain}<br />
+                      <strong>Proposition du RA :</strong>{" "}
+                      <Badge className={(reviewRequest as any).isReceivable ? "bg-green-500" : "bg-red-500"}>
+                        {(reviewRequest as any).isReceivable ? "Recevable" : "Non recevable"}
+                      </Badge>
+                    </AlertDescription>
+                  </Alert>
+                  {(reviewRequest as any).receivabilityComments && (
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground text-xs">Commentaires du RA</Label>
+                      <div className="p-3 bg-muted rounded-lg text-sm whitespace-pre-wrap">{(reviewRequest as any).receivabilityComments}</div>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Vos commentaires (obligatoire si modifications demandées)</Label>
+                    <Textarea value={reviewComments} onChange={(e) => setReviewComments(e.target.value)} placeholder="Observations, remarques, corrections à apporter..." rows={4} />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleReviewReceivability(true)} disabled={reviewing}>
+                      {reviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Approuver et envoyer à l'OEC
+                    </Button>
+                    <Button variant="destructive" className="flex-1" onClick={() => handleReviewReceivability(false)} disabled={reviewing}>
+                      {reviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                      Demander modifications
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* CD VALIDATE QUOTATION/CONVENTION DIALOG */}
+          <Dialog open={cdValidationDialogOpen} onOpenChange={setCdValidationDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Valider et envoyer à l'OEC</DialogTitle>
+                <DialogDescription>
+                  Confirmez la validation du devis et de la convention. Ils seront envoyés à l'OEC qui dispose de 10 jours pour accepter.
+                </DialogDescription>
+              </DialogHeader>
+              {cdSelectedQuotation && (
+                <div className="space-y-4 py-4">
+                  <Alert>
+                    <AlertDescription>
+                      <strong>N° :</strong> {cdSelectedQuotation.quotationNumber}<br />
+                      <strong>OEC :</strong> {cdSelectedQuotation.request?.oec?.organizationName}<br />
+                      <strong>Domaine :</strong> {cdSelectedQuotation.request?.domain}
+                    </AlertDescription>
+                  </Alert>
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Important :</strong> L'OEC a 10 jours pour accepter. Un rappel sera envoyé au bout de 5 jours. Si l'OEC ne répond pas dans les 15 jours, le dossier sera classé.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCdValidationDialogOpen(false)} disabled={cdValidating}>Annuler</Button>
+                <Button className="bg-green-600 hover:bg-green-700" onClick={handleCDValidate} disabled={cdValidating}>
+                  {cdValidating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><Send className="mr-2 h-4 w-4" />Valider et envoyer à l'OEC</>}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* CD REQUEST MODIFICATIONS DIALOG */}
+          <Dialog open={cdModifDialogOpen} onOpenChange={setCdModifDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Demander des modifications</DialogTitle>
+                <DialogDescription>
+                  Le RA sera notifié et pourra modifier le devis et/ou la convention avant de renvoyer.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Modifications demandées *</Label>
+                  <Textarea
+                    value={cdModifComments}
+                    onChange={(e) => setCdModifComments(e.target.value)}
+                    placeholder="Décrivez les modifications à apporter au devis ou à la convention..."
+                    rows={5}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCdModifDialogOpen(false)} disabled={cdRequesting}>Annuler</Button>
+                <Button variant="destructive" onClick={handleCDRequestModifications} disabled={cdRequesting || !cdModifComments.trim()}>
+                  {cdRequesting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><AlertTriangle className="mr-2 h-4 w-4" />Demander modifications</>}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          {/* TEAM VALIDATION DIALOG */}
+          <Dialog open={teamValidDialogOpen} onOpenChange={setTeamValidDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Approuver la composition d'équipe</DialogTitle>
+                <DialogDescription>
+                  Confirmez que la composition de l'équipe et la date d'évaluation proposées sont conformes. Elles seront envoyées à l'OEC pour acceptation.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedTeamRequest && (
+                <Alert>
+                  <AlertDescription>
+                    <strong>Dossier :</strong> {selectedTeamRequest.referenceNumber || `#${selectedTeamRequest.id}`}<br />
+                    <strong>OEC :</strong> {selectedTeamRequest.oec?.organizationName}<br />
+                    <strong>RA :</strong> {selectedTeamRequest.assignedRa?.fullName || "—"}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setTeamValidDialogOpen(false)} disabled={teamValidating}>Annuler</Button>
+                <Button className="bg-green-600 hover:bg-green-700" onClick={handleTeamApprove} disabled={teamValidating}>
+                  {teamValidating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><Send className="mr-2 h-4 w-4" />Approuver et envoyer à l'OEC</>}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* TEAM CHANGES DIALOG */}
+          <Dialog open={teamChangesDialogOpen} onOpenChange={setTeamChangesDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Demander des modifications à la composition</DialogTitle>
+                <DialogDescription>
+                  Le RA sera notifié et devra modifier la composition de l'équipe et/ou la date avant de resoumettre.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Modifications demandées *</Label>
+                  <Textarea
+                    value={teamChangesComments}
+                    onChange={(e) => setTeamChangesComments(e.target.value)}
+                    placeholder="Décrivez les modifications à apporter à la composition ou à la date..."
+                    rows={5}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setTeamChangesDialogOpen(false)} disabled={teamRequesting}>Annuler</Button>
+                <Button variant="destructive" onClick={handleTeamRequestChanges} disabled={teamRequesting || !teamChangesComments.trim()}>
+                  {teamRequesting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><AlertTriangle className="mr-2 h-4 w-4" />Demander modifications</>}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* RECUSATION EXAMINATION DIALOG */}
+          <Dialog open={recusDialogOpen} onOpenChange={setRecusDialogOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Examiner la récusation</DialogTitle>
+                <DialogDescription>
+                  L'OEC a récusé un ou plusieurs membres de l'équipe d'évaluation. Conformément à la PRO 22, examinez la demande et prenez une décision.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedRecusation && (
+                <div className="space-y-4 py-4">
+                  <Alert>
+                    <AlertDescription>
+                      <strong>Dossier :</strong> {selectedRecusation.referenceNumber || `#${selectedRecusation.id}`}<br />
+                      <strong>OEC :</strong> {selectedRecusation.oec?.organizationName}<br />
+                      <strong>RA :</strong> {selectedRecusation.assignedRa?.fullName || "—"}
+                    </AlertDescription>
+                  </Alert>
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Si acceptée :</strong> Le RA devra remplacer le(s) membre(s) récusé(s), faire signer l'engagement d'impartialité au nouveau membre, et resoumettre la composition.<br />
+                      <strong>Si rejetée :</strong> L'équipe sera maintenue en l'état et l'OEC sera notifié.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2">
+                    <Label>Raison de votre décision *</Label>
+                    <Textarea
+                      value={recusDecisionReason}
+                      onChange={(e) => setRecusDecisionReason(e.target.value)}
+                      placeholder="Motivez votre décision conformément à la PRO 22..."
+                      rows={4}
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleRecusationDecision(true)} disabled={recusProcessing || !recusDecisionReason.trim()}>
+                      {recusProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Accepter la récusation
+                    </Button>
+                    <Button variant="destructive" className="flex-1" onClick={() => handleRecusationDecision(false)} disabled={recusProcessing || !recusDecisionReason.trim()}>
+                      {recusProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                      Rejeter la récusation
+                    </Button>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </main>

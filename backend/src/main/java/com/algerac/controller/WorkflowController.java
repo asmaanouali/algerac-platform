@@ -39,6 +39,8 @@ public class WorkflowController {
     private final CASVoteRepository casVoteRepository;
     private final UserAvailabilityRepository availabilityRepository;
     private final NotificationService notificationService;
+    private final PaymentService paymentService;
+    private final PaymentRepository paymentRepository;
 
     // ========== AVAILABILITY / PLANNING ==========
 
@@ -193,6 +195,88 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/teams/{teamId}/send-to-cd")
+    public ResponseEntity<ApiResponse> sendTeamToCD(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String compositionSheet = body.getOrDefault("compositionSheet", "Fiche composition équipe FOR 26");
+            String evalDateStr = (String) body.get("evaluationDate");
+            java.time.LocalDate proposedDate = evalDateStr != null ? java.time.LocalDate.parse(evalDateStr) : null;
+            EvaluationTeam team = teamService.sendToCD(teamId, compositionSheet, proposedDate, user);
+            return ResponseEntity.ok(ApiResponse.success("Composition envoyée au CD pour validation", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/teams/{teamId}/cd-approve")
+    public ResponseEntity<ApiResponse> cdApproveTeam(@PathVariable Long teamId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            EvaluationTeam team = teamService.cdApproveAndSendToOEC(teamId, user);
+            return ResponseEntity.ok(ApiResponse.success("Composition approuvée et envoyée à l'OEC", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/teams/{teamId}/cd-request-changes")
+    public ResponseEntity<ApiResponse> cdRequestTeamChanges(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String comments = body.getOrDefault("comments", "");
+            EvaluationTeam team = teamService.cdRequestChanges(teamId, comments, user);
+            return ResponseEntity.ok(ApiResponse.success("Demande de modifications envoyée au RA", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/teams/{teamId}/change-date")
+    public ResponseEntity<ApiResponse> changeTeamDate(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String newDateStr = (String) body.get("evaluationDate");
+            java.time.LocalDate newDate = newDateStr != null ? java.time.LocalDate.parse(newDateStr) : null;
+            if (newDate == null) throw new RuntimeException("Date requise");
+            EvaluationTeam team = teamService.changeProposedDate(teamId, newDate, user);
+            return ResponseEntity.ok(ApiResponse.success("Nouvelle date proposée, envoyée au CD pour validation", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/teams/{teamId}/examine-recusation")
+    public ResponseEntity<ApiResponse> examineRecusation(@PathVariable Long teamId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            Boolean accepted = (Boolean) body.get("accepted");
+            String decisionReason = (String) body.get("decisionReason");
+            if (accepted == null) throw new RuntimeException("Décision requise (accepted)");
+            if (decisionReason == null || decisionReason.trim().isEmpty()) throw new RuntimeException("Raison de la décision requise");
+            EvaluationTeam team = teamService.examineRecusation(teamId, accepted, decisionReason, user);
+            String msg = accepted ? "Récusation acceptée - le RA doit remplacer le membre" : "Récusation rejetée - l'équipe est maintenue";
+            return ResponseEntity.ok(ApiResponse.success(msg, team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/teams/{teamId}/send-to-oec")
     public ResponseEntity<ApiResponse> sendTeamToOEC(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
         try {
@@ -310,72 +394,465 @@ public class WorkflowController {
 
     // ========== DOCUMENTARY REVIEW (STEP 5) ==========
 
-    @PostMapping("/documentary-review/start")
-    public ResponseEntity<ApiResponse> startDocumentaryReview(@RequestBody Map<String, Object> body, HttpSession session) {
+    /**
+     * RA lance la revue documentaire → crée un paiement DOC_REVIEW_FEE,
+     * notifie le DAG pour fixer les frais d'analyse.
+     */
+    @PostMapping("/documentary-review/launch")
+    public ResponseEntity<ApiResponse> launchDocumentaryReview(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            AccreditationRequest request = requestRepository.findById(requestId)
+                    .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
             EvaluationTeam team = teams.isEmpty() ? null : teams.get(0);
 
+            // Créer la revue documentaire
             DocumentaryReview review = DocumentaryReview.builder()
                     .request(request).team(team)
-                    .documentationSentToTeam(LocalDateTime.now())
                     .reviewStartDate(LocalDateTime.now())
-                    .status(DocumentaryReviewStatus.IN_PROGRESS)
+                    .status(DocumentaryReviewStatus.AWAITING_FEE)
                     .build();
+            
+            // Créer le paiement des frais d'analyse documentaire
+            Payment payment = paymentService.createDocReviewFeePayment(requestId);
+            review.setPaymentId(payment.getId());
             docReviewRepository.save(review);
 
-            request.setStatus(RequestStatus.DOCUMENTARY_REVIEW);
-            request.setCurrentStep("Revue documentaire en cours");
+            request.setStatus(RequestStatus.DOC_REVIEW_AWAITING_FEE);
+            request.setCurrentPhase("REVUE_DOCUMENTAIRE");
+            request.setCurrentStep("En attente fixation frais d'analyse par le DAG");
+            request.setPendingWith("DAG");
+            requestRepository.save(request);
+
+            return ResponseEntity.ok(ApiResponse.success("Revue documentaire lancée. Le DAG a été notifié pour fixer les frais.", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA transmet les documents à l'équipe d'évaluation (après validation paiement par DAG).
+     * L'équipe dispose de 15 jours max.
+     */
+    @PostMapping("/documentary-review/{id}/transmit-docs")
+    public ResponseEntity<ApiResponse> transmitDocsToTeam(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            review.setDocumentationSentToTeam(LocalDateTime.now());
+            review.setTeamResultsDeadline(LocalDateTime.now().plusDays(15));
+            review.setStatus(DocumentaryReviewStatus.IN_PROGRESS);
+            docReviewRepository.save(review);
+
+            AccreditationRequest request = review.getRequest();
+            request.setStatus(RequestStatus.DOC_REVIEW_IN_PROGRESS);
+            request.setCurrentStep("Documents transmis à l'équipe - 15 jours pour analyser");
             request.setPendingWith("Équipe d'évaluation");
             requestRepository.save(request);
 
-            return ResponseEntity.ok(ApiResponse.success("Revue documentaire démarrée", review));
+            // Notifier les membres de l'équipe
+            if (review.getTeam() != null) {
+                for (TeamMember member : review.getTeam().getMembers()) {
+                    if (member.getExpert() != null) {
+                        notificationService.createNotification(
+                            member.getExpert().getId(),
+                            "Documents à analyser - Revue documentaire",
+                            "Les documents de l'OEC pour le dossier " + request.getReferenceNumber()
+                                + " vous ont été transmis. Vous disposez de 15 jours maximum pour soumettre vos résultats.",
+                            "ACTION_REQUIRED"
+                        );
+                    }
+                }
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Documents transmis à l'équipe. Délai: 15 jours.", review));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    @PostMapping("/documentary-review/{id}/report-deficiency")
-    public ResponseEntity<ApiResponse> reportDeficiency(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    /**
+     * Un membre de l'équipe soumet ses résultats individuels d'analyse documentaire.
+     * Si tous les membres ont soumis, on consolide automatiquement et on avance le statut.
+     */
+    @PostMapping("/documentary-review/{id}/member-submit")
+    public ResponseEntity<ApiResponse> memberSubmitDocReviewResults(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
         try {
-            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
-            review.setDeficienciesIdentified(true);
-            review.setDeficienciesDetails(body.get("details"));
-            review.setStatus(DocumentaryReviewStatus.DEFICIENCIES_FOUND);
-            docReviewRepository.save(review);
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
 
-            AccreditationRequest request = review.getRequest();
-            request.setStatus(RequestStatus.DOCUMENTARY_REVIEW_DEFICIENCIES);
-            request.setCurrentStep("Insuffisances identifiées dans la revue documentaire");
-            request.setPendingWith("OEC");
-            requestRepository.save(request);
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
 
-            return ResponseEntity.ok(ApiResponse.success("Insuffisances signalées", review));
+            if (review.getTeam() == null) throw new RuntimeException("Aucune équipe associée");
+
+            // Trouver le membre correspondant à l'utilisateur connecté
+            TeamMember currentMember = review.getTeam().getMembers().stream()
+                    .filter(m -> m.getExpert() != null && m.getExpert().getId().equals(userId))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Vous n'êtes pas membre de cette équipe"));
+
+            String results = body.get("results");
+            String deficiencies = body.get("deficiencies");
+
+            currentMember.setDocReviewResults(results);
+            currentMember.setDocReviewDeficiencies(deficiencies);
+            currentMember.setDocReviewSubmittedAt(LocalDateTime.now());
+            memberRepository.save(currentMember);
+
+            // Vérifier si TOUS les membres ont soumis leurs résultats
+            List<TeamMember> allMembers = review.getTeam().getMembers();
+            long totalMembers = allMembers.size();
+            long submittedMembers = allMembers.stream()
+                    .filter(m -> m.getDocReviewSubmittedAt() != null)
+                    .count();
+
+            boolean allSubmitted = submittedMembers >= totalMembers;
+
+            if (allSubmitted) {
+                // Consolider les résultats de tous les membres
+                StringBuilder consolidatedResults = new StringBuilder();
+                StringBuilder consolidatedDeficiencies = new StringBuilder();
+                boolean anyDeficiencies = false;
+
+                for (TeamMember member : allMembers) {
+                    String memberName = member.getExpert() != null ? 
+                        member.getExpert().getFullName() : "Membre";
+                    String memberRole = member.getRole() != null ? member.getRole().name() : "";
+
+                    if (member.getDocReviewResults() != null && !member.getDocReviewResults().trim().isEmpty()) {
+                        consolidatedResults.append("=== ").append(memberName).append(" (").append(memberRole).append(") ===\n");
+                        consolidatedResults.append(member.getDocReviewResults()).append("\n\n");
+                    }
+                    if (member.getDocReviewDeficiencies() != null && !member.getDocReviewDeficiencies().trim().isEmpty()) {
+                        anyDeficiencies = true;
+                        consolidatedDeficiencies.append("=== ").append(memberName).append(" (").append(memberRole).append(") ===\n");
+                        consolidatedDeficiencies.append(member.getDocReviewDeficiencies()).append("\n\n");
+                    }
+                }
+
+                review.setTeamResults(consolidatedResults.toString().trim());
+                review.setReviewCompletionDate(LocalDateTime.now());
+                review.setDeficienciesIdentified(anyDeficiencies);
+                if (anyDeficiencies) review.setDeficienciesDetails(consolidatedDeficiencies.toString().trim());
+                review.setStatus(DocumentaryReviewStatus.RESULTS_SUBMITTED);
+                docReviewRepository.save(review);
+
+                AccreditationRequest request = review.getRequest();
+                request.setStatus(RequestStatus.DOC_REVIEW_RESULTS_SUBMITTED);
+                request.setCurrentStep("Tous les résultats d'analyse reçus - Prêt pour envoi au CD");
+                request.setPendingWith("RA");
+                requestRepository.save(request);
+
+                // Notifier le RA que tous les résultats sont arrivés
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(
+                        request.getAssignedToRa().getId(),
+                        "Tous les résultats de la revue documentaire sont arrivés",
+                        "Tous les membres de l'équipe ont soumis leurs résultats pour le dossier " + request.getReferenceNumber()
+                            + ". Vous pouvez les transmettre au CD pour validation.",
+                        "ACTION_REQUIRED"
+                    );
+                }
+
+                return ResponseEntity.ok(ApiResponse.success(
+                    "Résultats soumis. Tous les membres ont terminé - avancement automatique.", review));
+            } else {
+                return ResponseEntity.ok(ApiResponse.success(
+                    "Résultats soumis avec succès (" + submittedMembers + "/" + totalMembers + " membres).", 
+                    Map.of("submitted", submittedMembers, "total", totalMembers, "allDone", false)));
+            }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    @PostMapping("/documentary-review/{id}/complete")
-    public ResponseEntity<ApiResponse> completeDocumentaryReview(@PathVariable Long id) {
+    /**
+     * Obtenir la progression des soumissions individuelles des membres.
+     */
+    @GetMapping("/documentary-review/{id}/member-progress")
+    public ResponseEntity<?> getDocReviewMemberProgress(@PathVariable Long id) {
         try {
-            DocumentaryReview review = docReviewRepository.findById(id).orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            if (review.getTeam() == null) return ResponseEntity.ok(List.of());
+
+            List<Map<String, Object>> progress = review.getTeam().getMembers().stream().map(m -> {
+                Map<String, Object> entry = new java.util.LinkedHashMap<>();
+                entry.put("memberId", m.getId());
+                entry.put("expertName", m.getExpert() != null ? 
+                    m.getExpert().getFullName() : "—");
+                entry.put("role", m.getRole() != null ? m.getRole().name() : "");
+                entry.put("submitted", m.getDocReviewSubmittedAt() != null);
+                entry.put("submittedAt", m.getDocReviewSubmittedAt());
+                entry.put("hasDeficiencies", m.getDocReviewDeficiencies() != null && !m.getDocReviewDeficiencies().trim().isEmpty());
+                return entry;
+            }).toList();
+
+            return ResponseEntity.ok(progress);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Équipe d'évaluation soumet ses résultats d'analyse documentaire (legacy: soumission groupée par le RA/REE).
+     */
+    @PostMapping("/documentary-review/{id}/submit-results")
+    public ResponseEntity<ApiResponse> submitDocReviewResults(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            String results = body.get("results");
+            String deficiencies = body.get("deficiencies");
+            boolean hasDeficiencies = deficiencies != null && !deficiencies.trim().isEmpty();
+
+            review.setTeamResults(results);
             review.setReviewCompletionDate(LocalDateTime.now());
-            review.setStatus(DocumentaryReviewStatus.COMPLETED_NO_ISSUES);
+            review.setDeficienciesIdentified(hasDeficiencies);
+            if (hasDeficiencies) review.setDeficienciesDetails(deficiencies);
+            review.setStatus(DocumentaryReviewStatus.RESULTS_SUBMITTED);
             docReviewRepository.save(review);
 
             AccreditationRequest request = review.getRequest();
-            request.setStatus(RequestStatus.DOCUMENTARY_REVIEW_COMPLETED);
-            request.setCurrentStep("Revue documentaire complétée");
+            request.setStatus(RequestStatus.DOC_REVIEW_RESULTS_SUBMITTED);
+            request.setCurrentStep("Résultats d'analyse reçus de l'équipe");
             request.setPendingWith("RA");
             requestRepository.save(request);
 
-            return ResponseEntity.ok(ApiResponse.success("Revue documentaire complétée", review));
+            // Notifier le RA
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(
+                    request.getAssignedToRa().getId(),
+                    "Résultats d'analyse documentaire reçus",
+                    "L'équipe d'évaluation a soumis ses résultats pour le dossier " + request.getReferenceNumber()
+                        + ". Vous pouvez les transmettre au CD pour validation.",
+                    "ACTION_REQUIRED"
+                );
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Résultats soumis avec succès", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA envoie les résultats au CD pour validation.
+     */
+    @PostMapping("/documentary-review/{id}/send-to-cd")
+    public ResponseEntity<ApiResponse> sendDocReviewToCD(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            review.setResultsSentToCd(LocalDateTime.now());
+            review.setStatus(DocumentaryReviewStatus.RESULTS_SENT_TO_CD);
+            docReviewRepository.save(review);
+
+            AccreditationRequest request = review.getRequest();
+            request.setStatus(RequestStatus.DOC_REVIEW_RESULTS_SENT_TO_CD);
+            request.setCurrentStep("Résultats d'analyse envoyés au CD");
+            request.setPendingWith("CD");
+            requestRepository.save(request);
+
+            // Notifier les CD
+            List<User> cdUsers = userRepository.findByRole(UserRole.CD);
+            for (User cd : cdUsers) {
+                notificationService.createNotification(
+                    cd.getId(),
+                    "Résultats revue documentaire à valider",
+                    "Les résultats de la revue documentaire pour le dossier " + request.getReferenceNumber()
+                        + " sont disponibles. Vous pouvez rédiger votre synthèse ou transmettre les résultats tels quels à l'OEC.",
+                    "ACTION_REQUIRED"
+                );
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Résultats envoyés au CD", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD envoie les résultats/synthèse à l'OEC.
+     * Le CD peut écrire sa propre synthèse ou envoyer les résultats de l'équipe tels quels.
+     */
+    @PostMapping("/documentary-review/{id}/cd-send-to-oec")
+    public ResponseEntity<ApiResponse> cdSendDocReviewToOEC(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            Boolean sendAsIs = (Boolean) body.get("sendAsIs");
+            String synthesis = (String) body.get("synthesis");
+
+            review.setCdSentAsIs(sendAsIs != null && sendAsIs);
+            if (synthesis != null && !synthesis.trim().isEmpty()) {
+                review.setCdSynthesis(synthesis);
+            }
+            review.setResultsSentToOEC(LocalDateTime.now());
+            review.setOecResponseDeadline(LocalDateTime.now().plusMonths(3));
+            review.setStatus(DocumentaryReviewStatus.RESULTS_SENT_TO_OEC);
+            docReviewRepository.save(review);
+
+            AccreditationRequest request = review.getRequest();
+            request.setStatus(RequestStatus.DOC_REVIEW_RESULTS_SENT_TO_OEC);
+            request.setCurrentStep("Résultats/synthèse envoyés à l'OEC");
+            request.setPendingWith("OEC");
+            requestRepository.save(request);
+
+            // Notifier l'OEC
+            notificationService.createNotification(
+                request.getOec().getId(),
+                "Résultats de la revue documentaire",
+                "Les résultats de la revue documentaire pour votre dossier " + request.getReferenceNumber()
+                    + " vous ont été transmis. Vous disposez de 3 mois maximum pour répondre aux éventuels manquements.",
+                "ACTION_REQUIRED"
+            );
+
+            return ResponseEntity.ok(ApiResponse.success("Résultats envoyés à l'OEC", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * OEC répond aux résultats de la revue documentaire.
+     * Décide de poursuivre l'évaluation ou de corriger (3 mois max).
+     */
+    @PostMapping("/documentary-review/{id}/oec-respond")
+    public ResponseEntity<ApiResponse> oecDocReviewResponse(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            String response = body.get("response");
+            String decision = body.get("decision"); // "CONTINUE" ou "CORRECT"
+
+            review.setOecResponse(response);
+            review.setOecDecision(decision);
+            review.setOecRespondedInTime(true);
+            if ("CORRECT".equals(decision)) {
+                review.setOecCorrectionDeadline(LocalDateTime.now().plusMonths(3));
+            }
+            review.setStatus(DocumentaryReviewStatus.AWAITING_OEC_RESPONSE);
+            docReviewRepository.save(review);
+
+            AccreditationRequest request = review.getRequest();
+            request.setStatus(RequestStatus.DOC_REVIEW_CD_DECISION);
+            request.setCurrentStep("Réponse OEC reçue - En attente décision CD");
+            request.setPendingWith("CD");
+            requestRepository.save(request);
+
+            // Notifier le CD
+            List<User> cdUsers = userRepository.findByRole(UserRole.CD);
+            for (User cd : cdUsers) {
+                notificationService.createNotification(
+                    cd.getId(),
+                    "Réponse OEC - Revue documentaire",
+                    "L'OEC a répondu aux résultats de la revue documentaire pour le dossier " + request.getReferenceNumber()
+                        + ". Décision OEC: " + ("CONTINUE".equals(decision) ? "Poursuivre" : "Corriger")
+                        + ". Veuillez décider de poursuivre ou d'arrêter le processus.",
+                    "ACTION_REQUIRED"
+                );
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Réponse enregistrée", review));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * CD décide de poursuivre ou d'arrêter le processus d'accréditation
+     * après réponse OEC ou dépassement du délai.
+     */
+    @PostMapping("/documentary-review/{id}/cd-decision")
+    public ResponseEntity<ApiResponse> cdDocReviewDecision(@PathVariable Long id, @RequestBody Map<String, String> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            DocumentaryReview review = docReviewRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            String decision = body.get("decision"); // "CONTINUE" ou "STOP"
+            String comments = body.get("comments");
+
+            review.setCdFinalDecision(decision);
+            review.setCdDecisionComments(comments);
+
+            AccreditationRequest request = review.getRequest();
+
+            if ("CONTINUE".equals(decision)) {
+                review.setStatus(DocumentaryReviewStatus.CD_DECISION_CONTINUE);
+                request.setStatus(RequestStatus.DOCUMENTARY_REVIEW_COMPLETED);
+                request.setCurrentStep("Revue documentaire terminée - Préparation évaluation");
+                request.setPendingWith("RA");
+                
+                // Notifier le RA
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(
+                        request.getAssignedToRa().getId(),
+                        "Revue documentaire terminée - Poursuivre",
+                        "Le CD a décidé de poursuivre le processus pour le dossier " + request.getReferenceNumber()
+                            + ". Vous pouvez passer à la préparation de l'évaluation.",
+                        "ACTION_REQUIRED"
+                    );
+                }
+                
+                // Notifier l'OEC
+                notificationService.createNotification(
+                    request.getOec().getId(),
+                    "Processus d'accréditation - Suite",
+                    "Le CD a décidé de poursuivre le processus d'accréditation pour votre dossier " + request.getReferenceNumber()
+                        + ". La phase d'évaluation sera prochainement planifiée.",
+                    "INFO"
+                );
+            } else {
+                review.setStatus(DocumentaryReviewStatus.CD_DECISION_STOP);
+                request.setStatus(RequestStatus.CLOSED);
+                request.setCurrentStep("Processus arrêté par le CD");
+                request.setPendingWith(null);
+                
+                // Notifier l'OEC
+                notificationService.createNotification(
+                    request.getOec().getId(),
+                    "Processus d'accréditation arrêté",
+                    "Le CD a décidé d'arrêter le processus d'accréditation pour votre dossier " + request.getReferenceNumber()
+                        + ". Motif: " + (comments != null ? comments : "Non spécifié"),
+                    "WARNING"
+                );
+            }
+
+            docReviewRepository.save(review);
+            requestRepository.save(request);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    "CONTINUE".equals(decision) ? "Processus poursuivi" : "Processus arrêté", review));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -384,6 +861,21 @@ public class WorkflowController {
     @GetMapping("/documentary-review/by-request/{requestId}")
     public ResponseEntity<?> getDocReviewByRequest(@PathVariable Long requestId) {
         return ResponseEntity.ok(docReviewRepository.findByRequest_Id(requestId));
+    }
+
+    @GetMapping("/documentary-review/{id}")
+    public ResponseEntity<?> getDocReviewById(@PathVariable Long id) {
+        return ResponseEntity.ok(docReviewRepository.findById(id).orElse(null));
+    }
+
+    /**
+     * Récupérer le paiement associé à une revue documentaire.
+     */
+    @GetMapping("/documentary-review/{id}/payment")
+    public ResponseEntity<?> getDocReviewPayment(@PathVariable Long id) {
+        DocumentaryReview review = docReviewRepository.findById(id).orElse(null);
+        if (review == null || review.getPaymentId() == null) return ResponseEntity.ok(null);
+        return ResponseEntity.ok(paymentRepository.findById(review.getPaymentId()).orElse(null));
     }
 
     // ========== EVALUATION PLAN (STEP 6) ==========

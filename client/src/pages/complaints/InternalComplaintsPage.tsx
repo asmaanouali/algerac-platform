@@ -77,19 +77,28 @@ export default function InternalComplaintsPage() {
     { value: "other", label: "Autre" },
   ];
 
+  // Redirect unauthenticated users via useEffect (React best practice)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/");
+    }
+  }, [authLoading, user, setLocation]);
+
   useEffect(() => {
     if (user && !authLoading) loadMyComplaints();
   }, [user, authLoading]);
 
   if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
-  if (!user) { setLocation("/"); return null; }
+  if (!user) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>;
 
   const loadMyComplaints = async () => {
     try {
       setLoading(true);
       const res = await apiRequest("GET", "/api/complaints/mine");
       const data = await res.json();
-      setMyComplaints(data);
+      // Backend wraps response in ApiResponse { success, message, data }
+      const complaints = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+      setMyComplaints(complaints);
     } catch {
       setMyComplaints([]);
     } finally { setLoading(false); }
@@ -140,7 +149,7 @@ export default function InternalComplaintsPage() {
       };
       const res = await apiRequest("POST", "/api/complaints", payload);
       const data = await res.json();
-      toast({ title: "Plainte soumise", description: `Code de suivi : ${data.trackingCode || "PLT-" + Date.now().toString(36).toUpperCase()}` });
+      toast({ title: "Plainte soumise", description: `Code de suivi : ${data.data?.trackingCode || data.trackingCode || ""}` });
       setFormData({ targetOrganization: "", category: "", subject: "", description: "", expectedResolution: "" });
       setAttachedFiles([]);
       loadMyComplaints();

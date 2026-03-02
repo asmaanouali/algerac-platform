@@ -54,7 +54,7 @@
     "forgotPassword": "Forgot password?",
     "login": "Sign in",
     "loggingIn": "Signing in...",
-    "noAccount": "DON'T HAVE AN ACCOUNT?",
+    "noAccount": "Don't have an account?",
     "createAccount": "Create an account",
     "loginSuccess": "Login successful",
     "welcomeUser": "Welcome, {{name}}",

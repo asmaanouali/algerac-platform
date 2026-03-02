@@ -128,6 +128,63 @@ public class NotificationService {
     
     // ===== NOUVELLES MÉTHODES DE NOTIFICATION =====
     
+    /**
+     * Notifier le CD qu'une étude de recevabilité est prête pour validation
+     */
+    @Transactional
+    public void notifyCDReceivabilityStudyReady(AccreditationRequest request, String raName, boolean isReceivable) {
+        List<User> chefsDepartement = userRepository.findByRole(UserRole.CD);
+        String decision = isReceivable ? "RECEVABLE" : "NON RECEVABLE";
+        
+        for (User cd : chefsDepartement) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Étude de recevabilité à valider")
+                    .message(String.format("Le RA %s a terminé l'étude de recevabilité du dossier %s (%s). " +
+                            "Proposition : %s. Veuillez vérifier et valider.",
+                            raName,
+                            request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId(),
+                            request.getOec().getOrganizationName(),
+                            decision))
+                    .type("action_required")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            notificationRepository.save(notification);
+        }
+        log.info("Notification CD: étude de recevabilité prête pour {} - proposition {}", request.getReferenceNumber(), decision);
+    }
+    
+    /**
+     * Notifier le RA du résultat de la revue CD de son étude de recevabilité
+     */
+    @Transactional
+    public void notifyRAReceivabilityReviewResult(AccreditationRequest request, boolean approved, String cdComments) {
+        User ra = request.getAssignedToRa();
+        if (ra == null) return;
+        
+        String title = approved ? "Étude de recevabilité validée par le CD" : "Modifications demandées par le CD";
+        String message = approved
+                ? String.format("Votre étude de recevabilité pour le dossier %s a été approuvée par le CD. La décision a été communiquée à l'OEC.",
+                        request.getReferenceNumber())
+                : String.format("Le CD demande des modifications sur votre étude de recevabilité du dossier %s. Remarques : %s",
+                        request.getReferenceNumber(),
+                        cdComments != null ? cdComments : "Voir le dossier");
+        
+        Notification notification = Notification.builder()
+                .user(ra)
+                .title(title)
+                .message(message)
+                .type(approved ? "success" : "warning")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        notificationRepository.save(notification);
+        log.info("Notification RA {}: revue CD {} pour {}", ra.getFullName(), approved ? "approuvée" : "modifications", request.getReferenceNumber());
+    }
+
     @Transactional
     public void notifyOECReceivabilityPositive(AccreditationRequest request) {
         User oec = request.getOec();
@@ -403,6 +460,23 @@ public class NotificationService {
                 .createdAt(LocalDateTime.now())
                 .build();
         notificationRepository.save(notification);
+    }
+    
+    @Transactional
+    public void notifyCDTeamCompositionForReview(AccreditationRequest request) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Composition d'équipe à valider")
+                    .message(String.format("Le RA a soumis la composition de l'équipe d'évaluation et la date proposée pour %s. " +
+                            "Veuillez valider et envoyer à l'OEC, ou demander des modifications.", request.getReferenceNumber()))
+                    .type("info")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notification);
+        }
     }
     
     @Transactional

@@ -30,6 +30,8 @@ export default function RAFeasibilityPage() {
   const [technicalAnalysis, setTechnicalAnalysis] = useState("");
   const [complianceCheck, setComplianceCheck] = useState("");
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [paymentAutoVerified, setPaymentAutoVerified] = useState(false);
+  const [paymentValidationDate, setPaymentValidationDate] = useState<string | null>(null);
   const [resourcesAvailable, setResourcesAvailable] = useState("");
   const [decision, setDecision] = useState("");
   const [comments, setComments] = useState("");
@@ -48,17 +50,35 @@ export default function RAFeasibilityPage() {
       setLoading(true);
       const res = await apiRequest("GET", "/api/requests/assigned-to-me");
       const data = await res.json();
-      setRequests(data.filter((r: any) => ["ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK"].includes(r.status)));
+      setRequests(data.filter((r: any) => ["ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK","RECEIVABILITY_PENDING_CD_REVIEW"].includes(r.status)));
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setLoading(false); }
   };
 
-  const selectRequest = (r: any) => {
+  const selectRequest = async (r: any) => {
     setSelectedRequest(r);
     setStep("documents");
     setTechnicalAnalysis(""); setComplianceCheck(""); setPaymentVerified(false);
+    setPaymentAutoVerified(false); setPaymentValidationDate(null);
     setResourcesAvailable(""); setDecision(""); setComments(""); setRejectionReason("");
+    
+    // Check if DAG has already validated the payment for this request
+    try {
+      const res = await apiRequest("GET", `/api/payments/request/${r.id}`);
+      const payments = await res.json();
+      const validatedPayment = Array.isArray(payments) 
+        ? payments.find((p: any) => p.status === "DAG_VALIDATED" || p.status === "COMPLETED")
+        : (payments.status === "DAG_VALIDATED" || payments.status === "COMPLETED") ? payments : null;
+      if (validatedPayment) {
+        setPaymentVerified(true);
+        setPaymentAutoVerified(true);
+        setPaymentValidationDate(validatedPayment.dagValidatedDate || validatedPayment.paymentDate || null);
+      }
+    } catch (err) {
+      // If API fails, leave as manual verification
+      console.log("Could not fetch payment status for request", r.id);
+    }
   };
 
   const startStudy = async () => {
@@ -83,9 +103,12 @@ export default function RAFeasibilityPage() {
         isReceivable: decision === "RECEIVABLE",
         comments: `${technicalAnalysis}\n\nConformité: ${complianceCheck}\n\nCommentaires: ${comments}${rejectionReason ? "\n\nRaison du rejet: " + rejectionReason : ""}`,
       });
-      toast({ title: "Décision enregistrée" });
-      if (decision === "RECEIVABLE") setLocation(`/ra/demandes/${selectedRequest.id}/devis`);
-      else loadRequests();
+      toast({ 
+        title: "Étude envoyée au CD", 
+        description: "Votre étude de recevabilité a été soumise au Chef de Département pour validation." 
+      });
+      loadRequests();
+      setSelectedRequest(null);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setSubmitting(false); }
@@ -119,8 +142,8 @@ export default function RAFeasibilityPage() {
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedRequest?.id === r.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
                       <div className="flex justify-between items-start">
                         <div><p className="font-medium text-sm">{r.referenceNumber || `#${r.id}`}</p><p className="text-xs text-muted-foreground">{r.oec?.organizationName}</p><p className="text-xs text-muted-foreground">{r.domain}</p></div>
-                        <Badge variant={r.status === "RECEIVABILITY_STUDY" ? "default" : "secondary"} className="text-xs">
-                          {r.status === "RECEIVABILITY_STUDY" ? "En cours" : "Nouveau"}
+                        <Badge variant={r.status === "RECEIVABILITY_STUDY" ? "default" : r.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? "outline" : "secondary"} className={`text-xs ${r.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? "border-blue-300 text-blue-700" : ""}`}>
+                          {r.status === "RECEIVABILITY_STUDY" ? "En cours" : r.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? "Chez le CD" : "Nouveau"}
                         </Badge>
                       </div>
                     </div>
@@ -139,8 +162,30 @@ export default function RAFeasibilityPage() {
                       <p className="text-muted-foreground mb-4">Démarrez l'étude de recevabilité pour ce dossier</p>
                       <Button onClick={startStudy}><FileText className="mr-2 h-4 w-4" />Démarrer l'étude</Button>
                     </div>
+                  ) : selectedRequest.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? (
+                    <div className="text-center py-8 space-y-4">
+                      <CheckCircle className="h-12 w-12 mx-auto text-blue-500" />
+                      <div>
+                        <h3 className="font-semibold text-lg">En attente de validation du CD</h3>
+                        <p className="text-muted-foreground mt-2">Votre étude de recevabilité a été envoyée au Chef de Département pour vérification.</p>
+                        <p className="text-muted-foreground">Vous serez notifié dès qu'il aura validé ou demandé des modifications.</p>
+                      </div>
+                    </div>
                   ) : (
                     <Tabs value={step} onValueChange={(v) => setStep(v as any)} className="space-y-4">
+                      {selectedRequest.currentStep?.includes("Modifications demandées") && (
+                        <Alert className="border-amber-300 bg-amber-50">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-800">
+                            <strong>Le CD a demandé des modifications.</strong> Veuillez revoir votre étude et resoumettre.
+                            {selectedRequest.receivabilityComments?.includes("[Remarques CD]") && (
+                              <div className="mt-2 text-sm">
+                                {selectedRequest.receivabilityComments.split("[Remarques CD]").pop()}
+                              </div>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="documents">1. Documents & Paiement</TabsTrigger>
                         <TabsTrigger value="resources">2. Ressources</TabsTrigger>
@@ -150,11 +195,17 @@ export default function RAFeasibilityPage() {
                       <TabsContent value="documents" className="space-y-4">
                         <div className="space-y-2"><Label>Analyse technique des documents *</Label><Textarea value={technicalAnalysis} onChange={(e) => setTechnicalAnalysis(e.target.value)} placeholder="Vérifiez la complétude et la conformité des documents soumis..." rows={5} /></div>
                         <div className="space-y-2"><Label>Vérification de conformité *</Label><Textarea value={complianceCheck} onChange={(e) => setComplianceCheck(e.target.value)} placeholder="Vérifiez la conformité aux normes applicables..." rows={5} /></div>
-                        <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                          <input type="checkbox" id="payment-check" checked={paymentVerified} onChange={(e) => setPaymentVerified(e.target.checked)} className="h-5 w-5" />
-                          <label htmlFor="payment-check" className="cursor-pointer"><p className="font-medium">Paiement des frais de dossier vérifié</p><p className="text-sm text-muted-foreground">Confirmez que les droits fixes (5 000 DA) ont été payés</p></label>
+                        <div className={`flex items-center gap-3 p-4 border rounded-lg ${paymentAutoVerified ? "border-green-300 bg-green-50" : "border-amber-200 bg-amber-50"}`}>
+                          <input type="checkbox" id="payment-check" checked={paymentVerified} disabled className="h-5 w-5" />
+                          <label htmlFor="payment-check">
+                            {paymentAutoVerified ? (
+                              <><p className="font-medium text-green-700 flex items-center gap-2"><CheckCircle className="h-4 w-4" />Paiement validé par le DAG</p><p className="text-sm text-green-600">{paymentValidationDate ? `Validé le ${new Date(paymentValidationDate).toLocaleDateString("fr-FR")}` : "Les frais d'enregistrement ont été vérifiés et validés par le DAG"}</p></>
+                            ) : (
+                              <><p className="font-medium text-amber-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />En attente de validation du paiement par le DAG</p><p className="text-sm text-amber-600">Ce champ sera automatiquement rempli lorsque le DAG aura confirmé la validité du paiement</p></>
+                            )}
+                          </label>
                         </div>
-                        <Button onClick={() => setStep("resources")} disabled={!technicalAnalysis || !complianceCheck || !paymentVerified}>Suivant : Ressources</Button>
+                        <Button onClick={() => setStep("resources")} disabled={!technicalAnalysis || !complianceCheck}>Suivant : Ressources</Button>
                       </TabsContent>
 
                       <TabsContent value="resources" className="space-y-4">

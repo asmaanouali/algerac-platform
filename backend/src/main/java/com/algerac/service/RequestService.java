@@ -91,8 +91,10 @@ public class RequestService {
         request.setSubmissionDate(LocalDateTime.now());
         request.setProgress(10);
         
-        // Après soumission, la demande passe en attente de paiement
-        request.setStatus(RequestStatus.PENDING_PAYMENT);
+        // Après soumission, la demande passe en attente de fixation des frais par le DAG
+        request.setStatus(RequestStatus.AWAITING_REGISTRATION_FEE);
+        request.setNextAction("DAG doit fixer les frais d'enregistrement du dossier");
+        request.setPendingWith("DAG");
         
         request = requestRepository.save(request);
         log.info("Demande {} soumise par l'OEC {}", request.getId(), currentUser.getOrganizationName());
@@ -211,7 +213,7 @@ public class RequestService {
     }
     
     /**
-     * Décision de recevabilité par le RA
+     * Décision de recevabilité par le RA — envoyée au CD pour validation avant notification OEC
      */
     @Transactional
     public AccreditationRequest makeReceivabilityDecision(Long requestId, ReceivabilityDecisionDTO dto, User currentUser) {
@@ -227,42 +229,103 @@ public class RequestService {
             throw new RuntimeException("La demande n'est pas en étude de recevabilité");
         }
         
+        // Stocker la décision du RA mais ne pas l'appliquer directement
         request.setReceivabilityComments(dto.getComments());
         request.setReceivabilityDecisionDate(LocalDateTime.now());
         request.setIsReceivable(dto.getIsReceivable());
         
-        if (dto.getIsReceivable()) {
-            // Demande recevable
-            request.setStatus(RequestStatus.RECEIVABLE);
-            request.setProgress(60);
-            request.setCurrentPhase("Recevabilité");
-            request.setCurrentStep("Déclarée recevable");
-            request.setNextAction("Visite préliminaire ou contractualisation");
-            request.setPendingWith("RA/CD");
-        } else {
-            // Demande non recevable - OEC peut corriger
-            request.setStatus(RequestStatus.NOT_RECEIVABLE);
-            request.setReceivabilityCorrectionNeeded(dto.getComments());
-            request.setCorrectionDeadline(LocalDateTime.now().plusDays(30)); // 30 jours pour corriger
-            request.setProgress(40);
-            request.setCurrentPhase("Recevabilité");
-            request.setCurrentStep("Non recevable - correction requise");
-            request.setNextAction("OEC doit corriger et resoumettre");
-            request.setPendingWith("OEC");
-            
-            if (request.getReceivabilityAttempts() == null) {
-                request.setReceivabilityAttempts(1);
-            } else {
-                request.setReceivabilityAttempts(request.getReceivabilityAttempts() + 1);
-            }
-        }
+        // Envoyer au CD pour validation au lieu de notifier l'OEC directement
+        request.setStatus(RequestStatus.RECEIVABILITY_PENDING_CD_REVIEW);
+        request.setProgress(50);
+        request.setCurrentPhase("Recevabilité");
+        request.setCurrentStep("En attente validation CD");
+        request.setNextAction("CD doit valider l'étude de recevabilité du RA");
+        request.setPendingWith("CD");
         
         request = requestRepository.save(request);
-        log.info("Décision de recevabilité prise pour la demande {} : {}", 
+        log.info("Étude de recevabilité soumise au CD pour la demande {} : proposition {}", 
                 request.getReferenceNumber(), dto.getIsReceivable() ? "RECEVABLE" : "NON RECEVABLE");
         
-        // Notifier l'OEC
-        notificationService.notifyOECReceivabilityDecision(request, dto.getIsReceivable());
+        // Notifier le CD qu'une étude à valider est disponible
+        notificationService.notifyCDReceivabilityStudyReady(request, currentUser.getFullName(), dto.getIsReceivable());
+        
+        return request;
+    }
+    
+    /**
+     * CD: Valider ou demander des modifications sur l'étude de recevabilité du RA
+     */
+    @Transactional
+    public AccreditationRequest cdReviewReceivability(Long requestId, boolean approved, String cdComments, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (request.getStatus() != RequestStatus.RECEIVABILITY_PENDING_CD_REVIEW) {
+            throw new RuntimeException("Cette demande n'est pas en attente de validation CD");
+        }
+        
+        if (approved) {
+            // CD approuve → appliquer la décision du RA et notifier l'OEC
+            if (Boolean.TRUE.equals(request.getIsReceivable())) {
+                request.setStatus(RequestStatus.RECEIVABLE);
+                request.setProgress(60);
+                request.setCurrentPhase("Recevabilité");
+                request.setCurrentStep("Déclarée recevable");
+                request.setNextAction("Visite préliminaire ou contractualisation");
+                request.setPendingWith("RA/CD");
+            } else {
+                request.setStatus(RequestStatus.NOT_RECEIVABLE);
+                request.setReceivabilityCorrectionNeeded(request.getReceivabilityComments());
+                request.setCorrectionDeadline(LocalDateTime.now().plusDays(30));
+                request.setProgress(40);
+                request.setCurrentPhase("Recevabilité");
+                request.setCurrentStep("Non recevable - correction requise");
+                request.setNextAction("OEC doit corriger et resoumettre");
+                request.setPendingWith("OEC");
+                
+                if (request.getReceivabilityAttempts() == null) {
+                    request.setReceivabilityAttempts(1);
+                } else {
+                    request.setReceivabilityAttempts(request.getReceivabilityAttempts() + 1);
+                }
+            }
+            
+            if (cdComments != null && !cdComments.isBlank()) {
+                request.setReceivabilityComments(
+                    request.getReceivabilityComments() + "\n\n[Avis CD] " + cdComments
+                );
+            }
+            
+            request = requestRepository.save(request);
+            log.info("CD a approuvé l'étude de recevabilité pour {} : {}", 
+                    request.getReferenceNumber(), request.getIsReceivable() ? "RECEVABLE" : "NON RECEVABLE");
+            
+            // Maintenant notifier l'OEC de la décision
+            notificationService.notifyOECReceivabilityDecision(request, request.getIsReceivable());
+            // Notifier le RA que le CD a validé
+            notificationService.notifyRAReceivabilityReviewResult(request, true, null);
+        } else {
+            // CD demande des modifications → renvoyer au RA
+            request.setStatus(RequestStatus.RECEIVABILITY_STUDY);
+            request.setProgress(40);
+            request.setCurrentPhase("Recevabilité");
+            request.setCurrentStep("Modifications demandées par CD");
+            request.setNextAction("RA doit modifier l'étude de recevabilité selon les remarques du CD");
+            request.setPendingWith("RA");
+            
+            if (cdComments != null && !cdComments.isBlank()) {
+                request.setReceivabilityComments(
+                    request.getReceivabilityComments() + "\n\n[Remarques CD] " + cdComments
+                );
+            }
+            
+            request = requestRepository.save(request);
+            log.info("CD a demandé des modifications sur l'étude de recevabilité pour {}", 
+                    request.getReferenceNumber());
+            
+            // Notifier le RA des modifications demandées
+            notificationService.notifyRAReceivabilityReviewResult(request, false, cdComments);
+        }
         
         return request;
     }

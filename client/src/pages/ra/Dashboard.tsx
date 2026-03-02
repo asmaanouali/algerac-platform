@@ -35,7 +35,12 @@ const STATUS_LABELS: Record<string, string> = {
   QUOTATION_PREPARATION: "Préparation devis",
   QUOTATION_SENT_TO_DAG: "Devis envoyé au DAG",
   QUOTATION_APPROVED_BY_DAG: "Devis approuvé par DAG",
+  CONVENTION_PREPARATION: "Préparation convention",
+  QUOTATION_CONVENTION_PENDING_CD: "En attente validation CD",
+  QUOTATION_CONVENTION_CD_MODIF: "Modifications CD demandées",
   QUOTATION_SENT_TO_OEC: "Envoyé à l'OEC",
+  QUOTATION_OEC_REMINDER: "Rappel OEC (5j)",
+  QUOTATION_EXPIRED: "Délai OEC dépassé (classé)",
   QUOTATION_VALIDATED: "Devis validé par OEC",
   TEAM_DESIGNATION: "Constitution équipe",
   TEAM_SENT_TO_OEC: "Équipe envoyée à l'OEC",
@@ -120,7 +125,7 @@ export default function RADashboard() {
   const newAssignments = allRequests.filter(r => r.status === "ASSIGNED_TO_RA");
   const inStudy = allRequests.filter(r => ["RECEIVABILITY_STUDY", "RESOURCE_CHECK", "FOREIGN_EXPERT_PROPOSED", "PRELIMINARY_VISIT_PROPOSED", "PRELIMINARY_VISIT_ACCEPTED", "PRELIMINARY_VISIT_COMPLETED", "OBSTACLES_IDENTIFIED", "PENDING_DG_VALIDATION"].includes(r.status));
   const validated = allRequests.filter(r => ["DG_VALIDATED", "RECEIVABLE"].includes(r.status));
-  const inProgress = allRequests.filter(r => ["QUOTATION_PREPARATION", "QUOTATION_SENT_TO_DAG", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC", "QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_VALIDATED", "TEAM_RECUSED", "DOCUMENTARY_REVIEW", "DOCUMENTARY_REVIEW_DEFICIENCIES", "AWAITING_OEC_DOC_RESPONSE", "DOCUMENTARY_REVIEW_COMPLETED"].includes(r.status));
+  const inProgress = allRequests.filter(r => ["QUOTATION_PREPARATION", "QUOTATION_SENT_TO_DAG", "QUOTATION_APPROVED_BY_DAG", "CONVENTION_PREPARATION", "QUOTATION_CONVENTION_PENDING_CD", "QUOTATION_CONVENTION_CD_MODIF", "QUOTATION_SENT_TO_OEC", "QUOTATION_OEC_REMINDER", "QUOTATION_VALIDATED", "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_VALIDATED", "TEAM_RECUSED", "DOCUMENTARY_REVIEW", "DOCUMENTARY_REVIEW_DEFICIENCIES", "AWAITING_OEC_DOC_RESPONSE", "DOCUMENTARY_REVIEW_COMPLETED"].includes(r.status));
   const inEvaluation = allRequests.filter(r => ["EVALUATION_PLAN_PREPARATION", "EVALUATION_PLAN_VALIDATION", "EVALUATION_PLANNED", "EVALUATION_IN_PROGRESS", "EVALUATION_COMPLETED", "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION", "ACTION_PLANS_IMPLEMENTATION", "GAPS_RESOLVED", "REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED", "CAS_PREPARATION", "CAS_SCHEDULED", "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT", "CERTIFICATE_PREPARATION", "CERTIFICATE_ISSUED", "ACTIVE"].includes(r.status));
 
   // Actions
@@ -289,9 +294,20 @@ export default function RADashboard() {
       case "QUOTATION_PREPARATION":
         return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><FileText className="mr-1 h-4 w-4" />Continuer devis</Button>;
       case "QUOTATION_SENT_TO_DAG":
-        return <Button size="sm" variant="ghost" disabled><Loader2 className="mr-1 h-4 w-4 animate-spin" />En attente DAG…</Button>;
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><FileText className="mr-1 h-4 w-4" />Convention / Devis</Button>;
       case "QUOTATION_APPROVED_BY_DAG":
-        return <Button size="sm" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><Send className="mr-1 h-4 w-4" />Envoyer à l'OEC</Button>;
+        return <Button size="sm" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><Send className="mr-1 h-4 w-4" />Convention & validation CD</Button>;
+      case "CONVENTION_PREPARATION":
+        return <Button size="sm" variant="outline" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><FileText className="mr-1 h-4 w-4" />Continuer convention</Button>;
+      case "QUOTATION_CONVENTION_PENDING_CD":
+        return <Button size="sm" variant="ghost" disabled><Loader2 className="mr-1 h-4 w-4 animate-spin" />En attente CD…</Button>;
+      case "QUOTATION_CONVENTION_CD_MODIF":
+        return <Button size="sm" variant="destructive" onClick={() => setLocation(`/ra/demandes/${request.id}/devis`)}><FileText className="mr-1 h-4 w-4" />Corriger (modif CD)</Button>;
+      case "QUOTATION_SENT_TO_OEC":
+      case "QUOTATION_OEC_REMINDER":
+        return <Button size="sm" variant="ghost" disabled><Loader2 className="mr-1 h-4 w-4 animate-spin" />En attente OEC…</Button>;
+      case "QUOTATION_EXPIRED":
+        return <Badge variant="destructive">Délai OEC expiré</Badge>;
       case "QUOTATION_VALIDATED":
         return <Button size="sm" onClick={() => setLocation(`/ra/equipes`)}><ArrowRight className="mr-1 h-4 w-4" />Étape 4 : Équipe</Button>;
       case "TEAM_VALIDATED":
@@ -343,7 +359,7 @@ export default function RADashboard() {
     const steps = [
       "ASSIGNED_TO_RA","RECEIVABILITY_STUDY","RESOURCE_CHECK","PENDING_DG_VALIDATION",
       "DG_VALIDATED","RECEIVABLE",
-      "QUOTATION_PREPARATION","QUOTATION_APPROVED_BY_DAG","QUOTATION_VALIDATED",
+      "QUOTATION_PREPARATION","QUOTATION_APPROVED_BY_DAG","QUOTATION_CONVENTION_PENDING_CD","QUOTATION_VALIDATED",
       "TEAM_DESIGNATION","TEAM_VALIDATED",
       "DOCUMENTARY_REVIEW","DOCUMENTARY_REVIEW_COMPLETED",
       "EVALUATION_PLAN_PREPARATION","EVALUATION_PLANNED","EVALUATION_IN_PROGRESS","EVALUATION_COMPLETED",

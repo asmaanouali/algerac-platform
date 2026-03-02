@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -199,8 +200,19 @@ public class ComplaintService {
         }
     }
 
+    private static final String BASE32_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private String generateTrackingCode() {
-        long count = complaintRepository.count() + 1;
-        return String.format("PLT-%d-%03d", LocalDateTime.now().getYear(), count);
+        int year = LocalDateTime.now().getYear() % 100;
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(8);
+            for (int i = 0; i < 8; i++) {
+                sb.append(BASE32_CHARS.charAt(SECURE_RANDOM.nextInt(BASE32_CHARS.length())));
+            }
+            code = String.format("PLT-%02d-%s", year, sb.toString());
+        } while (complaintRepository.findByTrackingCode(code).isPresent());
+        return code;
     }
 }

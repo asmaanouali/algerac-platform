@@ -69,7 +69,22 @@ public class Quotation {
     @Builder.Default
     private Integer expCount = 0; // Expert
     
-    private Double evaluationDurationDays; // Durée de l'évaluation en H/j
+    private Double evaluationDurationDays; // Durée totale de l'évaluation en H/j
+    
+    // Durée par type de membre (H/j)
+    private Double reeDurationDays;
+    private Double etDurationDays;
+    private Double eqDurationDays;
+    private Double obsDurationDays;
+    private Double supDurationDays;
+    private Double expDurationDays;
+    
+    // Demande d'aide au CD pour estimation
+    @Builder.Default
+    private Boolean cdHelpRequested = false;
+    
+    @Column(columnDefinition = "TEXT")
+    private String cdHelpMessage;
     
     private LocalDateTime sentToDagDate;
     private LocalDateTime approvedByDagDate;

@@ -35,8 +35,12 @@ public class ConventionService {
         }
         
         if (request.getStatus() != RequestStatus.RECEIVABLE && 
-            request.getStatus() != RequestStatus.QUOTATION_PREPARATION) {
-            throw new RuntimeException("La demande doit être recevable pour créer une convention. Statut actuel : " + request.getStatus());
+            request.getStatus() != RequestStatus.QUOTATION_PREPARATION &&
+            request.getStatus() != RequestStatus.QUOTATION_SENT_TO_DAG &&
+            request.getStatus() != RequestStatus.QUOTATION_APPROVED_BY_DAG &&
+            request.getStatus() != RequestStatus.CONVENTION_PREPARATION &&
+            request.getStatus() != RequestStatus.QUOTATION_CONVENTION_CD_MODIF) {
+            throw new RuntimeException("La demande doit être à un état approprié pour créer une convention. Statut actuel : " + request.getStatus());
         }
         
         String conventionNumber = generateConventionNumber();

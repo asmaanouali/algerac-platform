@@ -14,6 +14,7 @@ import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.NotificationService;
 import com.algerac.service.PaymentService;
+import com.algerac.service.QuotationService;
 import com.algerac.service.RequestService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -34,6 +35,7 @@ public class AccreditationRequestController {
     
     private final RequestService requestService;
     private final PaymentService paymentService;
+    private final QuotationService quotationService;
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
     private final NotificationService notificationService;
@@ -138,11 +140,11 @@ public class AccreditationRequestController {
             
             AccreditationRequest request = requestService.submitRequest(id, currentUser);
             
-            // Créer le paiement des frais d'enregistrement
+            // Créer le paiement en attente de fixation des frais par le DAG
             paymentService.createRegistrationFeePayment(request.getId());
             
             return ResponseEntity.ok(ApiResponse.success(
-                    "Demande soumise avec succès. Veuillez procéder au paiement.",
+                    "Demande soumise avec succès. Le DAG va fixer les frais d'enregistrement de votre dossier.",
                     request
             ));
         } catch (Exception e) {
@@ -321,6 +323,47 @@ public class AccreditationRequestController {
                     "Décision de recevabilité enregistrée avec succès",
                     request
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== STEP 1.5: CD REVIEW OF RECEIVABILITY STUDY ==========
+
+    /**
+     * CD: Valider ou demander des modifications sur l'étude de recevabilité du RA
+     */
+    @PostMapping("/{id}/cd-review-receivability")
+    public ResponseEntity<ApiResponse> cdReviewReceivability(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+            
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            
+            if (currentUser.getRole() != UserRole.CD) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Seul le CD peut valider l'étude de recevabilité"));
+            }
+            
+            boolean approved = Boolean.TRUE.equals(body.get("approved"));
+            String comments = (String) body.getOrDefault("comments", "");
+            
+            AccreditationRequest request = requestService.cdReviewReceivability(id, approved, comments, currentUser);
+            
+            String message = approved 
+                    ? "Étude de recevabilité approuvée. La décision a été communiquée à l'OEC."
+                    : "Modifications demandées au RA.";
+            
+            return ResponseEntity.ok(ApiResponse.success(message, request));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -734,7 +777,8 @@ public class AccreditationRequestController {
     // ========== STEP 3: CONTRACTUALISATION HELPERS ==========
 
     /**
-     * RA: Transmet devis + convention à OEC pour validation
+     * RA: Demande la validation de devis + convention par le CD
+     * Le CD validera et enverra à l'OEC, ou demandera des modifications
      */
     @PostMapping("/{id}/send-quotation-convention-to-oec")
     public ResponseEntity<ApiResponse> sendQuotationConventionToOEC(
@@ -744,27 +788,19 @@ public class AccreditationRequestController {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
             
-            AccreditationRequest request = requestService.getRequest(id)
-                    .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            // Redirect: this now requests CD validation instead of sending directly to OEC
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            quotationService.requestCDValidation(id, currentUser);
             
-            request.setStatus(RequestStatus.QUOTATION_SENT_TO_OEC);
-            request.setNextAction("OEC doit valider le devis et signer la convention (délai: 10 jours)");
-            request.setPendingWith("OEC");
-            request.setCurrentStep("quotation_convention_sent_to_oec");
-            request.setNextActionDate(java.time.LocalDateTime.now().plusDays(10));
-            request.setProgress(80);
-            
-            requestRepository.save(request);
-            notificationService.notifyOECQuotationAndConvention(request);
-            
-            return ResponseEntity.ok(ApiResponse.success("Devis et convention envoyés à l'OEC", request));
+            return ResponseEntity.ok(ApiResponse.success("Demande de validation envoyée au CD"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
     /**
-     * OEC: Valide le devis, signe la convention et paie le devis
+     * OEC: Valide le devis, signe la convention
      */
     @PostMapping("/{id}/oec-validate-quotation")
     public ResponseEntity<ApiResponse> oecValidateQuotation(
@@ -777,12 +813,31 @@ public class AccreditationRequestController {
             AccreditationRequest request = requestService.getRequest(id)
                     .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
             
-            request.setStatus(RequestStatus.QUOTATION_VALIDATED);
-            request.setNextAction("Constitution de l'équipe d'évaluation");
-            request.setPendingWith("RA");
-            request.setCurrentPhase("CONSTITUTION_EQUIPE");
-            request.setCurrentStep("team_designation");
-            request.setProgress(85);
+            // Créer le paiement des frais d'évaluation (flux standardisé)
+            // Le montant est celui fixé par le DAG lors de l'approbation du devis
+            try {
+                paymentService.createEvaluationFeePayment(id);
+                
+                // Mettre le dossier en attente de paiement des frais d'évaluation
+                request.setStatus(RequestStatus.PENDING_PAYMENT);
+                request.setNextAction("OEC doit payer les frais d'évaluation");
+                request.setPendingWith("OEC");
+                request.setCurrentPhase("PAIEMENT_EVALUATION");
+                request.setCurrentStep("evaluation_fee_payment");
+                request.setProgress(55);
+            } catch (Exception e) {
+                // Si le montant du devis n'est pas encore défini ou autre erreur,
+                // on continue sans créer le paiement (workflow legacy)
+                log.warn("Impossible de créer le paiement des frais d'évaluation pour {}: {}", 
+                        request.getReferenceNumber(), e.getMessage());
+                        
+                request.setStatus(RequestStatus.QUOTATION_VALIDATED);
+                request.setNextAction("Constitution de l'équipe d'évaluation");
+                request.setPendingWith("RA");
+                request.setCurrentPhase("CONSTITUTION_EQUIPE");
+                request.setCurrentStep("team_designation");
+                request.setProgress(90);
+            }
             
             requestRepository.save(request);
             
@@ -791,7 +846,7 @@ public class AccreditationRequestController {
                 notificationService.createNotification(
                     request.getAssignedToRa().getId(),
                     "Devis validé par l'OEC",
-                    "L'OEC a validé le devis et signé la convention pour " + request.getReferenceNumber() + ". Vous pouvez constituer l'équipe d'évaluation.",
+                    "L'OEC a validé le devis et signé la convention pour " + request.getReferenceNumber() + ".",
                     "INFO"
                 );
             }

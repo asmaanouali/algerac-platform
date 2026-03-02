@@ -657,7 +657,7 @@ export default function NewRequestPage() {
         </main>
       </div>
 
-      {/* Dialog de succès avec redirection vers paiement */}
+      {/* Dialog de succès - Information sur les frais d'enregistrement */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
@@ -666,20 +666,23 @@ export default function NewRequestPage() {
               Demande soumise avec succès
             </DialogTitle>
             <DialogDescription>
-              Votre demande d'accréditation a été enregistrée. Pour qu'elle soit traitée,
-              vous devez maintenant procéder au paiement des frais de dépôt.
+              Votre demande d'accréditation a été enregistrée et transmise au service administratif.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-amber-600 mt-0.5" />
+                <CreditCard className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-amber-900">Frais de dépôt à régler</p>
-                  <p className="text-2xl font-bold text-amber-800 mt-1">5 000 DA</p>
-                  <p className="text-sm text-amber-700 mt-1">
-                    Le paiement doit être effectué avant la prise en charge de votre dossier.
+                  <p className="font-medium text-blue-900">Frais d'enregistrement du dossier</p>
+                  <p className="text-sm text-blue-700 mt-2">
+                    Vous allez recevoir prochainement les frais d'enregistrement de votre dossier. 
+                    Le Directeur Administratif et Financier (DAG) va examiner votre dossier et fixer le montant des frais.
+                  </p>
+                  <p className="text-sm text-blue-700 mt-2">
+                    Vous serez notifié par email dès que les frais seront fixés. 
+                    Vous pourrez alors vous connecter à la plateforme et effectuer le paiement depuis votre <strong>page de facturation</strong>.
                   </p>
                 </div>
               </div>
@@ -687,16 +690,20 @@ export default function NewRequestPage() {
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button onClick={goToPayment} className="w-full" size="lg">
-              <CreditCard className="mr-2 h-4 w-4" />
-              Procéder au paiement
+            <Button
+              onClick={() => { setShowPaymentDialog(false); setLocation("/oec/mes-demandes"); }}
+              className="w-full"
+              size="lg"
+              style={{ backgroundColor: "#00A63E" }}
+            >
+              Voir mes demandes
             </Button>
             <Button
               variant="ghost"
-              onClick={() => { setShowPaymentDialog(false); setLocation("/oec/mes-demandes"); }}
+              onClick={() => { setShowPaymentDialog(false); setLocation("/oec/dashboard"); }}
               className="w-full text-muted-foreground"
             >
-              Je paierai plus tard
+              Retour au tableau de bord
             </Button>
           </DialogFooter>
         </DialogContent>

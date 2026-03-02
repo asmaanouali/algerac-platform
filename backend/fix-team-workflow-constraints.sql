@@ -1,9 +1,26 @@
--- Drop the old constraint
-ALTER TABLE accreditation_requests DROP CONSTRAINT IF EXISTS accreditation_requests_status_check;
+-- Fix constraints for new RA → CD → OEC team workflow statuses
 
--- Add new constraint with all status values from RequestStatus enum
-ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_check 
-  CHECK (status IN (
+-- 1. Update evaluation_teams status constraint to include new team statuses
+ALTER TABLE evaluation_teams DROP CONSTRAINT IF EXISTS evaluation_teams_status_check;
+ALTER TABLE evaluation_teams ADD CONSTRAINT evaluation_teams_status_check
+CHECK (status IN (
+    'DRAFT',
+    'SENT_TO_CD',
+    'CD_APPROVED',
+    'CD_CHANGES_REQUESTED',
+    'SENT_TO_OEC',
+    'DATE_REFUSED',
+    'MEMBER_RECUSED',
+    'RECUSATION_INVALID',
+    'RECUSED',
+    'VALIDATED',
+    'ACTIVE'
+));
+
+-- 2. Update accreditation_requests status constraint to include new team workflow statuses
+ALTER TABLE accreditation_requests DROP CONSTRAINT IF EXISTS accreditation_requests_status_check;
+ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_check
+CHECK (status IN (
     'DRAFT',
     'SUBMITTED',
     'AWAITING_REGISTRATION_FEE',
@@ -27,13 +44,21 @@ ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_
     'QUOTATION_PREPARATION',
     'QUOTATION_SENT_TO_DAG',
     'QUOTATION_APPROVED_BY_DAG',
-    'QUOTATION_SENT_TO_DEPT',
-    'QUOTATION_RECEIVED_FROM_DEPT',
+    'CONVENTION_PREPARATION',
+    'QUOTATION_CONVENTION_PENDING_CD',
+    'QUOTATION_CONVENTION_CD_MODIF',
     'QUOTATION_SENT_TO_OEC',
+    'QUOTATION_OEC_REMINDER',
     'QUOTATION_VALIDATED',
     'QUOTATION_EXPIRED',
     'TEAM_DESIGNATION',
+    'TEAM_SENT_TO_CD',
+    'TEAM_CD_APPROVED',
+    'TEAM_CD_CHANGES_REQUESTED',
     'TEAM_SENT_TO_OEC',
+    'TEAM_DATE_REFUSED',
+    'TEAM_MEMBER_RECUSED',
+    'TEAM_RECUSATION_INVALID',
     'TEAM_RECUSED',
     'TEAM_VALIDATED',
     'DOCUMENTARY_REVIEW',
@@ -68,5 +93,10 @@ ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_
     'CLOSED',
     'SURVEILLANCE_SCHEDULED',
     'SURVEILLANCE_IN_PROGRESS',
-    'SURVEILLANCE_COMPLETED'
-  ));
+    'SURVEILLANCE_COMPLETED',
+    'RESOURCE_CHECK',
+    'FOREIGN_EXPERT_PROPOSED',
+    'OBSTACLES_IDENTIFIED',
+    'PENDING_DG_VALIDATION',
+    'DG_VALIDATED'
+));

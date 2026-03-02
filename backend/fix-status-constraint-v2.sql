@@ -1,9 +1,8 @@
--- Drop the old constraint
+-- Fix status constraint to include all new statuses for the devis/convention workflow
 ALTER TABLE accreditation_requests DROP CONSTRAINT IF EXISTS accreditation_requests_status_check;
 
--- Add new constraint with all status values from RequestStatus enum
-ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_check 
-  CHECK (status IN (
+ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_check
+CHECK (status IN (
     'DRAFT',
     'SUBMITTED',
     'AWAITING_REGISTRATION_FEE',
@@ -27,9 +26,11 @@ ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_
     'QUOTATION_PREPARATION',
     'QUOTATION_SENT_TO_DAG',
     'QUOTATION_APPROVED_BY_DAG',
-    'QUOTATION_SENT_TO_DEPT',
-    'QUOTATION_RECEIVED_FROM_DEPT',
+    'CONVENTION_PREPARATION',
+    'QUOTATION_CONVENTION_PENDING_CD',
+    'QUOTATION_CONVENTION_CD_MODIF',
     'QUOTATION_SENT_TO_OEC',
+    'QUOTATION_OEC_REMINDER',
     'QUOTATION_VALIDATED',
     'QUOTATION_EXPIRED',
     'TEAM_DESIGNATION',
@@ -68,5 +69,10 @@ ALTER TABLE accreditation_requests ADD CONSTRAINT accreditation_requests_status_
     'CLOSED',
     'SURVEILLANCE_SCHEDULED',
     'SURVEILLANCE_IN_PROGRESS',
-    'SURVEILLANCE_COMPLETED'
-  ));
+    'SURVEILLANCE_COMPLETED',
+    'RESOURCE_CHECK',
+    'FOREIGN_EXPERT_PROPOSED',
+    'OBSTACLES_IDENTIFIED',
+    'PENDING_DG_VALIDATION',
+    'DG_VALIDATED'
+));

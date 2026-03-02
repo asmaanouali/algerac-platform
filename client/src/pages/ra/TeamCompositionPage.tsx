@@ -95,7 +95,9 @@ export default function TeamCompositionPage() {
         const allReqs = await reqRes.json();
         setRequests(allReqs.filter((r: any) =>
           ["QUOTATION_VALIDATED", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC",
-           "TEAM_DESIGNATION", "TEAM_SENT_TO_OEC", "TEAM_RECUSED",
+           "TEAM_DESIGNATION", "TEAM_SENT_TO_CD", "TEAM_CD_APPROVED", "TEAM_CD_CHANGES_REQUESTED",
+           "TEAM_SENT_TO_OEC", "TEAM_DATE_REFUSED", "TEAM_MEMBER_RECUSED", "TEAM_RECUSED",
+           "TEAM_RECUSATION_INVALID",
            "FEASIBILITY_APPROVED", "RECEIVABLE"].includes(r.status)
         ));
       }
@@ -165,7 +167,7 @@ export default function TeamCompositionPage() {
     return hasREE && hasET;
   }, [members]);
 
-  const sendToOEC = async () => {
+  const sendToCD = async () => {
     if (!hasMinimumTeam) {
       toast({ title: "Erreur", description: "Equipe doit comprendre min 1 REE et 1 Evaluateur Technique", variant: "destructive" });
       return;
@@ -175,13 +177,32 @@ export default function TeamCompositionPage() {
       return;
     }
     try {
-      const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/send-to-oec`, {
+      const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/send-to-cd`, {
         compositionSheet: "Fiche composition equipe FOR 26",
         evaluationDate: evaluationDate,
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succes", description: "Fiche de composition et date d'evaluation envoyees a l'OEC (delai: 3 jours)" });
+        toast({ title: "Succes", description: "Fiche de composition et date d'evaluation envoyees au CD pour validation" });
+        loadData();
+      }
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const changeDate = async () => {
+    if (!evaluationDate) {
+      toast({ title: "Erreur", description: "Veuillez selectionner une nouvelle date d'evaluation", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/change-date`, {
+        evaluationDate: evaluationDate,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succes", description: "Nouvelle date proposee, envoyee au CD pour validation" });
         loadData();
       }
     } catch (e: any) {
@@ -289,8 +310,13 @@ export default function TeamCompositionPage() {
                             <p className="text-xs text-muted-foreground">{r.domain}</p>
                             <p className="text-xs text-muted-foreground">{r.oec?.organizationName || r.oec?.fullName}</p>
                           </div>
-                          <Badge variant={r.status === "TEAM_RECUSED" ? "destructive" : "secondary"} className="text-xs">
-                            {r.status === "TEAM_RECUSED" ? "Recusee" : r.status === "TEAM_DESIGNATION" ? "En cours" : "A traiter"}
+                          <Badge variant={["TEAM_RECUSED","TEAM_MEMBER_RECUSED","TEAM_DATE_REFUSED","TEAM_CD_CHANGES_REQUESTED"].includes(r.status) ? "destructive" : "secondary"} className="text-xs">
+                            {r.status === "TEAM_RECUSED" || r.status === "TEAM_MEMBER_RECUSED" ? "Recusee" 
+                             : r.status === "TEAM_DATE_REFUSED" ? "Date refusee"
+                             : r.status === "TEAM_CD_CHANGES_REQUESTED" ? "Modif. demandees"
+                             : r.status === "TEAM_SENT_TO_CD" ? "En attente CD"
+                             : r.status === "TEAM_SENT_TO_OEC" ? "En attente OEC"
+                             : r.status === "TEAM_DESIGNATION" ? "En cours" : "A traiter"}
                           </Badge>
                         </div>
                       </div>
@@ -385,16 +411,48 @@ export default function TeamCompositionPage() {
                         )}
                       </div>
 
-                      {/* Evaluation date + Send to OEC */}
+                      {/* Evaluation date + Send to CD */}
                       {team.status === "DRAFT" && hasMinimumTeam && (
                         <div className="mt-6 space-y-4">
                           <div className="space-y-2">
                             <Label className="font-medium">Date d'evaluation proposee *</Label>
                             <Input type="date" value={evaluationDate} onChange={(e) => setEvaluationDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
-                            <p className="text-xs text-muted-foreground">L'OEC peut refuser et proposer une autre date</p>
+                            <p className="text-xs text-muted-foreground">Le CD validera puis enverra a l'OEC</p>
                           </div>
-                          <Button className="w-full" size="lg" onClick={sendToOEC} disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned) || !evaluationDate}>
-                            <Send className="w-4 h-4 mr-2" />Envoyer la fiche de composition et la date a l'OEC
+                          <Button className="w-full" size="lg" onClick={sendToCD} disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned) || !evaluationDate}>
+                            <Send className="w-4 h-4 mr-2" />Envoyer la composition et la date au CD pour validation
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Status messages */}
+                      {team.status === "SENT_TO_CD" && (
+                        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-sm font-medium text-blue-800">En attente de validation par le CD. Le CD approuvera la composition et l'enverra a l'OEC.</p>
+                        </div>
+                      )}
+
+                      {team.status === "CD_CHANGES_REQUESTED" && (
+                        <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          <p className="text-sm font-medium text-amber-800">Le CD a demande des modifications. Veuillez corriger et renvoyer.</p>
+                          {team.recusationDecisionReason && <p className="text-sm text-amber-700 mt-1">Commentaires : {team.recusationDecisionReason}</p>}
+                        </div>
+                      )}
+
+                      {/* Date refused by OEC - RA must propose new date */}
+                      {(team.status === "DATE_REFUSED" || selectedRequest?.status === "TEAM_DATE_REFUSED") && (
+                        <div className="mt-6 space-y-4">
+                          <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                            <p className="text-sm font-medium text-red-800">L'OEC a refuse la date d'evaluation proposee.</p>
+                            {team.dateRefusalReason && <p className="text-sm text-red-700 mt-1">Motif : {team.dateRefusalReason}</p>}
+                            {team.oecProposedDate && <p className="text-sm text-red-700 mt-1">Date suggeree par l'OEC : {new Date(team.oecProposedDate).toLocaleDateString("fr-FR")}</p>}
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="font-medium">Nouvelle date d'evaluation proposee *</Label>
+                            <Input type="date" value={evaluationDate} onChange={(e) => setEvaluationDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                          </div>
+                          <Button className="w-full" size="lg" onClick={changeDate} disabled={!evaluationDate}>
+                            <Send className="w-4 h-4 mr-2" />Proposer la nouvelle date (envoi au CD pour validation)
                           </Button>
                         </div>
                       )}
@@ -491,8 +549,8 @@ export default function TeamCompositionPage() {
                               <Badge variant={exp.activeDossiers > 3 ? "destructive" : "secondary"}>{exp.activeDossiers} dossier(s)</Badge>
                             </TableCell>
                             <TableCell>
-                              <Button variant="outline" size="sm" onClick={() => openCalendar(exp)} className={exp.unavailableDates?.length > 0 ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-green-300 text-green-700 hover:bg-green-50"}>
-                                <CalendarDays className="w-3 h-3 mr-1" />{exp.unavailableDates?.length > 0 ? `${exp.unavailableDates.length} indispo.` : "Disponible"}
+                              <Button variant="outline" size="sm" onClick={() => openCalendar(exp)}>
+                                <CalendarDays className="w-3 h-3 mr-1" />Planning
                               </Button>
                             </TableCell>
                           </TableRow>

@@ -57,6 +57,15 @@ public class TeamMember {
     @Column(columnDefinition = "TEXT")
     private String mandatementMessage;
     
+    // Résultats individuels de la revue documentaire
+    @Column(columnDefinition = "TEXT")
+    private String docReviewResults;          // Résultats individuels du membre
+
+    @Column(columnDefinition = "TEXT")
+    private String docReviewDeficiencies;     // Manquements identifiés par ce membre
+
+    private LocalDateTime docReviewSubmittedAt; // Date de soumission des résultats
+
     private LocalDateTime addedAt;
     
     @PrePersist

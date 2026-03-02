@@ -30,6 +30,14 @@ interface Quotation {
   supCount: number;
   expCount: number;
   evaluationDurationDays: number;
+  reeDurationDays: number;
+  etDurationDays: number;
+  eqDurationDays: number;
+  obsDurationDays: number;
+  supDurationDays: number;
+  expDurationDays: number;
+  cdHelpRequested: boolean;
+  cdHelpMessage: string;
   request: {
     id: number;
     referenceNumber: string;
@@ -238,7 +246,7 @@ export default function DAGDashboard() {
 
       {/* Approval Dialog - DAG sets the amount */}
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{"\u00C9"}tablir le devis</DialogTitle>
             <DialogDescription>
@@ -270,8 +278,26 @@ export default function DAGDashboard() {
                   {(selectedQuotation.expCount > 0) && <div>Expert : <strong>{selectedQuotation.expCount}</strong></div>}
                 </div>
                 <div className="mt-2 pt-2 border-t border-blue-200 text-sm">
-                  <strong>Total : {getTotalMembers(selectedQuotation)} membres</strong> | Dur{"\u00E9"}e : <strong>{selectedQuotation.evaluationDurationDays} H/j</strong>
+                  <strong>Total : {getTotalMembers(selectedQuotation)} membres</strong> | Dur{"\u00E9"}e totale : <strong>{selectedQuotation.evaluationDurationDays} H/j</strong>
                 </div>
+                {/* Per-member durations */}
+                <div className="mt-2 pt-2 border-t border-blue-200">
+                  <p className="text-xs font-medium text-blue-700 mb-1">Dur\u00E9e par membre (H/j) :</p>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {selectedQuotation.reeDurationDays > 0 && <div>REE : <strong>{selectedQuotation.reeDurationDays}</strong></div>}
+                    {selectedQuotation.etDurationDays > 0 && <div>{"\u00C9"}vl. Tech : <strong>{selectedQuotation.etDurationDays}</strong></div>}
+                    {selectedQuotation.eqDurationDays > 0 && <div>{"\u00C9"}vl. Qualit{"\u00E9"} : <strong>{selectedQuotation.eqDurationDays}</strong></div>}
+                    {selectedQuotation.obsDurationDays > 0 && <div>Observateur : <strong>{selectedQuotation.obsDurationDays}</strong></div>}
+                    {selectedQuotation.supDurationDays > 0 && <div>Superviseur : <strong>{selectedQuotation.supDurationDays}</strong></div>}
+                    {selectedQuotation.expDurationDays > 0 && <div>Expert : <strong>{selectedQuotation.expDurationDays}</strong></div>}
+                  </div>
+                </div>
+                {selectedQuotation.cdHelpRequested && (
+                  <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200 text-xs text-amber-700">
+                    <strong>Le RA a demand\u00E9 l'aide du CD pour l'estimation.</strong>
+                    {selectedQuotation.cdHelpMessage && <p className="mt-1">{selectedQuotation.cdHelpMessage}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -302,7 +328,7 @@ export default function DAGDashboard() {
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Une fois le montant d{"\u00E9"}fini, le RA pourra envoyer le devis et la convention \u00E0 l'OEC.
+                  Une fois le montant d{"\u00E9"}fini, le RA pourra demander la validation du CD avant l'envoi \u00E0 l'OEC. <strong>Seul le DAG et l'OEC voient le montant.</strong>
                 </AlertDescription>
               </Alert>
             </div>

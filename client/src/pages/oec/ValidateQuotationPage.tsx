@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, FileText, CreditCard, FileSignature, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, FileText, CreditCard, FileSignature, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -98,6 +98,22 @@ export default function ValidateQuotationConventionPage() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
+  // Deadline calculation
+  const getDeadlineInfo = () => {
+    if (!request?.quotationSentToOecDate && !request?.sentToOecDate) return null;
+    const sentDate = new Date(request.quotationSentToOecDate || request.sentToOecDate);
+    const now = new Date();
+    const diffMs = now.getTime() - sentDate.getTime();
+    const daysPassed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const daysRemaining = 10 - daysPassed;
+    const totalDaysRemaining = 15 - daysPassed; // After 15 days = closed
+    const isReminder = daysPassed >= 5 && daysPassed < 10;
+    const isOverdue = daysPassed >= 10;
+    const isClosed = daysPassed >= 15;
+    return { daysPassed, daysRemaining, totalDaysRemaining, isReminder, isOverdue, isClosed, sentDate };
+  };
+  const deadlineInfo = getDeadlineInfo();
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <Sidebar />
@@ -118,8 +134,45 @@ export default function ValidateQuotationConventionPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 <strong>Délai :</strong> Vous disposez de <strong>10 jours</strong> pour accepter ou refuser le devis et signer la convention. Un rappel sera envoyé au bout de 5 jours.
+                {deadlineInfo && !deadlineInfo.isClosed && (
+                  <span className="block mt-1">
+                    <Clock className="h-3 w-3 inline mr-1" />
+                    Envoyé le {deadlineInfo.sentDate.toLocaleDateString("fr-FR")} — 
+                    {deadlineInfo.daysRemaining > 0 
+                      ? <strong> {deadlineInfo.daysRemaining} jour(s) restant(s)</strong>
+                      : <strong className="text-red-700"> Délai dépassé ({Math.abs(deadlineInfo.daysRemaining)} jour(s))</strong>
+                    }
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
+
+            {deadlineInfo?.isReminder && !deadlineInfo.isOverdue && (
+              <Alert className="border-orange-300 bg-orange-50">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <AlertDescription className="text-orange-900">
+                  <strong>Rappel :</strong> Il vous reste <strong>{deadlineInfo.daysRemaining} jour(s)</strong> pour valider. Passé ce délai, un délai supplémentaire de 5 jours sera accordé avant la clôture du dossier.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {deadlineInfo?.isOverdue && !deadlineInfo.isClosed && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Délai dépassé !</strong> Le délai initial de 10 jours est dépassé. Il vous reste <strong>{deadlineInfo.totalDaysRemaining} jour(s)</strong> avant la clôture automatique du dossier.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {deadlineInfo?.isClosed && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Dossier classé.</strong> Le délai de 15 jours (10 + 5) est dépassé. Ce dossier a été automatiquement classé.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <Tabs defaultValue="quotation">
               <TabsList className="grid w-full grid-cols-2">
@@ -176,16 +229,24 @@ export default function ValidateQuotationConventionPage() {
             {quotation && convention && (
               <Card className="border-primary">
                 <CardContent className="pt-6">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button variant="destructive" onClick={handleReject} disabled={validating} className="flex-1">
-                      Refuser le devis
-                    </Button>
-                    <Button onClick={handleValidate} disabled={validating || !quotationAccepted || !conventionSigned} className="flex-1">
-                      {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><CreditCard className="mr-2 h-4 w-4" />Accepter et procéder au paiement</>}
-                    </Button>
-                  </div>
-                  {(!quotationAccepted || !conventionSigned) && (
-                    <p className="text-sm text-muted-foreground mt-3 text-center">Acceptez le devis et signez la convention pour continuer</p>
+                  {deadlineInfo?.isClosed ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>Le délai est expiré. Vous ne pouvez plus valider ce devis.</AlertDescription>
+                    </Alert>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <Button variant="destructive" onClick={handleReject} disabled={validating} className="flex-1">
+                          Refuser le devis
+                        </Button>
+                        <Button onClick={handleValidate} disabled={validating || !quotationAccepted || !conventionSigned} className="flex-1">
+                          {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><CreditCard className="mr-2 h-4 w-4" />Accepter et procéder au paiement</>}
+                        </Button>
+                      </div>
+                      {(!quotationAccepted || !conventionSigned) && (
+                        <p className="text-sm text-muted-foreground mt-3 text-center">Acceptez le devis et signez la convention pour continuer</p>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

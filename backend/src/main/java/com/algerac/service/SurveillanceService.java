@@ -18,6 +18,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("unused")
 public class SurveillanceService {
 
     private final RequestRepository requestRepository;
@@ -25,10 +26,7 @@ public class SurveillanceService {
     private final SurveillancePlanRepository surveillancePlanRepository;
     private final SurveillanceEvaluationRepository survEvalRepository;
     private final RiskAnalysisFormRepository riskAnalysisRepository;
-    private final GapRepository gapRepository;
-    private final ActionPlanRepository actionPlanRepository;
     private final EvaluationTeamRepository teamRepository;
-    private final EvaluationReportRepository reportRepository;
     private final CASDecisionRepository casDecisionRepository;
     private final CASMeetingRepository casMeetingRepository;
     private final UserRepository userRepository;

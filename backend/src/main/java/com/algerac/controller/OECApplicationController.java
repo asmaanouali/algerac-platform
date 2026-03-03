@@ -106,7 +106,7 @@ public class OECApplicationController {
         }
         
         try {
-            OECApplication application = oecApplicationService.approveApplication(id, userId);
+            oecApplicationService.approveApplication(id, userId);
             log.info("Candidature OEC {} approuvée par l'utilisateur {}", id, userId);
             return ResponseEntity.ok(
                     ApiResponse.success("La candidature a été approuvée. Une notification a été envoyée à l'administrateur.")
@@ -194,7 +194,7 @@ public class OECApplicationController {
         }
         
         try {
-            OECApplication application = oecApplicationService.markAsAccountCreated(id, userId);
+            oecApplicationService.markAsAccountCreated(id, userId);
             log.info("Compte créé pour la candidature OEC {} par l'admin {}", id, userId);
             return ResponseEntity.ok(
                     ApiResponse.success("Le compte a été marqué comme créé.")

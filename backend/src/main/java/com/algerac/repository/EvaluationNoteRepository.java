@@ -9,4 +9,6 @@ public interface EvaluationNoteRepository extends JpaRepository<EvaluationNote, 
     List<EvaluationNote> findByAuthor_Id(Long authorId);
     List<EvaluationNote> findByRequest_IdAndNoteType(Long requestId, String noteType);
     List<EvaluationNote> findByRequest_IdAndAuthor_Id(Long requestId, Long authorId);
+    List<EvaluationNote> findByRequest_IdAndSentToREE(Long requestId, Boolean sentToREE);
+    List<EvaluationNote> findByRequest_IdAndNoteTypeAndAuthor_Id(Long requestId, String noteType, Long authorId);
 }

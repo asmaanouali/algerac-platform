@@ -20,6 +20,7 @@ import java.util.*;
 @RequestMapping("/api/workflow/surveillance")
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("unused")
 public class SurveillanceController {
 
     private final SurveillanceService surveillanceService;

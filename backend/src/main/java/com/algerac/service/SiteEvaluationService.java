@@ -76,7 +76,6 @@ public class SiteEvaluationService {
         validateRole(currentUser, UserRole.RA, "Seul le RA peut créer les ordres de mission");
 
         List<MissionOrder> orders = new ArrayList<>();
-        List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
 
         for (Map<String, Object> detail : orderDetails) {
             Long memberId = ((Number) detail.get("teamMemberId")).longValue();

@@ -113,10 +113,21 @@ public class TeamMember {
 
     @JsonProperty("dossierUnlocked")
     public Boolean getDossierUnlocked() {
+        // Always allow viewing — the dossier is in read-only mode until eval date
+        return true;
+    }
+
+    @JsonProperty("dossierWritable")
+    public Boolean getDossierWritable() {
         if (team == null || team.getProposedEvaluationDate() == null) return false;
         LocalDate evalDate = Boolean.TRUE.equals(team.getEvaluationDateAccepted()) 
                 ? team.getProposedEvaluationDate()
                 : (team.getOecProposedDate() != null ? team.getOecProposedDate() : team.getProposedEvaluationDate());
         return !LocalDate.now().isBefore(evalDate);
+    }
+
+    @JsonProperty("requestStatus")
+    public String getRequestStatus() {
+        return team != null && team.getRequest() != null ? team.getRequest().getStatus().name() : null;
     }
 }

@@ -67,7 +67,9 @@ import InterviewEvaluationPage from "@/pages/ges_competences/InterviewEvaluation
 // Phase II - Évaluation sur site
 import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
 import GapResponsePage from "@/pages/oec/GapResponsePage";
+import OECGapReviewPage from "@/pages/oec/OECGapReviewPage";
 import EvaluationOversightPage from "@/pages/cd/EvaluationOversightPage";
+import GapTreatmentPage from "@/pages/ree/GapTreatmentPage";
 
 // Phase III - Décision d'accréditation & Certificat
 import ReportDraftingPage from "@/pages/ree/ReportDraftingPage";
@@ -124,6 +126,7 @@ function Router() {
       <Route path="/oec/demandes/:requestId/plans-actions" component={ActionPlansPage} />
       <Route path="/oec/demandes/:requestId/lever-obstacles" component={LiftObstaclesPage} />
       <Route path="/oec/reponse-ecarts" component={GapResponsePage} />
+      <Route path="/oec/revue-ecarts" component={OECGapReviewPage} />
       
       {/* RA Routes */}
       <Route path="/ra" component={RADashboard} />
@@ -150,6 +153,7 @@ function Router() {
       <Route path="/cd/pilotage-evaluation" component={EvaluationOversightPage} />
       <Route path="/cd/revue-documentaire" component={CDDocumentaryDecisionPage} />
       <Route path="/cd/preparation-evaluation" component={CDEvaluationPrepPage} />
+      <Route path="/cd/traitement-ecarts" component={GapTreatmentPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
@@ -183,9 +187,9 @@ function Router() {
       <Route path="/ree/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/ree/mandatements" component={MandateMeetingsPage} />
       <Route path="/ree/plan-evaluation" component={REEEvaluationPlanPage} />
-      <Route path="/ree/evaluation" component={ExpertEvaluationDayPage} />
       <Route path="/ree/rapports" component={ExpertReportDraftingPage} />
       <Route path="/ree/evaluation-site" component={SiteEvaluationPage} />
+      <Route path="/ree/traitement-ecarts" component={GapTreatmentPage} />
       <Route path="/ree/redaction-rapport" component={ReportDraftingPage} />
       
       {/* ET Routes */}
@@ -196,6 +200,7 @@ function Router() {
       <Route path="/et/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/et/mandatements" component={MandateMeetingsPage} />
       <Route path="/et/evaluation" component={ExpertEvaluationDayPage} />
+      <Route path="/et/traitement-ecarts" component={GapTreatmentPage} />
       <Route path="/et/evaluation-plans" component={ETGapEvaluationPage} />
       
       {/* EQ Routes */}
@@ -206,6 +211,7 @@ function Router() {
       <Route path="/eq/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
       <Route path="/eq/mandatements" component={MandateMeetingsPage} />
       <Route path="/eq/evaluation" component={ExpertEvaluationDayPage} />
+      <Route path="/eq/traitement-ecarts" component={GapTreatmentPage} />
       
       {/* CAS Member Routes */}
       <Route path="/cas" component={CASMemberDashboard} />

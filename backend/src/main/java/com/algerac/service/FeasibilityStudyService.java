@@ -3,7 +3,6 @@ package com.algerac.service;
 import com.algerac.model.*;
 import com.algerac.repository.FeasibilityStudyRepository;
 import com.algerac.repository.RequestRepository;
-import com.algerac.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -88,6 +88,14 @@ public enum RequestStatus {
     
     // Évaluation (terrain - hors système)
     EVALUATION_IN_PROGRESS,             // Évaluation en cours sur site
+    EVALUATION_OPENING_MEETING,         // Réunion d'ouverture en cours
+    EVALUATION_ONGOING,                 // Évaluation terrain en cours
+    EVALUATION_CONSENSUS,               // Consensus équipe avant clôture
+    EVALUATION_CLOSING_MEETING,         // Réunion de clôture
+    EVALUATION_GAPS_SENT_TO_OEC,        // Fiches écarts envoyées à l'OEC
+    EVALUATION_OEC_REVIEW,              // OEC examine les écarts
+    EVALUATION_OEC_ALL_ACCEPTED,        // OEC a accepté tous les écarts
+    EVALUATION_DOCS_TRANSMITTED,        // Documents transmis au CD/RA
     EVALUATION_COMPLETED,               // Évaluation terrain terminée
     
     // Traitement écarts

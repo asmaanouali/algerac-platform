@@ -331,7 +331,7 @@ public class WorkflowController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             String message = (String) body.get("message");
             Long requestId = ((Number) body.get("requestId")).longValue();
@@ -1722,16 +1722,29 @@ public class WorkflowController {
 
             Long requestId = ((Number) body.get("requestId")).longValue();
             AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            User creator = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
             String gapCode = "FOR02-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
+            // Accept both frontend field names (normReference/severity) and canonical names (requirement/type)
+            String requirement = (String) body.get("requirement");
+            if (requirement == null) requirement = (String) body.get("normReference");
+            if (requirement == null) requirement = "";
+
+            String typeStr = (String) body.getOrDefault("type", null);
+            if (typeStr == null) {
+                String severity = (String) body.getOrDefault("severity", "NON_CRITICAL");
+                typeStr = severity.equals("CRITICAL") ? "CRITIQUE" : "NON_CRITIQUE";
+            }
+
             Gap gap = Gap.builder()
                     .request(request)
+                    .createdBy(creator)
                     .gapCode(gapCode)
-                    .type(GapType.valueOf((String) body.getOrDefault("type", "NON_CRITIQUE")))
+                    .type(GapType.valueOf(typeStr))
                     .description((String) body.get("description"))
-                    .requirement((String) body.get("requirement"))
-                    .evidence((String) body.get("evidence"))
+                    .requirement(requirement)
+                    .evidence((String) body.getOrDefault("evidence", ""))
                     .identifiedDate(LocalDateTime.now())
                     .status(GapStatus.IDENTIFIED)
                     .build();
@@ -1798,6 +1811,539 @@ public class WorkflowController {
             gapRepository.save(gap);
 
             return ResponseEntity.ok(ApiResponse.success(accepted ? "Plan accepté" : "Plan rejeté", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== ÉTAPE 7: ÉVALUATION SUR SITE - WORKFLOW COMPLET ==========
+
+    // Member sends their gaps + synthesis to REE
+    @PostMapping("/evaluation/send-to-ree/{requestId}")
+    public ResponseEntity<ApiResponse> sendGapsAndSynthesisToREE(@PathVariable Long requestId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            String synthesis = (String) body.get("synthesis");
+
+            // Mark all this user's gaps as sent to REE
+            List<Gap> myGaps = gapRepository.findByRequest_IdAndCreatedBy_Id(requestId, userId);
+            for (Gap g : myGaps) {
+                if (!Boolean.TRUE.equals(g.getSentToREE())) {
+                    g.setSentToREE(true);
+                    g.setSentToREEDate(LocalDateTime.now());
+                    g.setStatus(GapStatus.SENT_TO_REE);
+                    gapRepository.save(g);
+                }
+            }
+
+            // Save synthesis note
+            User author = userRepository.findById(userId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            EvaluationNote note = EvaluationNote.builder()
+                    .request(request).author(author)
+                    .noteType("MEMBER_SYNTHESIS")
+                    .content(synthesis)
+                    .synthesis(synthesis)
+                    .sentToREE(true).sentDate(LocalDateTime.now())
+                    .build();
+            noteRepository.save(note);
+
+            // Notify REE
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (!teams.isEmpty()) {
+                List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+                members.stream().filter(m -> m.getRole() == TeamRole.REE).findFirst()
+                        .ifPresent(ree -> notificationService.createNotification(ree.getExpert().getId(),
+                                "Évaluation - Soumission reçue",
+                                "Fiches d'écart et synthèse reçues de " + author.getFullName() + " pour " + request.getReferenceNumber(),
+                                "evaluation"));
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Fiches d'écart et synthèse envoyées au REE", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // REE: Get all gaps + syntheses sent by team
+    @GetMapping("/evaluation/team-submissions/{requestId}")
+    public ResponseEntity<?> getTeamSubmissions(@PathVariable Long requestId) {
+        try {
+            List<Gap> allGaps = gapRepository.findByRequest_Id(requestId);
+            List<Gap> sentToREE = allGaps.stream().filter(g -> Boolean.TRUE.equals(g.getSentToREE())).toList();
+            List<EvaluationNote> syntheses = noteRepository.findByRequest_IdAndNoteType(requestId, "MEMBER_SYNTHESIS");
+            List<EvaluationNote> memberNotes = noteRepository.findByRequest_IdAndSentToREE(requestId, true);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("gaps", sentToREE);
+            result.put("syntheses", syntheses);
+            result.put("memberGaps", sentToREE);
+            result.put("memberSyntheses", syntheses);
+            result.put("memberNotes", memberNotes);
+            result.put("totalGaps", sentToREE.size());
+            result.put("totalSyntheses", syntheses.size());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // REE: Keep/discard a gap during consensus
+    @PostMapping("/evaluation/gap/{gapId}/ree-decision")
+    public ResponseEntity<ApiResponse> reeGapDecision(@PathVariable Long gapId, @RequestBody Map<String, Object> body) {
+        try {
+            Gap gap = gapRepository.findById(gapId).orElseThrow(() -> new RuntimeException("Écart non trouvé"));
+            Boolean keep = (Boolean) body.get("keep");
+            gap.setKeptByREE(keep);
+            if (keep) {
+                gap.setStatus(GapStatus.KEPT_BY_REE);
+                if (body.get("modifiedDescription") != null) gap.setReeModifiedDescription((String) body.get("modifiedDescription"));
+                if (body.get("modifiedEvidence") != null) gap.setReeModifiedEvidence((String) body.get("modifiedEvidence"));
+            } else {
+                gap.setStatus(GapStatus.DISCARDED_BY_REE);
+            }
+            gapRepository.save(gap);
+            return ResponseEntity.ok(ApiResponse.success(keep ? "Écart retenu" : "Écart écarté", gap));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // REE: Save REE's own synthesis
+    @PostMapping("/evaluation/ree-synthesis/{requestId}")
+    public ResponseEntity<ApiResponse> saveREESynthesis(@PathVariable Long requestId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User author = userRepository.findById(userId).orElseThrow();
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+
+            EvaluationNote note = EvaluationNote.builder()
+                    .request(request).author(author)
+                    .noteType("REE_SYNTHESIS")
+                    .content((String) body.get("synthesis"))
+                    .synthesis((String) body.get("synthesis"))
+                    .build();
+            noteRepository.save(note);
+
+            return ResponseEntity.ok(ApiResponse.success("Synthèse REE enregistrée", note));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // REE: Send gaps + synthesis to OEC (closing meeting)
+    @PostMapping("/evaluation/send-to-oec/{requestId}")
+    public ResponseEntity<ApiResponse> sendGapsToOEC(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+
+            // Mark all kept gaps as sent to OEC
+            List<Gap> keptGaps = gapRepository.findByRequest_IdAndKeptByREE(requestId, true);
+            for (Gap g : keptGaps) {
+                g.setSentToOEC(true);
+                g.setSentToOECDate(LocalDateTime.now());
+                g.setStatus(GapStatus.SENT_TO_OEC);
+                gapRepository.save(g);
+            }
+
+            request.setStatus(RequestStatus.EVALUATION_GAPS_SENT_TO_OEC);
+            request.setCurrentStep("Fiches d'écart envoyées à l'OEC");
+            request.setPendingWith("OEC");
+            requestRepository.save(request);
+
+            // Notify OEC
+            if (request.getOec() != null) {
+                notificationService.createNotification(request.getOec().getId(),
+                        "Fiches d'écart reçues",
+                        keptGaps.size() + " fiche(s) d'écart et synthèse reçues pour " + request.getReferenceNumber() + ". Veuillez examiner.",
+                        "evaluation");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(keptGaps.size() + " fiches d'écart envoyées à l'OEC", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // OEC: Accept or refuse a gap
+    @PostMapping("/evaluation/gap/{gapId}/oec-response")
+    public ResponseEntity<ApiResponse> oecGapResponse(@PathVariable Long gapId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Gap gap = gapRepository.findById(gapId).orElseThrow(() -> new RuntimeException("Écart non trouvé"));
+            Boolean accepted = (Boolean) body.get("accepted");
+            gap.setOecAccepted(accepted);
+            gap.setOecResponseDate(LocalDateTime.now());
+
+            if (accepted) {
+                gap.setStatus(GapStatus.OEC_ACCEPTED);
+            } else {
+                gap.setOecRefusalReason((String) body.get("refusalReason"));
+                gap.setStatus(GapStatus.OEC_REFUSED);
+
+                // Notify REE about refusal
+                List<EvaluationTeam> teams = teamRepository.findByRequest_Id(gap.getRequest().getId());
+                if (!teams.isEmpty()) {
+                    List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+                    members.stream().filter(m -> m.getRole() == TeamRole.REE).findFirst()
+                            .ifPresent(ree -> notificationService.createNotification(ree.getExpert().getId(),
+                                    "Écart refusé par l'OEC",
+                                    "L'OEC a refusé l'écart " + gap.getGapCode() + ". Motif: " + gap.getOecRefusalReason(),
+                                    "evaluation"));
+
+                    // Also notify CD
+                    List<User> cds = userRepository.findByRole(UserRole.CD);
+                    for (User cd : cds) {
+                        notificationService.createNotification(cd.getId(),
+                                "Écart refusé par l'OEC",
+                                "L'OEC a refusé l'écart " + gap.getGapCode() + " pour le dossier " + gap.getRequest().getReferenceNumber(),
+                                "evaluation");
+                    }
+                }
+            }
+            gapRepository.save(gap);
+
+            // Check if all gaps have been reviewed
+            Long reqId = gap.getRequest().getId();
+            long pendingCount = gapRepository.countByRequest_IdAndSentToOECAndOecAcceptedIsNull(reqId, true);
+            if (pendingCount == 0) {
+                AccreditationRequest request = gap.getRequest();
+                long refusedCount = gapRepository.countByRequest_IdAndSentToOECAndOecAccepted(reqId, true, false);
+                if (refusedCount == 0) {
+                    request.setStatus(RequestStatus.EVALUATION_OEC_ALL_ACCEPTED);
+                    request.setCurrentStep("OEC a accepté tous les écarts — En attente RA pour CAS");
+                    request.setPendingWith("RA");
+                } else {
+                    request.setStatus(RequestStatus.EVALUATION_OEC_REVIEW);
+                    request.setCurrentStep(refusedCount + " écart(s) refusé(s) par l'OEC");
+                    request.setPendingWith("REE / CD");
+                }
+                requestRepository.save(request);
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(accepted ? "Écart accepté" : "Écart refusé", gap));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // OEC: Get gaps sent to OEC for review
+    @GetMapping("/evaluation/oec-gaps/{requestId}")
+    public ResponseEntity<?> getOECGaps(@PathVariable Long requestId) {
+        List<Gap> gaps = gapRepository.findByRequest_IdAndSentToOEC(requestId, true);
+        return ResponseEntity.ok(gaps);
+    }
+
+    // REE: Transmit closing docs to CD/RA
+    @PostMapping("/evaluation/transmit-docs/{requestId}")
+    public ResponseEntity<ApiResponse> transmitClosingDocs(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            request.setStatus(RequestStatus.EVALUATION_DOCS_TRANSMITTED);
+            request.setCurrentStep("Documents de clôture transmis au CD/RA");
+            request.setPendingWith("CD / RA");
+            requestRepository.save(request);
+
+            // Notify RA and CD
+            if (request.getAssignedToRa() != null) {
+                notificationService.createNotification(request.getAssignedToRa().getId(),
+                        "Documents de clôture reçus",
+                        "Documents de clôture reçus : feuilles de présence, ordres de mission, fiches d'écart FOR 02 — " + request.getReferenceNumber(),
+                        "evaluation");
+            }
+            List<User> cds = userRepository.findByRole(UserRole.CD);
+            for (User cd : cds) {
+                notificationService.createNotification(cd.getId(),
+                        "Documents de clôture reçus",
+                        "Documents de clôture reçus pour " + request.getReferenceNumber(),
+                        "evaluation");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Documents transmis au CD/RA", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== ÉTAPE 8: TRAITEMENT DES ÉCARTS ==========
+
+    // Transition to Étape 8: Move accepted gaps to AWAITING_ACTION_PLAN
+    @PostMapping("/gap-treatment/start/{requestId}")
+    public ResponseEntity<ApiResponse> startGapTreatment(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+
+            List<Gap> acceptedGaps = gapRepository.findByRequest_IdAndStatus(requestId, GapStatus.OEC_ACCEPTED);
+            for (Gap g : acceptedGaps) {
+                g.setStatus(GapStatus.AWAITING_ACTION_PLAN);
+                gapRepository.save(g);
+            }
+
+            request.setStatus(RequestStatus.AWAITING_ACTION_PLANS);
+            request.setCurrentStep("En attente des plans d'action de l'OEC (10 jours)");
+            request.setPendingWith("OEC");
+            request.setEvaluationEndDate(LocalDateTime.now()); // Date de clôture = référence pour le délai de 10 jours
+            requestRepository.save(request);
+
+            // Notify OEC
+            if (request.getOec() != null) {
+                notificationService.createNotification(request.getOec().getId(),
+                        "Plans d'action requis",
+                        "Vous avez 10 jours pour soumettre les plans d'actions pour " + acceptedGaps.size() + " écart(s) — " + request.getReferenceNumber(),
+                        "gap_treatment");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Traitement des écarts lancé — " + acceptedGaps.size() + " écarts en attente de plans d'action", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // OEC submits action plan for a gap (Étape 8)
+    @PostMapping("/gap-treatment/gap/{gapId}/action-plan")
+    public ResponseEntity<ApiResponse> submitGapActionPlan(@PathVariable Long gapId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Gap gap = gapRepository.findById(gapId).orElseThrow(() -> new RuntimeException("Écart non trouvé"));
+            AccreditationRequest request = gap.getRequest();
+
+            // Check deadline (10 days from evaluation end)
+            boolean inTime = request.getEvaluationEndDate() == null ||
+                    LocalDateTime.now().isBefore(request.getEvaluationEndDate().plusDays(10));
+
+            ActionPlan plan = ActionPlan.builder()
+                    .gap(gap)
+                    .correctiveActions((String) body.get("correctiveActions"))
+                    .preventiveActions((String) body.get("preventiveActions"))
+                    .responsiblePerson((String) body.get("responsiblePerson"))
+                    .supportingDocuments((String) body.get("supportingDocuments"))
+                    .status(ActionPlanStatus.SUBMITTED)
+                    .submittedByOEC(LocalDateTime.now())
+                    .submittedInTime(inTime)
+                    .build();
+            actionPlanRepository.save(plan);
+
+            gap.setStatus(GapStatus.PLAN_SUBMITTED);
+            gapRepository.save(gap);
+
+            // Notify REE
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(request.getId());
+            if (!teams.isEmpty()) {
+                List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+                members.stream().filter(m -> m.getRole() == TeamRole.REE).findFirst()
+                        .ifPresent(ree -> notificationService.createNotification(ree.getExpert().getId(),
+                                "Plan d'action reçu",
+                                "Plan d'action reçu pour l'écart " + gap.getGapCode() + " — " + request.getReferenceNumber(),
+                                "gap_treatment"));
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Plan d'action soumis" + (inTime ? "" : " (hors délai)"), plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // REE sends reminder to OEC (when 10-day deadline exceeded)
+    @PostMapping("/gap-treatment/send-reminder/{requestId}")
+    public ResponseEntity<ApiResponse> sendOECReminder(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            if (request.getOec() != null) {
+                notificationService.createNotification(request.getOec().getId(),
+                        "Rappel — Plans d'action",
+                        "RAPPEL : Vous disposez de 5 jours supplémentaires pour soumettre vos plans d'action pour " + request.getReferenceNumber(),
+                        "gap_treatment");
+            }
+            return ResponseEntity.ok(ApiResponse.success("Rappel envoyé à l'OEC (5 jours supplémentaires)", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Team evaluates action plan relevance (5 days)
+    @PostMapping("/gap-treatment/gap/{gapId}/evaluate-plan")
+    public ResponseEntity<ApiResponse> evaluateGapActionPlan(@PathVariable Long gapId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Gap gap = gapRepository.findById(gapId).orElseThrow();
+            ActionPlan plan = actionPlanRepository.findByGap_Id(gapId).orElseThrow(() -> new RuntimeException("Plan d'action non trouvé"));
+
+            Boolean accepted = (Boolean) body.get("accepted");
+            plan.setEvaluatedByTeam(LocalDateTime.now());
+            plan.setAcceptedByTeam(accepted);
+            plan.setTeamFeedback((String) body.get("feedback"));
+
+            if (accepted) {
+                plan.setStatus(ActionPlanStatus.ACCEPTED);
+                gap.setStatus(GapStatus.PLAN_ACCEPTED);
+            } else {
+                plan.setStatus(ActionPlanStatus.REJECTED);
+                plan.setRejectionReason((String) body.get("feedback"));
+                gap.setStatus(GapStatus.PLAN_REJECTED);
+            }
+
+            actionPlanRepository.save(plan);
+            gapRepository.save(gap);
+
+            // Notify OEC
+            AccreditationRequest request = gap.getRequest();
+            if (request.getOec() != null) {
+                notificationService.createNotification(request.getOec().getId(),
+                        "Évaluation plan d'action",
+                        "Plan d'action pour " + gap.getGapCode() + " : " + (accepted ? "ACCEPTÉ" : "REJETÉ — " + body.get("feedback")),
+                        "gap_treatment");
+            }
+
+            // Check if all gaps have been evaluated and resolved
+            checkGapTreatmentCompletion(request.getId());
+
+            return ResponseEntity.ok(ApiResponse.success(accepted ? "Plan accepté" : "Plan rejeté", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Mark gap as resolved
+    @PostMapping("/gap-treatment/gap/{gapId}/resolve")
+    public ResponseEntity<ApiResponse> resolveGap(@PathVariable Long gapId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            Gap gap = gapRepository.findById(gapId).orElseThrow();
+            gap.setStatus(GapStatus.RESOLVED);
+            gapRepository.save(gap);
+
+            checkGapTreatmentCompletion(gap.getRequest().getId());
+
+            return ResponseEntity.ok(ApiResponse.success("Écart soldé", gap));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // CD: Trigger complementary evaluation (placeholder)
+    @PostMapping("/gap-treatment/complementary-evaluation/{requestId}")
+    public ResponseEntity<ApiResponse> triggerComplementaryEvaluation(@PathVariable Long requestId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+            request.setStatus(RequestStatus.COMPLEMENTARY_EVALUATION_NEEDED);
+            request.setCurrentStep("Évaluation complémentaire demandée par le CD");
+            request.setPendingWith("Équipe d'évaluation");
+            requestRepository.save(request);
+
+            // Notify team
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (!teams.isEmpty()) {
+                List<TeamMember> members = memberRepository.findByTeam_Id(teams.get(0).getId());
+                for (TeamMember m : members) {
+                    notificationService.createNotification(m.getExpert().getId(),
+                            "Évaluation complémentaire",
+                            "Évaluation complémentaire demandée pour " + request.getReferenceNumber(),
+                            "gap_treatment");
+                }
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Évaluation complémentaire déclenchée", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Helper: Check if gap treatment is complete
+    private void checkGapTreatmentCompletion(Long requestId) {
+        List<Gap> allGaps = gapRepository.findByRequest_Id(requestId);
+        List<Gap> activeGaps = allGaps.stream()
+                .filter(g -> Boolean.TRUE.equals(g.getSentToOEC()) && Boolean.TRUE.equals(g.getOecAccepted()))
+                .toList();
+
+        boolean allCriticalResolved = activeGaps.stream()
+                .filter(g -> g.getType() == GapType.CRITIQUE)
+                .allMatch(g -> g.getStatus() == GapStatus.RESOLVED);
+
+        boolean allNonCriticalHavePlans = activeGaps.stream()
+                .filter(g -> g.getType() == GapType.NON_CRITIQUE)
+                .allMatch(g -> g.getStatus() == GapStatus.PLAN_ACCEPTED || g.getStatus() == GapStatus.RESOLVED);
+
+        if (allCriticalResolved && allNonCriticalHavePlans && !activeGaps.isEmpty()) {
+            AccreditationRequest request = requestRepository.findById(requestId).orElse(null);
+            if (request != null && request.getStatus() != RequestStatus.GAPS_RESOLVED) {
+                request.setStatus(RequestStatus.GAPS_RESOLVED);
+                request.setCurrentStep("Tous les écarts critiques soldés — Prêt pour la programmation CAS");
+                request.setPendingWith("RA");
+                requestRepository.save(request);
+
+                // Notify RA
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(request.getAssignedToRa().getId(),
+                            "Écarts soldés",
+                            "Traitement des écarts terminé pour " + request.getReferenceNumber() + " — Vous pouvez programmer la réunion CAS",
+                            "gap_treatment");
+                }
+            }
+        }
+    }
+
+    // Get gap treatment status overview
+    @GetMapping("/gap-treatment/overview/{requestId}")
+    public ResponseEntity<?> getGapTreatmentOverview(@PathVariable Long requestId) {
+        try {
+            List<Gap> allGaps = gapRepository.findByRequest_Id(requestId);
+            List<Gap> activeGaps = allGaps.stream()
+                    .filter(g -> Boolean.TRUE.equals(g.getOecAccepted()))
+                    .toList();
+
+            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow();
+
+            Map<String, Object> overview = new HashMap<>();
+            overview.put("gaps", activeGaps);
+            overview.put("totalActive", activeGaps.size());
+            overview.put("criticalCount", activeGaps.stream().filter(g -> g.getType() == GapType.CRITIQUE).count());
+            overview.put("nonCriticalCount", activeGaps.stream().filter(g -> g.getType() == GapType.NON_CRITIQUE).count());
+            overview.put("resolvedCount", activeGaps.stream().filter(g -> g.getStatus() == GapStatus.RESOLVED).count());
+            overview.put("awaitingPlanCount", activeGaps.stream().filter(g -> g.getStatus() == GapStatus.AWAITING_ACTION_PLAN).count());
+            overview.put("planSubmittedCount", activeGaps.stream().filter(g -> g.getStatus() == GapStatus.PLAN_SUBMITTED).count());
+            overview.put("planAcceptedCount", activeGaps.stream().filter(g -> g.getStatus() == GapStatus.PLAN_ACCEPTED).count());
+
+            // Check 6-month deadline
+            if (request.getEvaluationEndDate() != null) {
+                LocalDateTime sixMonthDeadline = request.getEvaluationEndDate().plusMonths(6);
+                overview.put("sixMonthDeadline", sixMonthDeadline.toString());
+                overview.put("deadlineExceeded", LocalDateTime.now().isAfter(sixMonthDeadline));
+            }
+
+            // Action plans
+            List<ActionPlan> plans = new java.util.ArrayList<>();
+            for (Gap g : activeGaps) {
+                actionPlanRepository.findByGap_Id(g.getId()).ifPresent(plans::add);
+            }
+            overview.put("actionPlans", plans);
+
+            return ResponseEntity.ok(overview);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -2070,17 +2616,10 @@ public class WorkflowController {
 
             AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
-            // Check that evaluation date has arrived
-            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
-            if (!teams.isEmpty()) {
-                EvaluationTeam team = teams.get(0);
-                java.time.LocalDate evalDate = Boolean.TRUE.equals(team.getEvaluationDateAccepted())
-                        ? team.getProposedEvaluationDate()
-                        : (team.getOecProposedDate() != null ? team.getOecProposedDate() : team.getProposedEvaluationDate());
-                if (evalDate != null && java.time.LocalDate.now().isBefore(evalDate)) {
-                    return ResponseEntity.badRequest().body(ApiResponse.error(
-                            "Le dossier ne peut être déverrouillé qu'à partir de la date d'évaluation (" + evalDate + ")"));
-                }
+            // Must be in EVALUATION_PLANNED status (Étape 6 completed)
+            if (request.getStatus() != RequestStatus.EVALUATION_PLANNED) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "L'étape 6 (Préparation) doit être terminée avant de lancer l'évaluation"));
             }
 
             request.setStatus(RequestStatus.EVALUATION_IN_PROGRESS);
@@ -2088,7 +2627,29 @@ public class WorkflowController {
             request.setCurrentStep("Évaluation en cours");
             request.setPendingWith("Équipe d'évaluation");
             requestRepository.save(request);
-            return ResponseEntity.ok(ApiResponse.success("Évaluation démarrée", request));
+
+            // Notify all team members
+            List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+            if (!teams.isEmpty()) {
+                EvaluationTeam team = teams.get(0);
+                List<TeamMember> members = memberRepository.findByTeam_Id(team.getId());
+                for (TeamMember member : members) {
+                    notificationService.createNotification(member.getExpert().getId(),
+                            "Évaluation sur site lancée",
+                            "Étape 7 lancée — Évaluation sur site pour le dossier " + request.getReferenceNumber(),
+                            "evaluation");
+                }
+            }
+
+            // Notify OEC (request creator)
+            if (request.getOec() != null) {
+                notificationService.createNotification(request.getOec().getId(),
+                        "Évaluation sur site lancée",
+                        "L'évaluation sur site a été lancée pour votre dossier " + request.getReferenceNumber(),
+                        "evaluation");
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Évaluation démarrée — L'équipe a été notifiée", request));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

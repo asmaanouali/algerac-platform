@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil } from "lucide-react";
+import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil, Rocket } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const EVAL_PREP_STATUSES = [
@@ -21,6 +21,7 @@ const EVAL_PREP_STATUSES = [
   "MISSION_ORDERS_PENDING", "MISSION_ORDERS_PENDING_DT", "MISSION_ORDERS_PENDING_DG", "MISSION_ORDERS_SENT",
   "EVALUATION_PLAN_PREPARATION", "EVALUATION_PLAN_PENDING_RA", "EVALUATION_PLAN_RA_APPROVED",
   "EVALUATION_PLAN_PENDING_CD", "EVALUATION_PLAN_VALIDATION", "EVALUATION_PLANNED",
+  "EVALUATION_IN_PROGRESS",
 ];
 
 export default function EvaluationPrepPage() {
@@ -45,6 +46,7 @@ export default function EvaluationPrepPage() {
   const [planReviewApproved, setPlanReviewApproved] = useState(true);
   const [planReviewComments, setPlanReviewComments] = useState("");
   const [reviewingPlanId, setReviewingPlanId] = useState<number | null>(null);
+  const [showLaunchDialog, setShowLaunchDialog] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -167,6 +169,24 @@ export default function EvaluationPrepPage() {
         setShowPlanReviewDialog(false); setPlanReviewComments("");
         await selectRequest(selectedRequest); await loadData();
       } else toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setActionLoading(false);
+  };
+
+  const launchEvaluation = async () => {
+    if (!selectedRequest) return;
+    setActionLoading(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation/start/${selectedRequest.id}`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Étape 7 lancée", description: "L'évaluation sur site est en cours — l'équipe a été notifiée" });
+        setShowLaunchDialog(false);
+        await selectRequest({ ...selectedRequest, status: "EVALUATION_IN_PROGRESS" });
+        await loadData();
+      } else {
+        toast({ title: "Erreur", description: data.message, variant: "destructive" });
+      }
     } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
     setActionLoading(false);
   };
@@ -399,6 +419,44 @@ export default function EvaluationPrepPage() {
                         {planSentToOEC && <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200"><p className="text-sm font-medium text-green-800">Plan FOR 32 envoyé à l'OEC — L'évaluation peut se dérouler.</p></div>}
                       </CardContent>
                     </Card>
+
+                    {/* Launch Étape 7 */}
+                    {planSentToOEC && selectedRequest?.status === "EVALUATION_PLANNED" && (
+                      <Card className="border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <CardContent className="pt-6 pb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                <Rocket className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-lg text-blue-900">Lancer l'Étape 7 — Évaluation sur Site</h3>
+                                <p className="text-sm text-blue-700">L'étape 6 est terminée. L'équipe d'évaluation sera notifiée et pourra commencer l'évaluation.</p>
+                              </div>
+                            </div>
+                            <Button onClick={() => setShowLaunchDialog(true)} className="bg-blue-600 hover:bg-blue-700" size="lg">
+                              <Rocket className="w-4 h-4 mr-2" />Lancer
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {selectedRequest?.status === "EVALUATION_IN_PROGRESS" && (
+                      <Card className="border-green-300 bg-green-50">
+                        <CardContent className="pt-6 pb-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                              <CheckCircle className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg text-green-900">Étape 7 en cours — Évaluation sur Site</h3>
+                              <p className="text-sm text-green-700">L'évaluation est en cours. L'équipe réalise les checklists, fiches d'écart et réunions d'ouverture/clôture.</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </>
                 )}
               </div>
@@ -494,6 +552,30 @@ export default function EvaluationPrepPage() {
                 <Button onClick={reviewPlan} disabled={actionLoading || (!planReviewApproved && !planReviewComments.trim())} className={planReviewApproved ? "bg-green-600 hover:bg-green-700" : ""} variant={planReviewApproved ? "default" : "destructive"}>
                   {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   {planReviewApproved ? "Transmettre au CD" : "Demander ajustements"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog: Launch Étape 7 */}
+          <Dialog open={showLaunchDialog} onOpenChange={setShowLaunchDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Lancer l'Évaluation sur Site (Étape 7)</DialogTitle>
+                <DialogDescription>
+                  Confirmez le lancement de l'étape 7. L'équipe d'évaluation et l'OEC seront notifiés.
+                  Les membres pourront alors créer des fiches d'écart et notes d'évaluation.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
+                <p className="text-sm font-medium text-blue-900">Dossier : {selectedRequest?.referenceNumber}</p>
+                <p className="text-sm text-blue-800">Domaine : {selectedRequest?.domain}</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowLaunchDialog(false)}>Annuler</Button>
+                <Button onClick={launchEvaluation} disabled={actionLoading} className="bg-blue-600 hover:bg-blue-700">
+                  {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
+                  Confirmer le lancement
                 </Button>
               </DialogFooter>
             </DialogContent>

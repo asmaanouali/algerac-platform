@@ -3,13 +3,11 @@
 package com.algerac.controller;
 
 import com.algerac.dto.*;
-import com.algerac.model.OECApplication;
 import com.algerac.model.User;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import com.algerac.service.NotificationService;
-import com.algerac.service.OECApplicationService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +27,6 @@ public class AuthController {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
-    private final OECApplicationService oecApplicationService;
 
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")

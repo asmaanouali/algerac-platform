@@ -28,6 +28,9 @@ public class EvaluationNote {
     private TeamRole authorTeamRole;
 
     @Column(columnDefinition = "TEXT")
+    private String content; // Contenu principal de la note
+
+    @Column(columnDefinition = "TEXT")
     private String observations;
 
     @Column(columnDefinition = "TEXT")
@@ -38,6 +41,8 @@ public class EvaluationNote {
 
     @Column(nullable = false)
     private String noteType; // OPENING_MEETING, EVALUATION, CLOSING_MEETING, GENERAL
+
+    private String section; // Section/domaine de la note
 
     private Boolean sentToREE;
     private LocalDateTime sentDate;

@@ -133,6 +133,12 @@ public class CASDecisionService {
                 // Notifier l'OEC de la réduction de portée
                 notificationService.notifyOECScopeReduced(request, scope);
                 break;
+                
+            case MAINTAIN_WITH_ADDITIONAL_EVAL:
+                request.setStatus(RequestStatus.COMPLEMENTARY_EVALUATION_NEEDED);
+                request.setCurrentStep("Maintien avec évaluation supplémentaire requise");
+                request.setPendingWith("Équipe d'évaluation");
+                break;
         }
         
         requestRepository.save(request);

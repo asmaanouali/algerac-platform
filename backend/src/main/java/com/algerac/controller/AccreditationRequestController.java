@@ -389,7 +389,6 @@ public class AccreditationRequestController {
             
             boolean resourcesAvailable = body.containsKey("resourcesAvailable") && 
                     Boolean.TRUE.equals(body.get("resourcesAvailable"));
-            String comments = (String) body.getOrDefault("comments", "");
             boolean foreignExpertNeeded = body.containsKey("foreignExpertNeeded") && 
                     Boolean.TRUE.equals(body.get("foreignExpertNeeded"));
             
@@ -543,7 +542,6 @@ public class AccreditationRequestController {
             
             boolean hasBlockingElements = body.containsKey("hasBlockingElements") && 
                     Boolean.TRUE.equals(body.get("hasBlockingElements"));
-            String reportContent = (String) body.getOrDefault("reportContent", "");
             
             AccreditationRequest request = requestService.getRequest(id)
                     .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
@@ -868,8 +866,6 @@ public class AccreditationRequestController {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            
-            String response = (String) body.getOrDefault("response", "");
             
             AccreditationRequest request = requestService.getRequest(id)
                     .orElseThrow(() -> new RuntimeException("Demande non trouvée"));

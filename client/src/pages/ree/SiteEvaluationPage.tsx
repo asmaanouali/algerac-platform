@@ -3,166 +3,201 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
-import { ClipboardCheck, Users, AlertTriangle, FileText, CheckCircle, XCircle, Play, Square, MessageSquare, Shield, Clock, Send } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Loader2, ClipboardCheck, AlertTriangle, Users, MessageSquare, Send, Plus, Eye,
+  CalendarClock, FileText, CheckCircle2, XCircle, Handshake, ArrowRight
+} from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function SiteEvaluationPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-
-  const [requests, setRequests] = useState<any[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [gaps, setGaps] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [notes, setNotes] = useState<any[]>([]);
-  const [contestations, setContestations] = useState<any[]>([]);
+  const [gaps, setGaps] = useState<any[]>([]);
+  const [teamSubmissions, setTeamSubmissions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  // Dialog states
-  const [showOpeningMeeting, setShowOpeningMeeting] = useState(false);
-  const [showClosingMeeting, setShowClosingMeeting] = useState(false);
   const [showGapForm, setShowGapForm] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
-  const [showConsensus, setShowConsensus] = useState(false);
+  const [showSendToOEC, setShowSendToOEC] = useState(false);
+  const [showTransmitDocs, setShowTransmitDocs] = useState(false);
+  const [gapForm, setGapForm] = useState({ description: "", normReference: "", severity: "NON_CRITICAL", evidence: "" });
+  const [noteForm, setNoteForm] = useState({ content: "", noteType: "EVALUATION", section: "" });
+  const [reeSynthesis, setReeSynthesis] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [openingChecked, setOpeningChecked] = useState<Record<number, boolean>>({});
+  const [closingChecked, setClosingChecked] = useState<Record<number, boolean>>({});
 
-  // Form states
-  const [openingForm, setOpeningForm] = useState({ attendees: "", openingDetails: "" });
-  const [closingForm, setClosingForm] = useState({
-    closingDetails: "", generalResults: "", strengths: "",
-    improvements: "", gapConsequences: "", appealRights: ""
-  });
-  const [gapForm, setGapForm] = useState({
-    type: "NON_CRITIQUE", description: "", requirement: "", evidence: "", for02Content: ""
-  });
-  const [noteForm, setNoteForm] = useState({
-    noteType: "EVALUATION", observations: "", synthesis: "", checklistStatus: "", role: "ET"
-  });
-  const [consensusForm, setConsensusForm] = useState({
-    consensusDetails: "", consensusReached: true, cdArbitration: ""
-  });
+  useEffect(() => { loadTeams(); }, []);
 
-  useEffect(() => { loadRequests(); }, []);
-
-  const loadRequests = async () => {
+  const loadTeams = async () => {
     try {
-      const res = await fetch("/api/requests", { credentials: "include" });
-      const data = await res.json();
-      if (data.success) {
-        const evaluationRequests = data.data.filter((r: any) =>
-          ["EVALUATION_PLANNED", "EVALUATION_IN_PROGRESS", "EVALUATION_COMPLETED",
-           "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION", "GAPS_RESOLVED"].includes(r.status)
-        );
-        setRequests(evaluationRequests);
+      const res = await fetch("/api/workflow/teams/my-teams", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setTeams(data.filter((t: any) => t.commitmentSigned && t.role === "REE"));
       }
-    } catch (err) { console.error(err); }
+    } catch (e) { console.error(e); }
     setLoading(false);
   };
 
-  const loadRequestDetails = async (request: any) => {
-    setSelectedRequest(request);
+  const selectTeam = async (team: any) => {
+    setSelectedTeam(team);
     try {
-      const [gapsRes, contestRes] = await Promise.all([
-        fetch(`/api/workflow/site-evaluation/${request.id}/gaps`, { credentials: "include" }),
-        fetch(`/api/workflow/site-evaluation/${request.id}/contestations`, { credentials: "include" })
+      const reqId = team.requestId;
+      const [notesRes, gapsRes, subsRes] = await Promise.all([
+        fetch(`/api/workflow/notes/by-request/${reqId}`, { credentials: "include" }),
+        fetch(`/api/workflow/gaps/by-request/${reqId}`, { credentials: "include" }),
+        fetch(`/api/workflow/evaluation/team-submissions/${reqId}`, { credentials: "include" }),
       ]);
-      const gapsData = await gapsRes.json();
-      const contestData = await contestRes.json();
-      if (gapsData.success) setGaps(gapsData.data || []);
-      if (contestData.success) setContestations(contestData.data || []);
-
-      const notesRes = await fetch(`/api/workflow/notes/${request.id}`, { credentials: "include" });
-      const notesData = await notesRes.json();
-      if (notesData.success) setNotes(notesData.data || []);
-    } catch (err) { console.error(err); }
+      if (notesRes.ok) setNotes(await notesRes.json());
+      if (gapsRes.ok) setGaps(await gapsRes.json());
+      if (subsRes.ok) setTeamSubmissions(await subsRes.json());
+    } catch (e) { console.error(e); }
   };
 
-  const handleOpeningMeeting = async () => {
+  const submitGap = async () => {
+    setSubmitting(true);
     try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/opening-meeting`, openingForm);
-      toast({ title: "Réunion d'ouverture démarrée" });
-      setShowOpeningMeeting(false);
-      setOpeningForm({ attendees: "", openingDetails: "" });
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-  };
-
-  const handleClosingMeeting = async () => {
-    try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/closing-meeting`, closingForm);
-      toast({ title: "Réunion de clôture terminée" });
-      setShowClosingMeeting(false);
-      setClosingForm({ closingDetails: "", generalResults: "", strengths: "", improvements: "", gapConsequences: "", appealRights: "" });
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-  };
-
-  const handleCreateGap = async () => {
-    try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/gap`, gapForm);
-      toast({ title: "Écart FOR 02 créé" });
-      setShowGapForm(false);
-      setGapForm({ type: "NON_CRITIQUE", description: "", requirement: "", evidence: "", for02Content: "" });
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-  };
-
-  const handleCreateNote = async () => {
-    try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/evaluator-note`, noteForm);
-      toast({ title: "Note d'évaluation enregistrée" });
-      setShowNoteForm(false);
-      setNoteForm({ noteType: "EVALUATION", observations: "", synthesis: "", checklistStatus: "", role: "ET" });
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-  };
-
-  const handleConsensus = async () => {
-    try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/consensus`, consensusForm);
-      toast({ title: "Consensus enregistré" });
-      setShowConsensus(false);
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-  };
-
-  const handleTransmitDocs = async () => {
-    try {
-      await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/transmit-closing-docs`, {
-        attendanceSheets: "Feuilles de présence jointes",
-        missionOrderRefs: "Ordres de mission référencés"
+      const res = await apiRequest("POST", "/api/workflow/gaps/create", {
+        requestId: selectedTeam.requestId, evaluatorId: user?.id,
+        description: gapForm.description, normReference: gapForm.normReference,
+        severity: gapForm.severity, evidence: gapForm.evidence,
       });
-      toast({ title: "Documents de clôture transmis au CD/RA" });
-      loadRequestDetails(selectedRequest);
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: "Écart enregistré" });
+        setShowGapForm(false);
+        setGapForm({ description: "", normReference: "", severity: "NON_CRITICAL", evidence: "" });
+        selectTeam(selectedTeam);
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      EVALUATION_PLANNED: "bg-blue-100 text-blue-800",
-      EVALUATION_IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-      EVALUATION_COMPLETED: "bg-green-100 text-green-800",
-      AWAITING_ACTION_PLANS: "bg-orange-100 text-orange-800",
-      ACTION_PLANS_EVALUATION: "bg-purple-100 text-purple-800",
-      GAPS_RESOLVED: "bg-emerald-100 text-emerald-800"
-    };
-    return <Badge className={colors[status] || "bg-gray-100 text-gray-800"}>{status.replace(/_/g, " ")}</Badge>;
+  const submitNote = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/workflow/notes/create", {
+        requestId: selectedTeam.requestId, authorId: user?.id,
+        noteType: noteForm.noteType, content: noteForm.content,
+        observations: noteForm.content, section: noteForm.section || "Évaluation",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Succès", description: "Note enregistrée" });
+        setShowNoteForm(false);
+        setNoteForm({ content: "", noteType: "EVALUATION", section: "" });
+        selectTeam(selectedTeam);
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
   };
 
-  const getGapBadge = (type: string) => (
-    <Badge className={type === "CRITIQUE" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>
-      {type === "CRITIQUE" ? "Critique" : "Non Critique"}
-    </Badge>
-  );
+  const handleREEDecision = async (gapId: number, keep: boolean, modDesc?: string, modEvidence?: string) => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation/gap/${gapId}/ree-decision`, {
+        keep,
+        modifiedDescription: modDesc || null,
+        modifiedEvidence: modEvidence || null,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: keep ? "Écart conservé" : "Écart écarté", description: data.message });
+        selectTeam(selectedTeam);
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
+  };
+
+  const saveREESynthesis = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation/ree-synthesis/${selectedTeam.requestId}`, {
+        synthesis: reeSynthesis,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Synthèse enregistrée", description: "Synthèse REE sauvegardée" });
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
+  };
+
+  const sendToOEC = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation/send-to-oec/${selectedTeam.requestId}`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Envoyé à l'OEC", description: data.message });
+        setShowSendToOEC(false);
+        selectTeam(selectedTeam);
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
+  };
+
+  const transmitDocs = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", `/api/workflow/evaluation/transmit-docs/${selectedTeam.requestId}`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Documents transmis", description: data.message });
+        setShowTransmitDocs(false);
+        selectTeam(selectedTeam);
+      }
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+    setSubmitting(false);
+  };
+
+  if (!user) return null;
+
+  const isWritable = selectedTeam?.dossierWritable !== false;
+  const myGaps = gaps.filter((g: any) => g.createdById === user?.id || g.createdByName === user?.fullName);
+  const myNotes = notes.filter((n: any) => n.authorId === user?.id);
+  const keptGaps = gaps.filter((g: any) => g.keptByREE === true);
+  const sentToOECGaps = gaps.filter((g: any) => g.sentToOEC === true);
+
+  // Team submissions data
+  const memberNotes = teamSubmissions?.memberNotes || [];
+  const memberGaps = teamSubmissions?.memberGaps || [];
+  const memberSyntheses = teamSubmissions?.memberSyntheses || [];
+
+  const openingChecklistItems = [
+    "Présentation de l'équipe d'évaluation et rôles de chaque membre",
+    "Confirmation du périmètre d'accréditation demandé",
+    "Présentation du programme d'évaluation détaillé",
+    "Confirmation des ressources et disponibilités de l'OEC",
+    "Rappel des règles de confidentialité et d'impartialité",
+    "Modalités de communication pendant l'évaluation",
+    "Conditions de réalisation (accès aux locaux, équipements, personnel)",
+    "Identification des guides/accompagnateurs OEC",
+    "Questions et clarifications de l'OEC",
+  ];
+
+  const closingChecklistItems = [
+    "Synthèse des constats et observations",
+    "Présentation des écarts identifiés (critiques et non-critiques)",
+    "Explication de la classification des écarts",
+    "Délais de réponse pour les plans d'action correctif (10 jours)",
+    "Processus de traitement des écarts (Étape 8)",
+    "Prochaines étapes du processus d'accréditation",
+    "Droit de recours de l'OEC sur les écarts constatés",
+    "Remerciements et clôture formelle de l'évaluation",
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -171,380 +206,416 @@ export default function SiteEvaluationPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Évaluation sur Site</h1>
-            <p className="text-muted-foreground">Gestion de l'évaluation terrain - Phase II</p>
+            <h1 className="text-2xl font-bold text-slate-800">Évaluation sur Site — REE (Étape 7)</h1>
+            <p className="text-muted-foreground mt-1">Gestion de l'évaluation, consensus, envoi des écarts à l'OEC</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* LEFT: Request List */}
-            <div className="lg:col-span-1 space-y-2">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Dossiers en évaluation</CardTitle>
-                </CardHeader>
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Sidebar: Missions */}
+              <Card className="lg:col-span-1">
+                <CardHeader><CardTitle className="text-lg">Mes Évaluations</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
-                  {loading ? (
-                    <p className="text-sm text-muted-foreground">Chargement...</p>
-                  ) : requests.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucun dossier</p>
-                  ) : (
-                    requests.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => loadRequestDetails(r)}
-                        className={`p-3 rounded-lg cursor-pointer border transition-colors ${
-                          selectedRequest?.id === r.id
-                            ? "bg-primary/10 border-primary"
-                            : "hover:bg-gray-50 border-transparent"
-                        }`}
-                      >
-                        <p className="font-medium text-sm">{r.referenceNumber}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{r.currentStep}</p>
-                        <div className="mt-1">{getStatusBadge(r.status)}</div>
-                      </div>
-                    ))
-                  )}
+                  {teams.map((t: any) => (
+                    <div key={t.id} onClick={() => selectTeam(t)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedTeam?.id === t.id ? "border-primary bg-primary/5" : "hover:bg-gray-50"}`}>
+                      <p className="font-medium text-sm">{t.requestReferenceNumber || `Dossier #${t.requestId}`}</p>
+                      <Badge variant="outline" className="text-xs mt-1">REE</Badge>
+                    </div>
+                  ))}
+                  {teams.length === 0 && <p className="text-sm text-muted-foreground">Aucune évaluation REE</p>}
                 </CardContent>
               </Card>
-            </div>
 
-            {/* RIGHT: Detail Area */}
-            <div className="lg:col-span-3">
-              {!selectedRequest ? (
-                <Card className="flex items-center justify-center h-64">
-                  <p className="text-muted-foreground">Sélectionnez un dossier pour commencer</p>
-                </Card>
-              ) : (
-                <Tabs defaultValue="evaluation">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="evaluation"><Play className="w-4 h-4 mr-1" />Évaluation</TabsTrigger>
-                    <TabsTrigger value="gaps"><AlertTriangle className="w-4 h-4 mr-1" />Écarts ({gaps.length})</TabsTrigger>
-                    <TabsTrigger value="notes"><FileText className="w-4 h-4 mr-1" />Notes ({notes.length})</TabsTrigger>
-                    <TabsTrigger value="contestations"><Shield className="w-4 h-4 mr-1" />Contestations ({contestations.length})</TabsTrigger>
-                  </TabsList>
+              {/* Main Content */}
+              <div className="lg:col-span-3">
+                {!selectedTeam ? (
+                  <Card><CardContent className="pt-6">
+                    <p className="text-center text-muted-foreground py-8">Sélectionnez une évaluation</p>
+                  </CardContent></Card>
+                ) : (
+                  <>
+                    {!isWritable && (
+                      <Card className="border-amber-200 bg-amber-50/50 mb-4">
+                        <CardContent className="pt-4 pb-4">
+                          <div className="flex items-center gap-3">
+                            <Eye className="w-5 h-5 text-amber-600" />
+                            <p className="text-sm text-amber-700">Mode lecture seule — l'écriture sera disponible le jour de l'évaluation.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                  {/* ÉVALUATION TAB */}
-                  <TabsContent value="evaluation">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Conduite de l'évaluation</CardTitle>
-                        <CardDescription>
-                          {selectedRequest.referenceNumber} — {selectedRequest.currentStep}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          <Card className="p-4 text-center">
-                            <p className="text-2xl font-bold">{gaps.length}</p>
-                            <p className="text-xs text-muted-foreground">Écarts identifiés</p>
-                          </Card>
-                          <Card className="p-4 text-center">
-                            <p className="text-2xl font-bold">{gaps.filter((g: any) => g.type === "CRITIQUE").length}</p>
-                            <p className="text-xs text-muted-foreground">Écarts critiques</p>
-                          </Card>
-                          <Card className="p-4 text-center">
-                            <p className="text-2xl font-bold">{notes.length}</p>
-                            <p className="text-xs text-muted-foreground">Notes d'évaluation</p>
-                          </Card>
-                        </div>
+                    <Tabs defaultValue="opening">
+                      <TabsList className="mb-4 flex-wrap">
+                        <TabsTrigger value="opening"><Users className="w-4 h-4 mr-1" />1. Ouverture</TabsTrigger>
+                        <TabsTrigger value="evaluation"><ClipboardCheck className="w-4 h-4 mr-1" />2. Évaluation</TabsTrigger>
+                        <TabsTrigger value="consensus"><Handshake className="w-4 h-4 mr-1" />3. Consensus</TabsTrigger>
+                        <TabsTrigger value="closing"><MessageSquare className="w-4 h-4 mr-1" />4. Clôture</TabsTrigger>
+                      </TabsList>
 
-                        <Separator />
-
-                        <div className="flex flex-wrap gap-2">
-                          {selectedRequest.status === "EVALUATION_PLANNED" && (
-                            <Button onClick={() => setShowOpeningMeeting(true)}>
-                              <Play className="w-4 h-4 mr-2" />Réunion d'ouverture
-                            </Button>
-                          )}
-                          {selectedRequest.status === "EVALUATION_IN_PROGRESS" && (
-                            <>
-                              <Button onClick={() => setShowNoteForm(true)} variant="outline">
-                                <FileText className="w-4 h-4 mr-2" />Ajouter une note
-                              </Button>
-                              <Button onClick={() => setShowGapForm(true)} variant="outline" className="text-orange-600">
-                                <AlertTriangle className="w-4 h-4 mr-2" />Signaler un écart (FOR 02)
-                              </Button>
-                              <Button onClick={() => setShowConsensus(true)} variant="outline">
-                                <Users className="w-4 h-4 mr-2" />Consensus équipe
-                              </Button>
-                              <Button onClick={() => setShowClosingMeeting(true)} variant="destructive">
-                                <Square className="w-4 h-4 mr-2" />Réunion de clôture
-                              </Button>
-                            </>
-                          )}
-                          {selectedRequest.status === "EVALUATION_COMPLETED" && (
-                            <Button onClick={handleTransmitDocs}>
-                              <Send className="w-4 h-4 mr-2" />Transmettre les documents de clôture
-                            </Button>
-                          )}
-                        </div>
-
-                        <div className="bg-blue-50 rounded-lg p-4">
-                          <h4 className="font-medium text-sm mb-2">Progression</h4>
-                          <p className="text-sm"><strong>Phase:</strong> {selectedRequest.currentPhase || "Phase II - Évaluation sur site"}</p>
-                          <p className="text-sm"><strong>Étape:</strong> {selectedRequest.currentStep}</p>
-                          <p className="text-sm"><strong>Prochaine action:</strong> {selectedRequest.nextAction}</p>
-                          <p className="text-sm"><strong>En attente de:</strong> {selectedRequest.pendingWith}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* ÉCARTS TAB */}
-                  <TabsContent value="gaps">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Fiches d'écarts (FOR 02)</CardTitle>
-                        <CardDescription>Écarts identifiés lors de l'évaluation</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {gaps.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">Aucun écart identifié</p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Exigence</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead>Requalifié</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {gaps.map((gap: any) => (
-                                <TableRow key={gap.id}>
-                                  <TableCell className="font-mono text-sm">{gap.gapCode}</TableCell>
-                                  <TableCell>{getGapBadge(gap.type)}</TableCell>
-                                  <TableCell className="max-w-[200px] truncate">{gap.requirement}</TableCell>
-                                  <TableCell className="max-w-[200px] truncate">{gap.description}</TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline">{gap.status?.replace(/_/g, " ")}</Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {gap.reclassifiedToCritical && (
-                                      <Badge className="bg-red-100 text-red-800">Requalifié</Badge>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* NOTES TAB */}
-                  <TabsContent value="notes">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Notes d'évaluation</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {notes.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">Aucune note</p>
-                        ) : (
-                          notes.map((note: any) => (
-                            <Card key={note.id} className="p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">{note.noteType}</Badge>
-                                  <span className="text-sm text-muted-foreground">{note.authorName}</span>
+                      {/* ===== TAB 1: Réunion d'ouverture — Checklist REE ===== */}
+                      <TabsContent value="opening">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>1. Réunion d'Ouverture — Checklist REE</CardTitle>
+                            <CardDescription>Vérifiez chaque point lors de la réunion d'ouverture</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-3">
+                              {openingChecklistItems.map((item, i) => (
+                                <div key={i} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                                  <Checkbox
+                                    checked={openingChecked[i] || false}
+                                    onCheckedChange={(checked) => setOpeningChecked({ ...openingChecked, [i]: !!checked })}
+                                  />
+                                  <span className="text-sm">{item}</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(note.createdAt).toLocaleString("fr-FR")}
+                              ))}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm text-blue-800">
+                                {Object.values(openingChecked).filter(Boolean).length} / {openingChecklistItems.length} points vérifiés
+                              </span>
+                            </div>
+
+                            {/* REE notes for opening */}
+                            <div className="mt-6">
+                              <h4 className="font-medium text-sm mb-2">Notes de la réunion d'ouverture</h4>
+                              {myNotes.filter((n: any) => n.noteType === "OPENING_MEETING").map((n: any) => (
+                                <div key={n.id} className="p-3 border rounded-lg mb-2 bg-gray-50">
+                                  <p className="text-sm">{n.content || n.observations}</p>
+                                  <span className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString("fr-FR")}</span>
+                                </div>
+                              ))}
+                              {isWritable && (
+                                <Button variant="outline" size="sm" onClick={() => {
+                                  setNoteForm({ content: "", noteType: "OPENING_MEETING", section: "Réunion d'ouverture" });
+                                  setShowNoteForm(true);
+                                }}>
+                                  <Plus className="w-4 h-4 mr-1" />Ajouter une note
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </TabsContent>
+
+                      {/* ===== TAB 2: Évaluation — REE propres notes + écarts ===== */}
+                      <TabsContent value="evaluation">
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-3 gap-3">
+                            <Card className="p-3 text-center">
+                              <p className="text-xl font-bold">{myGaps.length}</p>
+                              <p className="text-xs text-muted-foreground">Mes écarts</p>
+                            </Card>
+                            <Card className="p-3 text-center">
+                              <p className="text-xl font-bold">{myNotes.filter((n: any) => n.noteType === "EVALUATION").length}</p>
+                              <p className="text-xs text-muted-foreground">Mes notes</p>
+                            </Card>
+                            <Card className="p-3 text-center">
+                              <p className="text-xl font-bold">{gaps.length}</p>
+                              <p className="text-xs text-muted-foreground">Total écarts (équipe)</p>
+                            </Card>
+                          </div>
+
+                          {isWritable && (
+                            <div className="flex gap-2 flex-wrap">
+                              <Button onClick={() => setShowGapForm(true)} variant="outline" className="text-orange-600 border-orange-300">
+                                <AlertTriangle className="w-4 h-4 mr-2" />Signaler un Écart
+                              </Button>
+                              <Button onClick={() => {
+                                setNoteForm({ content: "", noteType: "EVALUATION", section: "" });
+                                setShowNoteForm(true);
+                              }} variant="outline">
+                                <FileText className="w-4 h-4 mr-2" />Prendre une Note
+                              </Button>
+                            </div>
+                          )}
+
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Mes Fiches d'Écart</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              {myGaps.length > 0 ? (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Description</TableHead>
+                                      <TableHead>Réf. norme</TableHead>
+                                      <TableHead>Gravité</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {myGaps.map((g: any) => (
+                                      <TableRow key={g.id}>
+                                        <TableCell className="max-w-[200px] truncate">{g.description}</TableCell>
+                                        <TableCell>{g.normReference || g.requirement}</TableCell>
+                                        <TableCell>
+                                          <Badge variant={g.severity === "CRITICAL" || g.type === "CRITIQUE" ? "destructive" : "secondary"}>
+                                            {g.severity === "CRITICAL" || g.type === "CRITIQUE" ? "Critique" : "Non-critique"}
+                                          </Badge>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              ) : (
+                                <p className="text-center text-sm text-muted-foreground py-4">Aucun écart propre</p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardHeader><CardTitle className="text-base">Mes Notes d'Évaluation</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                              {myNotes.filter((n: any) => n.noteType === "EVALUATION").map((n: any) => (
+                                <div key={n.id} className="p-3 border rounded-lg bg-gray-50">
+                                  <p className="text-sm">{n.content || n.observations}</p>
+                                  <span className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString("fr-FR")}</span>
+                                </div>
+                              ))}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </TabsContent>
+
+                      {/* ===== TAB 3: Consensus — Receive submissions, keep/discard gaps ===== */}
+                      <TabsContent value="consensus">
+                        <div className="space-y-4">
+                          {/* Summary stats */}
+                          <div className="grid grid-cols-4 gap-3">
+                            <Card className="p-3 text-center">
+                              <p className="text-xl font-bold">{memberGaps.length}</p>
+                              <p className="text-xs text-muted-foreground">Écarts reçus</p>
+                            </Card>
+                            <Card className="p-3 text-center">
+                              <p className="text-xl font-bold">{memberSyntheses.length}</p>
+                              <p className="text-xs text-muted-foreground">Synthèses reçues</p>
+                            </Card>
+                            <Card className="p-3 text-center bg-green-50">
+                              <p className="text-xl font-bold text-green-600">{keptGaps.length}</p>
+                              <p className="text-xs text-muted-foreground">Conservés</p>
+                            </Card>
+                            <Card className="p-3 text-center bg-red-50">
+                              <p className="text-xl font-bold text-red-600">{gaps.filter((g: any) => g.keptByREE === false).length}</p>
+                              <p className="text-xs text-muted-foreground">Écartés</p>
+                            </Card>
+                          </div>
+
+                          {/* Member Syntheses */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Synthèses des Membres</CardTitle>
+                              <CardDescription>Synthèses envoyées par les membres de l'équipe</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {memberSyntheses.length > 0 ? memberSyntheses.map((s: any, i: number) => (
+                                <div key={i} className="p-4 border rounded-lg bg-blue-50/50">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <Badge variant="outline">{s.authorTeamRole || s.authorName || "Membre"}</Badge>
+                                    {s.sentDate && <span className="text-xs text-muted-foreground">{new Date(s.sentDate).toLocaleString("fr-FR")}</span>}
+                                  </div>
+                                  <p className="text-sm">{s.synthesis || s.content || s.observations}</p>
+                                </div>
+                              )) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Aucune synthèse reçue — les membres n'ont pas encore envoyé</p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* Member Gaps — REE keeps or discards */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Écarts Soumis par les Membres</CardTitle>
+                              <CardDescription>Conservez, modifiez ou écartez chaque écart</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              {memberGaps.length > 0 ? (
+                                <div className="space-y-4">
+                                  {memberGaps.map((g: any) => (
+                                    <GapDecisionCard key={g.id} gap={g} onDecision={handleREEDecision} isWritable={isWritable} submitting={submitting} />
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Aucun écart reçu des membres</p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* REE own synthesis */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Synthèse REE</CardTitle>
+                              <CardDescription>Rédigez votre propre synthèse en intégrant les observations de l'équipe</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <Textarea
+                                value={reeSynthesis} onChange={(e) => setReeSynthesis(e.target.value)}
+                                placeholder="Synthèse globale de l'évaluation intégrant les contributions de tous les membres..."
+                                rows={8} disabled={!isWritable}
+                              />
+                              {isWritable && (
+                                <Button onClick={saveREESynthesis} disabled={submitting || !reeSynthesis.trim()}>
+                                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+                                  Enregistrer la synthèse REE
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </TabsContent>
+
+                      {/* ===== TAB 4: Réunion de clôture — Checklist + Send to OEC ===== */}
+                      <TabsContent value="closing">
+                        <div className="space-y-4">
+                          {/* Closing Checklist */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>4. Réunion de Clôture — Checklist</CardTitle>
+                              <CardDescription>Points à couvrir lors de la réunion de clôture avec l'OEC</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {closingChecklistItems.map((item, i) => (
+                                <div key={i} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                                  <Checkbox
+                                    checked={closingChecked[i] || false}
+                                    onCheckedChange={(checked) => setClosingChecked({ ...closingChecked, [i]: !!checked })}
+                                  />
+                                  <span className="text-sm">{item}</span>
+                                </div>
+                              ))}
+                              <div className="flex items-center gap-2 mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                <CheckCircle2 className="w-4 h-4 text-orange-600" />
+                                <span className="text-sm text-orange-800">
+                                  {Object.values(closingChecked).filter(Boolean).length} / {closingChecklistItems.length} points vérifiés
                                 </span>
                               </div>
-                              {note.observations && (
-                                <p className="text-sm whitespace-pre-wrap">{note.observations}</p>
-                              )}
-                              {note.synthesis && (
-                                <p className="text-sm mt-2 text-muted-foreground italic">{note.synthesis}</p>
-                              )}
-                            </Card>
-                          ))
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
+                            </CardContent>
+                          </Card>
 
-                  {/* CONTESTATIONS TAB */}
-                  <TabsContent value="contestations">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Contestations d'écarts</CardTitle>
-                        <CardDescription>Contestations déposées par l'OEC</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {contestations.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">Aucune contestation</p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Écart</TableHead>
-                                <TableHead>Motif</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead>Examinateur</TableHead>
-                                <TableHead>Décision</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {contestations.map((c: any) => (
-                                <TableRow key={c.id}>
-                                  <TableCell className="font-mono text-sm">{c.gap?.gapCode}</TableCell>
-                                  <TableCell className="max-w-[200px] truncate">{c.contestationReason}</TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline">{c.status?.replace(/_/g, " ")}</Badge>
-                                  </TableCell>
-                                  <TableCell>{c.designatedExaminer?.fullName || "—"}</TableCell>
-                                  <TableCell>
-                                    {c.contestationFounded === true && <Badge className="bg-green-100 text-green-800">Fondée</Badge>}
-                                    {c.contestationFounded === false && <Badge className="bg-red-100 text-red-800">Non fondée</Badge>}
-                                  </TableCell>
-                                </TableRow>
+                          {/* Summary of gaps to send */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Récapitulatif des Écarts à Transmettre</CardTitle>
+                              <CardDescription>{keptGaps.length} écart(s) conservé(s) à envoyer à l'OEC</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              {keptGaps.length > 0 ? (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Description</TableHead>
+                                      <TableHead>Gravité</TableHead>
+                                      <TableHead>Auteur</TableHead>
+                                      <TableHead>Envoyé OEC</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {keptGaps.map((g: any) => (
+                                      <TableRow key={g.id}>
+                                        <TableCell className="max-w-[250px] truncate">
+                                          {g.reeModifiedDescription || g.description}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge variant={g.severity === "CRITICAL" || g.type === "CRITIQUE" ? "destructive" : "secondary"}>
+                                            {g.severity === "CRITICAL" || g.type === "CRITIQUE" ? "Critique" : "Non-critique"}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-sm">{g.createdByName || "REE"}</TableCell>
+                                        <TableCell>
+                                          {g.sentToOEC ? (
+                                            <Badge className="bg-green-100 text-green-800 text-xs">Envoyé ✓</Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="text-xs">En attente</Badge>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              ) : (
+                                <p className="text-center text-sm text-muted-foreground py-4">Aucun écart conservé</p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* Notes for closing */}
+                          <Card>
+                            <CardHeader><CardTitle className="text-base">Notes — Réunion de clôture</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                              {myNotes.filter((n: any) => n.noteType === "CLOSING_MEETING").map((n: any) => (
+                                <div key={n.id} className="p-3 border rounded-lg bg-gray-50">
+                                  <p className="text-sm">{n.content || n.observations}</p>
+                                  <span className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString("fr-FR")}</span>
+                                </div>
                               ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
-              )}
+                              {isWritable && (
+                                <Button variant="outline" size="sm" onClick={() => {
+                                  setNoteForm({ content: "", noteType: "CLOSING_MEETING", section: "Réunion de clôture" });
+                                  setShowNoteForm(true);
+                                }}>
+                                  <Plus className="w-4 h-4 mr-1" />Ajouter une note
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* Action buttons */}
+                          {isWritable && (
+                            <div className="flex gap-3 justify-end flex-wrap">
+                              <Button onClick={() => setShowSendToOEC(true)} className="bg-blue-600 hover:bg-blue-700"
+                                disabled={keptGaps.length === 0}>
+                                <Send className="w-4 h-4 mr-2" />Envoyer fiches + synthèse à l'OEC
+                              </Button>
+                              <Button onClick={() => setShowTransmitDocs(true)} variant="outline"
+                                disabled={sentToOECGaps.length === 0}>
+                                <ArrowRight className="w-4 h-4 mr-2" />Transmettre documents au CD/RA
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* DIALOGS */}
-
-          {/* Opening Meeting Dialog */}
-          <Dialog open={showOpeningMeeting} onOpenChange={setShowOpeningMeeting}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Réunion d'ouverture</DialogTitle>
-                <DialogDescription>Démarrer l'évaluation par la réunion d'ouverture</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Participants présents</Label>
-                  <Textarea
-                    placeholder="Liste des participants..."
-                    value={openingForm.attendees}
-                    onChange={(e) => setOpeningForm({ ...openingForm, attendees: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Détails de la réunion</Label>
-                  <Textarea
-                    placeholder="Objectifs, programme, modalités..."
-                    value={openingForm.openingDetails}
-                    onChange={(e) => setOpeningForm({ ...openingForm, openingDetails: e.target.value })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowOpeningMeeting(false)}>Annuler</Button>
-                <Button onClick={handleOpeningMeeting}>
-                  <Play className="w-4 h-4 mr-2" />Démarrer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Closing Meeting Dialog */}
-          <Dialog open={showClosingMeeting} onOpenChange={setShowClosingMeeting}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Réunion de clôture</DialogTitle>
-                <DialogDescription>Présentation des résultats à l'OEC</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                <div>
-                  <Label>Résultats généraux</Label>
-                  <Textarea value={closingForm.generalResults}
-                    onChange={(e) => setClosingForm({ ...closingForm, generalResults: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Points forts</Label>
-                  <Textarea value={closingForm.strengths}
-                    onChange={(e) => setClosingForm({ ...closingForm, strengths: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Points d'amélioration</Label>
-                  <Textarea value={closingForm.improvements}
-                    onChange={(e) => setClosingForm({ ...closingForm, improvements: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Conséquences des écarts sur l'accréditation</Label>
-                  <Textarea value={closingForm.gapConsequences}
-                    onChange={(e) => setClosingForm({ ...closingForm, gapConsequences: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Droit de recours</Label>
-                  <Textarea value={closingForm.appealRights}
-                    onChange={(e) => setClosingForm({ ...closingForm, appealRights: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Détails de clôture</Label>
-                  <Textarea value={closingForm.closingDetails}
-                    onChange={(e) => setClosingForm({ ...closingForm, closingDetails: e.target.value })} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowClosingMeeting(false)}>Annuler</Button>
-                <Button variant="destructive" onClick={handleClosingMeeting}>
-                  <Square className="w-4 h-4 mr-2" />Clôturer l'évaluation
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          )}
 
           {/* Gap Form Dialog */}
           <Dialog open={showGapForm} onOpenChange={setShowGapForm}>
-            <DialogContent className="max-w-lg">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Fiche d'écart FOR 02</DialogTitle>
-                <DialogDescription>Signaler un écart identifié</DialogDescription>
+                <DialogTitle>Signaler un Écart (FOR 02)</DialogTitle>
+                <DialogDescription>Documentez l'écart identifié</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label>Type d'écart</Label>
-                  <Select value={gapForm.type} onValueChange={(v) => setGapForm({ ...gapForm, type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NON_CRITIQUE">Non Critique</SelectItem>
-                      <SelectItem value="CRITIQUE">Critique</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Exigence concernée</Label>
-                  <Input value={gapForm.requirement}
-                    onChange={(e) => setGapForm({ ...gapForm, requirement: e.target.value })}
-                    placeholder="Ex: ISO 17025 - 7.2.1" />
-                </div>
-                <div>
-                  <Label>Description de l'écart</Label>
-                  <Textarea value={gapForm.description}
-                    onChange={(e) => setGapForm({ ...gapForm, description: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Preuves objectives</Label>
-                  <Textarea value={gapForm.evidence}
-                    onChange={(e) => setGapForm({ ...gapForm, evidence: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Contenu FOR 02</Label>
-                  <Textarea value={gapForm.for02Content}
-                    onChange={(e) => setGapForm({ ...gapForm, for02Content: e.target.value })} />
-                </div>
+                <div><label className="text-sm font-medium">Description</label>
+                  <Textarea value={gapForm.description} onChange={(e) => setGapForm({ ...gapForm, description: e.target.value })}
+                    placeholder="Décrivez l'écart constaté..." rows={3} /></div>
+                <div><label className="text-sm font-medium">Référence norme</label>
+                  <Input value={gapForm.normReference} onChange={(e) => setGapForm({ ...gapForm, normReference: e.target.value })}
+                    placeholder="Ex: ISO 17025:2017 §7.2.1" /></div>
+                <div><label className="text-sm font-medium">Gravité</label>
+                  <select className="w-full border rounded-md p-2" value={gapForm.severity}
+                    onChange={(e) => setGapForm({ ...gapForm, severity: e.target.value })}>
+                    <option value="CRITICAL">Critique</option>
+                    <option value="NON_CRITICAL">Non-critique</option>
+                  </select></div>
+                <div><label className="text-sm font-medium">Preuves</label>
+                  <Textarea value={gapForm.evidence} onChange={(e) => setGapForm({ ...gapForm, evidence: e.target.value })}
+                    placeholder="Preuves objectives..." rows={2} /></div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowGapForm(false)}>Annuler</Button>
-                <Button onClick={handleCreateGap}>
-                  <AlertTriangle className="w-4 h-4 mr-2" />Créer l'écart
+                <Button onClick={submitGap} disabled={submitting || !gapForm.description}>
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}Enregistrer
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -552,94 +623,135 @@ export default function SiteEvaluationPage() {
 
           {/* Note Form Dialog */}
           <Dialog open={showNoteForm} onOpenChange={setShowNoteForm}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Note d'évaluation</DialogTitle>
-              </DialogHeader>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Ajouter une Note</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label>Type de note</Label>
-                  <Select value={noteForm.noteType} onValueChange={(v) => setNoteForm({ ...noteForm, noteType: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EVALUATION">Évaluation</SelectItem>
-                      <SelectItem value="GENERAL">Général</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Rôle</Label>
-                  <Select value={noteForm.role} onValueChange={(v) => setNoteForm({ ...noteForm, role: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REE">REE</SelectItem>
-                      <SelectItem value="ET">Évaluateur Technique</SelectItem>
-                      <SelectItem value="EXP">Expert</SelectItem>
-                      <SelectItem value="EQ">Évaluateur Qualité</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Observations</Label>
-                  <Textarea value={noteForm.observations}
-                    onChange={(e) => setNoteForm({ ...noteForm, observations: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Synthèse</Label>
-                  <Textarea value={noteForm.synthesis}
-                    onChange={(e) => setNoteForm({ ...noteForm, synthesis: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Statut checklist</Label>
-                  <Input value={noteForm.checklistStatus}
-                    onChange={(e) => setNoteForm({ ...noteForm, checklistStatus: e.target.value })} />
-                </div>
+                <div><label className="text-sm font-medium">Contenu</label>
+                  <Textarea value={noteForm.content} onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
+                    placeholder="Observations..." rows={5} /></div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowNoteForm(false)}>Annuler</Button>
-                <Button onClick={handleCreateNote}>Enregistrer</Button>
+                <Button onClick={submitNote} disabled={submitting || !noteForm.content}>
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}Enregistrer
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Consensus Dialog */}
-          <Dialog open={showConsensus} onOpenChange={setShowConsensus}>
-            <DialogContent className="max-w-lg">
+          {/* Send to OEC Dialog */}
+          <Dialog open={showSendToOEC} onOpenChange={setShowSendToOEC}>
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Consensus de l'équipe</DialogTitle>
-                <DialogDescription>Saisir le consensus avant la réunion de clôture</DialogDescription>
+                <DialogTitle>Envoyer les Écarts et la Synthèse à l'OEC</DialogTitle>
+                <DialogDescription>
+                  {keptGaps.length} écart(s) conservé(s) seront envoyés à l'organisme évalué avec votre synthèse.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Détails du consensus</Label>
-                  <Textarea value={consensusForm.consensusDetails}
-                    onChange={(e) => setConsensusForm({ ...consensusForm, consensusDetails: e.target.value })} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={consensusForm.consensusReached}
-                    onChange={(e) => setConsensusForm({ ...consensusForm, consensusReached: e.target.checked })}
-                  />
-                  <Label>Consensus atteint</Label>
-                </div>
-                {!consensusForm.consensusReached && (
-                  <div>
-                    <Label>Arbitrage CD requis</Label>
-                    <Textarea value={consensusForm.cdArbitration}
-                      onChange={(e) => setConsensusForm({ ...consensusForm, cdArbitration: e.target.value })} />
-                  </div>
-                )}
+              <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-800">
+                  <strong>Attention :</strong> Une fois envoyés, l'OEC devra se prononcer sur chaque écart (accepter/refuser).
+                  Les écarts refusés seront signalés au CD/RA.
+                </p>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowConsensus(false)}>Annuler</Button>
-                <Button onClick={handleConsensus}>Valider le consensus</Button>
+                <Button variant="outline" onClick={() => setShowSendToOEC(false)}>Annuler</Button>
+                <Button onClick={sendToOEC} disabled={submitting} className="bg-blue-600 hover:bg-blue-700">
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                  Confirmer l'envoi
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
+          {/* Transmit Docs Dialog */}
+          <Dialog open={showTransmitDocs} onOpenChange={setShowTransmitDocs}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Transmettre les Documents au CD/RA</DialogTitle>
+                <DialogDescription>
+                  Les fiches d'écart, la synthèse et les notes de clôture seront transmises au CD et au RA.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowTransmitDocs(false)}>Annuler</Button>
+                <Button onClick={transmitDocs} disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                  Transmettre
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
+    </div>
+  );
+}
+
+/* ============ Gap Decision Card (Consensus) ============ */
+function GapDecisionCard({ gap, onDecision, isWritable, submitting }: {
+  gap: any; onDecision: (id: number, keep: boolean, desc?: string, ev?: string) => void;
+  isWritable: boolean; submitting: boolean;
+}) {
+  const [modDesc, setModDesc] = useState(gap.description || "");
+  const [modEvidence, setModEvidence] = useState(gap.evidence || "");
+  const [editing, setEditing] = useState(false);
+
+  const decided = gap.keptByREE !== null && gap.keptByREE !== undefined;
+  const kept = gap.keptByREE === true;
+  const discarded = gap.keptByREE === false;
+
+  return (
+    <div className={`p-4 rounded-lg border ${decided ? (kept ? "border-green-300 bg-green-50/50" : "border-red-200 bg-red-50/50") : "border-gray-200"}`}>
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className="text-xs">{gap.createdByName || "Membre"}</Badge>
+            <Badge variant={gap.severity === "CRITICAL" || gap.type === "CRITIQUE" ? "destructive" : "secondary"} className="text-xs">
+              {gap.severity === "CRITICAL" || gap.type === "CRITIQUE" ? "Critique" : "Non-critique"}
+            </Badge>
+            {gap.normReference && <span className="text-xs text-muted-foreground">Réf: {gap.normReference}</span>}
+          </div>
+          <p className="text-sm font-medium">{gap.description}</p>
+          {gap.evidence && <p className="text-xs text-muted-foreground mt-1">Preuves: {gap.evidence}</p>}
+        </div>
+        {decided && (
+          <div className="flex-shrink-0 ml-3">
+            {kept ? (
+              <Badge className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" />Conservé</Badge>
+            ) : (
+              <Badge className="bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" />Écarté</Badge>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Editing mode for modifications */}
+      {editing && isWritable && (
+        <div className="mt-3 space-y-2 p-3 bg-white rounded border">
+          <div><label className="text-xs font-medium">Description modifiée</label>
+            <Textarea value={modDesc} onChange={(e) => setModDesc(e.target.value)} rows={2} className="text-sm" /></div>
+          <div><label className="text-xs font-medium">Preuves modifiées</label>
+            <Textarea value={modEvidence} onChange={(e) => setModEvidence(e.target.value)} rows={2} className="text-sm" /></div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {!decided && isWritable && (
+        <div className="flex gap-2 mt-3">
+          <Button size="sm" variant="outline" onClick={() => setEditing(!editing)} className="text-xs">
+            {editing ? "Masquer modifications" : "Modifier"}
+          </Button>
+          <Button size="sm" onClick={() => onDecision(gap.id, true, editing ? modDesc : undefined, editing ? modEvidence : undefined)}
+            disabled={submitting} className="bg-green-600 hover:bg-green-700 text-xs">
+            <CheckCircle2 className="w-3 h-3 mr-1" />Conserver
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => onDecision(gap.id, false)}
+            disabled={submitting} className="text-xs">
+            <XCircle className="w-3 h-3 mr-1" />Écarter
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

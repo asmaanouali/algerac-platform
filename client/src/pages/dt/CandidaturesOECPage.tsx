@@ -32,19 +32,23 @@ import { Loader2 } from "lucide-react";
 
 interface OECApplication {
   id: number;
-  organizationName: string;
+  nomOrganisme: string;
   typeOrganisme: string;
   adresseSiege: string;
-  phone: string;
+  telephone: string;
   email: string;
   nomRepresentant: string;
   fonction: string;
   porteeAccreditation: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: string;
   rejectionReason?: string;
+  manquements?: string;
   createdAt: string;
-  dateApprobation?: string;
-  documentsJson?: string;
+  reviewedByDtAt?: string;
+  depositFeeAmount?: number;
+  feeSetAt?: string;
+  paymentDeadline?: string;
+  paymentVerifiedAt?: string;
 }
 
 export default function CandidaturesOECPage() {
@@ -59,6 +63,7 @@ export default function CandidaturesOECPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [manquements, setManquements] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -82,7 +87,7 @@ export default function CandidaturesOECPage() {
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/candidatures/oec/all", {
+      const response = await fetch("http://localhost:8082/api/oec-applications/all", {
         credentials: "include"
       });
       if (response.ok) {
@@ -112,7 +117,7 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/${id}/approve`, {
+      const response = await fetch(`http://localhost:8082/api/oec-applications/${id}/approve`, {
         method: "POST",
         credentials: "include"
       });
@@ -158,11 +163,11 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/${selectedApplication.id}/reject`, {
+      const response = await fetch(`http://localhost:8082/api/oec-applications/${selectedApplication.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ rejectionReason })
+        body: JSON.stringify({ rejectionReason, manquements })
       });
       
       if (response.ok) {
@@ -174,6 +179,7 @@ export default function CandidaturesOECPage() {
         setShowRejectDialog(false);
         setShowDetailsDialog(false);
         setRejectionReason("");
+        setManquements("");
       } else {
         const error = await response.json();
         toast({
@@ -197,10 +203,21 @@ export default function CandidaturesOECPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
+      case "PENDING_DT":
         return <Badge className="bg-yellow-500">En attente</Badge>;
       case "APPROVED":
+      case "APPROVED_BY_DT":
+      case "AWAITING_DAG_FEE":
         return <Badge className="bg-green-500">Approuvé</Badge>;
+      case "FEE_SET_AWAITING_PAYMENT":
+        return <Badge className="bg-blue-500">En attente paiement</Badge>;
+      case "PAYMENT_VERIFIED":
+        return <Badge className="bg-emerald-500">Paiement vérifié</Badge>;
+      case "ACCOUNT_CREATED":
+        return <Badge className="bg-teal-500">Compte créé</Badge>;
       case "REJECTED":
+      case "REJECTED_BY_DT":
+      case "PAYMENT_EXPIRED":
         return <Badge className="bg-red-500">Rejeté</Badge>;
       default:
         return <Badge>{status}</Badge>;
@@ -209,7 +226,7 @@ export default function CandidaturesOECPage() {
 
   const filteredApplications = applications.filter(app => {
   const matchesSearch = 
-    app.organizationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.nomOrganisme?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     app.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     app.nomRepresentant?.toLowerCase().includes(searchTerm.toLowerCase());
   
@@ -260,9 +277,9 @@ export default function CandidaturesOECPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="PENDING">En attente</SelectItem>
-                  <SelectItem value="APPROVED">Approuvé</SelectItem>
-                  <SelectItem value="REJECTED">Rejeté</SelectItem>
+                  <SelectItem value="PENDING_DT">En attente</SelectItem>
+                  <SelectItem value="AWAITING_DAG_FEE">Approuvé</SelectItem>
+                  <SelectItem value="REJECTED_BY_DT">Rejeté</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -290,7 +307,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">En attente</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "PENDING").length}
+                  {applications.filter(a => a.status === "PENDING_DT").length}
                 </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -304,7 +321,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Approuvés</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "APPROVED").length}
+                  {applications.filter(a => a.status === "AWAITING_DAG_FEE" || a.status === "FEE_SET_AWAITING_PAYMENT" || a.status === "PAYMENT_VERIFIED" || a.status === "ACCOUNT_CREATED").length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -318,7 +335,7 @@ export default function CandidaturesOECPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Rejetés</p>
                 <p className="text-2xl font-bold">
-                  {applications.filter(a => a.status === "REJECTED").length}
+                  {applications.filter(a => a.status === "REJECTED_BY_DT" || a.status === "PAYMENT_EXPIRED").length}
                 </p>
               </div>
               <XCircle className="w-8 h-8 text-red-500" />
@@ -357,7 +374,7 @@ export default function CandidaturesOECPage() {
                       <TableCell className="font-medium">#{app.id}</TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{app.organizationName}</p>
+                          <p className="font-medium">{app.nomOrganisme}</p>
                           <p className="text-sm text-muted-foreground">{app.typeOrganisme}</p>
                         </div>
                       </TableCell>
@@ -394,7 +411,7 @@ export default function CandidaturesOECPage() {
           <DialogHeader>
             <DialogTitle>Détails de la candidature #{selectedApplication?.id}</DialogTitle>
             <DialogDescription>
-              {selectedApplication?.organizationName}
+              {selectedApplication?.nomOrganisme}
             </DialogDescription>
           </DialogHeader>
           
@@ -403,7 +420,7 @@ export default function CandidaturesOECPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Organisme</Label>
-                  <p className="font-medium">{selectedApplication.organizationName}</p>
+                  <p className="font-medium">{selectedApplication.nomOrganisme}</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -428,7 +445,7 @@ export default function CandidaturesOECPage() {
                   <Label className="text-muted-foreground">Téléphone</Label>
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {selectedApplication.phone || "Non renseigné"}
+                    {selectedApplication.telephone || "Non renseigné"}
                   </p>
                 </div>
                 
@@ -492,7 +509,7 @@ export default function CandidaturesOECPage() {
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = `DOC1_${selectedApplication.organizationName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+                        a.download = `DOC1_${selectedApplication.nomOrganisme.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
                         a.click();
                         URL.revokeObjectURL(url);
                       } catch (err) {
@@ -551,7 +568,7 @@ export default function CandidaturesOECPage() {
                 } catch { return null; }
               })()}
               
-              {selectedApplication.status === "PENDING" && (
+              {selectedApplication.status === "PENDING_DT" && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button 
                     variant="default" 
@@ -594,10 +611,20 @@ export default function CandidaturesOECPage() {
               <Label>Motif de refus <span className="text-red-500">*</span></Label>
               <Textarea 
                 placeholder="Indiquez les raisons du refus..."
-                rows={5}
+                rows={4}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Manquements identifiés</Label>
+              <Textarea 
+                placeholder="Détaillez les manquements à corriger pour une nouvelle demande..."
+                rows={4}
+                value={manquements}
+                onChange={(e) => setManquements(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">L'OEC recevra un email avec ces informations et sera invité à faire une nouvelle demande corrigée.</p>
             </div>
           </div>
           
@@ -607,6 +634,7 @@ export default function CandidaturesOECPage() {
               onClick={() => {
                 setShowRejectDialog(false);
                 setRejectionReason("");
+                setManquements("");
               }}
               disabled={actionLoading}
             >

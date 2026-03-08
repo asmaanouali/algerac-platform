@@ -92,6 +92,7 @@ export function Sidebar() {
     ],
     dag: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/dag/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dag/paiements", label: "Suivi Paiements", icon: DollarSign },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],

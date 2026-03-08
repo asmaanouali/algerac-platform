@@ -12,4 +12,6 @@ public class RejectApplicationRequest {
     
     @NotBlank(message = "Le motif de refus est obligatoire")
     private String rejectionReason;
+    
+    private String manquements; // Manquements identifiés
 }

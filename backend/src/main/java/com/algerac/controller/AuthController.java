@@ -4,7 +4,9 @@ package com.algerac.controller;
 
 import com.algerac.dto.*;
 import com.algerac.model.User;
+import com.algerac.model.OECApplication;
 import com.algerac.repository.UserRepository;
+import com.algerac.repository.OECApplicationRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import com.algerac.service.NotificationService;
@@ -27,6 +29,7 @@ public class AuthController {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final OECApplicationRepository oecApplicationRepository;
 
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")
@@ -179,6 +182,21 @@ public class AuthController {
         try {
             // Créer un User PENDING au lieu de OECApplication
             User user = authService.registerOEC(request);
+            
+            // Créer aussi un OECApplication pour le workflow DT → DAG → Admin
+            OECApplication oecApp = OECApplication.builder()
+                    .nomOrganisme(request.getNomOrganisme())
+                    .typeOrganisme(request.getTypeOrganisme())
+                    .adresseSiege(request.getAdresseSiege())
+                    .telephone(request.getTelephone())
+                    .email(request.getEmail())
+                    .nomRepresentant(request.getNomRepresentant())
+                    .fonction(request.getFonction())
+                    .telephoneDirect(request.getTelephoneDirect())
+                    .emailProfessionnel(request.getEmailProfessionnel())
+                    .porteeAccreditation(request.getPorteeAccreditation())
+                    .build();
+            oecApplicationRepository.save(oecApp);
             
             // Envoyer email de confirmation à l'OEC
             emailService.sendOECRegistrationConfirmation(user);

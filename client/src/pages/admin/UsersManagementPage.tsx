@@ -25,12 +25,30 @@ import {
   Mail,
   Phone,
   User,
-  Calendar
+  Calendar,
+  CreditCard
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+
+interface OECAccountApplication {
+  id: number;
+  nomOrganisme: string;
+  typeOrganisme: string;
+  adresseSiege: string;
+  telephone: string;
+  email: string;
+  nomRepresentant: string;
+  fonction: string;
+  porteeAccreditation: string;
+  status: string;
+  createdAt: string;
+  depositFeeAmount?: number;
+  paymentVerifiedAt?: string;
+}
 
 interface ActiveUser {
   id: number;
@@ -96,10 +114,19 @@ export default function UsersManagementPage() {
   const [showCreateAccountDialog, setShowCreateAccountDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // OEC Accounts State (payment verified, awaiting account creation)
+  const [oecAccountApps, setOecAccountApps] = useState<OECAccountApplication[]>([]);
+  const [oecAccountsLoading, setOecAccountsLoading] = useState(true);
+  const [oecAccountsSearch, setOecAccountsSearch] = useState("");
+  const [oecCreating, setOecCreating] = useState(false);
+  const [oecConfirmApp, setOecConfirmApp] = useState<OECAccountApplication | null>(null);
+  const [showOecConfirmDialog, setShowOecConfirmDialog] = useState(false);
+
   useEffect(() => {
     if (user && !authLoading) {
       fetchActiveUsers();
       fetchPendingApplications();
+      fetchOecAccountApps();
     }
   }, [user, authLoading]);
 
@@ -167,6 +194,48 @@ export default function UsersManagementPage() {
     } finally {
       setPendingLoading(false);
     }
+  };
+
+  // OEC Account Applications Functions
+  const fetchOecAccountApps = async () => {
+    try {
+      setOecAccountsLoading(true);
+      const res = await apiRequest("GET", "/api/oec-applications/approved-for-admin");
+      const data = await res.json();
+      setOecAccountApps(data);
+    } catch (err) {
+      console.error("Erreur chargement candidatures OEC:", err);
+      setOecAccountApps([]);
+    } finally { setOecAccountsLoading(false); }
+  };
+
+  const handleCreateOecAccount = async () => {
+    if (!oecConfirmApp) return;
+    try {
+      setOecCreating(true);
+      await apiRequest("POST", `/api/oec-applications/${oecConfirmApp.id}/mark-account-created`);
+      toast({
+        title: "Succès",
+        description: `Le compte OEC pour ${oecConfirmApp.nomOrganisme} a été créé.`,
+      });
+      setShowOecConfirmDialog(false);
+      fetchOecAccountApps();
+      fetchActiveUsers();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message || "Impossible de créer le compte" });
+    } finally { setOecCreating(false); }
+  };
+
+  const filteredOecAccountApps = oecAccountApps.filter(a =>
+    (a.nomOrganisme || "").toLowerCase().includes(oecAccountsSearch.toLowerCase()) ||
+    (a.email || "").toLowerCase().includes(oecAccountsSearch.toLowerCase()) ||
+    (a.nomRepresentant || "").toLowerCase().includes(oecAccountsSearch.toLowerCase())
+  );
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    try { return new Date(dateStr).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+    catch { return dateStr; }
   };
 
   const handleCreateAccount = async () => {
@@ -334,14 +403,18 @@ export default function UsersManagementPage() {
 
             {/* Tabs for Active Users and Pending Applications */}
             <Tabs defaultValue="active" className="w-full">
-              <TabsList className="grid w-full md:w-auto grid-cols-2">
+              <TabsList className="grid w-full md:w-auto grid-cols-3">
                 <TabsTrigger value="active" className="gap-2">
                   <Users className="w-4 h-4" />
-                  Utilisateurs Actifs ({activeUsers.length})
+                  Utilisateurs ({activeUsers.length})
                 </TabsTrigger>
                 <TabsTrigger value="pending" className="gap-2">
                   <Clock className="w-4 h-4" />
-                  Candidatures Approuvées ({pendingApplications.length})
+                  Candidatures ({pendingApplications.length})
+                </TabsTrigger>
+                <TabsTrigger value="oec-accounts" className="gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Comptes OEC ({oecAccountApps.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -551,10 +624,127 @@ export default function UsersManagementPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* OEC Accounts Tab */}
+              <TabsContent value="oec-accounts" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Rechercher</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Nom d'organisme, email, représentant..."
+                        value={oecAccountsSearch}
+                        onChange={(e) => setOecAccountsSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Candidatures OEC vérifiées ({filteredOecAccountApps.length})</CardTitle>
+                    <CardDescription>
+                      Candidatures OEC dont le paiement a été vérifié par la DAG — en attente de création de compte
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {oecAccountsLoading ? (
+                      <p className="text-center py-8 text-muted-foreground">Chargement...</p>
+                    ) : filteredOecAccountApps.length === 0 ? (
+                      <div className="text-center py-12 space-y-4">
+                        <CheckCircle2 className="w-16 h-16 mx-auto text-green-500" />
+                        <div>
+                          <p className="text-lg font-medium">Aucune candidature OEC en attente</p>
+                          <p className="text-muted-foreground">Toutes les candidatures OEC vérifiées ont été traitées</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Organisme</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Représentant</TableHead>
+                              <TableHead>Montant payé</TableHead>
+                              <TableHead>Paiement vérifié le</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredOecAccountApps.map((app) => (
+                              <TableRow key={app.id}>
+                                <TableCell className="font-medium">{app.nomOrganisme}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-purple-100 text-purple-800">{app.typeOrganisme}</Badge>
+                                </TableCell>
+                                <TableCell>{app.email}</TableCell>
+                                <TableCell>{app.nomRepresentant}</TableCell>
+                                <TableCell>{app.depositFeeAmount ? `${app.depositFeeAmount} DA` : "—"}</TableCell>
+                                <TableCell>{app.paymentVerifiedAt ? formatDate(app.paymentVerifiedAt) : "—"}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => {
+                                      setOecConfirmApp(app);
+                                      setShowOecConfirmDialog(true);
+                                    }}
+                                  >
+                                    <UserPlus className="w-4 h-4 mr-1" />
+                                    Créer compte
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
       </div>
+
+      {/* OEC Account Confirm Dialog */}
+      <Dialog open={showOecConfirmDialog} onOpenChange={setShowOecConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la création du compte OEC</DialogTitle>
+            <DialogDescription>
+              Vous êtes sur le point de créer un compte pour cet organisme OEC.
+            </DialogDescription>
+          </DialogHeader>
+          {oecConfirmApp && (
+            <div className="space-y-2 text-sm">
+              <p><strong>Organisme :</strong> {oecConfirmApp.nomOrganisme}</p>
+              <p><strong>Type :</strong> {oecConfirmApp.typeOrganisme}</p>
+              <p><strong>Email :</strong> {oecConfirmApp.email}</p>
+              <p><strong>Représentant :</strong> {oecConfirmApp.nomRepresentant}</p>
+              <p><strong>Montant :</strong> {oecConfirmApp.depositFeeAmount ? `${oecConfirmApp.depositFeeAmount} DA` : "—"}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOecConfirmDialog(false)}>Annuler</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              disabled={oecCreating}
+              onClick={handleCreateOecAccount}
+            >
+              {oecCreating ? "Création..." : "Confirmer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add User Dialog */}
       <AddUserDialog 

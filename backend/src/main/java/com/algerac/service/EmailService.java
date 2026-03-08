@@ -34,6 +34,9 @@ public class EmailService {
     @Value("${app.ges.competences.email}")
     private String gesCompetencesEmail;
 
+    @Value("${app.dag.email:asmaanouali256@gmail.com}")
+    private String dagEmail;
+
     @Value("${spring.mail.username}")
     private String fromEmail;
 
@@ -1255,6 +1258,235 @@ public class EmailService {
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'email de confirmation de plainte à {}: {}", recipientEmail, e.getMessage());
             // Don't throw - complaint should still be registered even if email fails
+        }
+    }
+    
+    // ===================================================================
+    // WORKFLOW OEC - Emails pour le processus de candidature
+    // ===================================================================
+    
+    /**
+     * Email de rejet enrichi avec motif ET manquements.
+     * Invite l'OEC à corriger et resoumettre une nouvelle demande.
+     */
+    public void sendOECApplicationRejectionWithDeficiencies(OECApplication application, String rejectionReason, String manquements) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(application.getEmail());
+            message.setSubject("Demande d'accréditation non retenue - ALGERAC");
+            
+            StringBuilder emailBody = new StringBuilder();
+            emailBody.append(String.format("""
+                Bonjour,
+                
+                Nous avons examiné votre demande d'accréditation pour l'organisme "%s".
+                
+                Après étude de votre dossier, nous sommes au regret de vous informer que votre demande 
+                n'a pas pu être acceptée pour le(s) motif(s) suivant(s) :
+                
+                Motif de refus :
+                %s
+                """,
+                application.getNomOrganisme(),
+                rejectionReason
+            ));
+            
+            if (manquements != null && !manquements.isBlank()) {
+                emailBody.append(String.format("""
+                
+                Manquements identifiés :
+                %s
+                """, manquements));
+            }
+            
+            emailBody.append("""
+                
+                Nous vous invitons à prendre en compte ces observations et à déposer une nouvelle demande 
+                une fois les corrections effectuées.
+                
+                Pour déposer une nouvelle demande, rendez-vous sur la plateforme ALGERAC :
+                https://algerac.dz/auth/register/oec
+                
+                Pour toute question, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """);
+            
+            message.setText(emailBody.toString());
+            mailSender.send(message);
+            log.info("Email de rejet avec manquements envoyé au candidat OEC : {}", application.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de rejet au candidat", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet", e);
+        }
+    }
+    
+    /**
+     * Email envoyé à l'OEC lorsque le DAG fixe les frais de dépôt.
+     * Contient : montant à payer + email du DAG pour envoyer la preuve de paiement.
+     */
+    public void sendOECDepositFeeNotification(OECApplication application) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(application.getEmail());
+            message.setSubject("Frais de dépôt à régler - Demande d'accréditation ALGERAC");
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Votre demande d'accréditation pour l'organisme "%s" a été approuvée par la Direction Technique d'ALGERAC.
+                
+                Pour poursuivre le traitement de votre dossier, vous êtes invité(e) à régler les frais de dépôt suivants :
+                
+                ═══════════════════════════════════════
+                  FRAIS DE DÉPÔT
+                ═══════════════════════════════════════
+                
+                  Montant : %s DA
+                  Date limite de paiement : %s
+                
+                ═══════════════════════════════════════
+                
+                Modalités de paiement :
+                Après avoir effectué le paiement, veuillez envoyer la preuve de paiement 
+                (bordereau de virement, reçu de paiement, etc.) par email à l'adresse suivante :
+                
+                  Email : %s
+                
+                Veuillez mentionner le nom de votre organisme et votre numéro de candidature (#%d) 
+                dans l'objet du mail.
+                
+                IMPORTANT : Vous disposez d'un délai d'un mois à compter de la réception de ce mail 
+                pour effectuer le paiement. Passé ce délai, votre demande sera automatiquement rejetée.
+                
+                Pour toute question, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                application.getNomOrganisme(),
+                application.getDepositFeeAmount().toPlainString(),
+                application.getPaymentDeadline().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                dagEmail,
+                application.getId()
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de notification frais de dépôt envoyé à l'OEC : {} (montant: {} DA)", 
+                    application.getEmail(), application.getDepositFeeAmount());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de frais de dépôt", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de frais de dépôt", e);
+        }
+    }
+    
+    /**
+     * Email de rejet automatique pour non-paiement (délai d'un mois dépassé).
+     */
+    /**
+     * Envoie un email à l'OEC pour lui confirmer la création de son compte avec ses coordonnées de connexion
+     */
+    public void sendOECAccountCreatedEmail(OECApplication application) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(application.getEmail());
+            message.setSubject("Votre compte ALGERAC a été créé - Bienvenue !");
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Nous avons le plaisir de vous informer que votre compte sur la plateforme ALGERAC 
+                a été créé avec succès pour l'organisme "%s".
+                
+                ═══════════════════════════════════════
+                  VOS COORDONNÉES DE CONNEXION
+                ═══════════════════════════════════════
+                
+                  Email de connexion : %s
+                  Mot de passe : celui que vous avez choisi lors de votre inscription
+                
+                ═══════════════════════════════════════
+                
+                 Informations de votre organisme :
+                  • Organisme : %s
+                  • Type : %s
+                  • Représentant : %s
+                  • Téléphone : %s
+                  • Adresse : %s
+                
+                Vous pouvez dès maintenant vous connecter à la plateforme ALGERAC 
+                et accéder à l'ensemble des services disponibles.
+                
+                En cas d'oubli de mot de passe, utilisez la fonction "Mot de passe oublié" 
+                sur la page de connexion.
+                
+                Bienvenue sur la plateforme ALGERAC !
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                application.getNomOrganisme(),
+                application.getEmail(),
+                application.getNomOrganisme(),
+                application.getTypeOrganisme() != null ? application.getTypeOrganisme() : "Non renseigné",
+                application.getNomRepresentant() != null ? application.getNomRepresentant() : "Non renseigné",
+                application.getTelephone() != null ? application.getTelephone() : "Non renseigné",
+                application.getAdresseSiege() != null ? application.getAdresseSiege() : "Non renseigné"
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de création de compte envoyé à l'OEC : {}", application.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de création de compte à {}", application.getEmail(), e);
+            // Ne pas propager l'exception — le compte est déjà créé, ce n'est pas bloquant
+            log.warn("Le compte a été créé mais l'email n'a pas pu être envoyé");
+        }
+    }
+
+    public void sendOECPaymentExpiredRejection(OECApplication application) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(application.getEmail());
+            message.setSubject("Demande d'accréditation clôturée - Frais non réglés - ALGERAC");
+            
+            String emailBody = String.format("""
+                Bonjour,
+                
+                Nous vous informons que votre demande d'accréditation pour l'organisme "%s" 
+                a été clôturée en raison du non-règlement des frais de dépôt dans le délai imparti.
+                
+                Montant dû : %s DA
+                Date limite de paiement : %s
+                
+                Motif : Frais de dépôt non réglés dans le délai d'un mois.
+                
+                Si vous souhaitez poursuivre votre démarche d'accréditation, vous êtes invité(e) 
+                à déposer une nouvelle demande sur la plateforme ALGERAC.
+                
+                Pour toute question, n'hésitez pas à nous contacter.
+                
+                Cordialement,
+                L'équipe ALGERAC
+                """,
+                application.getNomOrganisme(),
+                application.getDepositFeeAmount() != null ? application.getDepositFeeAmount().toPlainString() : "N/A",
+                application.getPaymentDeadline() != null ? 
+                        application.getPaymentDeadline().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A"
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email de rejet pour non-paiement envoyé à l'OEC : {}", application.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de rejet pour non-paiement", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet pour non-paiement", e);
         }
     }
 }

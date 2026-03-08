@@ -87,6 +87,7 @@ import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 
 // DAG Payment Tracking
 import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
+import DAGOECApplicationsPage from "@/pages/dag/OECApplicationsPage";
 
 // RA Recusation
 import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
@@ -159,6 +160,7 @@ function Router() {
       <Route path="/dag" component={DAGDashboard} />
       <Route path="/dag/dashboard" component={DAGDashboard} />
       <Route path="/dag/paiements" component={DAGPaymentTracking} />
+      <Route path="/dag/candidatures-oec" component={DAGOECApplicationsPage} />
       
       {/* Admin & Other Routes */}
       <Route path="/notifications" component={NotificationsPage} />

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Users, FileCheck, Clock, UserCheck, CalendarDays, 
   ClipboardCheck, TrendingUp, ArrowRight, Eye, Calendar,
-  UserPlus, BarChart3, Activity
+  UserPlus, BarChart3, Activity, AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/navbar";
@@ -22,6 +22,7 @@ interface Candidature {
   status: string;
   dateInscription: string;
   interviewDate?: string;
+  interviewScheduledAt?: string;
   createdAt?: string;
 }
 
@@ -39,6 +40,9 @@ export default function GesCompetencesDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      // Auto-expire unconfirmed interviews past 7-day deadline
+      await fetch("http://localhost:8082/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
+      
       const [candRes, interviewRes] = await Promise.all([
         fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
         fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" })
@@ -75,7 +79,7 @@ export default function GesCompetencesDashboard() {
   const upcomingInterviews = useMemo(() => {
     const now = new Date();
     return interviews
-      .filter(i => i.interviewDate && new Date(i.interviewDate) >= now)
+      .filter(i => i.interviewDate && new Date(i.interviewDate) >= now && i.status === "INTERVIEW_CONFIRMED")
       .sort((a, b) => new Date(a.interviewDate!).getTime() - new Date(b.interviewDate!).getTime())
       .slice(0, 5);
   }, [interviews]);
@@ -95,10 +99,27 @@ export default function GesCompetencesDashboard() {
     
     return interviews.filter(i => {
       if (!i.interviewDate) return false;
+      if (i.status !== "INTERVIEW_CONFIRMED") return false;
       const d = new Date(i.interviewDate);
       return d >= today && d < tomorrow;
     });
   }, [interviews]);
+
+  // Actions requises: pending confirmations + approaching deadline
+  const actionsRequises = useMemo(() => {
+    const pendingConfirmation = candidatures.filter(c => c.status === "INTERVIEW_SCHEDULED");
+    const now = new Date();
+    
+    const withDeadline = pendingConfirmation.map(c => {
+      const scheduledAt = c.interviewScheduledAt ? new Date(c.interviewScheduledAt) : null;
+      const daysLeft = scheduledAt 
+        ? Math.ceil((scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000 - now.getTime()) / (24 * 60 * 60 * 1000))
+        : null;
+      return { ...c, daysLeft };
+    }).sort((a, b) => (a.daysLeft ?? 99) - (b.daysLeft ?? 99));
+    
+    return withDeadline;
+  }, [candidatures]);
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
@@ -233,6 +254,79 @@ export default function GesCompetencesDashboard() {
 
 
           <div className="grid lg:grid-cols-2 gap-6">
+            {/* Actions Requises - Pending Confirmations */}
+            {actionsRequises.length > 0 && (
+              <Card className="lg:col-span-2 border-amber-200 bg-amber-50/30">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        Actions Requises
+                      </CardTitle>
+                      <CardDescription>
+                        {actionsRequises.length} entretien(s) en attente de confirmation
+                      </CardDescription>
+                    </div>
+                    <Link href="/ges-competences/entretiens">
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        Gérer <ArrowRight className="w-3 h-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {actionsRequises.slice(0, 5).map(action => (
+                      <div key={action.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            action.daysLeft !== null && action.daysLeft <= 2 
+                              ? "bg-red-100" 
+                              : action.daysLeft !== null && action.daysLeft <= 4 
+                                ? "bg-orange-100" 
+                                : "bg-amber-100"
+                          }`}>
+                            <Clock className={`w-5 h-5 ${
+                              action.daysLeft !== null && action.daysLeft <= 2 
+                                ? "text-red-600" 
+                                : action.daysLeft !== null && action.daysLeft <= 4 
+                                  ? "text-orange-600" 
+                                  : "text-amber-600"
+                            }`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{action.fullName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {action.domaineExpertise}
+                              {action.interviewDate && ` · Entretien le ${formatDateTime(action.interviewDate)}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {action.daysLeft !== null && action.daysLeft <= 0 ? (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Délai expiré</Badge>
+                          ) : action.daysLeft !== null && action.daysLeft <= 2 ? (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">J-{action.daysLeft}</Badge>
+                          ) : action.daysLeft !== null && action.daysLeft <= 4 ? (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">J-{action.daysLeft}</Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">En attente</Badge>
+                          )}
+                          {getTypeBadge(action.userType)}
+                        </div>
+                      </div>
+                    ))}
+                    {actionsRequises.length > 5 && (
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        +{actionsRequises.length - 5} autre(s) en attente
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Today's Interviews */}
             <Card>
               <CardHeader className="pb-3">
@@ -244,8 +338,8 @@ export default function GesCompetencesDashboard() {
                     </CardTitle>
                     <CardDescription>
                       {todayInterviews.length === 0 
-                        ? "Aucun entretien prévu aujourd'hui" 
-                        : `${todayInterviews.length} entretien(s) prévu(s)`}
+                        ? "Aucun entretien confirmé aujourd'hui" 
+                        : `${todayInterviews.length} entretien(s) confirmé(s)`}
                     </CardDescription>
                   </div>
                   <Link href="/ges-competences/entretiens">
@@ -259,7 +353,7 @@ export default function GesCompetencesDashboard() {
                 {todayInterviews.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Aucun entretien aujourd'hui</p>
+                    <p className="text-sm">Aucun entretien confirmé aujourd'hui</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -304,7 +398,7 @@ export default function GesCompetencesDashboard() {
                       <Calendar className="w-5 h-5 text-cyan-600" />
                       Prochains Entretiens
                     </CardTitle>
-                    <CardDescription>Les 5 prochains entretiens planifiés</CardDescription>
+                    <CardDescription>Les 5 prochains entretiens confirmés</CardDescription>
                   </div>
                   <Link href="/ges-competences/entretiens">
                     <Button variant="ghost" size="sm" className="gap-1">

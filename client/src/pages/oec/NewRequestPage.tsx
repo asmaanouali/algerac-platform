@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -343,7 +344,7 @@ export default function NewRequestPage() {
 
       <div className="space-y-2">
         <Label>Date d'évaluation souhaitée</Label>
-        <Input type="date" value={form.dateEvaluation} onChange={(e) => update("dateEvaluation", e.target.value)} />
+        <StringDatePicker value={form.dateEvaluation} onChange={(v) => update("dateEvaluation", v)} />
       </div>
 
       <div className="space-y-3">
@@ -540,7 +541,7 @@ export default function NewRequestPage() {
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input type="date" value={form.demandeurDate} onChange={(e) => update("demandeurDate", e.target.value)} />
+            <StringDatePicker value={form.demandeurDate} onChange={(v) => update("demandeurDate", v)} />
           </div>
           <div className="space-y-2">
             <Label>Signature (nom)</Label>

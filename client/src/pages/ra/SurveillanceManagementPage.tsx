@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDateTimePicker } from "@/components/ui/date-time-picker";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -464,8 +465,8 @@ export default function SurveillanceManagementPage() {
                 </div>
                 <div>
                   <Label>Date prévue</Label>
-                  <Input type="datetime-local" value={programmeForm.plannedDate}
-                    onChange={(e) => setProgrammeForm({ ...programmeForm, plannedDate: e.target.value })} />
+                  <StringDateTimePicker value={programmeForm.plannedDate}
+                    onChange={(v) => setProgrammeForm({ ...programmeForm, plannedDate: v })} />
                 </div>
                 <div>
                   <Label>Type</Label>
@@ -555,8 +556,8 @@ export default function SurveillanceManagementPage() {
                 </div>
                 <div>
                   <Label>Date limite</Label>
-                  <Input type="datetime-local" value={docForm.deadline}
-                    onChange={(e) => setDocForm({ ...docForm, deadline: e.target.value })} />
+                  <StringDateTimePicker value={docForm.deadline}
+                    onChange={(v) => setDocForm({ ...docForm, deadline: v })} />
                 </div>
               </div>
               <DialogFooter>
@@ -613,8 +614,8 @@ export default function SurveillanceManagementPage() {
                 </div>
                 <div>
                   <Label>Date d'évaluation</Label>
-                  <Input type="datetime-local" value={teamPlanForm.plannedDate}
-                    onChange={(e) => setTeamPlanForm({ ...teamPlanForm, plannedDate: e.target.value })} />
+                  <StringDateTimePicker value={teamPlanForm.plannedDate}
+                    onChange={(v) => setTeamPlanForm({ ...teamPlanForm, plannedDate: v })} />
                 </div>
               </div>
               <DialogFooter>

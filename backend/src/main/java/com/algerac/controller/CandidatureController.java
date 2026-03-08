@@ -749,6 +749,7 @@ public class CandidatureController {
     @PostMapping("/experts/{id}/interview-accept")
     public ResponseEntity<?> acceptAfterInterview(
             @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
             HttpSession session
     ) {
         try {
@@ -757,9 +758,10 @@ public class CandidatureController {
                 return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
             }
 
-            log.info("POST /api/candidatures/experts/{}/interview-accept - Acceptation après entretien", id);
+            String role = body != null ? body.get("role") : null;
+            log.info("POST /api/candidatures/experts/{}/interview-accept - Acceptation après entretien, role={}", id, role);
             
-            User user = candidatureService.acceptAfterInterview(id, userId);
+            User user = candidatureService.acceptAfterInterview(id, userId, role);
             log.info("Candidat {} accepté après entretien avec succès", id);
 
             Map<String, Object> response = new HashMap<>();
@@ -947,6 +949,80 @@ public class CandidatureController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Restaure une candidature rejetée (remet en PENDING)
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/restore")
+    public ResponseEntity<?> restoreCandidature(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/restore - Restauration candidature", id);
+            candidatureService.restoreCandidature(id);
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Candidature restaurée avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Toggle starred/favorite status on a candidature
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/toggle-star")
+    public ResponseEntity<?> toggleStar(
+            @PathVariable Long id,
+            HttpSession session
+    ) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/{}/toggle-star - Toggle étoile", id);
+            boolean starred = candidatureService.toggleStar(id);
+
+            return ResponseEntity.ok(Map.of("success", true, "starred", starred));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Expire les entretiens non confirmés après 7 jours (délai dépassé)
+     * Appelé au chargement du dashboard/planning pour vérifier les expirations
+     */
+    @PostMapping("/experts/expire-unconfirmed")
+    public ResponseEntity<?> expireUnconfirmedInterviews(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+
+            log.info("POST /api/candidatures/experts/expire-unconfirmed - Vérification des expirations");
+            int expired = candidatureService.expireUnconfirmedInterviews();
+
+            return ResponseEntity.ok(Map.of("success", true, "expiredCount", expired));
+        } catch (Exception e) {
+            log.error("Erreur lors de l'expiration des entretiens non confirmés", e);
             return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
         }
     }

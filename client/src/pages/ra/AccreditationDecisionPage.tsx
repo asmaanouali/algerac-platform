@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDatePicker, StringDateTimePicker } from "@/components/ui/date-time-picker";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -484,8 +485,8 @@ export default function AccreditationDecisionPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Date de la réunion</Label>
-                  <Input type="datetime-local" value={casMeetingForm.meetingDate}
-                    onChange={(e) => setCasMeetingForm({ ...casMeetingForm, meetingDate: e.target.value })} />
+                  <StringDateTimePicker value={casMeetingForm.meetingDate}
+                    onChange={(v) => setCasMeetingForm({ ...casMeetingForm, meetingDate: v })} />
                 </div>
                 <div>
                   <Label>Ordre du jour</Label>
@@ -616,8 +617,8 @@ export default function AccreditationDecisionPage() {
                 </div>
                 <div>
                   <Label>Date de première surveillance</Label>
-                  <Input type="date" value={survPlanForm.firstSurveillanceDate}
-                    onChange={(e) => setSurvPlanForm({ ...survPlanForm, firstSurveillanceDate: e.target.value })} />
+                  <StringDatePicker value={survPlanForm.firstSurveillanceDate}
+                    onChange={(v) => setSurvPlanForm({ ...survPlanForm, firstSurveillanceDate: v })} />
                 </div>
                 <div>
                   <Label>Critères de surveillance</Label>

@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -242,7 +243,7 @@ export default function ValidateTeamPage() {
                       <div className="mt-3 p-4 bg-white rounded-lg border space-y-3">
                         <div className="space-y-2">
                           <Label>Date alternative proposee *</Label>
-                          <Input type="date" value={oecProposedDate} onChange={(e) => setOecProposedDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                          <StringDatePicker value={oecProposedDate} onChange={(v) => setOecProposedDate(v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
                         </div>
                         <div className="space-y-2">
                           <Label>Motif du refus de date</Label>

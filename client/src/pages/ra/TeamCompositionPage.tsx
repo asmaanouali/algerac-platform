@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -416,7 +417,7 @@ export default function TeamCompositionPage() {
                         <div className="mt-6 space-y-4">
                           <div className="space-y-2">
                             <Label className="font-medium">Date d'evaluation proposee *</Label>
-                            <Input type="date" value={evaluationDate} onChange={(e) => setEvaluationDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                            <StringDatePicker value={evaluationDate} onChange={(v) => setEvaluationDate(v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
                             <p className="text-xs text-muted-foreground">Le CD validera puis enverra a l'OEC</p>
                           </div>
                           <Button className="w-full" size="lg" onClick={sendToCD} disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned) || !evaluationDate}>
@@ -449,7 +450,7 @@ export default function TeamCompositionPage() {
                           </div>
                           <div className="space-y-2">
                             <Label className="font-medium">Nouvelle date d'evaluation proposee *</Label>
-                            <Input type="date" value={evaluationDate} onChange={(e) => setEvaluationDate(e.target.value)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                            <StringDatePicker value={evaluationDate} onChange={(v) => setEvaluationDate(v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
                           </div>
                           <Button className="w-full" size="lg" onClick={changeDate} disabled={!evaluationDate}>
                             <Send className="w-4 h-4 mr-2" />Proposer la nouvelle date (envoi au CD pour validation)

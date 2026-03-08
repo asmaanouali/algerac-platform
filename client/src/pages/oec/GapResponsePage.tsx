@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDateTimePicker } from "@/components/ui/date-time-picker";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -305,8 +306,8 @@ export default function GapResponsePage() {
                     onChange={(e) => setPlanForm({ ...planForm, responsiblePerson: e.target.value })}
                     placeholder="Nom du responsable" /></div>
                 <div><Label>Date limite de mise en œuvre</Label>
-                  <Input type="datetime-local" value={planForm.deadline}
-                    onChange={(e) => setPlanForm({ ...planForm, deadline: e.target.value })} /></div>
+                  <StringDateTimePicker value={planForm.deadline}
+                    onChange={(v) => setPlanForm({ ...planForm, deadline: v })} /></div>
                 <div><Label>Documents de support</Label>
                   <Textarea value={planForm.supportingDocuments}
                     onChange={(e) => setPlanForm({ ...planForm, supportingDocuments: e.target.value })}

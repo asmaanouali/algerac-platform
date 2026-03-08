@@ -663,7 +663,7 @@ export default function ExpertRegisterWizard() {
         throw new Error(errorMsg);
       }
 
-      setLocation("/auth/success");
+      setLocation("/auth/success?type=expert");
     } catch (err) {
       let msg = "Une erreur s'est produite. Veuillez réessayer.";
       if (err instanceof Error) {

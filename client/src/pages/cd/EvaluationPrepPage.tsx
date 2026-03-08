@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDatePicker, TimePicker } from "@/components/ui/date-time-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -394,8 +395,8 @@ export default function CDEvaluationPrepPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Date</Label><Input type="date" value={meetingForm.meetingDate} onChange={(e) => setMeetingForm({ ...meetingForm, meetingDate: e.target.value })} /></div>
-                  <div><Label>Heure</Label><Input type="time" value={meetingForm.meetingTime} onChange={(e) => setMeetingForm({ ...meetingForm, meetingTime: e.target.value })} /></div>
+                  <div><Label>Date</Label><StringDatePicker value={meetingForm.meetingDate} onChange={(v) => setMeetingForm({ ...meetingForm, meetingDate: v })} /></div>
+                  <div><Label>Heure</Label><TimePicker value={meetingForm.meetingTime} onChange={(v) => setMeetingForm({ ...meetingForm, meetingTime: v })} /></div>
                 </div>
                 <div><Label>Lieu</Label><Input value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} placeholder="Locaux ALGERAC, Salle de réunion..." /></div>
                 <div><Label>Ordre du jour</Label><Textarea value={meetingForm.agenda} onChange={(e) => setMeetingForm({ ...meetingForm, agenda: e.target.value })} placeholder="Points à aborder..." rows={3} /></div>

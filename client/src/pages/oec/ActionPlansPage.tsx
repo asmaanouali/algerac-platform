@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -187,12 +188,9 @@ export default function ActionPlansPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor={`deadline-${index}`}>Date limite *</Label>
-                          <Input
-                            id={`deadline-${index}`}
-                            type="date"
+                          <StringDatePicker
                             value={plan.deadline}
-                            onChange={(e) => updateActionPlan(index, "deadline", e.target.value)}
-                            required
+                            onChange={(v) => updateActionPlan(index, "deadline", v)}
                           />
                         </div>
                       </div>

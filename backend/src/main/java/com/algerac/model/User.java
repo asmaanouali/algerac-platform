@@ -123,6 +123,11 @@ public class User {
     // Rejection type tracking
     private String rejectionType; // "dossier" or "interview"
     
+    // Starred/favorite candidate (good profile, consider for future)
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean starred = false;
+    
     // Données structurées (JSON)
     @Column(columnDefinition = "TEXT")
     private String formationsAcademiquesJson;
@@ -155,6 +160,7 @@ public class User {
     
     // INTERVIEW FIELDS
     private LocalDateTime interviewDate;
+    private LocalDateTime interviewScheduledAt; // When the interview was scheduled (for 7-day deadline)
     
     @Column(columnDefinition = "TEXT")
     private String interviewNotes;

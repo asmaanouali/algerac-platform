@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRoute, useLocation } from "wouter";
 import {
@@ -36,6 +37,8 @@ interface Candidature {
   id: string;
   registrationId: string;
   fullName: string;
+  nom?: string;
+  prenom?: string;
   userType: string;
   domaineExpertise: string;
   sousDomaineExpertise?: string;
@@ -92,6 +95,7 @@ export default function InterviewEvaluationPage() {
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectNotes, setRejectNotes] = useState("");
+  const [acceptRole, setAcceptRole] = useState("EXPERT");
 
   useEffect(() => {
     document.title = "Évaluation Entretien - Gestion des Compétences | ALGERAC";
@@ -238,7 +242,12 @@ export default function InterviewEvaluationPage() {
 
       const response = await fetch(
         `http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-accept`,
-        { method: "POST", credentials: "include" }
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role: acceptRole }),
+        }
       );
       if (response.ok) {
         toast({
@@ -718,7 +727,12 @@ export default function InterviewEvaluationPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Button
                         className="h-auto py-4 bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => setShowAcceptDialog(true)}
+                        onClick={() => {
+                          // Pre-select role based on userType
+                          const typeMap: Record<string, string> = { EXPERT: "EXPERT", EVALUATEUR: "ET", FORMATEUR: "EXPERT" };
+                          setAcceptRole(typeMap[candidature.userType] || "EXPERT");
+                          setShowAcceptDialog(true);
+                        }}
                         disabled={candidature.status !== "INTERVIEW_COMPLETED"}
                       >
                         <div className="text-center px-2 break-words">
@@ -785,17 +799,46 @@ export default function InterviewEvaluationPage() {
 
       {/* Accept Confirmation Dialog */}
       <Dialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmer l'acceptation</DialogTitle>
+            <DialogTitle>Accepter la Candidature</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir accepter la candidature de <strong>{candidature.fullName}</strong> ?
-              <br />
-              <br />
-              Une notification sera envoyée à l'administrateur pour créer le compte utilisateur. Le candidat ne
-              recevra pas d'email à ce stade — il sera contacté uniquement lors de la création de son compte.
+              Veuillez vérifier les informations et sélectionner le rôle à attribuer au candidat.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={candidature?.email || ""} readOnly className="bg-muted" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input value={candidature?.nom || candidature?.fullName?.split(" ").slice(1).join(" ") || ""} readOnly className="bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <Label>Prénom</Label>
+                <Input value={candidature?.prenom || candidature?.fullName?.split(" ")[0] || ""} readOnly className="bg-muted" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Rôle à attribuer <span className="text-red-500">*</span></Label>
+              <Select value={acceptRole} onValueChange={setAcceptRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un rôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EXPERT">Expert</SelectItem>
+                  <SelectItem value="ET">Évaluateur Technique</SelectItem>
+                  <SelectItem value="EQ">Évaluateur Qualité</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Une notification sera envoyée à l'administrateur pour créer le compte utilisateur. Le candidat ne
+              recevra pas d'email à ce stade.
+            </p>
+          </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAcceptDialog(false)}>
               Annuler

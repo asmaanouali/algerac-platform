@@ -6,13 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle, ShieldBan, ShieldCheck, ChevronDown } from "lucide-react";
+import { Search, Eye, FileText, Download, Clock, UserCheck, UserX, Users, CalendarDays, CalendarPlus, XCircle, ShieldBan, ShieldCheck, ChevronDown, RotateCcw, Star } from "lucide-react";
+import { DatePicker, TimePicker } from "@/components/ui/date-time-picker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { exportToXlsx } from "@/lib/export-utils";
 
 interface Candidature {
@@ -23,6 +25,7 @@ interface Candidature {
   domaineExpertise: string;
   email: string;
   telephone: string;
+  telephoneMobile?: string;
   dateInscription: string;
   status: "PENDING" | "INTERVIEW_SCHEDULED" | "INTERVIEW_CONFIRMED" | "INTERVIEW_COMPLETED" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
   photoBase64?: string;
@@ -36,11 +39,13 @@ interface Candidature {
   interviewNotes?: string;
   interviewChecklistJson?: string;
   interviewDecision?: string;
+  interviewScheduledAt?: string;
   createdAt?: string;
   rejectionType?: string;
   blacklisted?: boolean;
   blacklistReason?: string;
   blacklistedAt?: string;
+  starred?: boolean;
 }
 
 export default function GesCompetencesCandidaturesPage() {
@@ -54,13 +59,14 @@ export default function GesCompetencesCandidaturesPage() {
   
   // Interview scheduling dialog
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [interviewDate, setInterviewDate] = useState("");
+  const [interviewDateObj, setInterviewDateObj] = useState<Date | undefined>(undefined);
   const [interviewTime, setInterviewTime] = useState("");
   const [schedulingCandidature, setSchedulingCandidature] = useState<Candidature | null>(null);
   
   // Reject dialog
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [starOnReject, setStarOnReject] = useState(false);
   
   // Blacklist dialog
   const [showBlacklistDialog, setShowBlacklistDialog] = useState(false);
@@ -149,12 +155,15 @@ export default function GesCompetencesCandidaturesPage() {
 
   // Schedule interview
   const handleScheduleInterview = async () => {
-    if (!schedulingCandidature || !interviewDate || !interviewTime) {
+    if (!schedulingCandidature || !interviewDateObj || !interviewTime) {
       toast({ title: "Erreur", description: "Veuillez sélectionner une date et une heure", variant: "destructive" });
       return;
     }
 
-    const dateTime = `${interviewDate}T${interviewTime}:00`;
+    const year = interviewDateObj.getFullYear();
+    const month = String(interviewDateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(interviewDateObj.getDate()).padStart(2, '0');
+    const dateTime = `${year}-${month}-${day}T${interviewTime}:00`;
 
     try {
       const response = await fetch(`http://localhost:8082/api/candidatures/experts/${schedulingCandidature.id}/schedule-interview`, {
@@ -169,7 +178,7 @@ export default function GesCompetencesCandidaturesPage() {
         fetchCandidatures();
         setShowScheduleDialog(false);
         setSelectedCandidature(null);
-        setInterviewDate("");
+        setInterviewDateObj(undefined);
         setInterviewTime("");
         setSchedulingCandidature(null);
       } else {
@@ -193,11 +202,19 @@ export default function GesCompetencesCandidaturesPage() {
       });
       
       if (response.ok) {
+        // If starOnReject is checked, also star the profile
+        if (starOnReject) {
+          await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/toggle-star`, {
+            method: "POST",
+            credentials: "include"
+          });
+        }
         toast({ title: "Traitement effectué", description: "Le candidat a été notifié par email de manière appropriée." });
         fetchCandidatures();
         setSelectedCandidature(null);
         setShowRejectDialog(false);
         setRejectionReason("");
+        setStarOnReject(false);
       } else {
         const error = await response.json();
         toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
@@ -241,7 +258,7 @@ export default function GesCompetencesCandidaturesPage() {
       INTERVIEW_COMPLETED: "Entretien terminé", CANDIDATURE_APPROVED: "Acceptée", APPROVED: "Compte actif", REJECTED: "Non retenue"
     };
     const rows = filteredCandidatures.map(c => [
-      c.registrationId, c.fullName, c.userType, c.domaineExpertise || "", c.email, c.telephone || "",
+      c.registrationId, c.fullName, c.userType, c.domaineExpertise || "", c.email, c.telephoneMobile || c.telephone || "",
       c.createdAt ? new Date(c.createdAt).toLocaleDateString("fr-FR") : c.dateInscription || "",
       statusLabels[c.status] || c.status,
       c.rejectionType || "",
@@ -311,6 +328,49 @@ export default function GesCompetencesCandidaturesPage() {
     }
   };
 
+  // Restore a rejected candidature back to PENDING
+  const handleRestore = async (candidature: Candidature) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/restore`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (response.ok) {
+        toast({ title: "Succès", description: "Candidature restaurée. Le dossier est de nouveau en attente d'examen." });
+        fetchCandidatures();
+        setSelectedCandidature(null);
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
+  // Toggle star/favorite for a candidature
+  const handleToggleStar = async (candidature: Candidature) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/toggle-star`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (response.ok) {
+        const data = await response.json();
+        toast({ title: data.starred ? "Profil marqué" : "Marque retirée", description: data.starred ? "Ce profil sera considéré pour de futures opportunités." : "La marque a été retirée." });
+        fetchCandidatures();
+        if (selectedCandidature && String(selectedCandidature.id) === String(candidature.id)) {
+          setSelectedCandidature({ ...selectedCandidature, starred: data.starred });
+        }
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
@@ -320,7 +380,7 @@ export default function GesCompetencesCandidaturesPage() {
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Candidatures d&apos;Inscription</h1>
+              <h1 className="text-2xl md:text-2xl font-bold text-slate-900">Candidatures</h1>
               <p className="text-muted-foreground mt-1 text-sm md:text-base">
                 Gérer les demandes d'inscription des Experts, Évaluateurs et Formateurs
               </p>
@@ -476,7 +536,7 @@ export default function GesCompetencesCandidaturesPage() {
                         <TableCell>{getTypeBadge(candidature.userType)}</TableCell>
                         <TableCell className="max-w-xs truncate">{candidature.domaineExpertise}</TableCell>
                         <TableCell className="whitespace-nowrap">{candidature.createdAt ? new Date(candidature.createdAt).toLocaleDateString("fr-FR") : candidature.dateInscription}</TableCell>
-                        <TableCell>{getStatusBadge(candidature.status)}{candidature.blacklisted && <Badge variant="destructive" className="ml-1 text-[10px]">BL</Badge>}</TableCell>
+                        <TableCell>{getStatusBadge(candidature.status)}{candidature.blacklisted && <Badge variant="destructive" className="ml-1 text-[10px]">BL</Badge>}{candidature.starred && <Star className="inline w-3.5 h-3.5 ml-1 fill-amber-500 text-amber-500" />}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setSelectedCandidature(candidature)}>
                             <Eye className="w-4 h-4" />
@@ -512,7 +572,7 @@ export default function GesCompetencesCandidaturesPage() {
                 <div><Label className="text-xs text-muted-foreground">Nom Complet</Label><p className="font-medium">{selectedCandidature.fullName}</p></div>
                 <div><Label className="text-xs text-muted-foreground">Type</Label><div className="mt-1">{getTypeBadge(selectedCandidature.userType)}</div></div>
                 <div><Label className="text-xs text-muted-foreground">Email</Label><p className="font-medium">{selectedCandidature.email}</p></div>
-                <div><Label className="text-xs text-muted-foreground">Téléphone</Label><p className="font-medium">{selectedCandidature.telephone}</p></div>
+                <div><Label className="text-xs text-muted-foreground">Téléphone</Label><p className="font-medium">{selectedCandidature.telephoneMobile || selectedCandidature.telephone || "Non renseigné"}</p></div>
                 {selectedCandidature.dateNaissance && (<div><Label className="text-xs text-muted-foreground">Date de naissance</Label><p className="font-medium">{selectedCandidature.dateNaissance}</p></div>)}
                 {selectedCandidature.nationalite && (<div><Label className="text-xs text-muted-foreground">Nationalité</Label><p className="font-medium">{selectedCandidature.nationalite}</p></div>)}
                 <div><Label className="text-xs text-muted-foreground">Statut</Label><div className="mt-1">{getStatusBadge(selectedCandidature.status)}</div></div>
@@ -538,6 +598,36 @@ export default function GesCompetencesCandidaturesPage() {
                     Motif de refus {selectedCandidature.rejectionType === "interview" ? "(après entretien)" : "(dossier)"}
                   </Label>
                   <p className="text-sm text-slate-600">{selectedCandidature.rejectionReason}</p>
+                </div>
+              )}
+
+              {/* Star indicator */}
+              {selectedCandidature.starred && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <Label className="text-sm font-semibold text-amber-700 mb-1 flex items-center gap-2">
+                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> Profil à considérer
+                  </Label>
+                  <p className="text-sm text-amber-600">Ce profil a été marqué comme intéressant pour de futures opportunités.</p>
+                </div>
+              )}
+
+              {/* Restore rejected candidature + star toggle */}
+              {selectedCandidature.status === "REJECTED" && (
+                <div className="flex gap-3 pt-4 border-t flex-wrap">
+                  <Button variant="outline" className="flex-1 text-blue-600 border-blue-300 hover:bg-blue-50" onClick={() => handleRestore(selectedCandidature)}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Réexaminer la candidature
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={selectedCandidature.starred 
+                      ? "text-amber-600 border-amber-300 hover:bg-amber-50" 
+                      : "text-slate-600 border-slate-300 hover:bg-slate-50"}
+                    onClick={() => handleToggleStar(selectedCandidature)}
+                  >
+                    <Star className={`w-4 h-4 mr-1 ${selectedCandidature.starred ? "fill-amber-500 text-amber-500" : ""}`} />
+                    {selectedCandidature.starred ? "Retirer l'étoile" : "Marquer le profil"}
+                  </Button>
                 </div>
               )}
 
@@ -653,20 +743,33 @@ export default function GesCompetencesCandidaturesPage() {
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="interviewDate">Date de l'entretien *</Label>
-              <Input id="interviewDate" type="date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className="mt-2" min={new Date().toISOString().split('T')[0]} />
+              <Label>Date de l'entretien *</Label>
+              <div className="mt-2">
+                <DatePicker
+                  value={interviewDateObj}
+                  onChange={setInterviewDateObj}
+                  placeholder="Sélectionner une date"
+                  minDate={new Date()}
+                />
+              </div>
             </div>
             <div>
-              <Label htmlFor="interviewTime">Heure de l'entretien *</Label>
-              <Input id="interviewTime" type="time" value={interviewTime} onChange={(e) => setInterviewTime(e.target.value)} className="mt-2" />
+              <Label>Heure de l'entretien *</Label>
+              <div className="mt-2">
+                <TimePicker
+                  value={interviewTime}
+                  onChange={setInterviewTime}
+                  placeholder="Sélectionner l'heure"
+                />
+              </div>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDate(""); setInterviewTime(""); }}>
+            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDateObj(undefined); setInterviewTime(""); }}>
               Annuler
             </Button>
-            <Button className="bg-[#00A63E] hover:bg-[#009235]" onClick={handleScheduleInterview} disabled={!interviewDate || !interviewTime}>
+            <Button className="bg-[#00A63E] hover:bg-[#009235]" onClick={handleScheduleInterview} disabled={!interviewDateObj || !interviewTime}>
               <CalendarPlus className="w-4 h-4 mr-2" />
               Confirmer & Envoyer la Convocation
             </Button>
@@ -697,8 +800,19 @@ export default function GesCompetencesCandidaturesPage() {
               </p>
             </div>
 
+            <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-amber-50/50 cursor-pointer" onClick={() => setStarOnReject(!starOnReject)}>
+              <Checkbox checked={starOnReject} onCheckedChange={(checked) => setStarOnReject(!!checked)} />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Star className={`w-4 h-4 ${starOnReject ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
+                  <span className="text-sm font-medium">Bon profil à considérer</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Marquer ce profil pour une éventuelle reconsidération future.</p>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => { setShowRejectDialog(false); setRejectionReason(""); }}>
+              <Button variant="outline" className="flex-1" onClick={() => { setShowRejectDialog(false); setRejectionReason(""); setStarOnReject(false); }}>
                 Annuler
               </Button>
               <Button variant="outline" className="flex-1 text-slate-600" onClick={() => selectedCandidature && handleRejectDossier(selectedCandidature)}>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { DatePicker, TimePicker } from "@/components/ui/date-time-picker";
 import {
   CalendarDays,
   Clock,
@@ -39,6 +40,7 @@ interface Interview {
   telephone: string;
   status: string;
   interviewDate: string;
+  interviewScheduledAt?: string;
   photoBase64?: string;
 }
 
@@ -58,7 +60,7 @@ export default function InterviewPlanningPage() {
   // Reschedule dialog
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleInterview, setRescheduleInterview] = useState<Interview | null>(null);
-  const [newDate, setNewDate] = useState("");
+  const [newDateObj, setNewDateObj] = useState<Date | undefined>(undefined);
   const [newTime, setNewTime] = useState("");
 
   // Day detail dialog (calendar day click)
@@ -74,6 +76,9 @@ export default function InterviewPlanningPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      // Auto-expire unconfirmed interviews past 7-day deadline
+      await fetch("http://localhost:8082/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
+      
       const [interviewsRes, candidaturesRes] = await Promise.all([
         fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" }),
         fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
@@ -85,10 +90,11 @@ export default function InterviewPlanningPage() {
       }
       if (candidaturesRes.ok) {
         const data = await candidaturesRes.json();
-        // Keep only those with interview statuses
+        // Keep ALL candidatures that have/had an interview (interviewDate is set), regardless of current status
         setAllCandidatures(
           data.filter((c: Interview) =>
-            ["INTERVIEW_SCHEDULED", "INTERVIEW_CONFIRMED", "INTERVIEW_COMPLETED"].includes(c.status)
+            ["INTERVIEW_SCHEDULED", "INTERVIEW_CONFIRMED", "INTERVIEW_COMPLETED"].includes(c.status) ||
+            (c.interviewDate && ["CANDIDATURE_APPROVED", "APPROVED", "REJECTED"].includes(c.status))
           )
         );
       }
@@ -113,7 +119,9 @@ export default function InterviewPlanningPage() {
   const stats = useMemo(() => {
     const scheduled = mergedInterviews.filter((i) => i.status === "INTERVIEW_SCHEDULED").length;
     const confirmed = mergedInterviews.filter((i) => i.status === "INTERVIEW_CONFIRMED").length;
-    const completed = mergedInterviews.filter((i) => i.status === "INTERVIEW_COMPLETED").length;
+    const completed = mergedInterviews.filter((i) => 
+      i.status === "INTERVIEW_COMPLETED" || i.status === "CANDIDATURE_APPROVED" || i.status === "APPROVED" || i.status === "REJECTED"
+    ).length;
     const today = mergedInterviews.filter((i) => {
       if (!i.interviewDate) return false;
       const d = new Date(i.interviewDate);
@@ -129,7 +137,9 @@ export default function InterviewPlanningPage() {
         i.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         i.registrationId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         i.domaineExpertise?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === "all" || i.status === filterStatus;
+      const matchesStatus = filterStatus === "all" || 
+        i.status === filterStatus ||
+        (filterStatus === "INTERVIEW_COMPLETED" && ["INTERVIEW_COMPLETED", "CANDIDATURE_APPROVED", "APPROVED", "REJECTED"].includes(i.status));
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
@@ -154,6 +164,21 @@ export default function InterviewPlanningPage() {
         class: "bg-teal-50 text-teal-700 border-teal-300",
         label: "Terminé",
         icon: <CheckCircle className="w-3 h-3 mr-1" />,
+      },
+      CANDIDATURE_APPROVED: {
+        class: "bg-emerald-50 text-emerald-700 border-emerald-300",
+        label: "Accepté",
+        icon: <CheckCircle className="w-3 h-3 mr-1" />,
+      },
+      APPROVED: {
+        class: "bg-green-50 text-green-700 border-green-300",
+        label: "Compte actif",
+        icon: <CheckCircle className="w-3 h-3 mr-1" />,
+      },
+      REJECTED: {
+        class: "bg-slate-50 text-slate-600 border-slate-300",
+        label: "Non retenu",
+        icon: null,
       },
     };
     const s = map[status] || { class: "", label: status, icon: null };
@@ -189,19 +214,22 @@ export default function InterviewPlanningPage() {
   };
 
   const handleReschedule = async () => {
-    if (!rescheduleInterview || !newDate || !newTime) {
+    if (!rescheduleInterview || !newDateObj || !newTime) {
       toast({ title: "Erreur", description: "Veuillez renseigner une date et une heure", variant: "destructive" });
       return;
     }
     try {
-      const dateTime = `${newDate}T${newTime}:00`;
+      const year = newDateObj.getFullYear();
+      const month = String(newDateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(newDateObj.getDate()).padStart(2, '0');
+      const dateTime = `${year}-${month}-${day}T${newTime}:00`;
       const response = await fetch(
         `http://localhost:8082/api/candidatures/experts/${rescheduleInterview.id}/update-interview-date`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ interviewDate: dateTime }),
+          body: JSON.stringify({ newDate: dateTime }),
         }
       );
       if (response.ok) {
@@ -209,7 +237,7 @@ export default function InterviewPlanningPage() {
         fetchData();
         setShowRescheduleDialog(false);
         setRescheduleInterview(null);
-        setNewDate("");
+        setNewDateObj(undefined);
         setNewTime("");
       } else {
         const error = await response.json();
@@ -229,12 +257,15 @@ export default function InterviewPlanningPage() {
 
   const calendarInterviewsByDate = useMemo(() => {
     const map: Record<string, Interview[]> = {};
-    mergedInterviews.forEach((i) => {
-      if (!i.interviewDate) return;
-      const key = new Date(i.interviewDate).toDateString();
-      if (!map[key]) map[key] = [];
-      map[key].push(i);
-    });
+    // Only show confirmed+ interviews in the calendar view
+    mergedInterviews
+      .filter(i => i.status !== "INTERVIEW_SCHEDULED")
+      .forEach((i) => {
+        if (!i.interviewDate) return;
+        const key = new Date(i.interviewDate).toDateString();
+        if (!map[key]) map[key] = [];
+        map[key].push(i);
+      });
     return map;
   }, [mergedInterviews]);
 
@@ -282,6 +313,32 @@ export default function InterviewPlanningPage() {
   };
   const isPast = (dateStr: string) => new Date(dateStr) < new Date();
 
+  // 7-day deadline helper: returns days remaining for INTERVIEW_SCHEDULED candidates
+  const getDeadlineDaysRemaining = (interview: Interview): number | null => {
+    if (interview.status !== "INTERVIEW_SCHEDULED") return null;
+    const scheduledAt = interview.interviewScheduledAt;
+    if (!scheduledAt) return null;
+    const deadlineDate = new Date(new Date(scheduledAt).getTime() + 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const msRemaining = deadlineDate.getTime() - now.getTime();
+    return Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+  };
+
+  const getDeadlineBadge = (interview: Interview) => {
+    const daysLeft = getDeadlineDaysRemaining(interview);
+    if (daysLeft === null) return null;
+    if (daysLeft <= 0) {
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">Délai expiré</Badge>;
+    }
+    if (daysLeft <= 2) {
+      return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">J-{daysLeft}</Badge>;
+    }
+    if (daysLeft <= 4) {
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs">J-{daysLeft}</Badge>;
+    }
+    return null;
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
@@ -292,7 +349,7 @@ export default function InterviewPlanningPage() {
           {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Planning des Entretiens</h1>
+              <h1 className="text-2xl md:text-2xl font-bold text-slate-900">Planning des Entretiens</h1>
               <p className="text-muted-foreground mt-1">Vue d'ensemble et gestion des entretiens planifiés</p>
             </div>
             <div className="flex gap-2">
@@ -526,6 +583,7 @@ export default function InterviewPlanningPage() {
                                   {getTypeLabel(interview.userType)}
                                 </Badge>
                                 {getStatusBadge(interview.status)}
+                                {getDeadlineBadge(interview)}
                               </div>
                               <p className="text-sm text-muted-foreground truncate mt-0.5">
                                 {interview.domaineExpertise}
@@ -598,17 +656,24 @@ export default function InterviewPlanningPage() {
           <div className="space-y-4">
             <div>
               <Label>Nouvelle date *</Label>
-              <Input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                className="mt-2"
-                min={new Date().toISOString().split("T")[0]}
-              />
+              <div className="mt-2">
+                <DatePicker
+                  value={newDateObj}
+                  onChange={setNewDateObj}
+                  placeholder="Sélectionner une date"
+                  minDate={new Date()}
+                />
+              </div>
             </div>
             <div>
               <Label>Nouvelle heure *</Label>
-              <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="mt-2" />
+              <div className="mt-2">
+                <TimePicker
+                  value={newTime}
+                  onChange={setNewTime}
+                  placeholder="Sélectionner l'heure"
+                />
+              </div>
             </div>
           </div>
 
@@ -617,13 +682,13 @@ export default function InterviewPlanningPage() {
               variant="outline"
               onClick={() => {
                 setShowRescheduleDialog(false);
-                setNewDate("");
+                setNewDateObj(undefined);
                 setNewTime("");
               }}
             >
               Annuler
             </Button>
-            <Button onClick={handleReschedule} disabled={!newDate || !newTime}>
+            <Button onClick={handleReschedule} disabled={!newDateObj || !newTime}>
               Enregistrer
             </Button>
           </DialogFooter>

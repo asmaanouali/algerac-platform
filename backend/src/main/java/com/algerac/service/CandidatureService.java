@@ -272,6 +272,7 @@ public class CandidatureService {
 
         user.setStatus(UserStatus.INTERVIEW_SCHEDULED);
         user.setInterviewDate(interviewDate);
+        user.setInterviewScheduledAt(LocalDateTime.now());
         
         User savedUser = userRepository.save(user);
         
@@ -298,6 +299,7 @@ public class CandidatureService {
         
         user.setInterviewDate(newDate);
         user.setStatus(UserStatus.INTERVIEW_SCHEDULED); // Reset to scheduled if was confirmed
+        user.setInterviewScheduledAt(LocalDateTime.now()); // Reset deadline
         
         User savedUser = userRepository.save(user);
         log.info("Date d'entretien mise à jour pour {} {} : {}", user.getPrenom(), user.getNom(), newDate);
@@ -377,7 +379,7 @@ public class CandidatureService {
      * Notifie l'admin IN-APP uniquement (pas d'email) pour créer le compte
      */
     @Transactional
-    public User acceptAfterInterview(Long userId, Long gesCompetencesUserId) {
+    public User acceptAfterInterview(Long userId, Long gesCompetencesUserId, String role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
@@ -388,6 +390,11 @@ public class CandidatureService {
         }
         
         validateExpertType(user);
+
+        // Set the role chosen by GES_COMPETENCES
+        if (role != null && !role.isBlank()) {
+            user.setRole(UserRole.valueOf(role));
+        }
 
         user.setStatus(UserStatus.CANDIDATURE_APPROVED);
         user.setInterviewDecision("ACCEPTED");
@@ -562,6 +569,78 @@ public class CandidatureService {
         
         userRepository.save(user);
         log.info("Candidat {} retiré de la blacklist", userId);
+    }
+    
+    /**
+     * Restaure une candidature rejetée (remet en PENDING)
+     */
+    @Transactional
+    public void restoreCandidature(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        if (user.getStatus() != UserStatus.REJECTED) {
+            throw new RuntimeException("Seules les candidatures rejetées peuvent être restaurées");
+        }
+        
+        user.setStatus(UserStatus.PENDING);
+        user.setRejectionReason(null);
+        user.setRejectionType(null);
+        user.setInterviewDecision(null);
+        user.setInterviewDecisionDate(null);
+        user.setInterviewScheduledAt(null);
+        
+        userRepository.save(user);
+        log.info("Candidature {} restaurée en PENDING", userId);
+    }
+    
+    /**
+     * Expire les entretiens non confirmés après 7 jours.
+     * Déplace les candidatures INTERVIEW_SCHEDULED dont le interviewScheduledAt dépasse 7 jours vers REJECTED.
+     * @return nombre de candidatures expirées
+     */
+    @Transactional
+    public int expireUnconfirmedInterviews() {
+        LocalDateTime deadline = LocalDateTime.now().minusDays(7);
+        
+        List<User> expired = userRepository.findAll().stream()
+            .filter(u -> u.getStatus() == UserStatus.INTERVIEW_SCHEDULED)
+            .filter(u -> u.getInterviewScheduledAt() != null && u.getInterviewScheduledAt().isBefore(deadline))
+            .toList();
+        
+        for (User user : expired) {
+            user.setStatus(UserStatus.REJECTED);
+            user.setRejectionType("interview_non_confirme");
+            user.setRejectionReason("Entretien non confirmé dans le délai de 7 jours");
+            user.setInterviewDecision("REJECTED");
+            user.setInterviewDecisionDate(LocalDateTime.now());
+            userRepository.save(user);
+            
+            log.info("Candidature {} expirée - entretien non confirmé après 7 jours (planifié le {})", 
+                    user.getId(), user.getInterviewScheduledAt());
+        }
+        
+        if (!expired.isEmpty()) {
+            log.info("{} candidature(s) expirée(s) pour non-confirmation d'entretien", expired.size());
+        }
+        
+        return expired.size();
+    }
+    
+    /**
+     * Toggle starred/favorite status
+     */
+    @Transactional
+    public boolean toggleStar(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        boolean newValue = !Boolean.TRUE.equals(user.getStarred());
+        user.setStarred(newValue);
+        
+        userRepository.save(user);
+        log.info("Candidature {} starred: {}", userId, newValue);
+        return newValue;
     }
     
     // ===================================================================

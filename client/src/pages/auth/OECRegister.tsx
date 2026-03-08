@@ -11,6 +11,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowRight, ChevronLeft, Plus, Trash2, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 
 // Types de demande
 const TYPES_DEMANDE = [
@@ -645,7 +646,7 @@ export default function OECRegister() {
         description: "Votre demande d'accréditation a été envoyée avec succès",
       });
       
-      setLocation("/auth/success");
+      setLocation("/auth/success?type=oec");
     } catch (err) {
       toast({
         title: "Erreur",
@@ -704,10 +705,9 @@ export default function OECRegister() {
 
       <div className="space-y-2">
         <Label>Date d'évaluation souhaitée</Label>
-        <Input 
-          type="date" 
+        <StringDatePicker
           value={formData.dateEvaluation}
-          onChange={(e) => updateFormData("dateEvaluation", e.target.value)}
+          onChange={(v) => updateFormData("dateEvaluation", v)}
         />
       </div>
 
@@ -1302,10 +1302,9 @@ export default function OECRegister() {
 
                     <div className="space-y-2">
                       <Label className="text-sm">Date</Label>
-                      <Input 
-                        type="date"
+                      <StringDatePicker
                         value={prestation.date}
-                        onChange={(e) => updatePrestation(prestation.id, "date", e.target.value)}
+                        onChange={(v) => updatePrestation(prestation.id, "date", v)}
                       />
                     </div>
 
@@ -1724,10 +1723,9 @@ export default function OECRegister() {
 
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input 
-              type="date"
+            <StringDatePicker
               value={formData.demandeurDate}
-              onChange={(e) => updateFormData("demandeurDate", e.target.value)}
+              onChange={(v) => updateFormData("demandeurDate", v)}
             />
           </div>
 

@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -275,7 +276,7 @@ export default function CASPreparationPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div><label className="text-sm font-medium">Date de la réunion</label>
-                  <Input type="date" value={scheduleForm.meetingDate} onChange={(e) => setScheduleForm({ ...scheduleForm, meetingDate: e.target.value })} /></div>
+                  <StringDatePicker value={scheduleForm.meetingDate} onChange={(v) => setScheduleForm({ ...scheduleForm, meetingDate: v })} /></div>
                 <div><label className="text-sm font-medium">Ordre du jour</label>
                   <Textarea value={scheduleForm.agenda} onChange={(e) => setScheduleForm({ ...scheduleForm, agenda: e.target.value })}
                     placeholder="Points à traiter lors de la réunion..." rows={3} /></div>

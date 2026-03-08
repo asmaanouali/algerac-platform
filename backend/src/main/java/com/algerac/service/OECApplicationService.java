@@ -11,10 +11,12 @@ import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -30,6 +32,7 @@ public class OECApplicationService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     
@@ -196,15 +199,20 @@ public class OECApplicationService {
         
         OECApplication saved = oecApplicationRepository.save(application);
         
-        // Activer aussi le compte User correspondant
+        // Générer un mot de passe aléatoire
+        String generatedPassword = generateRandomPassword();
+        String encodedPassword = passwordEncoder.encode(generatedPassword);
+        
+        // Activer le compte User correspondant et mettre à jour le mot de passe
         userRepository.findByEmail(saved.getEmail()).ifPresent(user -> {
             user.setStatus(com.algerac.model.UserStatus.APPROVED);
+            user.setPassword(encodedPassword);
             userRepository.save(user);
-            log.info("Compte utilisateur activé pour l'OEC - email: {}", saved.getEmail());
+            log.info("Compte utilisateur activé avec nouveau mot de passe pour l'OEC - email: {}", saved.getEmail());
         });
         
-        // Envoyer un email à l'OEC avec ses coordonnées de connexion
-        emailService.sendOECAccountCreatedEmail(saved);
+        // Envoyer un email à l'OEC avec ses coordonnées de connexion et le mot de passe généré
+        emailService.sendOECAccountCreatedEmail(saved, generatedPassword);
         
         log.info("Compte OEC créé - ID candidature: {}, Organisme: {}", 
                 saved.getId(), saved.getNomOrganisme());
@@ -373,5 +381,41 @@ public class OECApplicationService {
                 .paymentVerifiedAt(application.getPaymentVerifiedAt() != null ? 
                         application.getPaymentVerifiedAt().format(DATE_FORMATTER) : null)
                 .build();
+    }
+    
+    /**
+     * Génère un mot de passe aléatoire de 12 caractères (lettres, chiffres, caractères spéciaux)
+     */
+    private String generateRandomPassword() {
+        String upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lower = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String special = "@#$%&*!?";
+        String allChars = upper + lower + digits + special;
+        
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
+        
+        // Garantir au moins un caractère de chaque type
+        password.append(upper.charAt(random.nextInt(upper.length())));
+        password.append(lower.charAt(random.nextInt(lower.length())));
+        password.append(digits.charAt(random.nextInt(digits.length())));
+        password.append(special.charAt(random.nextInt(special.length())));
+        
+        // Compléter avec des caractères aléatoires
+        for (int i = 4; i < 12; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+        
+        // Mélanger les caractères
+        char[] chars = password.toString().toCharArray();
+        for (int i = chars.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = temp;
+        }
+        
+        return new String(chars);
     }
 }

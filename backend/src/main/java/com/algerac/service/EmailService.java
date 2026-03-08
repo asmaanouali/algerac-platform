@@ -1390,7 +1390,7 @@ public class EmailService {
     /**
      * Envoie un email à l'OEC pour lui confirmer la création de son compte avec ses coordonnées de connexion
      */
-    public void sendOECAccountCreatedEmail(OECApplication application) {
+    public void sendOECAccountCreatedEmail(OECApplication application, String generatedPassword) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
@@ -1408,9 +1408,12 @@ public class EmailService {
                 ═══════════════════════════════════════
                 
                   Email de connexion : %s
-                  Mot de passe : celui que vous avez choisi lors de votre inscription
+                  Mot de passe : %s
                 
                 ═══════════════════════════════════════
+                
+                ⚠ IMPORTANT : Nous vous recommandons vivement de changer votre mot de passe 
+                dès votre première connexion pour des raisons de sécurité.
                 
                  Informations de votre organisme :
                   • Organisme : %s
@@ -1422,9 +1425,6 @@ public class EmailService {
                 Vous pouvez dès maintenant vous connecter à la plateforme ALGERAC 
                 et accéder à l'ensemble des services disponibles.
                 
-                En cas d'oubli de mot de passe, utilisez la fonction "Mot de passe oublié" 
-                sur la page de connexion.
-                
                 Bienvenue sur la plateforme ALGERAC !
                 
                 Cordialement,
@@ -1432,6 +1432,7 @@ public class EmailService {
                 """,
                 application.getNomOrganisme(),
                 application.getEmail(),
+                generatedPassword,
                 application.getNomOrganisme(),
                 application.getTypeOrganisme() != null ? application.getTypeOrganisme() : "Non renseigné",
                 application.getNomRepresentant() != null ? application.getNomRepresentant() : "Non renseigné",

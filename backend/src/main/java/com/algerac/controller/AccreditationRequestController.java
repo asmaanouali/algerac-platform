@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/requests")
@@ -93,6 +94,49 @@ public class AccreditationRequestController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
+    /**
+     * Détails complets d'une demande (inclut les infos d'inscription OEC)
+     */
+    @GetMapping("/{id}/full-details")
+    public ResponseEntity<?> getRequestFullDetails(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        
+        Optional<AccreditationRequest> optRequest = requestService.getRequest(id);
+        if (optRequest.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        AccreditationRequest request = optRequest.get();
+        User oecUser = request.getOec();
+        
+        java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("request", request);
+        
+        // Infos OEC complètes
+        if (oecUser != null) {
+            java.util.Map<String, Object> oecProfile = new java.util.LinkedHashMap<>();
+            oecProfile.put("id", oecUser.getId());
+            oecProfile.put("organizationName", oecUser.getOrganizationName());
+            oecProfile.put("typeOrganisme", oecUser.getTypeOrganisme());
+            oecProfile.put("adresseSiege", oecUser.getAdresseSiege());
+            oecProfile.put("email", oecUser.getEmail());
+            oecProfile.put("phone", oecUser.getPhone());
+            oecProfile.put("nomRepresentant", oecUser.getNomRepresentant());
+            oecProfile.put("fonction", oecUser.getFonction());
+            oecProfile.put("telephoneDirect", oecUser.getTelephoneDirect());
+            oecProfile.put("emailProfessionnel", oecUser.getEmailProfessionnel());
+            oecProfile.put("porteeAccreditation", oecUser.getPorteeAccreditation());
+            oecProfile.put("typeDemande", oecUser.getTypeDemande());
+            oecProfile.put("documentsJson", oecUser.getDocumentsJson());
+            details.put("oecProfile", oecProfile);
+        }
+        
+        return ResponseEntity.ok(details);
+    }
+
     /**
      * OEC: Créer une nouvelle demande
      */

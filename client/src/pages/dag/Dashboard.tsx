@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, CheckCircle, Eye, Users, DollarSign } from "lucide-react";
+import { Loader2, FileText, CheckCircle, Eye, Users, DollarSign, Clock, BadgeDollarSign } from "lucide-react";
+import { StatCard } from "@/components/stat-card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -55,6 +56,7 @@ export default function DAGDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   
   const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [dagAllApps, setDagAllApps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -73,9 +75,16 @@ export default function DAGDashboard() {
   const loadQuotations = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest("GET", "/api/quotations/pending-approval");
-      const data = await response.json();
+      const [qRes, appsRes] = await Promise.all([
+        apiRequest("GET", "/api/quotations/pending-approval"),
+        apiRequest("GET", "/api/oec-applications/dag/all").catch(() => null),
+      ]);
+      const data = await qRes.json();
       setQuotations(data);
+      if (appsRes) {
+        const appsData = await appsRes.json();
+        setDagAllApps(Array.isArray(appsData) ? appsData : []);
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setLoading(false); }
@@ -131,17 +140,11 @@ export default function DAGDashboard() {
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Demandes de devis en attente</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{quotations.length}</div>
-                  <p className="text-xs text-muted-foreground">\u00C0 traiter</p>
-                </CardContent>
-              </Card>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Devis en Attente" value={quotations.length} icon={Clock} description="À établir" className={quotations.length > 0 ? "border-l-amber-500" : ""} />
+              <StatCard title="Frais à Définir" value={dagAllApps.filter(a => a.status === "AWAITING_DAG_FEE").length} icon={BadgeDollarSign} description="Inscription OEC" className="border-l-blue-500" />
+              <StatCard title="Paiements en Cours" value={dagAllApps.filter(a => a.status === "FEE_SET_AWAITING_PAYMENT").length} icon={DollarSign} description="En attente de paiement" />
+              <StatCard title="Paiements Vérifiés" value={dagAllApps.filter(a => a.status === "PAYMENT_VERIFIED" || a.status === "ACCOUNT_CREATED").length} icon={CheckCircle} description="Traitement terminé" className="border-l-emerald-500" />
             </div>
 
             <Card>

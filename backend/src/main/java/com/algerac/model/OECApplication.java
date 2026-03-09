@@ -35,6 +35,7 @@ public class OECApplication {
     private String telephoneDirect;
     private String emailProfessionnel;
     private String porteeAccreditation;
+    private String typeDemande; // "initiale", "extension", "renouvellement", "transfert"
     
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

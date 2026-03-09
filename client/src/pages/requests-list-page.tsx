@@ -112,9 +112,12 @@ export default function RequestsListPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4 text-slate-500" />
-                      </Button>
+                      <Link href={`/oec/demandes/${req.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="w-4 h-4 text-slate-500 mr-1" />
+                          Détails
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

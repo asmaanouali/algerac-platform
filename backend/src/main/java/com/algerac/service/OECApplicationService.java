@@ -2,11 +2,15 @@ package com.algerac.service;
 
 import com.algerac.dto.OECApplicationDTO;
 import com.algerac.dto.OECSignupRequest;
+import com.algerac.model.AccreditationRequest;
 import com.algerac.model.OECApplication;
 import com.algerac.model.OECApplication.ApplicationStatus;
+import com.algerac.model.RequestStatus;
+import com.algerac.model.RequestType;
 import com.algerac.model.UserRole;
 import com.algerac.model.User;
 import com.algerac.repository.OECApplicationRepository;
+import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +35,7 @@ public class OECApplicationService {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final RequestRepository requestRepository;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
     
@@ -204,12 +209,38 @@ public class OECApplicationService {
         String encodedPassword = passwordEncoder.encode(generatedPassword);
         
         // Activer le compte User correspondant et mettre à jour le mot de passe
-        userRepository.findByEmail(saved.getEmail()).ifPresent(user -> {
-            user.setStatus(com.algerac.model.UserStatus.APPROVED);
-            user.setPassword(encodedPassword);
-            userRepository.save(user);
+        User oecUser = userRepository.findByEmail(saved.getEmail()).orElse(null);
+        if (oecUser != null) {
+            oecUser.setStatus(com.algerac.model.UserStatus.APPROVED);
+            oecUser.setPassword(encodedPassword);
+            userRepository.save(oecUser);
             log.info("Compte utilisateur activé avec nouveau mot de passe pour l'OEC - email: {}", saved.getEmail());
-        });
+            
+            // Créer automatiquement une demande d'accréditation pour le CD
+            RequestType requestType = mapTypeDemande(oecUser.getTypeDemande());
+            String typeLabel = requestType == RequestType.INITIAL ? "initiale" : 
+                               requestType == RequestType.EXTENSION ? "d'extension" :
+                               requestType == RequestType.RENOUVELLEMENT ? "de renouvellement" : "initiale";
+            AccreditationRequest request = AccreditationRequest.builder()
+                    .oec(oecUser)
+                    .type(requestType)
+                    .domain(saved.getPorteeAccreditation() != null ? saved.getPorteeAccreditation() : "À définir")
+                    .description(String.format("Demande d'accréditation %s - %s (%s)", 
+                            typeLabel,
+                            saved.getNomOrganisme(), 
+                            saved.getTypeOrganisme() != null ? saved.getTypeOrganisme() : "OEC"))
+                    .status(RequestStatus.PAYMENT_COMPLETED)
+                    .progress(20)
+                    .submissionDate(LocalDateTime.now())
+                    .currentPhase("Enregistrement")
+                    .currentStep("Paiement validé - en attente d'assignation")
+                    .nextAction("CD doit assigner la demande à un RA")
+                    .pendingWith("CD")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            requestRepository.save(request);
+            log.info("Demande d'accréditation {} créée pour l'OEC {} - en attente d'assignation CD", requestType, saved.getNomOrganisme());
+        }
         
         // Envoyer un email à l'OEC avec ses coordonnées de connexion et le mot de passe généré
         emailService.sendOECAccountCreatedEmail(saved, generatedPassword);
@@ -381,6 +412,19 @@ public class OECApplicationService {
                 .paymentVerifiedAt(application.getPaymentVerifiedAt() != null ? 
                         application.getPaymentVerifiedAt().format(DATE_FORMATTER) : null)
                 .build();
+    }
+    
+    /**
+     * Mappe le typeDemande string vers le RequestType enum
+     */
+    private RequestType mapTypeDemande(String typeDemande) {
+        if (typeDemande == null) return RequestType.INITIAL;
+        return switch (typeDemande.toLowerCase()) {
+            case "extension" -> RequestType.EXTENSION;
+            case "renouvellement" -> RequestType.RENOUVELLEMENT;
+            case "transfert" -> RequestType.EXTENSION;
+            default -> RequestType.INITIAL;
+        };
     }
     
     /**

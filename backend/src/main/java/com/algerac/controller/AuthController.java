@@ -195,6 +195,7 @@ public class AuthController {
                     .telephoneDirect(request.getTelephoneDirect())
                     .emailProfessionnel(request.getEmailProfessionnel())
                     .porteeAccreditation(request.getPorteeAccreditation())
+                    .typeDemande(request.getTypeDemande())
                     .build();
             oecApplicationRepository.save(oecApp);
             

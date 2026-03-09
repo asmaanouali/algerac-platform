@@ -19,6 +19,7 @@ import NewRequestPage from "@/pages/oec/NewRequestPage";
 import PaymentPage from "@/pages/oec/PaymentPage";
 import PaymentsListPage from "@/pages/oec/PaymentsListPage";
 import MyRequestsPage from "@/pages/oec/MyRequestsPage";
+import RequestDetailPage from "@/pages/oec/RequestDetailPage";
 import ValidateQuotationPage from "@/pages/oec/ValidateQuotationPage";
 import CorrectRequestPage from "@/pages/oec/CorrectRequestPage";
 import ValidateTeamPage from "@/pages/oec/ValidateTeamPage";
@@ -126,6 +127,7 @@ function Router() {
       <Route path="/oec/demandes/:requestId/reponse-documentaire" component={DocumentaryResponsePage} />
       <Route path="/oec/demandes/:requestId/plans-actions" component={ActionPlansPage} />
       <Route path="/oec/demandes/:requestId/lever-obstacles" component={LiftObstaclesPage} />
+      <Route path="/oec/demandes/:requestId" component={RequestDetailPage} />
       <Route path="/oec/reponse-ecarts" component={GapResponsePage} />
       <Route path="/oec/revue-ecarts" component={OECGapReviewPage} />
       

@@ -147,6 +147,7 @@ export function Sidebar() {
       { href: "/et/mandatements", label: "Mandatements & Réunions", icon: ClipboardList },
       { href: "/et/evaluation", label: "Évaluation sur Site", icon: ClipboardList },
       { href: "/et/traitement-ecarts", label: "Traitement Écarts", icon: AlertCircle },
+      { href: "/et/evaluation-plans", label: "Plans d'Action", icon: AlertCircle },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     eq: [

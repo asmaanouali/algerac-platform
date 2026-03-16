@@ -1605,6 +1605,32 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/mission-orders/{id}/reject")
+    public ResponseEntity<ApiResponse> rejectMissionOrder(@PathVariable Long id,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            if (user.getRole() != UserRole.DT && user.getRole() != UserRole.DG) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Droits insuffisants pour rejeter un ordre de mission"));
+            }
+
+            MissionOrder order = missionOrderRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Ordre de mission non trouvé"));
+            order.setStatus(MissionOrderStatus.REJECTED);
+            order.setRejectionNotes((String) body.getOrDefault("notes", ""));
+            missionOrderRepository.save(order);
+
+            return ResponseEntity.ok(ApiResponse.success("Ordre de mission rejeté", order));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/mission-orders/{id}/send-to-member")
     public ResponseEntity<ApiResponse> sendMissionOrderToMember(@PathVariable Long id) {
         try {

@@ -7,6 +7,7 @@ public enum MissionOrderStatus {
     PENDING_DG_APPROVAL,
     DG_APPROVED,
     FULLY_APPROVED,
+    REJECTED,
     SENT_TO_MEMBER,
     IN_PROGRESS,
     COMPLETED

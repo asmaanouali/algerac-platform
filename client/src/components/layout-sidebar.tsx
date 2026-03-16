@@ -32,6 +32,13 @@ import {
   MessageSquareWarning,
   DollarSign,
   UserMinus,
+  Beaker,
+  Globe,
+  BookOpen,
+  Network,
+  Video,
+  ArrowRightLeft,
+  ShieldAlert as ShieldAlertIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -88,18 +95,26 @@ export function Sidebar() {
       { href: "/cd/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
       { href: "/cd/preparation-evaluation", label: "Préparation Évaluation", icon: CalendarDays },
       { href: "/cd/traitement-ecarts", label: "Traitement Écarts", icon: AlertCircle },
+      { href: "/cd/echantillonnage", label: "Échantillonnage", icon: Beaker },
+      { href: "/cd/developpement-domaines", label: "Dév. Domaines", icon: Globe },
+      { href: "/cd/regles-reference", label: "Règles Référence", icon: BookOpen },
+      { href: "/cd/multi-sites", label: "Multi-sites", icon: Network },
+      { href: "/cd/evaluation-distance", label: "Éval. à Distance", icon: Video },
+      { href: "/cd/transferts", label: "Transferts", icon: ArrowRightLeft },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dag: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dag/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dag/paiements", label: "Suivi Paiements", icon: DollarSign },
+      { href: "/dag/tarifs", label: "Tarifs", icon: CreditCard },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     admin: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
       { href: "/admin/utilisateurs-pending", label: "Candidatures", icon: UserPlus },
+      { href: "/admin/risques", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     expert: [

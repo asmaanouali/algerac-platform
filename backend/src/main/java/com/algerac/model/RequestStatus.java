@@ -132,5 +132,20 @@ public enum RequestStatus {
     // Surveillance
     SURVEILLANCE_SCHEDULED,             // Surveillance programmée
     SURVEILLANCE_IN_PROGRESS,           // Surveillance en cours
-    SURVEILLANCE_COMPLETED              // Surveillance terminée
+    SURVEILLANCE_COMPLETED,             // Surveillance terminée
+    
+    // Renouvellement (PRO_25)
+    RENEWAL_INITIATED,                  // Renouvellement initié
+    RENEWAL_EVALUATION,                 // Évaluation de renouvellement en cours
+    RENEWAL_COMPLETED,                  // Renouvellement terminé
+    
+    // Extension (PRO_25)
+    EXTENSION_REQUESTED,                // Extension de portée demandée
+    EXTENSION_EVALUATION,               // Évaluation d'extension en cours
+    EXTENSION_GRANTED,                  // Extension accordée
+    
+    // Transfert (PRO_31)
+    TRANSFER_INITIATED,                 // Transfert d'accréditation initié
+    TRANSFER_REVIEW,                    // Transfert en cours d'examen
+    TRANSFER_COMPLETED                  // Transfert complété
 }

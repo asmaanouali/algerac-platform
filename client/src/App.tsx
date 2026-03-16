@@ -97,6 +97,16 @@ import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
 import CDEvaluationPrepPage from "@/pages/cd/EvaluationPrepPage";
 import MandateMeetingsPage from "@/pages/shared/MandateMeetingsPage";
 
+// New procedure pages (PRO_13-1, PRO_17, PRO_18, PRO_19, PRO_26, PRO_29, PRO_30, PRO_31)
+import SamplingPage from "@/pages/cd/SamplingPage";
+import DomainDevelopmentPage from "@/pages/cd/DomainDevelopmentPage";
+import TariffPage from "@/pages/dag/TariffPage";
+import ReferenceRulesPage from "@/pages/cd/ReferenceRulesPage";
+import MultiSitePage from "@/pages/cd/MultiSitePage";
+import RemoteEvaluationPage from "@/pages/cd/RemoteEvaluationPage";
+import RiskOpportunityPage from "@/pages/admin/RiskOpportunityPage";
+import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
+
 function Router() {
   return (
     <Switch>
@@ -157,12 +167,19 @@ function Router() {
       <Route path="/cd/revue-documentaire" component={CDDocumentaryDecisionPage} />
       <Route path="/cd/preparation-evaluation" component={CDEvaluationPrepPage} />
       <Route path="/cd/traitement-ecarts" component={GapTreatmentPage} />
+      <Route path="/cd/echantillonnage" component={SamplingPage} />
+      <Route path="/cd/developpement-domaines" component={DomainDevelopmentPage} />
+      <Route path="/cd/regles-reference" component={ReferenceRulesPage} />
+      <Route path="/cd/multi-sites" component={MultiSitePage} />
+      <Route path="/cd/evaluation-distance" component={RemoteEvaluationPage} />
+      <Route path="/cd/transferts" component={AccreditationTransferPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
       <Route path="/dag/dashboard" component={DAGDashboard} />
       <Route path="/dag/paiements" component={DAGPaymentTracking} />
       <Route path="/dag/candidatures-oec" component={DAGOECApplicationsPage} />
+      <Route path="/dag/tarifs" component={TariffPage} />
       
       {/* Admin & Other Routes */}
       <Route path="/notifications" component={NotificationsPage} />
@@ -170,6 +187,7 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/users" component={UsersManagementPage} />
       <Route path="/admin/utilisateurs" component={UsersManagementPage} />
+      <Route path="/admin/risques" component={RiskOpportunityPage} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
       

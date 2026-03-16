@@ -54,6 +54,22 @@ public class Complaint {
 
     private String submittedByRole;
 
+    // Investigation assignment (PRO_21)
+    @ManyToOne
+    @JoinColumn(name = "assigned_to_user_id")
+    private User assignedToUser;
+
+    private LocalDateTime investigationDeadline;  // 30-day max per PRO_21
+
+    // Appeal (Commission d'Appel - GEN_04)
+    private LocalDateTime appealDate;
+    @Column(columnDefinition = "TEXT")
+    private String appealDecision;
+    private LocalDateTime appealDecisionDate;
+
+    private Boolean escalatedToDg;
+    private LocalDateTime escalationDate;
+
     // Status & Decision
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

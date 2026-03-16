@@ -163,7 +163,8 @@ export default function ExpertRegister() {
     domaineExpertise: "",
     sousDomaineExpertise: "",
     
-    userType: "EXPERT"
+    userType: "EXPERT",
+    rgpdConsent: false
   });
 
   const [loading, setLoading] = useState(false);

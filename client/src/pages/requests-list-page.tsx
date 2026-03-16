@@ -26,13 +26,13 @@ export default function RequestsListPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-900">
-              {user.role === 'oec' ? 'Mes Demandes' : 'Gestion des Demandes'}
+              {user.role === 'OEC' ? 'Mes Demandes' : 'Gestion des Demandes'}
             </h1>
             <p className="text-muted-foreground mt-1">
               Liste complète de vos dossiers d'accréditation.
             </p>
           </div>
-          {user.role === 'oec' && (
+          {user.role === 'OEC' && (
             <Link href="/requests/new">
               <Button className="shadow-lg shadow-primary/20">
                 <Plus className="w-4 h-4 mr-2" />

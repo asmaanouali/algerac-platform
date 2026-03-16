@@ -2,10 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import AuthLeft from "@/components/layout/AuthLeft";
-import { Link, useLocation } from "wouter";
-import { Lock, CheckCircle2, XCircle } from "lucide-react";
+import { useLocation } from "wouter";
+import { Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function NewPassword() {
@@ -21,7 +20,7 @@ export default function NewPassword() {
       toast({
         title: "Erreur",
         description: "Le mot de passe doit contenir au moins 8 caractères.",
-        icon: <XCircle className="text-red-600 w-6 h-6" />,
+        variant: "destructive",
       });
       return;
     }
@@ -29,7 +28,7 @@ export default function NewPassword() {
       toast({
         title: "Erreur",
         description: "Les mots de passe ne correspondent pas.",
-        icon: <XCircle className="text-red-600 w-6 h-6" />,
+        variant: "destructive",
       });
       return;
     }
@@ -41,7 +40,7 @@ export default function NewPassword() {
       toast({
         title: "Erreur",
         description: "Session expirée. Veuillez recommencer.",
-        icon: <XCircle className="text-red-600 w-6 h-6" />,
+        variant: "destructive",
       });
       setLoading(false);
       setTimeout(() => setLocation("/auth/forgot-password"), 1500);
@@ -81,7 +80,7 @@ export default function NewPassword() {
         toast({
           title: "Erreur",
           description: data?.message || "Erreur lors de la réinitialisation.",
-          icon: <XCircle className="text-red-600 w-6 h-6" />,
+          variant: "destructive",
         });
       }
     } catch (err) {
@@ -89,7 +88,7 @@ export default function NewPassword() {
       toast({
         title: "Erreur",
         description: "Erreur réseau ou serveur.",
-        icon: <XCircle className="text-red-600 w-6 h-6" />,
+        variant: "destructive",
       });
     }
   };

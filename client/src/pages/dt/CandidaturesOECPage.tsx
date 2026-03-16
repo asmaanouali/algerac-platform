@@ -49,6 +49,7 @@ interface OECApplication {
   feeSetAt?: string;
   paymentDeadline?: string;
   paymentVerifiedAt?: string;
+  documentsJson?: string;
 }
 
 export default function CandidaturesOECPage() {

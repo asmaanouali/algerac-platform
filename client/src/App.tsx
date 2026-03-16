@@ -35,7 +35,9 @@ import DAGDashboard from "@/pages/dag/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DashboardPage from "@/pages/dashboard-page";
 import CandidaturesOECPage from "@/pages/dt/CandidaturesOECPage";
+import CandidaturesPage from "@/pages/dt/CandidaturesPage";
 import UsersManagementPage from "@/pages/admin/UsersManagementPage";
+import UtilisateursPendingPage from "@/pages/admin/UtilisateursPendingPage";
 import CDAccreditations from "@/pages/cd/Accreditations";
 import CDDocumentaryDecisionPage from "@/pages/cd/DocumentaryDecisionPage";
 import TeamCompositionPage from "@/pages/ra/TeamCompositionPage";
@@ -187,8 +189,10 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/users" component={UsersManagementPage} />
       <Route path="/admin/utilisateurs" component={UsersManagementPage} />
+      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
       <Route path="/admin/risques" component={RiskOpportunityPage} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
+      <Route path="/dt/candidatures" component={CandidaturesPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
       
       {/* Expert Routes */}

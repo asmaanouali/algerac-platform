@@ -45,6 +45,9 @@ public class MissionOrder {
     private Boolean approvedByDG;
     private LocalDateTime dgApprovalDate;
 
+    @Column(columnDefinition = "TEXT")
+    private String rejectionNotes;
+
     private LocalDateTime sentToMemberDate;
     private LocalDateTime missionStartDate;
     private LocalDateTime missionEndDate;

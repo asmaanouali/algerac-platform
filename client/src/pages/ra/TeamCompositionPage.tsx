@@ -236,7 +236,7 @@ export default function TeamCompositionPage() {
     });
   }, [experts, filterRole, filterSpecialite, filterName, filterAvailability]);
 
-  const uniqueRoles = useMemo(() => [...new Set(experts.map(e => e.role).filter(Boolean))], [experts]);
+  const uniqueRoles = useMemo(() => Array.from(new Set(experts.map(e => e.role).filter(Boolean))), [experts]);
 
   const openCalendar = (expert: Expert) => {
     setCalendarExpert(expert);
@@ -377,9 +377,9 @@ export default function TeamCompositionPage() {
                               <TableCell><Badge variant="outline">{roleLabels[m.role] || m.role}</Badge></TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
-                                  {m.confidentialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" title="Confidentialite signe" /> : <Shield className="w-4 h-4 text-gray-300" title="Confidentialite non signe" />}
-                                  {m.impartialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" title="Impartialite signe" /> : <Shield className="w-4 h-4 text-gray-300" title="Impartialite non signe" />}
-                                  {m.conflictOfInterestDeclared && <AlertTriangle className="w-4 h-4 text-amber-500" title="Conflit d'interet" />}
+                                  {m.confidentialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" aria-label="Confidentialite signe" /> : <Shield className="w-4 h-4 text-gray-300" aria-label="Confidentialite non signe" />}
+                                  {m.impartialityAgreementSigned ? <CheckCircle className="w-4 h-4 text-green-500" aria-label="Impartialite signe" /> : <Shield className="w-4 h-4 text-gray-300" aria-label="Impartialite non signe" />}
+                                  {m.conflictOfInterestDeclared && <AlertTriangle className="w-4 h-4 text-amber-500" aria-label="Conflit d'interet" />}
                                 </div>
                               </TableCell>
                               <TableCell>

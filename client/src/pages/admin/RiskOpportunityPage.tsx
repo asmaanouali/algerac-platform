@@ -94,7 +94,7 @@ export default function RiskOpportunityPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <Card className="p-4"><div className="flex items-center gap-3"><AlertTriangle className="w-8 h-8 text-red-500" /><div><p className="text-2xl font-bold">{risks.length}</p><p className="text-xs text-muted-foreground">Risques</p></div></div></Card>
-            <Card className="p-4"><div className="flex items-center gap-3"><Lightbulb className="w-8 h-8 text-green-500" /><div><p className="text-2xl font-bold">{opps.length}</p><p claassName="text-xs text-muted-foreground">Opportunités</p></div></div></Card>
+            <Card className="p-4"><div className="flex items-center gap-3"><Lightbulb className="w-8 h-8 text-green-500" /><div><p className="text-2xl font-bold">{opps.length}</p><p className="text-xs text-muted-foreground">Opportunités</p></div></div></Card>
             <Card className="p-4"><div className="flex items-center gap-3"><TrendingUp className="w-8 h-8 text-orange-500" /><div><p className="text-2xl font-bold">{entries.filter(e => e.level === "HIGH" || e.level === "CRITICAL").length}</p><p className="text-xs text-muted-foreground">Haut/Critique</p></div></div></Card>
             <Card className="p-4"><div className="flex items-center gap-3"><Clock className="w-8 h-8 text-blue-500" /><div><p className="text-2xl font-bold">{entries.filter(e => e.status === "IN_TREATMENT").length}</p><p className="text-xs text-muted-foreground">En traitement</p></div></div></Card>
           </div>

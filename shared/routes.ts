@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertRequestSchema, users, accreditationRequests, documents, notifications } from './schema';
+import { insertUserSchema, insertRequestSchema, User, AccreditationRequest, Document, Notification } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -27,7 +27,7 @@ export const api = {
         password: z.string(),
       }),
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.custom<User>(),
         401: errorSchemas.unauthorized,
       },
     },
@@ -42,7 +42,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/auth/me',
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.custom<User>(),
         401: errorSchemas.unauthorized,
       },
     },
@@ -52,7 +52,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/users',
       responses: {
-        200: z.array(z.custom<typeof users.$inferSelect>()),
+        200: z.array(z.custom<User>()),
       },
     },
   },
@@ -61,7 +61,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/requests',
       responses: {
-        200: z.array(z.custom<typeof accreditationRequests.$inferSelect>()),
+        200: z.array(z.custom<AccreditationRequest>()),
       },
     },
     create: {
@@ -69,7 +69,7 @@ export const api = {
       path: '/api/requests',
       input: insertRequestSchema,
       responses: {
-        201: z.custom<typeof accreditationRequests.$inferSelect>(),
+        201: z.custom<AccreditationRequest>(),
         400: errorSchemas.validation,
       },
     },
@@ -77,7 +77,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/requests/:id',
       responses: {
-        200: z.custom<typeof accreditationRequests.$inferSelect>(),
+        200: z.custom<AccreditationRequest>(),
         404: errorSchemas.notFound,
       },
     },
@@ -87,7 +87,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/documents',
       responses: {
-        200: z.array(z.custom<typeof documents.$inferSelect>()),
+        200: z.array(z.custom<Document>()),
       },
     },
   },
@@ -96,7 +96,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/notifications',
       responses: {
-        200: z.array(z.custom<typeof notifications.$inferSelect>()),
+        200: z.array(z.custom<Notification>()),
       },
     },
     unreadCount: {

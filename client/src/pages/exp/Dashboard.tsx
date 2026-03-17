@@ -44,7 +44,7 @@ export default function ExpertDashboard() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord Évaluateur</h1>
             <p className="text-muted-foreground mt-1">
-              Bienvenue, {user.fullName} — {user.speciality}
+              Bienvenue, {user.fullName} — {user.specialite}
             </p>
           </div>
 

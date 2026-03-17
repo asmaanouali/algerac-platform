@@ -68,7 +68,7 @@ export default function DocumentaryAnalysisPage() {
               // Vérifier si le membre actuel a déjà soumis
               const myProgress = progress.find((p: any) => {
                 // Chercher par ID expert ou nom
-                return p.expertName === (user?.fullName || user?.organizationName || "");
+                return p.expertName === (user?.fullName || user?.nomOrganisme || "");
               });
               if (myProgress?.submitted) setAlreadySubmitted(true);
             }

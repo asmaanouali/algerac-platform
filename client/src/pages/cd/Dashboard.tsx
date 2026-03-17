@@ -117,7 +117,7 @@ export default function CDDashboard() {
                           <p className="font-medium text-sm">{req.referenceNumber || `Demande #${req.id}`}</p>
                           <p className="text-xs text-amber-700">{req.oecName || req.domain}</p>
                         </div>
-                        <Link href="/cd/demandes">
+                        <Link href="/cd/manage-requests">
                           <Button size="sm" variant="outline" className="text-amber-700 border-amber-300">
                             Assigner <ArrowRight className="ml-1 h-3 w-3" />
                           </Button>
@@ -168,7 +168,7 @@ export default function CDDashboard() {
                     <CardTitle>Demandes Récentes</CardTitle>
                     <CardDescription>Dernières demandes d'accréditation reçues</CardDescription>
                   </div>
-                  <Link href="/cd/demandes">
+                  <Link href="/cd/manage-requests">
                     <Button size="sm" variant="outline">Voir tout <ArrowRight className="ml-1 h-3 w-3" /></Button>
                   </Link>
                 </CardHeader>
@@ -209,7 +209,7 @@ export default function CDDashboard() {
 
               {/* Quick Actions */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Link href="/cd/demandes">
+                <Link href="/cd/manage-requests">
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <ClipboardList className="w-10 h-10 mx-auto mb-3 text-primary" />

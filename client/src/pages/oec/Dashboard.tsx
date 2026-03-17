@@ -77,7 +77,7 @@ export default function OECDashboard() {
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="mb-2">
-            <h1 className="text-2xl font-bold text-slate-900">Bienvenue, {user?.organizationName || user?.fullName}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Bienvenue, {user?.nomOrganisme || user?.fullName}</h1>
             <p className="text-muted-foreground mt-1">Tableau de bord de votre organisme d'évaluation de la conformité.</p>
           </div>
 

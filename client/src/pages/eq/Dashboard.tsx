@@ -41,7 +41,7 @@ export default function EQDashboard() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord Évaluateur Qualité</h1>
             <p className="text-muted-foreground mt-1">
-              {user.fullName} — Spécialité: {user.speciality || user.specialite || "Système de management qualité"}
+              {user.fullName} — Spécialité: {user.specialite || "Système de management qualité"}
             </p>
           </div>
 

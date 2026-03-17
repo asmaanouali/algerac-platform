@@ -5,7 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { useCreateRequest } from "@/hooks/use-requests";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertRequestSchema, requestTypes } from "@shared/schema";
+import { requestTypes } from "@shared/schema";
 import { z } from "zod";
 import { Redirect, useLocation } from "wouter";
 
@@ -24,9 +24,12 @@ const steps = [
   { id: 3, title: "Confirmation" }
 ];
 
-// Extending schema for step-by-step validation if needed, but keeping it simple for now
-const formSchema = insertRequestSchema.extend({
+const formSchema = z.object({
   oecId: z.coerce.number(),
+  type: z.enum(requestTypes),
+  domain: z.string().min(1, "Le domaine est requis"),
+  status: z.string().default("draft"),
+  progress: z.number().default(0),
 });
 
 export default function CreateRequestPage() {
@@ -35,8 +38,10 @@ export default function CreateRequestPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [_, setLocation] = useLocation();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  type FormValues = z.infer<typeof formSchema>;
+
+  const form = useForm({
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       type: "initial",
       domain: "",
@@ -48,8 +53,8 @@ export default function CreateRequestPage() {
 
   if (!user) return <Redirect to="/" />;
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    createRequestMutation.mutate(values, {
+  const onSubmit = (values: any) => {
+    createRequestMutation.mutate(values as any, {
       onSuccess: () => {
         setLocation("/requests");
       }
@@ -186,7 +191,7 @@ export default function CreateRequestPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-4 border rounded-lg bg-slate-50">
                           <span className="text-xs text-muted-foreground uppercase">Organisation</span>
-                          <p className="font-semibold">{user.organizationName || user.fullName}</p>
+                          <p className="font-semibold">{(user as any).nomOrganisme || user.fullName}</p>
                         </div>
                         <div className="p-4 border rounded-lg bg-slate-50">
                           <span className="text-xs text-muted-foreground uppercase">Email de contact</span>

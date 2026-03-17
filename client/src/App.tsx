@@ -63,7 +63,7 @@ import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
 import DGMissionOrdersPage from "@/pages/dg/MissionOrdersPage";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
-import CandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
+import GCCandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 import InterviewPlanningPage from "@/pages/ges_competences/InterviewPlanningPage";
 import InterviewEvaluationPage from "@/pages/ges_competences/InterviewEvaluationPage";
 
@@ -109,6 +109,16 @@ import RemoteEvaluationPage from "@/pages/cd/RemoteEvaluationPage";
 import RiskOpportunityPage from "@/pages/admin/RiskOpportunityPage";
 import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
 
+// Missing sidebar pages
+import OECDocumentsPage from "@/pages/oec/DocumentsPage";
+import OECCertificatesPage from "@/pages/oec/CertificatesPage";
+import OECProfilePage from "@/pages/oec/ProfilePage";
+import RAQuotesPage from "@/pages/ra/QuotesPage";
+import RADossiersPage from "@/pages/ra/DossiersPage";
+import RAPlanningPage from "@/pages/ra/PlanningPage";
+import DTDashboard from "@/pages/dt/Dashboard";
+import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
+
 function Router() {
   return (
     <Switch>
@@ -142,6 +152,9 @@ function Router() {
       <Route path="/oec/demandes/:requestId" component={RequestDetailPage} />
       <Route path="/oec/reponse-ecarts" component={GapResponsePage} />
       <Route path="/oec/revue-ecarts" component={OECGapReviewPage} />
+      <Route path="/oec/documents" component={OECDocumentsPage} />
+      <Route path="/oec/certificates" component={OECCertificatesPage} />
+      <Route path="/oec/profile" component={OECProfilePage} />
       
       {/* RA Routes */}
       <Route path="/ra" component={RADashboard} />
@@ -158,6 +171,9 @@ function Router() {
       <Route path="/ra/decision-accreditation" component={AccreditationDecisionPage} />
       <Route path="/ra/surveillance" component={SurveillanceManagementPage} />
       <Route path="/ra/experts" component={ExpertDirectoryPage} />
+      <Route path="/ra/quotes" component={RAQuotesPage} />
+      <Route path="/ra/dossiers" component={RADossiersPage} />
+      <Route path="/ra/planning" component={RAPlanningPage} />
       
       {/* CD Routes */}
       <Route path="/cd" component={CDDashboard} />
@@ -191,9 +207,13 @@ function Router() {
       <Route path="/admin/utilisateurs" component={UsersManagementPage} />
       <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
       <Route path="/admin/risques" component={RiskOpportunityPage} />
+      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
+      <Route path="/dt" component={DTDashboard} />
+      <Route path="/dt/dashboard" component={DTDashboard} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
       <Route path="/dt/candidatures" component={CandidaturesPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
+      <Route path="/dt/certificats" component={CertificateSigningPage} />
       
       {/* Expert Routes */}
       <Route path="/expert" component={ExpertDashboard} />
@@ -254,11 +274,12 @@ function Router() {
       <Route path="/dg" component={DGDashboard} />
       <Route path="/dg/dashboard" component={DGDashboard} />
       <Route path="/dg/ordres-mission" component={DGMissionOrdersPage} />
+      <Route path="/dg/certificats" component={CertificateSigningPage} />
       
       {/* GES_COMPETENCES Routes */}
       <Route path="/ges-competences" component={GesCompetencesDashboard} />
       <Route path="/ges-competences/dashboard" component={GesCompetencesDashboard} />
-      <Route path="/ges-competences/candidatures" component={CandidaturesPage} />
+      <Route path="/ges-competences/candidatures" component={GCCandidaturesPage} />
       <Route path="/ges-competences/entretiens" component={InterviewPlanningPage} />
       <Route path="/ges-competences/entretien/:id" component={InterviewEvaluationPage} />
       

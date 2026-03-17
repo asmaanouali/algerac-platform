@@ -162,6 +162,7 @@ export const insertDocumentSchema = z.object({
 });
 
 // === TYPES ===
+<<<<<<< HEAD
 export type UserType = (typeof userTypes)[number];
 export type UserRole = (typeof userRoles)[number];
 export type RequestType = (typeof requestTypes)[number];
@@ -256,6 +257,14 @@ export type Notification = {
   read: boolean | null;
   createdAt: string | null;
 };
+=======
+export type User = typeof users.$inferSelect;
+export type InsertUser = Omit<typeof users.$inferInsert, "id" | "dateInscription" | "dateApprobation">;
+export type AccreditationRequest = typeof accreditationRequests.$inferSelect;
+export type InsertRequest = Omit<typeof accreditationRequests.$inferInsert, "id" | "referenceNumber">;
+export type Document = typeof documents.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+>>>>>>> bf3a4aa (before meeting progress)
 
 export type LoginRequest = {
   email: string;

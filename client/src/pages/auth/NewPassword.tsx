@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuthLeft from "@/components/layout/AuthLeft";
-import { useLocation } from "wouter";
-import { Lock } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Lock, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function NewPassword() {

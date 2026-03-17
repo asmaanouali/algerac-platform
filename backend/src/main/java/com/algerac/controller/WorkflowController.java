@@ -37,6 +37,7 @@ public class WorkflowController {
     private final MissionOrderRepository missionOrderRepository;
     private final CASMeetingRepository casMeetingRepository;
     private final CASVoteRepository casVoteRepository;
+    private final CASDecisionRepository casDecisionRepository;
     private final UserAvailabilityRepository availabilityRepository;
     private final NotificationService notificationService;
     private final PaymentService paymentService;
@@ -397,8 +398,8 @@ public class WorkflowController {
     // ========== DOCUMENTARY REVIEW (STEP 5) ==========
 
     /**
-     * RA lance la revue documentaire → crée un paiement DOC_REVIEW_FEE,
-     * notifie le DAG pour fixer les frais d'analyse.
+     * RA lance la revue documentaire → passe directement à l'état "prêt à transmettre"
+     * (les frais d'analyse sont inclus dans le devis).
      */
     @PostMapping("/documentary-review/launch")
     public ResponseEntity<ApiResponse> launchDocumentaryReview(@RequestBody Map<String, Object> body, HttpSession session) {
@@ -412,25 +413,21 @@ public class WorkflowController {
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
             EvaluationTeam team = teams.isEmpty() ? null : teams.get(0);
 
-            // Créer la revue documentaire
+            // Créer la revue documentaire — frais inclus dans le devis, pas de paiement séparé
             DocumentaryReview review = DocumentaryReview.builder()
                     .request(request).team(team)
                     .reviewStartDate(LocalDateTime.now())
-                    .status(DocumentaryReviewStatus.AWAITING_FEE)
+                    .status(DocumentaryReviewStatus.PAYMENT_VALIDATED)
                     .build();
-            
-            // Créer le paiement des frais d'analyse documentaire
-            Payment payment = paymentService.createDocReviewFeePayment(requestId);
-            review.setPaymentId(payment.getId());
             docReviewRepository.save(review);
 
-            request.setStatus(RequestStatus.DOC_REVIEW_AWAITING_FEE);
+            request.setStatus(RequestStatus.DOC_REVIEW_PAYMENT_VALIDATED);
             request.setCurrentPhase("REVUE_DOCUMENTAIRE");
-            request.setCurrentStep("En attente fixation frais d'analyse par le DAG");
-            request.setPendingWith("DAG");
+            request.setCurrentStep("Revue lancée — transmettez les documents à l'équipe");
+            request.setPendingWith("RA");
             requestRepository.save(request);
 
-            return ResponseEntity.ok(ApiResponse.success("Revue documentaire lancée. Le DAG a été notifié pour fixer les frais.", review));
+            return ResponseEntity.ok(ApiResponse.success("Revue documentaire lancée. Vous pouvez maintenant transmettre les documents à l'équipe.", review));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -2044,9 +2041,24 @@ public class WorkflowController {
                 AccreditationRequest request = gap.getRequest();
                 long refusedCount = gapRepository.countByRequest_IdAndSentToOECAndOecAccepted(reqId, true, false);
                 if (refusedCount == 0) {
-                    request.setStatus(RequestStatus.EVALUATION_OEC_ALL_ACCEPTED);
-                    request.setCurrentStep("OEC a accepté tous les écarts — En attente RA pour CAS");
-                    request.setPendingWith("RA");
+                    // Auto-start gap treatment: transition accepted gaps to AWAITING_ACTION_PLAN
+                    List<Gap> acceptedGaps = gapRepository.findByRequest_IdAndStatus(reqId, GapStatus.OEC_ACCEPTED);
+                    for (Gap ag : acceptedGaps) {
+                        ag.setStatus(GapStatus.AWAITING_ACTION_PLAN);
+                        gapRepository.save(ag);
+                    }
+                    request.setStatus(RequestStatus.AWAITING_ACTION_PLANS);
+                    request.setCurrentStep("En attente des plans d'action de l'OEC (10 jours)");
+                    request.setPendingWith("OEC");
+                    request.setEvaluationEndDate(LocalDateTime.now());
+
+                    // Notify OEC
+                    if (request.getOec() != null) {
+                        notificationService.createNotification(request.getOec().getId(),
+                                "Plans d'action requis",
+                                "Vous avez 10 jours pour soumettre les plans d'actions pour " + acceptedGaps.size() + " écart(s) — " + request.getReferenceNumber(),
+                                "gap_treatment");
+                    }
                 } else {
                     request.setStatus(RequestStatus.EVALUATION_OEC_REVIEW);
                     request.setCurrentStep(refusedCount + " écart(s) refusé(s) par l'OEC");
@@ -2598,6 +2610,21 @@ public class WorkflowController {
 
             String decision = meeting.getFinalDecision();
             String notes = meeting.getPresidentNotes() != null ? meeting.getPresidentNotes() : "";
+
+            // Create formal CASDecision entity so certificate preparation can find it
+            CASDecisionType decisionType = decision.startsWith("ACCORDER") ? CASDecisionType.GRANT_FULL :
+                    "REFUSER".equals(decision) ? CASDecisionType.REFUSAL : CASDecisionType.POSTPONEMENT;
+            String decisionNumber = "DEC-CAS-" + java.time.Year.now().getValue() + "-" +
+                    String.format("%04d", new java.util.Random().nextInt(9999));
+            CASDecision casDecision = CASDecision.builder()
+                    .request(request)
+                    .decisionNumber(decisionNumber)
+                    .decisionType(decisionType)
+                    .meetingDate(meeting.getMeetingDate())
+                    .justification(notes)
+                    .minutesAndJustifications(notes)
+                    .build();
+            casDecisionRepository.save(casDecision);
 
             // Notify OEC and transition request status
             if (decision.startsWith("ACCORDER")) {

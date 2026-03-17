@@ -45,15 +45,14 @@ export default function GapResponsePage() {
 
   const loadRequests = async () => {
     try {
-      const res = await fetch("/api/requests", { credentials: "include" });
+      const res = await fetch("/api/requests/my-requests", { credentials: "include" });
       const data = await res.json();
-      if (data.success) {
-        const relevant = data.data.filter((r: any) =>
-          ["EVALUATION_OEC_ALL_ACCEPTED", "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION",
-           "ACTION_PLANS_IMPLEMENTATION", "GAPS_RESOLVED", "EVALUATION_COMPLETED"].includes(r.status)
-        );
-        setRequests(relevant);
-      }
+      const list = Array.isArray(data) ? data : (data.data || []);
+      const relevant = list.filter((r: any) =>
+        ["EVALUATION_OEC_ALL_ACCEPTED", "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION",
+         "ACTION_PLANS_IMPLEMENTATION", "GAPS_RESOLVED", "EVALUATION_COMPLETED"].includes(r.status)
+      );
+      setRequests(relevant);
     } catch (err) { console.error(err); }
     setLoading(false);
   };

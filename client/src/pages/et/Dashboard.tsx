@@ -41,7 +41,7 @@ export default function ETDashboard() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord Évaluateur Technique</h1>
             <p className="text-muted-foreground mt-1">
-              {user.fullName} — Spécialité: {user.speciality || user.specialite || "Évaluation technique"}
+              {user.fullName} — Spécialité: {user.specialite || "Évaluation technique"}
             </p>
           </div>
 

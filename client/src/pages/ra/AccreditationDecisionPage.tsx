@@ -45,7 +45,9 @@ export default function AccreditationDecisionPage() {
     decisionType: "", conditions: "", scope: "", duration: ""
   });
   const [certForm, setCertForm] = useState({
-    certificateType: "FOR_05_1", scope: "", validityYears: "4"
+    certificateType: "FOR_05_1", scope: "", validityYears: "4",
+    oecIdentity: "", technicalDomains: "", methodsAndStandards: "",
+    concernedSites: "", limitations: "", accreditationStandardReference: ""
   });
   const [survPlanForm, setSurvPlanForm] = useState({
     frequency: "ANNUAL", firstSurveillanceDate: "", criteria: ""
@@ -57,18 +59,17 @@ export default function AccreditationDecisionPage() {
 
   const loadRequests = async () => {
     try {
-      const res = await fetch("/api/requests", { credentials: "include" });
+      const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       const data = await res.json();
-      if (data.success) {
-        const relevant = data.data.filter((r: any) =>
-          ["REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED",
-           "CAS_PREPARATION", "CAS_SCHEDULED",
-           "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT",
-           "CERTIFICATE_PREPARATION", "CERTIFICATE_ISSUED",
-           "ACTIVE", "SUSPENDED", "SURVEILLANCE_SCHEDULED"].includes(r.status)
-        );
-        setRequests(relevant);
-      }
+      const list = Array.isArray(data) ? data : (data.data || []);
+      const relevant = list.filter((r: any) =>
+        ["REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED",
+         "CAS_PREPARATION", "CAS_SCHEDULED",
+         "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT",
+         "CERTIFICATE_PREPARATION", "CERTIFICATE_ISSUED",
+         "ACTIVE", "SUSPENDED", "SURVEILLANCE_SCHEDULED"].includes(r.status)
+      );
+      setRequests(relevant);
     } catch (err) { console.error(err); }
     setLoading(false);
   };
@@ -150,16 +151,22 @@ export default function AccreditationDecisionPage() {
   const handlePrepareCert = async () => {
     try {
       await apiRequest("POST", `/api/workflow/accreditation/${selectedRequest.id}/certificate`, {
-        ...certForm, validityYears: parseInt(certForm.validityYears)
+        oecIdentity: certForm.oecIdentity || selectedRequest.organizationName || "",
+        scope: certForm.scope,
+        technicalDomains: certForm.technicalDomains,
+        methodsAndStandards: certForm.methodsAndStandards,
+        concernedSites: certForm.concernedSites,
+        limitations: certForm.limitations,
+        accreditationStandardReference: certForm.accreditationStandardReference,
       });
-      toast({ title: "Certificat préparé" });
+      toast({ title: "Certificat préparé", description: "En attente de signature DT et DG" });
       setShowPrepareCert(false); selectRequest(selectedRequest); loadRequests();
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
   };
 
   const handleSignCert = async (certId: number) => {
     try {
-      await apiRequest("PUT", `/api/workflow/accreditation/certificates/${certId}/sign`, {});
+      await apiRequest("PUT", `/api/workflow/accreditation/certificates/${certId}/sign`);
       toast({ title: "Certificat signé" });
       selectRequest(selectedRequest); loadRequests();
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
@@ -383,13 +390,19 @@ export default function AccreditationDecisionPage() {
                       <TabsContent value="certificate">
                         <div className="space-y-4">
                           {/* Certificate actions */}
-                          {selectedRequest.status === "ACCREDITATION_GRANTED" && !certificate && (
+                          {selectedRequest.status === "CERTIFICATE_PREPARATION" && !certificate && (
                             <Button onClick={() => setShowPrepareCert(true)}>
-                              <Award className="w-4 h-4 mr-2" />Préparer le certificat
+                              <Award className="w-4 h-4 mr-2" />Préparer le certificat (FOR 05)
                             </Button>
                           )}
 
-                          {certificate && (
+                          {certificate && (() => {
+                            const certStatus = certificate.published ? "PUBLISHED" :
+                              (certificate.signedByDT && certificate.signedByDG) ? "SIGNED" :
+                              (certificate.signedByDT || certificate.signedByDG) ? "PARTIALLY_SIGNED" : "PREPARED";
+                            const certStatusLabel = { PUBLISHED: "Publié", SIGNED: "Signé", PARTIALLY_SIGNED: "Partiellement signé", PREPARED: "Préparé" }[certStatus];
+                            const certStatusColor = certStatus === "PUBLISHED" ? "bg-emerald-100 text-emerald-800" : "bg-yellow-100 text-yellow-800";
+                            return (
                             <Card className="p-6 border-2 border-emerald-200 bg-emerald-50/50">
                               <div className="flex items-start justify-between mb-4">
                                 <div>
@@ -401,46 +414,58 @@ export default function AccreditationDecisionPage() {
                                     {certificate.certificateNumber}
                                   </p>
                                 </div>
-                                <Badge className={certificate.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-800" : "bg-yellow-100 text-yellow-800"}>
-                                  {certificate.status?.replace(/_/g, " ")}
-                                </Badge>
+                                <Badge className={certStatusColor}>{certStatusLabel}</Badge>
                               </div>
 
                               <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                                <div>
-                                  <p className="text-muted-foreground">Type</p>
-                                  <p className="font-medium">{certificate.certificateType}</p>
-                                </div>
                                 <div>
                                   <p className="text-muted-foreground">Portée</p>
                                   <p className="font-medium">{certificate.scope}</p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Début de validité</p>
+                                  <p className="text-muted-foreground">Signatures</p>
+                                  <div className="flex gap-2 mt-1">
+                                    <Badge variant="outline" className={certificate.signedByDT ? "border-green-500 text-green-700" : "border-gray-300 text-gray-500"}>
+                                      DT {certificate.signedByDT ? "✓" : "—"}
+                                    </Badge>
+                                    <Badge variant="outline" className={certificate.signedByDG ? "border-green-500 text-green-700" : "border-gray-300 text-gray-500"}>
+                                      DG {certificate.signedByDG ? "✓" : "—"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Date d'émission</p>
                                   <p className="font-medium">
-                                    {certificate.validFrom && new Date(certificate.validFrom).toLocaleDateString("fr-FR")}
+                                    {certificate.issueDate && new Date(certificate.issueDate).toLocaleDateString("fr-FR")}
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Fin de validité</p>
+                                  <p className="text-muted-foreground">Date d'expiration</p>
                                   <p className="font-medium">
-                                    {certificate.validTo && new Date(certificate.validTo).toLocaleDateString("fr-FR")}
+                                    {certificate.expirationDate && new Date(certificate.expirationDate).toLocaleDateString("fr-FR")}
                                   </p>
                                 </div>
                               </div>
 
                               <div className="flex gap-2 flex-wrap">
-                                {certificate.status === "PREPARED" && (
-                                  <Button size="sm" onClick={() => handleSignCert(certificate.id)}>
-                                    <Stamp className="w-3 h-3 mr-1" />Signer (DT/DG)
-                                  </Button>
+                                {certStatus === "PREPARED" && (
+                                  <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                                    <Clock className="w-4 h-4 inline mr-1" />
+                                    En attente de signature par le DT et le DG
+                                  </div>
                                 )}
-                                {certificate.status === "SIGNED" && (
+                                {certStatus === "PARTIALLY_SIGNED" && (
+                                  <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                                    <Clock className="w-4 h-4 inline mr-1" />
+                                    Signé par {certificate.signedByDT ? "le DT" : "le DG"} — en attente de {!certificate.signedByDT ? "le DT" : "le DG"}
+                                  </div>
+                                )}
+                                {certStatus === "SIGNED" && (
                                   <Button size="sm" onClick={() => handlePublishCert(certificate.id)}>
                                     <CheckCircle className="w-3 h-3 mr-1" />Publier
                                   </Button>
                                 )}
-                                {certificate.status === "PUBLISHED" && (
+                                {certStatus === "PUBLISHED" && (
                                   <>
                                     <Button size="sm" variant="outline" onClick={() => setShowSurvPlan(true)}>
                                       <Shield className="w-3 h-3 mr-1" />Plan de surveillance (PRO 13)
@@ -466,7 +491,8 @@ export default function AccreditationDecisionPage() {
                                 )}
                               </div>
                             </Card>
-                          )}
+                            );
+                          })()}
                         </div>
                       </TabsContent>
                     </Tabs>
@@ -561,7 +587,7 @@ export default function AccreditationDecisionPage() {
               <DialogHeader>
                 <DialogTitle>Préparer le certificat d'accréditation (FOR 05)</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                 <div>
                   <Label>Type de certificat</Label>
                   <Select value={certForm.certificateType}
@@ -576,15 +602,46 @@ export default function AccreditationDecisionPage() {
                   </Select>
                 </div>
                 <div>
+                  <Label>Identité de l'OEC</Label>
+                  <Input value={certForm.oecIdentity}
+                    onChange={(e) => setCertForm({ ...certForm, oecIdentity: e.target.value })}
+                    placeholder="Nom et coordonnées de l'OEC..." />
+                </div>
+                <div>
                   <Label>Portée de l'accréditation</Label>
                   <Textarea value={certForm.scope}
                     onChange={(e) => setCertForm({ ...certForm, scope: e.target.value })}
                     placeholder="Portée détaillée de l'accréditation..." />
                 </div>
                 <div>
-                  <Label>Durée de validité (années)</Label>
-                  <Input type="number" value={certForm.validityYears}
-                    onChange={(e) => setCertForm({ ...certForm, validityYears: e.target.value })} />
+                  <Label>Domaines techniques</Label>
+                  <Textarea value={certForm.technicalDomains}
+                    onChange={(e) => setCertForm({ ...certForm, technicalDomains: e.target.value })}
+                    placeholder="Domaines techniques couverts..." rows={2} />
+                </div>
+                <div>
+                  <Label>Méthodes / Normes applicables</Label>
+                  <Textarea value={certForm.methodsAndStandards}
+                    onChange={(e) => setCertForm({ ...certForm, methodsAndStandards: e.target.value })}
+                    placeholder="ISO/CEI 17025, ISO 15189..." rows={2} />
+                </div>
+                <div>
+                  <Label>Sites concernés</Label>
+                  <Input value={certForm.concernedSites}
+                    onChange={(e) => setCertForm({ ...certForm, concernedSites: e.target.value })}
+                    placeholder="Adresses des sites..." />
+                </div>
+                <div>
+                  <Label>Référence norme d'accréditation</Label>
+                  <Input value={certForm.accreditationStandardReference}
+                    onChange={(e) => setCertForm({ ...certForm, accreditationStandardReference: e.target.value })}
+                    placeholder="Ex: ISO/CEI 17025:2017" />
+                </div>
+                <div>
+                  <Label>Limitations éventuelles</Label>
+                  <Textarea value={certForm.limitations}
+                    onChange={(e) => setCertForm({ ...certForm, limitations: e.target.value })}
+                    placeholder="Limitations ou restrictions..." rows={2} />
                 </div>
               </div>
               <DialogFooter>

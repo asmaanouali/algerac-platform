@@ -32,7 +32,10 @@ export default function PlanningPage() {
     if (!selectedDate) return;
     setSaving(true);
     try {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+      const d = String(selectedDate.getDate()).padStart(2, "0");
+      const dateStr = `${y}-${m}-${d}`;
       const res = await apiRequest("POST", "/api/workflow/availability/mark-unavailable", {
         userId: user?.id,
         unavailableDate: dateStr,
@@ -63,7 +66,10 @@ export default function PlanningPage() {
   if (!user) return null;
 
   const unavailableDateSet = new Set(
-    unavailableDates.map((d: any) => new Date(d.unavailableDate).toDateString())
+    unavailableDates.map((d: any) => {
+      const parts = (d.unavailableDate as string).split("T")[0].split("-");
+      return new Date(+parts[0], +parts[1] - 1, +parts[2]).toDateString();
+    })
   );
 
   return (
@@ -123,7 +129,7 @@ export default function PlanningPage() {
                               <CalendarDays className="w-5 h-5 text-red-600" />
                             </div>
                             <div>
-                              <p className="font-medium text-sm">{new Date(d.unavailableDate).toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+                              <p className="font-medium text-sm">{(() => { const p = (d.unavailableDate as string).split("T")[0].split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" }); })()}</p>
                               {d.reason && <p className="text-xs text-muted-foreground">{d.reason}</p>}
                             </div>
                           </div>

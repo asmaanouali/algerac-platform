@@ -8,13 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileSearch, Send, CheckCircle, Clock, DollarSign, Users, ArrowRight, Play, User, CheckCircle2 } from "lucide-react";
+import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const DOC_REVIEW_STATUSES = [
   "TEAM_VALIDATED", "TEAM_RECUSATION_INVALID",
-  "DOC_REVIEW_AWAITING_FEE", "DOC_REVIEW_FEE_PENDING_PAYMENT",
-  "DOC_REVIEW_PAYMENT_SUBMITTED", "DOC_REVIEW_PAYMENT_VALIDATED",
   "DOC_REVIEW_IN_PROGRESS", "DOC_REVIEW_RESULTS_SUBMITTED",
   "DOC_REVIEW_RESULTS_SENT_TO_CD", "DOC_REVIEW_RESULTS_SENT_TO_OEC",
   "DOC_REVIEW_CD_DECISION", "AWAITING_OEC_DOC_RESPONSE",
@@ -25,17 +23,13 @@ const DOC_REVIEW_STATUSES = [
 const statusLabels: Record<string, { label: string; color: string; step: number }> = {
   TEAM_VALIDATED: { label: "Équipe validée — Prêt à lancer", color: "bg-green-100 text-green-800", step: 0 },
   TEAM_RECUSATION_INVALID: { label: "Équipe maintenue — Prêt à lancer", color: "bg-green-100 text-green-800", step: 0 },
-  DOC_REVIEW_AWAITING_FEE: { label: "En attente fixation frais (DAG)", color: "bg-amber-100 text-amber-800", step: 1 },
-  DOC_REVIEW_FEE_PENDING_PAYMENT: { label: "Frais fixés — OEC doit payer", color: "bg-orange-100 text-orange-800", step: 2 },
-  DOC_REVIEW_PAYMENT_SUBMITTED: { label: "Preuve soumise — Validation DAG", color: "bg-blue-100 text-blue-800", step: 3 },
-  DOC_REVIEW_PAYMENT_VALIDATED: { label: "Paiement validé — Transmettre docs", color: "bg-emerald-100 text-emerald-800", step: 4 },
-  DOC_REVIEW_IN_PROGRESS: { label: "Documents transmis à l'équipe (15j)", color: "bg-indigo-100 text-indigo-800", step: 5 },
-  DOC_REVIEW_RESULTS_SUBMITTED: { label: "Résultats reçus de l'équipe", color: "bg-purple-100 text-purple-800", step: 6 },
-  DOC_REVIEW_RESULTS_SENT_TO_CD: { label: "Résultats envoyés au CD", color: "bg-slate-100 text-slate-800", step: 7 },
-  DOC_REVIEW_RESULTS_SENT_TO_OEC: { label: "Résultats envoyés à l'OEC", color: "bg-cyan-100 text-cyan-800", step: 8 },
-  AWAITING_OEC_DOC_RESPONSE: { label: "Attente réponse OEC", color: "bg-orange-100 text-orange-800", step: 8 },
-  DOC_REVIEW_CD_DECISION: { label: "En attente décision CD", color: "bg-yellow-100 text-yellow-800", step: 9 },
-  DOCUMENTARY_REVIEW_COMPLETED: { label: "Revue terminée ✓", color: "bg-green-100 text-green-800", step: 10 },
+  DOC_REVIEW_IN_PROGRESS: { label: "Documents transmis à l'équipe (15j)", color: "bg-indigo-100 text-indigo-800", step: 2 },
+  DOC_REVIEW_RESULTS_SUBMITTED: { label: "Résultats reçus de l'équipe", color: "bg-purple-100 text-purple-800", step: 3 },
+  DOC_REVIEW_RESULTS_SENT_TO_CD: { label: "Résultats envoyés au CD", color: "bg-slate-100 text-slate-800", step: 4 },
+  DOC_REVIEW_RESULTS_SENT_TO_OEC: { label: "Résultats envoyés à l'OEC", color: "bg-cyan-100 text-cyan-800", step: 5 },
+  AWAITING_OEC_DOC_RESPONSE: { label: "Attente réponse OEC", color: "bg-orange-100 text-orange-800", step: 5 },
+  DOC_REVIEW_CD_DECISION: { label: "En attente décision CD", color: "bg-yellow-100 text-yellow-800", step: 6 },
+  DOCUMENTARY_REVIEW_COMPLETED: { label: "Revue terminée ✓", color: "bg-green-100 text-green-800", step: 7 },
 };
 
 export default function DocumentaryReviewPage() {
@@ -44,7 +38,6 @@ export default function DocumentaryReviewPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [payment, setPayment] = useState<any>(null);
   const [memberProgress, setMemberProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -64,7 +57,6 @@ export default function DocumentaryReviewPage() {
 
   const selectRequest = async (req: any) => {
     setSelectedRequest(req);
-    setPayment(null);
     setMemberProgress([]);
     try {
       const res = await fetch(`/api/workflow/documentary-review/by-request/${req.id}`, { credentials: "include" });
@@ -72,10 +64,6 @@ export default function DocumentaryReviewPage() {
         const data = await res.json();
         setReviews(data);
         if (data.length > 0) {
-          if (data[0].paymentId) {
-            const payRes = await fetch(`/api/payments/${data[0].paymentId}`, { credentials: "include" });
-            if (payRes.ok) setPayment(await payRes.json());
-          }
           // Charger la progression des membres
           try {
             const progRes = await fetch(`/api/workflow/documentary-review/${data[0].id}/member-progress`, { credentials: "include" });
@@ -92,7 +80,7 @@ export default function DocumentaryReviewPage() {
       const res = await apiRequest("POST", "/api/workflow/documentary-review/launch", { requestId: selectedRequest.id });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Revue documentaire lancée. Le DAG a été notifié pour fixer les frais d'analyse." });
+        toast({ title: "Succès", description: "Revue documentaire lancée. Les documents peuvent être transmis à l'équipe." });
         await loadData();
         const updatedRes = await fetch(`/api/requests/${selectedRequest.id}`, { credentials: "include" });
         if (updatedRes.ok) { const u = await updatedRes.json(); setSelectedRequest(u); await selectRequest(u); }
@@ -138,10 +126,9 @@ export default function DocumentaryReviewPage() {
   const statusInfo = statusLabels[reqStatus] || { label: reqStatus?.replace(/_/g, " "), color: "bg-gray-100 text-gray-800", step: -1 };
 
   const steps = [
-    { n: 0, label: "Lancer" }, { n: 1, label: "Frais DAG" }, { n: 2, label: "Paiement OEC" },
-    { n: 3, label: "Validation" }, { n: 4, label: "Transmettre" }, { n: 5, label: "Analyse (15j)" },
-    { n: 6, label: "Résultats" }, { n: 7, label: "Envoi CD" }, { n: 8, label: "Envoi OEC" },
-    { n: 9, label: "Décision CD" }, { n: 10, label: "Terminée" },
+    { n: 0, label: "Lancer" }, { n: 1, label: "Transmettre" }, { n: 2, label: "Analyse (15j)" },
+    { n: 3, label: "Résultats" }, { n: 4, label: "Envoi CD" }, { n: 5, label: "Envoi OEC" },
+    { n: 6, label: "Décision CD" }, { n: 7, label: "Terminée" },
   ];
 
   return (
@@ -217,7 +204,7 @@ export default function DocumentaryReviewPage() {
                             <Play className="w-12 h-12 mx-auto text-green-600" />
                             <div>
                               <h3 className="text-lg font-semibold">L'équipe est validée</h3>
-                              <p className="text-sm text-muted-foreground mt-1">Lancez la revue documentaire. Le DAG sera notifié pour fixer les frais d'analyse.</p>
+                              <p className="text-sm text-muted-foreground mt-1">Lancez la revue documentaire. Les documents seront transmis à l'équipe d'évaluation.</p>
                             </div>
                             <Button onClick={launchReview} disabled={actionLoading} size="lg">
                               {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
@@ -227,35 +214,13 @@ export default function DocumentaryReviewPage() {
                         </Card>
                       )}
 
-                      {/* Step 1-3: Payment flow */}
-                      {["DOC_REVIEW_AWAITING_FEE", "DOC_REVIEW_FEE_PENDING_PAYMENT", "DOC_REVIEW_PAYMENT_SUBMITTED"].includes(reqStatus) && (
-                        <Card className="border-amber-200 bg-amber-50/50">
-                          <CardContent className="pt-6">
-                            <div className="flex items-start gap-4">
-                              <DollarSign className="w-8 h-8 text-amber-600 flex-shrink-0" />
-                              <div>
-                                <h3 className="font-semibold">Frais d'analyse documentaire</h3>
-                                {reqStatus === "DOC_REVIEW_AWAITING_FEE" && <p className="text-sm text-muted-foreground mt-1">En attente que le DAG fixe les frais d'analyse documentaire.</p>}
-                                {reqStatus === "DOC_REVIEW_FEE_PENDING_PAYMENT" && (
-                                  <div className="mt-1">
-                                    <p className="text-sm text-muted-foreground">Le DAG a fixé les frais. En attente du paiement par l'OEC.</p>
-                                    {payment && <p className="text-sm font-medium mt-2">Montant: {payment.amount} DA</p>}
-                                  </div>
-                                )}
-                                {reqStatus === "DOC_REVIEW_PAYMENT_SUBMITTED" && <p className="text-sm text-muted-foreground mt-1">L'OEC a soumis la preuve de paiement. En attente de validation par le DAG.</p>}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Step 4: Transmit docs */}
-                      {reqStatus === "DOC_REVIEW_PAYMENT_VALIDATED" && (
+                      {/* Step 1: Transmit docs */}
+                      {(reqStatus === "DOC_REVIEW_PAYMENT_VALIDATED" || reqStatus === "DOC_REVIEW_AWAITING_FEE" || reqStatus === "DOC_REVIEW_FEE_PENDING_PAYMENT" || reqStatus === "DOC_REVIEW_PAYMENT_SUBMITTED") && (
                         <Card className="border-emerald-200 bg-emerald-50/50">
                           <CardContent className="pt-6 text-center space-y-4">
-                            <CheckCircle className="w-12 h-12 mx-auto text-emerald-600" />
+                            <Send className="w-12 h-12 mx-auto text-emerald-600" />
                             <div>
-                              <h3 className="text-lg font-semibold text-emerald-800">Paiement validé par le DAG</h3>
+                              <h3 className="text-lg font-semibold text-emerald-800">Revue lancée</h3>
                               <p className="text-sm text-muted-foreground mt-1">Transmettez les documents de l'OEC à l'équipe d'évaluation. L'équipe aura <strong>15 jours</strong> maximum.</p>
                             </div>
                             <Button onClick={transmitDocs} disabled={actionLoading} size="lg" className="bg-emerald-600 hover:bg-emerald-700">

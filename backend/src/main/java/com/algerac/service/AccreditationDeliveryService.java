@@ -335,9 +335,27 @@ public class AccreditationDeliveryService {
             User currentUser) {
         AccreditationRequest request = getRequestOrThrow(requestId);
 
-        // Vérifier qu'une décision favorable existe
+        // Vérifier qu'une décision favorable existe, sinon la créer depuis la réunion CAS
         CASDecision decision = casDecisionRepository.findFirstByRequest_IdOrderByCreatedAtDesc(requestId)
-            .orElseThrow(() -> new RuntimeException("Aucune décision CAS trouvée"));
+            .orElseGet(() -> {
+                // Auto-create from CASMeeting (legacy data before fix)
+                List<CASMeeting> meetings = casMeetingRepository.findByRequest_Id(requestId);
+                CASMeeting meeting = meetings.stream()
+                    .filter(m -> m.getFinalDecision() != null)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Aucune décision CAS trouvée"));
+                String fd = meeting.getFinalDecision();
+                CASDecisionType dt = fd != null && fd.startsWith("ACCORDER") ? CASDecisionType.GRANT_FULL :
+                    "REFUSER".equals(fd) ? CASDecisionType.REFUSAL : CASDecisionType.POSTPONEMENT;
+                String dn = "DEC-CAS-" + Year.now().getValue() + "-" +
+                    String.format("%04d", new Random().nextInt(9999));
+                CASDecision d = CASDecision.builder()
+                    .request(request).decisionNumber(dn).decisionType(dt)
+                    .meetingDate(meeting.getMeetingDate())
+                    .justification(meeting.getPresidentNotes())
+                    .build();
+                return casDecisionRepository.save(d);
+            });
 
         if (decision.getDecisionType() != CASDecisionType.GRANT_FULL &&
             decision.getDecisionType() != CASDecisionType.GRANT_REDUCED &&
@@ -382,16 +400,18 @@ public class AccreditationDeliveryService {
      * 11.2 DT/DG signent le certificat
      */
     @Transactional
-    public AccreditationCertificate signCertificate(Long certificateId, User currentUser) {
+    public AccreditationCertificate signCertificate(Long certificateId, UserRole activeRole) {
         AccreditationCertificate certificate = certificateRepository.findById(certificateId)
             .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
 
-        if (currentUser.getRole() == UserRole.DT) {
+        if (activeRole == UserRole.DT) {
             certificate.setSignedByDT(true);
             log.info("Certificat {} signé par DT", certificate.getCertificateNumber());
-        } else if (currentUser.getRole() == UserRole.DG) {
+        } else if (activeRole == UserRole.DG) {
             certificate.setSignedByDG(true);
             log.info("Certificat {} signé par DG", certificate.getCertificateNumber());
+        } else {
+            throw new RuntimeException("Seuls DT et DG peuvent signer un certificat. Rôle actuel: " + activeRole);
         }
 
         // Si les deux ont signé → publier

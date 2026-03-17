@@ -214,7 +214,10 @@ public class AccreditationDeliveryController {
     public ResponseEntity<?> signCertificate(@PathVariable Long certId, HttpSession session) {
         try {
             User user = getSessionUser(session);
-            AccreditationCertificate result = deliveryService.signCertificate(certId, user);
+            // Use session role (supports role switching) if available, fallback to DB role
+            UserRole activeRole = (UserRole) session.getAttribute("userRole");
+            if (activeRole == null) activeRole = user.getRole();
+            AccreditationCertificate result = deliveryService.signCertificate(certId, activeRole);
             return ResponseEntity.ok(ApiResponse.success("Certificat signé", result));
         } catch (Exception e) {
             log.error("Erreur signature certificat: {}", e.getMessage());

@@ -35,6 +35,31 @@ public class CASVote {
 
     private Boolean attendanceConfirmed;
 
+    // FOR 14 - Avis des membres CAS (PRO 07)
+    @Column(columnDefinition = "TEXT")
+    private String for14Opinion;
+
+    @Column(columnDefinition = "TEXT")
+    private String for14TechnicalRemarks;
+
+    @Column(columnDefinition = "TEXT")
+    private String for14ScopeRemarks;
+
+    @Column(columnDefinition = "TEXT")
+    private String for14Recommendation;
+
+    private String for14ConformityAssessment; // CONFORME, CONFORME_RESERVATIONS, NON_CONFORME_MAJEUR, INSUFFISANT
+
+    private String for14CompetenceAssessment; // ADEQUATE, PARTIELLE, INSUFFISANTE
+
+    private String for14ImpartialityAssessment; // SATISFAISANTE, RISQUES_IDENTIFIES, NON_SATISFAISANTE
+
+    // Conflict of interest declaration (PRO 07 §4.2)
+    private Boolean hasConflictOfInterest;
+
+    @Column(columnDefinition = "TEXT")
+    private String conflictDescription;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

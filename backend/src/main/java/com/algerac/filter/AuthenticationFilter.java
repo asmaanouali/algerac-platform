@@ -1,6 +1,5 @@
 package com.algerac.filter;
 
-import com.algerac.model.UserRole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;

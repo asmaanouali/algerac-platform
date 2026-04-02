@@ -24,7 +24,6 @@ public class SamplingService {
 
     private final SamplingPlanRepository samplingPlanRepository;
     private final RequestRepository requestRepository;
-    private final NotificationService notificationService;
 
     /**
      * Créer un plan d'échantillonnage pour une demande

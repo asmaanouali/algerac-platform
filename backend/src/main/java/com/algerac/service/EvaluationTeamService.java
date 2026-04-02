@@ -98,6 +98,10 @@ public class EvaluationTeamService {
      */
     @Transactional
     public void removeMember(Long memberId, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls CD/RA peuvent retirer un membre");
+        }
+        
         TeamMember member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
         
@@ -148,6 +152,10 @@ public class EvaluationTeamService {
      */
     @Transactional
     public EvaluationTeam sendToCD(Long teamId, String compositionSheet, LocalDate proposedEvaluationDate, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seul le RA peut transmettre la composition au CD");
+        }
+        
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
         
@@ -190,6 +198,10 @@ public class EvaluationTeamService {
         
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+        
+        if (team.getStatus() != TeamStatus.SENT_TO_CD) {
+            throw new RuntimeException("L'équipe doit être en statut SENT_TO_CD pour approbation");
+        }
         
         team.setSentToOEC(LocalDateTime.now());
         team.setOecResponseDeadline(LocalDateTime.now().plusDays(3));
@@ -443,6 +455,10 @@ public class EvaluationTeamService {
      */
     @Transactional
     public EvaluationTeam changeProposedDate(Long teamId, LocalDate newDate, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seul le RA peut modifier la date proposée");
+        }
+        
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
         

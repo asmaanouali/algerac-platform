@@ -147,7 +147,7 @@ export default function UsersManagementPage() {
   const fetchActiveUsers = async () => {
     try {
       setActiveUsersLoading(true);
-      const response = await fetch("http://localhost:8082/api/users", {
+      const response = await fetch("/api/users", {
         credentials: "include"
       });
       
@@ -178,8 +178,8 @@ export default function UsersManagementPage() {
     try {
       setPendingLoading(true);
       const [oecRes, expertRes] = await Promise.all([
-        fetch("http://localhost:8082/api/candidatures/oec/approved", { credentials: "include" }),
-        fetch("http://localhost:8082/api/candidatures/experts/approved", { credentials: "include" })
+        fetch("/api/candidatures/oec/approved", { credentials: "include" }),
+        fetch("/api/candidatures/experts/approved", { credentials: "include" })
       ]);
       const oecData = oecRes.ok ? await oecRes.json() : [];
       const expertData = expertRes.ok ? await expertRes.json() : [];
@@ -243,8 +243,8 @@ export default function UsersManagementPage() {
     const isExpert = !!selectedApplication.userType;
     const typeName = isExpert ? selectedApplication.userType : "OEC";
     const endpoint = isExpert
-      ? `http://localhost:8082/api/candidatures/experts/${selectedApplication.id}/create-account`
-      : `http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`;
+      ? `/api/candidatures/experts/${selectedApplication.id}/create-account`
+      : `/api/candidatures/oec/${selectedApplication.id}/create-account`;
 
     setActionLoading(true);
     try {

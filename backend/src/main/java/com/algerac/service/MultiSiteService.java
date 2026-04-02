@@ -23,7 +23,6 @@ public class MultiSiteService {
 
     private final MultiSiteConfigRepository multiSiteRepository;
     private final RequestRepository requestRepository;
-    private final NotificationService notificationService;
 
     /**
      * Créer une configuration multi-site pour une demande

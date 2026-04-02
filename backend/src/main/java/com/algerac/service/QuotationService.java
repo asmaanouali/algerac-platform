@@ -135,7 +135,7 @@ public class QuotationService {
      */
     @Transactional
     public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments, User currentUser) {
-        if (currentUser.getRole() != UserRole.valueOf("DAG")) {
+        if (currentUser.getRole() != UserRole.DAG) {
             throw new RuntimeException("Seuls les DAG peuvent approuver les devis");
         }
         

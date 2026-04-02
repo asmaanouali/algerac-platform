@@ -9,6 +9,7 @@ public enum SurveillanceEvaluationStatus {
     DOCUMENTS_RECEIVED,         // Documents reçus de l'OEC
     QUOTATION_SENT,             // Devis envoyé
     QUOTATION_ACCEPTED,         // Devis validé et réglé par OEC
+    QUOTATION_REJECTED,         // Devis rejeté par OEC
     TEAM_DESIGNATED,            // Équipe désignée
     TEAM_VALIDATED,             // Équipe validée par OEC
     PLAN_PREPARED,              // Plan d'évaluation préparé

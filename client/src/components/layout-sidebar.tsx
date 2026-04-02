@@ -63,6 +63,7 @@ export function Sidebar() {
       { href: "/oec/revue-ecarts", label: "Revue des Écarts", icon: ShieldCheck },
       { href: "/oec/reponse-ecarts", label: "Plans d'Action", icon: AlertCircle },
       { href: "/oec/certificates", label: "Mes Certificats", icon: Award },
+      { href: "/oec/transfert", label: "Transfert d'accréditation", icon: ArrowRightLeft },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
       { href: "/oec/profile", label: "Profil OEC", icon: User },
     ],
@@ -88,6 +89,7 @@ export function Sidebar() {
       { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dt/certificats", label: "Certificats", icon: Award },
       { href: "/dt/ordres-mission", label: "Ordres de Mission", icon: Stamp },
+      { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     cd: [
@@ -103,6 +105,7 @@ export function Sidebar() {
       { href: "/cd/multi-sites", label: "Multi-sites", icon: Network },
       { href: "/cd/evaluation-distance", label: "Éval. à Distance", icon: Video },
       { href: "/cd/transferts", label: "Transferts", icon: ArrowRightLeft },
+      { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dag: [
@@ -116,7 +119,7 @@ export function Sidebar() {
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/users", label: "Utilisateurs", icon: Users },
       { href: "/admin/utilisateurs-pending", label: "Candidatures", icon: UserPlus },
-      { href: "/admin/risques", label: "Risques & Opportunités", icon: ShieldAlertIcon },
+      { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     expert: [
@@ -165,18 +168,21 @@ export function Sidebar() {
     cas_member: [
       { href: "/cas/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cas/reunions", label: "Réunions CAS", icon: Gavel },
+      { href: "/cas/transferts", label: "Transferts", icon: ArrowRightLeft },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     cas_president: [
       { href: "/cas-president/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/cas-president/reunions", label: "Réunions CAS", icon: Gavel },
       { href: "/cas-president/decisions", label: "Décisions", icon: Crown },
+      { href: "/cas-president/transferts", label: "Transferts", icon: ArrowRightLeft },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     dg: [
       { href: "/dg/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dg/certificats", label: "Certificats", icon: Award },
       { href: "/dg/ordres-mission", label: "Ordres de Mission", icon: Stamp },
+      { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     ges_competences: [
@@ -187,6 +193,7 @@ export function Sidebar() {
     ],
     rq: [
       { href: "/rq/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/rq/plaintes", label: "Gestion Plaintes", icon: MessageSquareWarning },
     ],
   };

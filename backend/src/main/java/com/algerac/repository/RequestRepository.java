@@ -21,4 +21,8 @@ public interface RequestRepository extends JpaRepository<AccreditationRequest, L
     Optional<AccreditationRequest> findByReferenceNumber(String referenceNumber);
     
     boolean existsByReferenceNumber(String referenceNumber);
+    
+    List<AccreditationRequest> findByStatusIn(List<RequestStatus> statuses);
+    
+    long countByReferenceNumberStartingWith(String prefix);
 }

@@ -26,6 +26,11 @@ public class GapManagementService {
     @Transactional
     public Gap createGap(Long requestId, String gapCode, GapType type, 
                         String description, String requirement, String evidence, User currentUser) {
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        if (!evaluatorRoles.contains(currentUser.getRole())) {
+            throw new RuntimeException("Seuls les évaluateurs (REE, ET, EQ, EXPERT) peuvent créer des écarts");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -90,6 +95,10 @@ public class GapManagementService {
      */
     @Transactional
     public void requestActionPlans(Long requestId, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls RA/CD peuvent demander les plans d'actions");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -132,6 +141,10 @@ public class GapManagementService {
         boolean submittedInTime = evaluationCloseDate == null || 
                 LocalDateTime.now().isBefore(evaluationCloseDate.plusDays(10));
         
+        if (!submittedInTime) {
+            log.warn("Écart {} : plan d'action soumis hors délai de 10 jours", gap.getGapCode());
+        }
+        
         ActionPlan plan = ActionPlan.builder()
                 .gap(gap)
                 .correctiveActions(correctiveActions)
@@ -162,6 +175,11 @@ public class GapManagementService {
      */
     @Transactional
     public ActionPlan evaluateActionPlan(Long planId, Boolean accepted, String feedback, User currentUser) {
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        if (!evaluatorRoles.contains(currentUser.getRole())) {
+            throw new RuntimeException("Seuls les membres de l'équipe d'évaluation peuvent évaluer les plans d'actions");
+        }
+        
         ActionPlan plan = actionPlanRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan d'action non trouvé"));
         
@@ -230,6 +248,11 @@ public class GapManagementService {
      */
     @Transactional
     public ActionPlan verifyEvidence(Long planId, Boolean satisfactory, User currentUser) {
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        if (!evaluatorRoles.contains(currentUser.getRole())) {
+            throw new RuntimeException("Seuls les membres de l'équipe d'évaluation peuvent vérifier les preuves");
+        }
+        
         ActionPlan plan = actionPlanRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan d'action non trouvé"));
         

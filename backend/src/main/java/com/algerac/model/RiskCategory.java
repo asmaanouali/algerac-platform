@@ -1,14 +1,15 @@
 package com.algerac.model;
 
 public enum RiskCategory {
-    STRATEGIC,          // Stratégique
-    OPERATIONAL,        // Opérationnel
-    FINANCIAL,          // Financier
-    REGULATORY,         // Réglementaire
-    REPUTATIONAL,       // Réputation
-    TECHNICAL,          // Technique
-    HUMAN_RESOURCES,    // Ressources humaines
-    INFORMATION_SECURITY, // Sécurité de l'information
+    MINISTRY,           // Ministère et organismes apparentés
+    BOARD,              // Conseil d'administration
+    CAS,                // Comités d'accréditation spécialisés
+    STAFF,              // Personnel d'ALGERAC
+    APPEALS,            // Commission de recours
+    ASSESSORS,          // Évaluateurs et experts
+    ASSESSMENTS,        // Évaluations
+    TRAINING,           // Formations
+    OEC_OPERATIONS,     // Fonctionnement des OEC
     IMPARTIALITY,       // Impartialité
-    COMPETENCE          // Compétences
+    OTHER               // Autre
 }

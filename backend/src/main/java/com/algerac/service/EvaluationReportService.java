@@ -27,11 +27,18 @@ public class EvaluationReportService {
                                         String programRealized, String findingsByRequirement,
                                         String gapsSummary, String gapsStatus, String strengths,
                                         String improvementAreas, String conclusion, User currentUser) {
+        if (currentUser.getRole() != UserRole.REE) {
+            throw new RuntimeException("Seul le REE peut rédiger le rapport d'évaluation");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        // Vérifier que l'utilisateur est bien le REE de l'équipe
-        // (Cette vérification nécessiterait un lien avec EvaluationTeam)
+        // Vérifier le délai de 30 jours après clôture
+        if (request.getEvaluationEndDate() != null
+                && LocalDateTime.now().isAfter(request.getEvaluationEndDate().plusDays(30))) {
+            log.warn("Rapport créé hors délai de 30 jours pour {}", request.getReferenceNumber());
+        }
         
         EvaluationReport report = EvaluationReport.builder()
                 .request(request)
@@ -66,6 +73,10 @@ public class EvaluationReportService {
      */
     @Transactional
     public EvaluationReport submitToCD(Long reportId, User currentUser) {
+        if (currentUser.getRole() != UserRole.REE) {
+            throw new RuntimeException("Seul le REE peut soumettre le rapport au CD");
+        }
+        
         EvaluationReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
         
@@ -92,13 +103,19 @@ public class EvaluationReportService {
     @Transactional
     public EvaluationReport validateReport(Long reportId, Boolean validated, 
                                           String correctionRequests, String for23Content, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.DT) {
+            throw new RuntimeException("Seuls CD/DT peuvent valider le rapport");
+        }
+        
         EvaluationReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
         
         AccreditationRequest request = report.getRequest();
         
-        // Si CD = REE, DT doit valider
-        boolean cdIsREE = false; // À déterminer selon la configuration
+        // Si le CD est aussi le REE, le DT doit valider
+        boolean cdIsREE = report.getRequest().getAssignedToRa() != null 
+                && currentUser.getRole() == UserRole.CD
+                && report.getDraftedByREE() != null;
         
         if (!validated) {
             // Demander des corrections
@@ -135,10 +152,15 @@ public class EvaluationReportService {
      */
     @Transactional
     public EvaluationReport correctReport(Long reportId, String correctedContent, User currentUser) {
+        if (currentUser.getRole() != UserRole.REE) {
+            throw new RuntimeException("Seul le REE peut corriger le rapport");
+        }
+        
         EvaluationReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
         
-        // Appliquer les corrections (mise à jour des champs concernés)
+        // Appliquer les corrections
+        report.setConclusionAndRecommendation(correctedContent);
         report.setStatus(EvaluationReportStatus.SUBMITTED_TO_CD);
         report.setSubmittedToCD(LocalDateTime.now());
         
@@ -156,6 +178,10 @@ public class EvaluationReportService {
      */
     @Transactional
     public EvaluationReport sendToConsolidation(Long reportId, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seul le CD peut transmettre le rapport en consolidation");
+        }
+        
         EvaluationReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Rapport non trouvé"));
         

@@ -81,10 +81,9 @@ public class PreliminaryVisitService {
             request.setCurrentStep("Visite préliminaire acceptée - planification");
             request.setPendingWith("CD/RA");
         } else {
-            request.setStatus(RequestStatus.PRELIMINARY_VISIT_DECLINED);
             request.setPreliminaryVisitAccepted(false);
-            request.setStatus(RequestStatus.QUOTATION_PREPARATION); // Passe directement à la contractualisation
-            request.setCurrentStep("Contractualisation");
+            request.setStatus(RequestStatus.QUOTATION_PREPARATION);
+            request.setCurrentStep("Contractualisation (visite déclinée)");
             request.setPendingWith("RA/CD");
         }
         
@@ -107,6 +106,10 @@ public class PreliminaryVisitService {
                 .orElseThrow(() -> new RuntimeException("Visite préliminaire non trouvée"));
         
         AccreditationRequest request = visit.getRequest();
+        
+        if (request.getStatus() != RequestStatus.PRELIMINARY_VISIT_ACCEPTED) {
+            throw new RuntimeException("La visite doit être acceptée avant d'être programmée");
+        }
         
         if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.RA) {
             throw new RuntimeException("Seuls CD/RA peuvent programmer la visite");
@@ -134,6 +137,10 @@ public class PreliminaryVisitService {
     public PreliminaryVisit submitReport(Long requestId, String reportContent, 
                                         Integer estimatedDuration, String obstaclesIdentified,
                                         Boolean hasBlockingElements, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls CD/RA peuvent soumettre le rapport de visite");
+        }
+        
         PreliminaryVisit visit = preliminaryVisitRepository.findByRequest_Id(requestId)
                 .orElseThrow(() -> new RuntimeException("Visite préliminaire non trouvée"));
         
@@ -152,10 +159,8 @@ public class PreliminaryVisitService {
             request.setPendingWith("OEC");
             visit.setProcessSuspended(true);
         } else {
-            request.setStatus(RequestStatus.PRELIMINARY_VISIT_COMPLETED);
-            request.setCurrentStep("Visite préliminaire terminée");
-            // Continue vers contractualisation
             request.setStatus(RequestStatus.QUOTATION_PREPARATION);
+            request.setCurrentStep("Visite terminée - Contractualisation");
             request.setPendingWith("RA/CD");
         }
         

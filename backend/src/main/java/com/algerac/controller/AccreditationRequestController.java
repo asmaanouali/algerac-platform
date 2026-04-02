@@ -239,7 +239,9 @@ public class AccreditationRequestController {
             // Marquer le paiement comme complété automatiquement (simulation)
             if (payment.getStatus() != PaymentStatus.COMPLETED) {
                 String transactionId = "AUTO-" + System.currentTimeMillis();
-                paymentService.processPayment(payment.getId(), "SIMULATION", transactionId);
+                @SuppressWarnings("deprecation")
+                Payment processed = paymentService.processPayment(payment.getId(), "SIMULATION", transactionId);
+                payment = processed;
             }
             
             return ResponseEntity.ok(ApiResponse.success(

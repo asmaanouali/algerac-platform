@@ -84,7 +84,7 @@ export default function GesCompetencesCandidaturesPage() {
   const fetchCandidatures = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8082/api/candidatures/experts", {
+      const response = await fetch("/api/candidatures/experts", {
         credentials: "include"
       });
       
@@ -166,7 +166,7 @@ export default function GesCompetencesCandidaturesPage() {
     const dateTime = `${year}-${month}-${day}T${interviewTime}:00`;
 
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${schedulingCandidature.id}/schedule-interview`, {
+      const response = await fetch(`/api/candidatures/experts/${schedulingCandidature.id}/schedule-interview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -194,7 +194,7 @@ export default function GesCompetencesCandidaturesPage() {
   // Reject dossier (implicit rejection)
   const handleRejectDossier = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/reject`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -204,7 +204,7 @@ export default function GesCompetencesCandidaturesPage() {
       if (response.ok) {
         // If starOnReject is checked, also star the profile
         if (starOnReject) {
-          await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/toggle-star`, {
+          await fetch(`/api/candidatures/experts/${candidature.id}/toggle-star`, {
             method: "POST",
             credentials: "include"
           });
@@ -227,7 +227,7 @@ export default function GesCompetencesCandidaturesPage() {
 
   const handleDownloadFor20 = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/for20`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/for20`, {
         credentials: "include"
       });
       
@@ -287,7 +287,7 @@ export default function GesCompetencesCandidaturesPage() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${blacklistingCandidature.id}/blacklist`, {
+      const response = await fetch(`/api/candidatures/experts/${blacklistingCandidature.id}/blacklist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -311,7 +311,7 @@ export default function GesCompetencesCandidaturesPage() {
   // Unblacklist a candidate
   const handleUnblacklist = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/unblacklist`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/unblacklist`, {
         method: "POST",
         credentials: "include"
       });
@@ -331,7 +331,7 @@ export default function GesCompetencesCandidaturesPage() {
   // Restore a rejected candidature back to PENDING
   const handleRestore = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/restore`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/restore`, {
         method: "POST",
         credentials: "include"
       });
@@ -351,7 +351,7 @@ export default function GesCompetencesCandidaturesPage() {
   // Toggle star/favorite for a candidature
   const handleToggleStar = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/toggle-star`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/toggle-star`, {
         method: "POST",
         credentials: "include"
       });

@@ -87,17 +87,17 @@ public class RequestService {
             throw new RuntimeException("Cette demande a déjà été soumise");
         }
         
-        request.setStatus(RequestStatus.SUBMITTED);
+        request.setStatus(RequestStatus.AWAITING_REGISTRATION_FEE);
         request.setSubmissionDate(LocalDateTime.now());
         request.setProgress(10);
-        
-        // Après soumission, la demande passe en attente de fixation des frais par le DAG
-        request.setStatus(RequestStatus.AWAITING_REGISTRATION_FEE);
         request.setNextAction("DAG doit fixer les frais d'enregistrement du dossier");
         request.setPendingWith("DAG");
         
         request = requestRepository.save(request);
         log.info("Demande {} soumise par l'OEC {}", request.getId(), currentUser.getOrganizationName());
+        
+        // Notifier le DAG qu'une nouvelle demande nécessite la fixation des frais
+        notificationService.notifyDAGNewRequest(request);
         
         return request;
     }
@@ -191,10 +191,14 @@ public class RequestService {
      */
     @Transactional
     public AccreditationRequest startReceivabilityStudy(Long requestId, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls les RAs peuvent commencer l'étude de recevabilité");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+        if (request.getAssignedToRa() == null || !request.getAssignedToRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Cette demande ne vous est pas assignée");
         }
         
@@ -217,10 +221,14 @@ public class RequestService {
      */
     @Transactional
     public AccreditationRequest makeReceivabilityDecision(Long requestId, ReceivabilityDecisionDTO dto, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls les RAs peuvent prendre cette décision");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (!request.getAssignedToRa().getId().equals(currentUser.getId())) {
+        if (request.getAssignedToRa() == null || !request.getAssignedToRa().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Vous n'êtes pas autorisé à prendre cette décision");
         }
         
@@ -257,6 +265,10 @@ public class RequestService {
      */
     @Transactional
     public AccreditationRequest cdReviewReceivability(Long requestId, boolean approved, String cdComments, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls les CD peuvent valider l'étude de recevabilité");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -342,7 +354,7 @@ public class RequestService {
             throw new RuntimeException("Vous n'êtes pas autorisé à modifier cette demande");
         }
         
-        if (request.getStatus() != RequestStatus.NOT_RECEIVABLE) {
+        if (request.getStatus() != RequestStatus.NOT_RECEIVABLE && request.getStatus() != RequestStatus.RECEIVABILITY_CORRECTION) {
             throw new RuntimeException("Cette demande n'est pas en attente de correction");
         }
         
@@ -383,8 +395,8 @@ public class RequestService {
                 .oec(oec)
                 .type(dto.getType())
                 .domain(dto.getDomain())
-                .status(dto.getStatus() != null ? dto.getStatus() : RequestStatus.DRAFT)
-                .progress(dto.getProgress() != null ? dto.getProgress() : 0)
+                .status(RequestStatus.DRAFT)
+                .progress(0)
                 .createdAt(LocalDateTime.now())
                 .build();
         
@@ -394,27 +406,29 @@ public class RequestService {
         return request;
     }
     
-    private String generateReferenceNumber() {
+    private synchronized String generateReferenceNumber() {
         String year = String.valueOf(Year.now().getValue());
-        int counter = 1;
-        String refNumber;
+        long count = requestRepository.countByReferenceNumberStartingWith("D-" + year + "-");
+        String refNumber = String.format("D-%s-%03d", year, count + 1);
         
-        do {
-            refNumber = String.format("D-%s-%03d", year, counter);
-            counter++;
-        } while (requestRepository.existsByReferenceNumber(refNumber));
+        // Fallback: ensure uniqueness
+        while (requestRepository.existsByReferenceNumber(refNumber)) {
+            count++;
+            refNumber = String.format("D-%s-%03d", year, count + 1);
+        }
         
         return refNumber;
     }
     
     @Transactional
-    public AccreditationRequest updateRequest(Long id, AccreditationRequest updates) {
+    public AccreditationRequest updateRequest(Long id, AccreditationRequest updates, User currentUser) {
+        if (currentUser.getRole() != UserRole.ADMIN && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls les administrateurs et CD peuvent mettre à jour directement les demandes");
+        }
+        
         AccreditationRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (updates.getStatus() != null) {
-            request.setStatus(updates.getStatus());
-        }
         if (updates.getProgress() != null) {
             request.setProgress(updates.getProgress());
         }

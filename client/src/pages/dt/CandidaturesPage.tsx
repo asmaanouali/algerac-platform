@@ -40,7 +40,7 @@ export default function CandidaturesPage() {
   const fetchCandidatures = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8082/api/candidatures/experts", {
+      const response = await fetch("/api/candidatures/experts", {
         credentials: "include"
       });
       
@@ -103,7 +103,7 @@ export default function CandidaturesPage() {
 
   const handleApprove = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/approve`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/approve`, {
         method: "POST",
         credentials: "include"
       });
@@ -134,7 +134,7 @@ export default function CandidaturesPage() {
 
   const handleReject = async (candidature: Candidature) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/reject`, {
+      const response = await fetch(`/api/candidatures/experts/${candidature.id}/reject`, {
         method: "POST",
         credentials: "include"
       });

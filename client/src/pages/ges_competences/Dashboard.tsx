@@ -41,11 +41,11 @@ export default function GesCompetencesDashboard() {
     try {
       setLoading(true);
       // Auto-expire unconfirmed interviews past 7-day deadline
-      await fetch("http://localhost:8082/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
+      await fetch("/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
       
       const [candRes, interviewRes] = await Promise.all([
-        fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
-        fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" })
+        fetch("/api/candidatures/experts", { credentials: "include" }),
+        fetch("/api/candidatures/experts/interviews", { credentials: "include" })
       ]);
       
       if (candRes.ok) {

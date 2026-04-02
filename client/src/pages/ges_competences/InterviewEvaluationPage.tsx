@@ -107,8 +107,8 @@ export default function InterviewEvaluationPage() {
       setLoading(true);
       // Try both endpoints to find the candidature
       const [expertsRes, interviewsRes] = await Promise.all([
-        fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
-        fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" })
+        fetch("/api/candidatures/experts", { credentials: "include" }),
+        fetch("/api/candidatures/experts/interviews", { credentials: "include" })
       ]);
       
       let allData: Candidature[] = [];
@@ -178,7 +178,7 @@ export default function InterviewEvaluationPage() {
     setSaving(true);
     try {
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-notes`,
+        `/api/candidatures/experts/${candidature.id}/interview-notes`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -206,7 +206,7 @@ export default function InterviewEvaluationPage() {
     if (!candidature) return;
     try {
       // Save notes first
-      await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-notes`, {
+      await fetch(`/api/candidatures/experts/${candidature.id}/interview-notes`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -214,7 +214,7 @@ export default function InterviewEvaluationPage() {
       });
 
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${candidature.id}/complete-interview`,
+        `/api/candidatures/experts/${candidature.id}/complete-interview`,
         { method: "POST", credentials: "include" }
       );
       if (response.ok) {
@@ -233,7 +233,7 @@ export default function InterviewEvaluationPage() {
     if (!candidature) return;
     try {
       // Save notes first
-      await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-notes`, {
+      await fetch(`/api/candidatures/experts/${candidature.id}/interview-notes`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -241,7 +241,7 @@ export default function InterviewEvaluationPage() {
       });
 
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-accept`,
+        `/api/candidatures/experts/${candidature.id}/interview-accept`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -269,7 +269,7 @@ export default function InterviewEvaluationPage() {
     if (!candidature) return;
     try {
       // Save notes first
-      await fetch(`http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-notes`, {
+      await fetch(`/api/candidatures/experts/${candidature.id}/interview-notes`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -277,7 +277,7 @@ export default function InterviewEvaluationPage() {
       });
 
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${candidature.id}/interview-reject`,
+        `/api/candidatures/experts/${candidature.id}/interview-reject`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -305,7 +305,7 @@ export default function InterviewEvaluationPage() {
     if (!candidature) return;
     try {
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${candidature.id}/for20`,
+        `/api/candidatures/experts/${candidature.id}/for20`,
         { credentials: "include" }
       );
       if (response.ok) {
@@ -407,7 +407,7 @@ export default function InterviewEvaluationPage() {
                   onClick={async () => {
                     try {
                       const response = await fetch(
-                        `http://localhost:8082/api/candidatures/experts/${candidature.id}/confirm-interview`,
+                        `/api/candidatures/experts/${candidature.id}/confirm-interview`,
                         { method: "POST", credentials: "include" }
                       );
                       if (response.ok) {

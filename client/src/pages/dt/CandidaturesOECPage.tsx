@@ -88,7 +88,7 @@ export default function CandidaturesOECPage() {
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/oec-applications/all", {
+      const response = await fetch("/api/oec-applications/all", {
         credentials: "include"
       });
       if (response.ok) {
@@ -118,7 +118,7 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/oec-applications/${id}/approve`, {
+      const response = await fetch(`/api/oec-applications/${id}/approve`, {
         method: "POST",
         credentials: "include"
       });
@@ -164,7 +164,7 @@ export default function CandidaturesOECPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8082/api/oec-applications/${selectedApplication.id}/reject`, {
+      const response = await fetch(`/api/oec-applications/${selectedApplication.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -502,7 +502,7 @@ export default function CandidaturesOECPage() {
                     className="shrink-0 h-7 px-2 border-blue-300 text-blue-700 hover:bg-blue-100"
                     onClick={async () => {
                       try {
-                        const response = await fetch(`http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/doc1`, {
+                        const response = await fetch(`/api/candidatures/oec/${selectedApplication.id}/doc1`, {
                           credentials: "include"
                         });
                         if (!response.ok) throw new Error("Erreur lors du téléchargement");

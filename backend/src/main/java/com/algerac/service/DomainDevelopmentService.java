@@ -21,7 +21,6 @@ import java.util.Random;
 public class DomainDevelopmentService {
 
     private final DomainDevelopmentRepository domainDevRepository;
-    private final NotificationService notificationService;
 
     /**
      * Soumettre une demande de développement de domaine

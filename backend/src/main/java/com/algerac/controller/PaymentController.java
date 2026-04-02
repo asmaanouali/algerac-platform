@@ -221,6 +221,7 @@ public class PaymentController {
     /**
      * Legacy: Simuler un paiement (gardé pour compatibilité)
      */
+    @SuppressWarnings("deprecation")
     @PostMapping("/{id}/process")
     public ResponseEntity<ApiResponse> processPayment(
             @PathVariable Long id,

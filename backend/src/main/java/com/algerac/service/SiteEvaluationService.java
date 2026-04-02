@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.*;
+import java.security.SecureRandom;
 
 /**
  * Service gérant la Phase II : Évaluation sur site
@@ -83,7 +84,7 @@ public class SiteEvaluationService {
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé: " + memberId));
 
             String orderNumber = "OM-" + Year.now().getValue() + "-" +
-                String.format("%04d", new Random().nextInt(9999));
+                String.format("%04d", new SecureRandom().nextInt(9999));
 
             MissionOrder order = MissionOrder.builder()
                 .request(request)
@@ -195,7 +196,7 @@ public class SiteEvaluationService {
         List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
 
         String planCode = "PLAN-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         EvaluationPlan plan = EvaluationPlan.builder()
             .request(request)
@@ -384,7 +385,7 @@ public class SiteEvaluationService {
         AccreditationRequest request = getRequestOrThrow(requestId);
 
         String gapCode = "FOR02-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         Gap gap = Gap.builder()
             .request(request)

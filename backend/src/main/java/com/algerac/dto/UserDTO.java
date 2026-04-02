@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -22,6 +24,7 @@ public class UserDTO {
     private String email;
     private String phone;
     private String role;
+    private List<String> roles; // All roles this user can switch to
     private String userType;
     private String status;
     private String fonction;
@@ -63,7 +66,10 @@ public class UserDTO {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .telephone(user.getPhone())
-                .role(user.getRoleLowercase())
+                .role(user.getRole() != null ? user.getRole().name() : null)
+                .roles(user.getAllRoles().stream()
+                        .map(r -> r.name())
+                        .collect(Collectors.toList()))
                 .userType(user.getUserType())
                 .fonction(user.getFonction())
                 .status(user.getStatus() != null ? user.getStatus().name() : null)

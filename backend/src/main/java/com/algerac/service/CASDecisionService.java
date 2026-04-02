@@ -49,6 +49,10 @@ public class CASDecisionService {
     public CASDecision recordDecision(Long requestId, String decisionNumber, 
                                      CASDecisionType decisionType, String justification,
                                      String scope, String conditions, User currentUser) {
+        if (currentUser.getRole() != UserRole.CAS_PRESIDENT && currentUser.getRole() != UserRole.CAS_MEMBER && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls les membres du CAS ou le CD peuvent enregistrer une décision");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -98,6 +102,7 @@ public class CASDecisionService {
                 break;
                 
             case REPORT_DECISION:
+                request.setStatus(RequestStatus.CAS_DECISION_POSTPONEMENT);
                 request.setCurrentStep("Décision reportée - informations complémentaires");
                 request.setPendingWith("CD/RA");
                 break;
@@ -156,6 +161,10 @@ public class CASDecisionService {
                                                     String scope, String technicalDomains,
                                                     String methodsAndStandards, String concernedSites,
                                                     String limitations, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls RA/CD peuvent délivrer le certificat");
+        }
+        
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
@@ -200,6 +209,10 @@ public class CASDecisionService {
     public AccreditationCertificate signAndPublishCertificate(Long certificateId, 
                                                              String certificateUrl,
                                                              String technicalAnnexUrl, User currentUser) {
+        if (currentUser.getRole() != UserRole.DG && currentUser.getRole() != UserRole.DT) {
+            throw new RuntimeException("Seuls DG/DT peuvent signer et publier le certificat");
+        }
+        
         AccreditationCertificate certificate = certificateRepository.findById(certificateId)
                 .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
         
@@ -212,9 +225,8 @@ public class CASDecisionService {
         certificate = certificateRepository.save(certificate);
         
         AccreditationRequest request = certificate.getRequest();
-        request.setStatus(RequestStatus.CERTIFICATE_ISSUED);
-        request.setCurrentStep("Certificat délivré");
-        request.setStatus(RequestStatus.ACTIVE); // Accréditation active
+        request.setStatus(RequestStatus.ACTIVE);
+        request.setCurrentStep("Certificat délivré - Accréditation active");
         requestRepository.save(request);
         
         // Créer le plan de surveillance

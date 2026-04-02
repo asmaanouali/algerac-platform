@@ -37,7 +37,6 @@ public class ConventionService {
         
         if (request.getStatus() != RequestStatus.RECEIVABLE && 
             request.getStatus() != RequestStatus.QUOTATION_PREPARATION &&
-            request.getStatus() != RequestStatus.QUOTATION_SENT_TO_DAG &&
             request.getStatus() != RequestStatus.QUOTATION_APPROVED_BY_DAG &&
             request.getStatus() != RequestStatus.CONVENTION_PREPARATION &&
             request.getStatus() != RequestStatus.QUOTATION_CONVENTION_CD_MODIF) {
@@ -112,7 +111,13 @@ public class ConventionService {
         convention.setValidatedByOecDate(LocalDateTime.now());
         convention = conventionRepository.save(convention);
         
-        log.info("Convention {} validée par l'OEC {}", 
+        // Mettre à jour le statut de la demande
+        request.setStatus(RequestStatus.CONVENTION_VALIDATED);
+        request.setCurrentStep("Convention validée par l'OEC");
+        request.setPendingWith("RA");
+        requestRepository.save(request);
+        
+        log.info("Convention {} validée par l'OEC {}",
                 convention.getConventionNumber(), currentUser.getOrganizationName());
         
         return convention;

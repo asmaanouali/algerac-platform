@@ -61,7 +61,7 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8082/api/users", {
+      const response = await fetch("/api/users", {
         credentials: "include"
       });
       

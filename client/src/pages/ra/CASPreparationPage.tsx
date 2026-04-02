@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Gavel, CalendarDays, Users, Vote, Send, FileCheck } from "lucide-react";
+import { Loader2, Gavel, CalendarDays, Users, Vote, Send, FileCheck, Play, ShieldCheck, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function CASPreparationPage() {
@@ -22,10 +22,12 @@ export default function CASPreparationPage() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
+  const [attendees, setAttendees] = useState<any[]>([]);
   const [experts, setExperts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showDecision, setShowDecision] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({ meetingDate: "", agenda: "", dossierSummary: "" });
   const [decisionForm, setDecisionForm] = useState({ decision: "ACCORDER", presidentNotes: "" });
 
@@ -57,8 +59,12 @@ export default function CASPreparationPage() {
         const forReq = all.filter((m: any) => m.requestId === req.id);
         setMeetings(forReq);
         if (forReq.length > 0) {
-          const vRes = await fetch(`/api/workflow/cas/${forReq[0].id}/votes`, { credentials: "include" });
+          const [vRes, aRes] = await Promise.all([
+            fetch(`/api/workflow/cas/${forReq[0].id}/votes`, { credentials: "include" }),
+            fetch(`/api/workflow/cas/${forReq[0].id}/attendees`, { credentials: "include" }),
+          ]);
           if (vRes.ok) setVotes(await vRes.json());
+          if (aRes.ok) setAttendees(await aRes.json());
         }
       }
     } catch (e) { console.error(e); }
@@ -187,75 +193,254 @@ export default function CASPreparationPage() {
                         <div className="space-y-4">
                           {meetings.length === 0 ? (
                             <p className="text-center text-muted-foreground py-8">Aucune réunion planifiée</p>
-                          ) : meetings.map((meeting: any) => (
-                            <div key={meeting.id} className="border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
-                              <div className="flex justify-between">
-                                <div>
-                                  <p className="font-semibold">{meeting.meetingCode}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {meeting.meetingDate ? new Date(meeting.meetingDate).toLocaleString("fr-FR") : "Date à définir"} — {meeting.location}
-                                  </p>
-                                </div>
-                                <Badge variant="outline">{meeting.status}</Badge>
-                              </div>
-                              {meeting.agenda && <div><p className="text-xs font-medium text-muted-foreground">Ordre du jour</p><p className="text-sm">{meeting.agenda}</p></div>}
-                              {meeting.dossierSummary && <div><p className="text-xs font-medium text-muted-foreground">Synthèse du dossier</p><p className="text-sm">{meeting.dossierSummary}</p></div>}
-
-                              <h4 className="font-medium text-sm mt-2">Membres CAS disponibles</h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                {experts.slice(0, 4).map((exp: any) => (
-                                  <div key={exp.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                    <Users className="w-4 h-4 text-primary" />
-                                    <span>{exp.fullName}</span>
+                          ) : meetings.map((meeting: any) => {
+                            const statusLabels: Record<string, { label: string; color: string }> = {
+                              PLANNED: { label: "Planifiée", color: "bg-blue-100 text-blue-800" },
+                              SUMMONS_SENT: { label: "Convocations envoyées", color: "bg-indigo-100 text-indigo-800" },
+                              ATTENDEES_CONFIRMED: { label: "Présences confirmées", color: "bg-cyan-100 text-cyan-800" },
+                              DOSSIER_SENT: { label: "Dossiers transmis", color: "bg-violet-100 text-violet-800" },
+                              IN_PROGRESS: { label: "En cours", color: "bg-orange-100 text-orange-800" },
+                              VOTING: { label: "Vote ouvert", color: "bg-emerald-100 text-emerald-800" },
+                              DECIDED: { label: "Décidé", color: "bg-green-100 text-green-800" },
+                              CLOSED: { label: "Clôturée", color: "bg-gray-100 text-gray-800" },
+                            };
+                            const si = statusLabels[meeting.status] || { label: meeting.status, color: "bg-gray-100 text-gray-800" };
+                            return (
+                              <div key={meeting.id} className="border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
+                                <div className="flex justify-between">
+                                  <div>
+                                    <p className="font-semibold">{meeting.meetingCode}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {meeting.meetingDate ? new Date(meeting.meetingDate).toLocaleString("fr-FR") : "Date à définir"} — {meeting.location}
+                                    </p>
                                   </div>
-                                ))}
+                                  <Badge className={si.color}>{si.label}</Badge>
+                                </div>
+                                {meeting.agenda && <div><p className="text-xs font-medium text-muted-foreground">Ordre du jour</p><p className="text-sm">{meeting.agenda}</p></div>}
+                                {meeting.dossierSummary && <div><p className="text-xs font-medium text-muted-foreground">Synthèse du dossier</p><p className="text-sm">{meeting.dossierSummary}</p></div>}
+
+                                {/* PRO 07 Workflow steps */}
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <p className="text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                                    <ArrowRight className="w-4 h-4" /> Flux PRO 07 — Étapes de la réunion
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {[
+                                      { key: "PLANNED", label: "Planifiée" },
+                                      { key: "SUMMONS_SENT", label: "Convoquée" },
+                                      { key: "ATTENDEES_CONFIRMED", label: "Présences" },
+                                      { key: "DOSSIER_SENT", label: "Dossier" },
+                                      { key: "IN_PROGRESS", label: "En cours" },
+                                      { key: "VOTING", label: "Vote" },
+                                      { key: "DECIDED", label: "Décidé" },
+                                    ].map((step) => {
+                                      const order = ["PLANNED", "SUMMONS_SENT", "ATTENDEES_CONFIRMED", "DOSSIER_SENT", "IN_PROGRESS", "VOTING", "DECIDED"];
+                                      const isCompleted = order.indexOf(step.key) < order.indexOf(meeting.status);
+                                      const isCurrent = step.key === meeting.status;
+                                      return (
+                                        <Badge key={step.key} className={
+                                          isCompleted ? "bg-green-100 text-green-700" :
+                                          isCurrent ? "bg-primary text-white" : "bg-gray-100 text-gray-500"
+                                        }>
+                                          {isCompleted && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                          {step.label}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Attendees */}
+                                <div>
+                                  <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                                    <Users className="w-4 h-4" /> Membres CAS ({attendees.length} confirmés)
+                                  </h4>
+                                  {attendees.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {attendees.map((a: any, i: number) => (
+                                        <div key={i} className={`flex items-center gap-2 p-2 rounded text-sm ${a.hasConflictOfInterest ? "bg-red-50 border border-red-200" : "bg-gray-50"}`}>
+                                          {a.hasConflictOfInterest ? (
+                                            <ShieldCheck className="w-4 h-4 text-red-500 shrink-0" />
+                                          ) : (
+                                            <Users className="w-4 h-4 text-primary shrink-0" />
+                                          )}
+                                          <span>{a.voterName}</span>
+                                          {a.hasVoted && <CheckCircle2 className="w-3 h-3 text-green-500 ml-auto" />}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {experts.slice(0, 4).map((exp: any) => (
+                                        <div key={exp.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                                          <Users className="w-4 h-4 text-primary" />
+                                          <span>{exp.fullName}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* PRO 07 Actions */}
+                                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                                  {meeting.status === "PLANNED" && (
+                                    <Button size="sm" onClick={async () => {
+                                      setSubmitting(true);
+                                      try {
+                                        await apiRequest("POST", `/api/workflow/cas/${meeting.id}/send-summons`, {});
+                                        toast({ title: "Convocations envoyées", description: "PRO 07 — Les membres CAS ont été convoqués" });
+                                        selectRequest(selectedRequest); loadData();
+                                      } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                                      setSubmitting(false);
+                                    }} disabled={submitting}>
+                                      <Send className="w-3 h-3 mr-1" />Envoyer convocations
+                                    </Button>
+                                  )}
+                                  {["PLANNED", "SUMMONS_SENT"].includes(meeting.status) && (
+                                    <Button size="sm" variant="outline" onClick={async () => {
+                                      setSubmitting(true);
+                                      try {
+                                        await apiRequest("POST", `/api/workflow/cas/${meeting.id}/send-dossier`, {});
+                                        toast({ title: "Dossier transmis", description: "PRO 07 §5.3 — Dossier disponible pour les membres" });
+                                        selectRequest(selectedRequest); loadData();
+                                      } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                                      setSubmitting(false);
+                                    }} disabled={submitting}>
+                                      <FileCheck className="w-3 h-3 mr-1" />Transmettre dossier
+                                    </Button>
+                                  )}
+                                  {["ATTENDEES_CONFIRMED", "DOSSIER_SENT"].includes(meeting.status) && (
+                                    <Button size="sm" onClick={async () => {
+                                      setSubmitting(true);
+                                      try {
+                                        await apiRequest("POST", `/api/workflow/cas/${meeting.id}/start-meeting`, {});
+                                        toast({ title: "Réunion démarrée" });
+                                        selectRequest(selectedRequest); loadData();
+                                      } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                                      setSubmitting(false);
+                                    }} disabled={submitting}>
+                                      <Play className="w-3 h-3 mr-1" />Démarrer réunion
+                                    </Button>
+                                  )}
+                                  {meeting.status === "IN_PROGRESS" && (
+                                    <Button size="sm" onClick={async () => {
+                                      setSubmitting(true);
+                                      try {
+                                        await apiRequest("POST", `/api/workflow/cas/${meeting.id}/open-vote`, {});
+                                        toast({ title: "Vote ouvert" });
+                                        selectRequest(selectedRequest); loadData();
+                                      } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                                      setSubmitting(false);
+                                    }} disabled={submitting}>
+                                      <Vote className="w-3 h-3 mr-1" />Ouvrir le vote
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </TabsContent>
 
                       <TabsContent value="votes">
                         <div className="space-y-4">
-                          <h3 className="font-medium">Résultats des Votes</h3>
-                          {votes.length > 0 ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Membre</TableHead>
-                                  <TableHead>Vote</TableHead>
-                                  <TableHead>Justification</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {votes.map((v: any) => (
-                                  <TableRow key={v.id}>
-                                    <TableCell>{v.voterName}</TableCell>
-                                    <TableCell>
-                                      <Badge variant={v.vote === "ACCORDER" ? "default" : v.vote === "REFUSER" ? "destructive" : "secondary"}>
-                                        {v.vote}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-sm">{v.justification}</TableCell>
+                          <h3 className="font-medium flex items-center gap-2"><Vote className="w-5 h-5" />Avis FOR 14 des Membres CAS</h3>
+                          {votes.filter((v: any) => v.vote && v.vote !== "PENDING").length > 0 ? (
+                            <>
+                              {/* Vote summary */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {["ACCORDER", "REFUSER", "AJOURNER", "ABSTENTION"].map(key => {
+                                  const count = votes.filter((v: any) => v.vote === key || v.vote?.startsWith(key)).length;
+                                  const colors: Record<string, string> = {
+                                    ACCORDER: "bg-green-100 text-green-800",
+                                    REFUSER: "bg-red-100 text-red-800",
+                                    AJOURNER: "bg-amber-100 text-amber-800",
+                                    ABSTENTION: "bg-gray-100 text-gray-800",
+                                  };
+                                  const labels: Record<string, string> = {
+                                    ACCORDER: "Accorder", REFUSER: "Refuser", AJOURNER: "Ajourner", ABSTENTION: "Abstention",
+                                  };
+                                  return (
+                                    <div key={key} className={`text-center p-3 rounded-lg ${colors[key]}`}>
+                                      <p className="text-xl font-bold">{count}</p>
+                                      <p className="text-xs">{labels[key]}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Membre</TableHead>
+                                    <TableHead>Avis</TableHead>
+                                    <TableHead>Justification</TableHead>
+                                    <TableHead>Conformité</TableHead>
+                                    <TableHead>Compétence</TableHead>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                                </TableHeader>
+                                <TableBody>
+                                  {votes.filter((v: any) => v.vote && v.vote !== "PENDING").map((v: any) => (
+                                    <TableRow key={v.id}>
+                                      <TableCell className="font-medium">{v.voterName}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={v.vote?.startsWith("ACCORDER") ? "default" : v.vote === "REFUSER" ? "destructive" : "secondary"}>
+                                          {v.vote}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-sm max-w-[200px] truncate">{v.justification}</TableCell>
+                                      <TableCell className="text-xs">{v.for14ConformityAssessment || "—"}</TableCell>
+                                      <TableCell className="text-xs">{v.for14CompetenceAssessment || "—"}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </>
                           ) : (
-                            <p className="text-sm text-muted-foreground">Aucun vote enregistré</p>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground p-4 bg-gray-50 rounded-lg">
+                              <Clock className="w-5 h-5 shrink-0" />
+                              <p>Aucun avis FOR 14 enregistré — en attente d'ouverture du vote</p>
+                            </div>
                           )}
 
                           {meetings.length > 0 && meetings[0].status !== "DECIDED" && (
                             <Button onClick={() => setShowDecision(true)}>
-                              <Gavel className="w-4 h-4 mr-2" />Prendre la Décision Finale
+                              <Gavel className="w-4 h-4 mr-2" />Prendre la Décision Finale (FOR 15)
                             </Button>
                           )}
 
                           {meetings.length > 0 && meetings[0].finalDecision && (
                             <Card className="bg-primary/5 border-primary/20">
-                              <CardContent className="pt-4">
-                                <p className="font-semibold">Décision finale : {meetings[0].finalDecision}</p>
-                                {meetings[0].presidentNotes && <p className="text-sm mt-1">{meetings[0].presidentNotes}</p>}
+                              <CardContent className="pt-4 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Gavel className="w-5 h-5 text-primary" />
+                                  <p className="font-semibold text-lg">Décision finale (FOR 15)</p>
+                                </div>
+                                <Badge className={
+                                  meetings[0].finalDecision?.startsWith("ACCORDER") ? "bg-green-100 text-green-800" :
+                                  meetings[0].finalDecision === "REFUSER" ? "bg-red-100 text-red-800" :
+                                  "bg-amber-100 text-amber-800"
+                                }>
+                                  {meetings[0].finalDecision}
+                                </Badge>
+                                {meetings[0].for15DecisionJustification && (
+                                  <div className="p-3 bg-white/50 rounded border">
+                                    <p className="text-xs font-medium text-muted-foreground">Justification (PRO 16)</p>
+                                    <p className="text-sm mt-1">{meetings[0].for15DecisionJustification}</p>
+                                  </div>
+                                )}
+                                {meetings[0].presidentNotes && (
+                                  <div className="p-3 bg-white/50 rounded border">
+                                    <p className="text-xs font-medium text-muted-foreground">Notes du Président</p>
+                                    <p className="text-sm mt-1">{meetings[0].presidentNotes}</p>
+                                  </div>
+                                )}
+                                {meetings[0].for15AppealRightsNotice && (
+                                  <div className="p-3 bg-indigo-50/50 rounded border border-indigo-200">
+                                    <p className="text-xs font-medium text-indigo-800">Droit de recours (GEN 04)</p>
+                                    <p className="text-sm mt-1 text-indigo-700">{meetings[0].for15AppealRightsNotice}</p>
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
                           )}

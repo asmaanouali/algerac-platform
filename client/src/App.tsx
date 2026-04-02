@@ -108,6 +108,8 @@ import MultiSitePage from "@/pages/cd/MultiSitePage";
 import RemoteEvaluationPage from "@/pages/cd/RemoteEvaluationPage";
 import RiskOpportunityPage from "@/pages/admin/RiskOpportunityPage";
 import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
+import OECTransferRequestPage from "@/pages/oec/TransferRequestPage";
+import TransferDecisionPage from "@/pages/cas/TransferDecisionPage";
 
 // Missing sidebar pages
 import OECDocumentsPage from "@/pages/oec/DocumentsPage";
@@ -154,6 +156,7 @@ function Router() {
       <Route path="/oec/revue-ecarts" component={OECGapReviewPage} />
       <Route path="/oec/documents" component={OECDocumentsPage} />
       <Route path="/oec/certificates" component={OECCertificatesPage} />
+      <Route path="/oec/transfert" component={OECTransferRequestPage} />
       <Route path="/oec/profile" component={OECProfilePage} />
       
       {/* RA Routes */}
@@ -206,8 +209,7 @@ function Router() {
       <Route path="/users" component={UsersManagementPage} />
       <Route path="/admin/utilisateurs" component={UsersManagementPage} />
       <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
-      <Route path="/admin/risques" component={RiskOpportunityPage} />
-      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
+      <Route path="/risques-opportunites" component={RiskOpportunityPage} />
       <Route path="/dt" component={DTDashboard} />
       <Route path="/dt/dashboard" component={DTDashboard} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
@@ -263,12 +265,14 @@ function Router() {
       <Route path="/cas" component={CASMemberDashboard} />
       <Route path="/cas/dashboard" component={CASMemberDashboard} />
       <Route path="/cas/reunions" component={CASMemberDashboard} />
+      <Route path="/cas/transferts" component={TransferDecisionPage} />
       
       {/* CAS President Routes */}
       <Route path="/cas-president" component={CASPresidentDashboard} />
       <Route path="/cas-president/dashboard" component={CASPresidentDashboard} />
       <Route path="/cas-president/reunions" component={CASPresidentDashboard} />
       <Route path="/cas-president/decisions" component={CASPresidentDashboard} />
+      <Route path="/cas-president/transferts" component={TransferDecisionPage} />
       
       {/* DG Routes */}
       <Route path="/dg" component={DGDashboard} />

@@ -83,8 +83,8 @@ export default function UtilisateursPendingPage() {
   const fetchPendingApplications = async () => {
     try {
       const [oecRes, expertRes] = await Promise.all([
-        fetch("http://localhost:8082/api/candidatures/oec/approved", { credentials: "include" }),
-        fetch("http://localhost:8082/api/candidatures/experts/approved", { credentials: "include" })
+        fetch("/api/candidatures/oec/approved", { credentials: "include" }),
+        fetch("/api/candidatures/experts/approved", { credentials: "include" })
       ]);
       const oecData = oecRes.ok ? await oecRes.json() : [];
       const expertData = expertRes.ok ? await expertRes.json() : [];
@@ -105,8 +105,8 @@ export default function UtilisateursPendingPage() {
     if (!selectedApplication) return;
     const isExpert = !!selectedApplication.userType;
     const endpoint = isExpert
-      ? `http://localhost:8082/api/candidatures/experts/${selectedApplication.id}/create-account`
-      : `http://localhost:8082/api/candidatures/oec/${selectedApplication.id}/create-account`;
+      ? `/api/candidatures/experts/${selectedApplication.id}/create-account`
+      : `/api/candidatures/oec/${selectedApplication.id}/create-account`;
 
     setActionLoading(true);
     try {

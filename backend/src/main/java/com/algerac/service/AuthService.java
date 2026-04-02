@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +70,7 @@ public class AuthService {
         
         User user = User.builder()
                 .email(request.getEmail())
-                .password(passwordEncoder.encode("temp_password_" + System.currentTimeMillis())) // Temporary
+                .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString())) // Secure temporary password
                 .fullName(request.getNomOrganisme())
                 .role(UserRole.OEC)
                 .organizationName(request.getNomOrganisme())
@@ -154,7 +154,7 @@ public class AuthService {
         String registrationId = generateRegistrationId(request.getUserType());
         User user = User.builder()
             .email(request.getEmail())
-            .password(passwordEncoder.encode("temp_password_" + System.currentTimeMillis())) // Temporary
+            .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString())) // Secure temporary password
             .fullName(fullName)
             .role(UserRole.EXPERT)
             .phone(request.getTelephone())
@@ -279,8 +279,8 @@ public class AuthService {
         User user = userOpt.get();
         
         // Générer un code OTP à 6 chiffres
-        String otp = String.format("%06d", new Random().nextInt(1_000_000));
-        log.info("[AUTH SERVICE] OTP généré: {}", otp);
+        String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
+        log.info("[AUTH SERVICE] OTP généré pour {}", email);
         
         // Token unique pour le frontend (UUID)
         String token = java.util.UUID.randomUUID().toString();
@@ -314,11 +314,9 @@ public class AuthService {
     @Transactional(readOnly = true)
     public void verifyOtp(String token, String otp) {
         log.info("[AUTH SERVICE] Vérification OTP pour token: {}", token);
-        log.info("[AUTH SERVICE] OTP reçu brut: '{}'", otp);
         
         // Nettoyer l'OTP (enlever espaces, etc.)
         String cleanedOtp = otp != null ? otp.trim() : "";
-        log.info("[AUTH SERVICE] OTP après nettoyage: '{}'", cleanedOtp);
         
         Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
         if (tokenOpt.isEmpty()) {
@@ -327,7 +325,6 @@ public class AuthService {
         }
         
         PasswordResetToken resetToken = tokenOpt.get();
-        log.info("[AUTH SERVICE] Token complet trouvé en base: '{}'", resetToken.getToken());
         
         // Vérifier l'expiration
         if (resetToken.isExpired()) {
@@ -337,7 +334,6 @@ public class AuthService {
         
         // Extraire et vérifier l'OTP
         String[] parts = resetToken.getToken().split(":");
-        log.info("[AUTH SERVICE] Parties du token: length={}, parts[0]='{}'", parts.length, parts.length > 0 ? parts[0] : "N/A");
         
         if (parts.length != 2) {
             log.error("[AUTH SERVICE] Format de token invalide. Token: '{}'", resetToken.getToken());
@@ -345,12 +341,9 @@ public class AuthService {
         }
         
         String storedOtp = parts[1].trim();
-        log.info("[AUTH SERVICE] OTP stocké: '{}' (length={})", storedOtp, storedOtp.length());
-        log.info("[AUTH SERVICE] OTP reçu: '{}' (length={})", cleanedOtp, cleanedOtp.length());
-        log.info("[AUTH SERVICE] Comparaison equals: {}", storedOtp.equals(cleanedOtp));
         
         if (!storedOtp.equals(cleanedOtp)) {
-            log.warn("[AUTH SERVICE] OTP incorrect. Attendu: '{}', Reçu: '{}'", storedOtp, cleanedOtp);
+            log.warn("[AUTH SERVICE] OTP incorrect pour token: {}", token);
             throw new RuntimeException("Code incorrect.");
         }
         

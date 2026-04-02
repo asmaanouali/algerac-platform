@@ -77,11 +77,11 @@ export default function InterviewPlanningPage() {
     try {
       setLoading(true);
       // Auto-expire unconfirmed interviews past 7-day deadline
-      await fetch("http://localhost:8082/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
+      await fetch("/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
       
       const [interviewsRes, candidaturesRes] = await Promise.all([
-        fetch("http://localhost:8082/api/candidatures/experts/interviews", { credentials: "include" }),
-        fetch("http://localhost:8082/api/candidatures/experts", { credentials: "include" }),
+        fetch("/api/candidatures/experts/interviews", { credentials: "include" }),
+        fetch("/api/candidatures/experts", { credentials: "include" }),
       ]);
 
       if (interviewsRes.ok) {
@@ -198,7 +198,7 @@ export default function InterviewPlanningPage() {
   const handleConfirmInterview = async (interview: Interview) => {
     try {
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${interview.id}/confirm-interview`,
+        `/api/candidatures/experts/${interview.id}/confirm-interview`,
         { method: "POST", credentials: "include" }
       );
       if (response.ok) {
@@ -224,7 +224,7 @@ export default function InterviewPlanningPage() {
       const day = String(newDateObj.getDate()).padStart(2, '0');
       const dateTime = `${year}-${month}-${day}T${newTime}:00`;
       const response = await fetch(
-        `http://localhost:8082/api/candidatures/experts/${rescheduleInterview.id}/update-interview-date`,
+        `/api/candidatures/experts/${rescheduleInterview.id}/update-interview-date`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

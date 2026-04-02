@@ -1,19 +1,22 @@
 import { z } from "zod";
 
 // === ENUMS ===
-export const userTypes = ["admin", "ra", "dt", "oec", "expert"] as const;
-export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT"] as const;
+export const userTypes = ["admin", "ra", "dt", "oec", "expert", "ree", "et", "eq", "dag", "dg", "cas_member", "cas_president", "ges_competences", "rq"] as const;
+export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT", "REE", "ET", "EQ", "CAS_MEMBER", "CAS_PRESIDENT", "DG", "DAG", "GES_COMPETENCES", "EVALUATEUR", "FORMATEUR", "RQ"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
 export const requestStatuses = [
   // Phase initiale
   "draft",
   "submitted",
+  "awaiting_registration_fee",
   "pending_payment",
+  "payment_proof_submitted",
   "payment_completed",
   "assigned_to_ra",
 
   // Phase recevabilité
   "receivability_study",
+  "receivability_pending_cd_review",
   "receivable",
   "not_receivable",
   "receivability_correction",
@@ -32,31 +35,73 @@ export const requestStatuses = [
   "quotation_preparation",
   "quotation_sent_to_dag",
   "quotation_approved_by_dag",
-  "quotation_sent_to_dept",
-  "quotation_received_from_dept",
+  "convention_preparation",
+  "quotation_convention_pending_cd",
+  "quotation_convention_cd_modif",
   "quotation_sent_to_oec",
+  "quotation_oec_reminder",
   "quotation_validated",
   "quotation_expired",
 
   // Constitution équipe
   "team_designation",
+  "team_sent_to_cd",
+  "team_cd_approved",
+  "team_cd_changes_requested",
   "team_sent_to_oec",
+  "team_date_refused",
+  "team_member_recused",
   "team_recused",
+  "team_recusation_invalid",
   "team_validated",
 
-  // Revue documentaire
-  "documentary_review",
-  "documentary_review_deficiencies",
+  // Revue documentaire - Phase frais
+  "doc_review_awaiting_fee",
+  "doc_review_fee_pending_payment",
+  "doc_review_payment_submitted",
+  "doc_review_payment_validated",
+
+  // Revue documentaire - Phase analyse
+  "doc_review_in_progress",
+  "doc_review_results_submitted",
+  "doc_review_results_sent_to_cd",
+  "doc_review_results_sent_to_oec",
   "awaiting_oec_doc_response",
+  "doc_review_cd_decision",
   "documentary_review_completed",
 
-  // Préparation évaluation
+  // Legacy documentary review
+  "documentary_review",
+  "documentary_review_deficiencies",
+
+  // Préparation évaluation - Mandatements
+  "mandates_preparation",
+  "mandates_pending_cd",
+  "mandates_cd_modification",
+  "mandates_sent_to_team",
+  "mission_orders_pending",
+  "mission_orders_pending_dt",
+  "mission_orders_pending_dg",
+  "mission_orders_sent",
+
+  // Préparation évaluation - Plan
   "evaluation_plan_preparation",
+  "evaluation_plan_pending_ra",
+  "evaluation_plan_ra_approved",
+  "evaluation_plan_pending_cd",
   "evaluation_plan_validation",
   "evaluation_planned",
 
   // Évaluation
   "evaluation_in_progress",
+  "evaluation_opening_meeting",
+  "evaluation_ongoing",
+  "evaluation_consensus",
+  "evaluation_closing_meeting",
+  "evaluation_gaps_sent_to_oec",
+  "evaluation_oec_review",
+  "evaluation_oec_all_accepted",
+  "evaluation_docs_transmitted",
   "evaluation_completed",
 
   // Traitement écarts
@@ -94,6 +139,21 @@ export const requestStatuses = [
   "surveillance_scheduled",
   "surveillance_in_progress",
   "surveillance_completed",
+
+  // Renouvellement
+  "renewal_initiated",
+  "renewal_evaluation",
+  "renewal_completed",
+
+  // Extension
+  "extension_requested",
+  "extension_evaluation",
+  "extension_granted",
+
+  // Transfert
+  "transfer_initiated",
+  "transfer_review",
+  "transfer_completed",
 ] as const;
 
 // === ZOD SCHEMAS ===
@@ -162,7 +222,6 @@ export const insertDocumentSchema = z.object({
 });
 
 // === TYPES ===
-<<<<<<< HEAD
 export type UserType = (typeof userTypes)[number];
 export type UserRole = (typeof userRoles)[number];
 export type RequestType = (typeof requestTypes)[number];
@@ -182,12 +241,8 @@ export type User = {
   experience: string | null;
   diplomes: string | null;
   specialite: string | null;
-  /** @deprecated Use `specialite`. Some API responses may return this camelCase alias. */
-  speciality?: string | null;
   langues: string | null;
   nomOrganisme: string | null;
-  /** @deprecated Use `nomOrganisme`. Some API responses may return this English alias. */
-  organizationName?: string | null;
   typeOrganisme: string | null;
   porteeAccreditation: string | null;
   adresseSiege: string | null;
@@ -257,14 +312,6 @@ export type Notification = {
   read: boolean | null;
   createdAt: string | null;
 };
-=======
-export type User = typeof users.$inferSelect;
-export type InsertUser = Omit<typeof users.$inferInsert, "id" | "dateInscription" | "dateApprobation">;
-export type AccreditationRequest = typeof accreditationRequests.$inferSelect;
-export type InsertRequest = Omit<typeof accreditationRequests.$inferInsert, "id" | "referenceNumber">;
-export type Document = typeof documents.$inferSelect;
-export type Notification = typeof notifications.$inferSelect;
->>>>>>> bf3a4aa (before meeting progress)
 
 export type LoginRequest = {
   email: string;

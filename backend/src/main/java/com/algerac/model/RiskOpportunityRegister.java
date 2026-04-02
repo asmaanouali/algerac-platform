@@ -67,13 +67,35 @@ public class RiskOpportunityRegister {
     // Responsabilité
     @ManyToOne
     @JoinColumn(name = "owner_id")
-    private User owner;                     // Propriétaire du risque/opportunité
+    private User owner;                     // Créateur (RQ/CD/DT)
 
     private String ownerDepartment;         // Département responsable
 
+    // Évaluation du risque résiduel (Section 5.3)
+    @Column(columnDefinition = "TEXT")
+    private String residualDocControl;      // Maîtrise documentaire
+    @Column(columnDefinition = "TEXT")
+    private String residualCompetence;      // Compétence
+    @Column(columnDefinition = "TEXT")
+    private String residualControlLevel;    // Contrôle
+    @Enumerated(EnumType.STRING)
+    private RiskMastery residualMastery;    // Niveau global de maîtrise
+
+    // Validation workflow
+    @ManyToOne
+    @JoinColumn(name = "submitted_by_id")
+    private User submittedBy;              // RQ qui soumet à DG
+
+    @ManyToOne
+    @JoinColumn(name = "validated_by_id")
+    private User validatedBy;              // DG qui valide
+
+    private LocalDateTime submittedAt;
+    private LocalDateTime validatedAt;
+
     // Indicateurs
     @Column(columnDefinition = "TEXT")
-    private String keyIndicators;           // Indicateurs de suivi (JSON)
+    private String keyIndicators;           // Indicateurs de suivi
 
     // Revue périodique
     private LocalDate lastReviewDate;

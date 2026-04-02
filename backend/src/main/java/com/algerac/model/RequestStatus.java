@@ -37,6 +37,7 @@ public enum RequestStatus {
     QUOTATION_SENT_TO_OEC,              // Devis et convention envoyés à l'OEC par CD
     QUOTATION_OEC_REMINDER,             // Rappel envoyé à l'OEC (5 jours)
     QUOTATION_VALIDATED,                // Devis et convention validés par l'OEC
+    CONVENTION_VALIDATED,               // Convention validée par l'OEC
     QUOTATION_EXPIRED,                  // Délai dépassé (15 jours), dossier classé
     
     // Constitution équipe

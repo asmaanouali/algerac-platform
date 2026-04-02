@@ -139,6 +139,13 @@ public class PaymentService {
      */
     @Transactional
     public Payment setRegistrationFee(Long paymentId, BigDecimal amount, Long dagUserId) {
+        // Vérifier que l'utilisateur est bien DAG
+        User dagUser = userRepository.findById(dagUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
+        if (dagUser.getRole() != UserRole.DAG) {
+            throw new RuntimeException("Seul le DAG peut fixer les frais d'enregistrement");
+        }
+        
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
         
@@ -276,6 +283,13 @@ public class PaymentService {
      */
     @Transactional
     public Payment validatePaymentByDAG(Long paymentId, Long dagUserId, String comments) {
+        // Vérifier que l'utilisateur est bien DAG
+        User dagUser = userRepository.findById(dagUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
+        if (dagUser.getRole() != UserRole.DAG) {
+            throw new RuntimeException("Seul le DAG peut valider les paiements");
+        }
+        
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
         
@@ -334,6 +348,13 @@ public class PaymentService {
      */
     @Transactional
     public Payment rejectPaymentByDAG(Long paymentId, Long dagUserId, String comments) {
+        // Vérifier que l'utilisateur est bien DAG
+        User dagUser = userRepository.findById(dagUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
+        if (dagUser.getRole() != UserRole.DAG) {
+            throw new RuntimeException("Seul le DAG peut rejeter les paiements");
+        }
+        
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
         
@@ -362,9 +383,10 @@ public class PaymentService {
     }
     
     /**
-     * Ancien processPayment - gardé pour compatibilité mais ne déclenche plus 
-     * automatiquement le changement de statut
+     * @deprecated Utilisez submitPaymentProof() + validatePaymentByDAG() à la place.
+     * Gardé pour compatibilité uniquement - ne pas utiliser dans les nouveaux développements.
      */
+    @Deprecated
     @Transactional
     public Payment processPayment(Long paymentId, String paymentMethod, String transactionId) {
         Payment payment = paymentRepository.findById(paymentId)

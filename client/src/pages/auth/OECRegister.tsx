@@ -630,7 +630,7 @@ export default function OECRegister() {
         documents: docsList.length > 0 ? docsList : undefined
       };
 
-      const response = await fetch("http://localhost:8082/api/auth/signup/oec", {
+      const response = await fetch("/api/auth/signup/oec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

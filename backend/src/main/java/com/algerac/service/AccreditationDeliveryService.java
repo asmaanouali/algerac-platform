@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.*;
+import java.security.SecureRandom;
 
 /**
  * Service gérant la Phase III : Décision d'Accréditation et Délivrance
@@ -43,7 +44,7 @@ public class AccreditationDeliveryService {
         AccreditationRequest request = getRequestOrThrow(requestId);
 
         String reportNumber = "RAP-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         // Vérifier délai de 30 jours depuis clôture
         boolean withinDeadline = true;
@@ -199,7 +200,7 @@ public class AccreditationDeliveryService {
         AccreditationRequest request = getRequestOrThrow(requestId);
 
         String meetingCode = "CAS-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         CASMeeting meeting = CASMeeting.builder()
             .request(request)
@@ -235,7 +236,7 @@ public class AccreditationDeliveryService {
         AccreditationRequest request = getRequestOrThrow(requestId);
 
         String decisionNumber = "DEC-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         // Trouver le rapport le plus récent
         EvaluationReport report = reportRepository.findFirstByRequest_IdOrderByCreatedAtDesc(requestId)
@@ -348,7 +349,7 @@ public class AccreditationDeliveryService {
                 CASDecisionType dt = fd != null && fd.startsWith("ACCORDER") ? CASDecisionType.GRANT_FULL :
                     "REFUSER".equals(fd) ? CASDecisionType.REFUSAL : CASDecisionType.POSTPONEMENT;
                 String dn = "DEC-CAS-" + Year.now().getValue() + "-" +
-                    String.format("%04d", new Random().nextInt(9999));
+                    String.format("%04d", new SecureRandom().nextInt(9999));
                 CASDecision d = CASDecision.builder()
                     .request(request).decisionNumber(dn).decisionType(dt)
                     .meetingDate(meeting.getMeetingDate())
@@ -364,7 +365,7 @@ public class AccreditationDeliveryService {
         }
 
         String certNumber = "CERT-ALG-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         AccreditationCertificate certificate = AccreditationCertificate.builder()
             .request(request)
@@ -476,7 +477,7 @@ public class AccreditationDeliveryService {
             .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
 
         String planCode = "FOR66-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         SurveillancePlan plan = SurveillancePlan.builder()
             .certificate(certificate)

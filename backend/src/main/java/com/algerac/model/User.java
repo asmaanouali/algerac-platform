@@ -56,6 +56,10 @@ public class User {
     @Column(nullable = false)
     private UserRole role;
     
+    // Comma-separated list of all roles this user can switch to (e.g. "CD,CAS_MEMBER")
+    // If null or empty, the user only has the single 'role' above
+    private String roles;
+    
     private String organizationName; // For OEC entities
     private String phone;
     
@@ -192,5 +196,32 @@ public class User {
     // Helper method to get role as lowercase string (for JSON)
     public String getRoleLowercase() {
         return role != null ? role.name().toLowerCase() : null;
+    }
+    
+    /**
+     * Returns all roles this user can assume.
+     * If 'roles' field is set, parse it; otherwise return just the primary role.
+     */
+    public java.util.List<UserRole> getAllRoles() {
+        java.util.List<UserRole> result = new java.util.ArrayList<>();
+        if (roles != null && !roles.isBlank()) {
+            for (String r : roles.split(",")) {
+                try {
+                    result.add(UserRole.valueOf(r.trim()));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        // Always include the primary role
+        if (role != null && !result.contains(role)) {
+            result.add(0, role);
+        }
+        return result;
+    }
+    
+    /**
+     * Check if this user can assume the given role.
+     */
+    public boolean hasRole(UserRole targetRole) {
+        return getAllRoles().contains(targetRole);
     }
 }

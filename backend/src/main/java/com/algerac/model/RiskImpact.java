@@ -1,9 +1,7 @@
 package com.algerac.model;
 
 public enum RiskImpact {
-    NEGLIGIBLE,     // Négligeable
-    MINOR,          // Mineur
-    MODERATE,       // Modéré
-    MAJOR,          // Majeur
-    CRITICAL        // Critique
+    INSIGNIFICANT,  // Insignifiant (1) — conséquence négligeable
+    MODERATE,       // Modéré (2) — conséquence plus ou moins importante
+    SEVERE          // Grave (3) — conséquence sévère
 }

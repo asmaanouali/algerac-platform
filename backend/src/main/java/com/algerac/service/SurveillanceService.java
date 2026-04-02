@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.*;
+import java.security.SecureRandom;
 
 /**
  * Service gérant la Phase IV : Surveillance Périodique
@@ -40,13 +41,17 @@ public class SurveillanceService {
     @Transactional
     public SurveillanceEvaluation programmeSurveillance(Long certificateId, Long requestId,
             LocalDateTime plannedDate, String scope, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls RA/CD peuvent programmer la surveillance");
+        }
+        
         AccreditationCertificate certificate = certificateRepository.findById(certificateId)
             .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
         AccreditationRequest request = requestRepository.findById(requestId)
             .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
         String evalCode = "SURV-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         SurveillanceEvaluation survEval = SurveillanceEvaluation.builder()
             .certificate(certificate)
@@ -86,7 +91,7 @@ public class SurveillanceService {
         SurveillanceEvaluation survEval = getSurvEvalOrThrow(survEvalId);
 
         String formCode = "FOR77-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         RiskAnalysisForm form = RiskAnalysisForm.builder()
             .request(survEval.getRequest())
@@ -233,7 +238,7 @@ public class SurveillanceService {
             request.setPendingWith("RA");
             requestRepository.save(request);
         } else {
-            survEval.setStatus(SurveillanceEvaluationStatus.QUOTATION_SENT);
+            survEval.setStatus(SurveillanceEvaluationStatus.QUOTATION_REJECTED);
             // Log the rejection for follow-up
             // Log rejection in evaluation findings
             String existing = survEval.getEvaluationFindings() != null ? survEval.getEvaluationFindings() : "";
@@ -357,7 +362,7 @@ public class SurveillanceService {
         AccreditationRequest request = survEval.getRequest();
 
         String meetingCode = "CAS-SURV-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         CASMeeting meeting = CASMeeting.builder()
             .request(request)
@@ -398,7 +403,7 @@ public class SurveillanceService {
         AccreditationRequest request = survEval.getRequest();
 
         String decisionNumber = "DEC-SURV-" + Year.now().getValue() + "-" +
-            String.format("%04d", new Random().nextInt(9999));
+            String.format("%04d", new SecureRandom().nextInt(9999));
 
         CASDecision decision = CASDecision.builder()
             .request(request)

@@ -1,5 +1,6 @@
 package com.algerac.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -23,16 +24,19 @@ public class AccreditationTransfer {
     @Column(nullable = false, unique = true)
     private String transferCode;
 
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "original_request_id", nullable = false)
     private AccreditationRequest originalRequest;
 
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "original_certificate_id")
     private AccreditationCertificate originalCertificate;
 
     // Organisme source
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_oec_id", nullable = false)
     private User sourceOec;
 
@@ -41,7 +45,8 @@ public class AccreditationTransfer {
     private String sourceOrganizationDetails;
 
     // Organisme cible
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_oec_id")
     private User targetOec;
 
@@ -77,12 +82,17 @@ public class AccreditationTransfer {
     @Column(columnDefinition = "TEXT")
     private String continuityAssessment;
 
+    // Documents joints (stockés en JSON: [{name, type, data(base64)}])
+    @Column(columnDefinition = "TEXT")
+    private String attachedDocuments;
+
     // Décision
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TransferStatus status;
 
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "decision_by_id")
     private User decisionBy;               // CD ou DG
 
@@ -91,7 +101,8 @@ public class AccreditationTransfer {
     private String decisionJustification;
 
     // Nouveau certificat
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "new_certificate_id")
     private AccreditationCertificate newCertificate;
 

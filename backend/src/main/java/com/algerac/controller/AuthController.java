@@ -152,6 +152,18 @@ public class AuthController {
         
         try {
             com.algerac.model.UserRole newRole = com.algerac.model.UserRole.valueOf(roleName.toUpperCase());
+            
+            // Validate user actually has this role
+            User user = authService.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Utilisateur non trouvé"));
+            }
+            if (!user.hasRole(newRole)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Vous n'avez pas le rôle: " + roleName));
+            }
+            
             session.setAttribute("userRole", newRole);
             log.info("User {} switched role to {}", userId, newRole);
             return ResponseEntity.ok(ApiResponse.success("Rôle changé avec succès", newRole.name()));

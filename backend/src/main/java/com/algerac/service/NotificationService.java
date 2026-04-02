@@ -225,6 +225,30 @@ public class NotificationService {
                 oec.getOrganizationName(), request.getReferenceNumber());
     }
     
+    /**
+     * Notifier le DAG qu'une nouvelle demande nécessite la fixation des frais d'enregistrement
+     */
+    @Transactional
+    public void notifyDAGNewRequest(AccreditationRequest request) {
+        List<User> dags = userRepository.findByRole(UserRole.valueOf("DAG"));
+        
+        for (User dag : dags) {
+            Notification notification = Notification.builder()
+                    .user(dag)
+                    .title("Nouvelle demande - Frais à fixer")
+                    .message(String.format("La demande de %s nécessite la fixation des frais d'enregistrement.",
+                            request.getOec() != null ? request.getOec().getOrganizationName() : "OEC #" + request.getId()))
+                    .type("action_required")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            notificationRepository.save(notification);
+        }
+        
+        log.info("Notification envoyée aux DAG pour la nouvelle demande {}", request.getId());
+    }
+
     @Transactional
     public void notifyDAGNewQuotation(com.algerac.model.Quotation quotation) {
         List<User> dags = userRepository.findByRole(UserRole.valueOf("DAG"));

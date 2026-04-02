@@ -42,6 +42,38 @@ public class CASMeeting {
     @Column(columnDefinition = "TEXT")
     private String presidentNotes;
 
+    // PRO 07 - Convocation & quorum fields
+    private LocalDateTime summonsSentAt;
+    private LocalDateTime dossierSentAt;
+    private Integer quorumRequired;
+    private Integer attendeesConfirmed;
+    private Boolean quorumReached;
+
+    // PRO 16 - Decision details (FOR 15)
+    @Column(columnDefinition = "TEXT")
+    private String for15DecisionJustification;
+
+    @Column(columnDefinition = "TEXT")
+    private String for15Conditions;
+
+    @Column(columnDefinition = "TEXT")
+    private String for15ScopeDecision;
+
+    @Column(columnDefinition = "TEXT")
+    private String for15ReservesToLift;
+
+    private LocalDateTime for15ReservesDeadline;
+
+    @Column(columnDefinition = "TEXT")
+    private String for15AppealRightsNotice;
+
+    @Column(columnDefinition = "TEXT")
+    private String meetingMinutes; // PV de la réunion
+
+    private LocalDateTime votingOpenedAt;
+    private LocalDateTime votingClosedAt;
+    private LocalDateTime decidedAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist

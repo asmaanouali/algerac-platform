@@ -38,7 +38,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8082/api/users/create", {
+      const response = await fetch("/api/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

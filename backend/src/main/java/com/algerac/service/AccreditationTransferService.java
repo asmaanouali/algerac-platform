@@ -27,7 +27,6 @@ public class AccreditationTransferService {
     private final RequestRepository requestRepository;
     private final AccreditationCertificateRepository certificateRepository;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
 
     /**
      * Initier une demande de transfert d'accréditation
@@ -78,13 +77,15 @@ public class AccreditationTransferService {
      */
     @Transactional
     public AccreditationTransfer submitDocuments(Long transferId, String continuityAssessment,
-            Boolean managementContinuity, Boolean personnelContinuity, Boolean equipmentContinuity) {
+            Boolean managementContinuity, Boolean personnelContinuity, Boolean equipmentContinuity,
+            String attachedDocuments) {
 
         AccreditationTransfer transfer = getTransferOrThrow(transferId);
         transfer.setContinuityAssessment(continuityAssessment);
         transfer.setManagementSystemContinuity(managementContinuity);
         transfer.setPersonnelContinuity(personnelContinuity);
         transfer.setEquipmentContinuity(equipmentContinuity);
+        if (attachedDocuments != null) transfer.setAttachedDocuments(attachedDocuments);
         transfer.setStatus(TransferStatus.DOCUMENTS_SUBMITTED);
         transfer = transferRepository.save(transfer);
         log.info("Documents soumis pour le transfert {}", transfer.getTransferCode());

@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { WorkflowTimeline } from "@/components/WorkflowTimeline";
 import {
   Loader2, ArrowLeft, FileText, Building2, User, Mail, Phone,
   MapPin, Briefcase, Globe, Calendar, Shield, CheckCircle, Clock,
@@ -194,30 +195,8 @@ export default function RequestDetailPage() {
             <Badge className={`${statusInfo.color} text-sm px-3 py-1`}>{statusInfo.label}</Badge>
           </div>
 
-          {/* Progress */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">Progression</span>
-                  <span className="font-bold">{req.progress}%</span>
-                </div>
-                <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${req.progress}%` }} />
-                </div>
-                {req.currentPhase && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
-                    {req.currentPhase && <div><span className="text-muted-foreground">Phase :</span> <span className="font-medium">{req.currentPhase}</span></div>}
-                    {req.currentStep && <div><span className="text-muted-foreground">Étape :</span> <span className="font-medium">{req.currentStep}</span></div>}
-                    {req.pendingWith && <div><span className="text-muted-foreground">En attente de :</span> <span className="font-medium">{req.pendingWith}</span></div>}
-                  </div>
-                )}
-                {req.nextAction && (
-                  <p className="text-sm mt-2 text-blue-600 font-medium">→ {req.nextAction}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Progress - Workflow Timeline */}
+          <WorkflowTimeline requestId={req.id} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Request Info */}

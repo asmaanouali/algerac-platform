@@ -3,7 +3,6 @@ package com.algerac.service;
 import com.algerac.model.*;
 import com.algerac.repository.RemoteEvaluationRepository;
 import com.algerac.repository.RequestRepository;
-import com.algerac.repository.EvaluationTeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,6 @@ public class RemoteEvaluationService {
 
     private final RemoteEvaluationRepository remoteEvalRepository;
     private final RequestRepository requestRepository;
-    private final EvaluationTeamRepository teamRepository;
     private final NotificationService notificationService;
 
     /**

@@ -29,9 +29,13 @@ public class AccreditationTransferController {
     public ResponseEntity<?> initiate(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
             User user = getSessionUser(session);
+            // Si sourceOecId n'est pas fourni, utiliser l'utilisateur connecté (cas OEC)
+            Long sourceOecId = body.get("sourceOecId") != null
+                ? ((Number) body.get("sourceOecId")).longValue()
+                : user.getId();
             AccreditationTransfer transfer = transferService.initiateTransfer(
                 ((Number) body.get("requestId")).longValue(),
-                ((Number) body.get("sourceOecId")).longValue(),
+                sourceOecId,
                 (String) body.get("sourceOrgName"), (String) body.get("sourceOrgDetails"),
                 (String) body.get("targetOrgName"), (String) body.get("targetOrgDetails"),
                 TransferReason.valueOf((String) body.get("reason")),
@@ -50,12 +54,19 @@ public class AccreditationTransferController {
             @RequestBody Map<String, Object> body, HttpSession session) {
         try {
             getSessionUser(session);
+            // Convertir la liste de documents joints en JSON string
+            String attachedDocs = null;
+            if (body.get("attachedDocuments") != null) {
+                attachedDocs = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(body.get("attachedDocuments"));
+            }
             return ResponseEntity.ok(ApiResponse.success("Documents soumis",
                 transferService.submitDocuments(id,
                     (String) body.get("continuityAssessment"),
                     (Boolean) body.get("managementContinuity"),
                     (Boolean) body.get("personnelContinuity"),
-                    (Boolean) body.get("equipmentContinuity"))));
+                    (Boolean) body.get("equipmentContinuity"),
+                    attachedDocs)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -125,6 +136,12 @@ public class AccreditationTransferController {
     @GetMapping
     public ResponseEntity<?> getAll() {
         return ResponseEntity.ok(ApiResponse.success("Transferts", transferService.getAll()));
+    }
+
+    @GetMapping("/mine")
+    public ResponseEntity<?> getMyTransfers(HttpSession session) {
+        User user = getSessionUser(session);
+        return ResponseEntity.ok(ApiResponse.success("Mes transferts", transferService.getBySourceOec(user.getId())));
     }
 
     @GetMapping("/oec/{oecId}")

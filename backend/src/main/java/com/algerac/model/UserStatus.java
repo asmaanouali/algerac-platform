@@ -1,7 +1,9 @@
 package com.algerac.model;
 
 public enum UserStatus {
-    PENDING,                   // En attente de traitement (dossier soumis)
+    PENDING,                   // En attente de traitement (dossier FOR20 soumis)
+    PROFILE_PRESELECTED,       // Profil présélectionné par GES_COMPETENCES, en attente de FOR28
+    DOCUMENTS_SUBMITTED,       // Documents FOR28 soumis, en attente de planification d'entretien
     INTERVIEW_SCHEDULED,       // Dossier présélectionné, entretien planifié
     INTERVIEW_CONFIRMED,       // Entretien confirmé par les deux parties
     INTERVIEW_COMPLETED,       // Entretien effectué, en attente de décision

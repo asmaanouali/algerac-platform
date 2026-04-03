@@ -895,6 +895,37 @@ public class CandidatureController {
         }
     }
     
+    // ========== FOR28 PRESELECTION ENDPOINT ==========
+    
+    /**
+     * Présélectionne un profil après analyse du FOR20.
+     * Génère un token sécurisé et envoie un email avec le lien FOR28.
+     * Accessible par GES_COMPETENCES
+     */
+    @PostMapping("/experts/{id}/preselect-profile")
+    public ResponseEntity<?> preselectProfile(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
+            }
+            log.info("POST /api/candidatures/experts/{}/preselect-profile - Présélection profil", id);
+            User user = candidatureService.preselectProfile(id);
+            log.info("Profil {} présélectionné avec succès - lien FOR28 envoyé", id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profil présélectionné. Un email avec le lien FOR28 a été envoyé au candidat.");
+            response.put("user", user);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Erreur lors de la présélection du profil {}", id, e);
+            return ResponseEntity.status(400).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erreur serveur lors de la présélection", e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+    
     // ========== BLACKLIST ENDPOINTS ==========
     
     /**

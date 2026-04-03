@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -264,8 +265,8 @@ public class CandidatureService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        if (user.getStatus() != UserStatus.PENDING) {
-            throw new RuntimeException("Seules les candidatures en attente peuvent être planifiées pour un entretien");
+        if (user.getStatus() != UserStatus.PENDING && user.getStatus() != UserStatus.DOCUMENTS_SUBMITTED) {
+            throw new RuntimeException("Seules les candidatures en attente ou avec documents soumis peuvent être planifiées pour un entretien");
         }
         
         validateExpertType(user);
@@ -459,7 +460,9 @@ public class CandidatureService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        if (user.getStatus() != UserStatus.PENDING) {
+        if (user.getStatus() != UserStatus.PENDING && 
+            user.getStatus() != UserStatus.PROFILE_PRESELECTED && 
+            user.getStatus() != UserStatus.DOCUMENTS_SUBMITTED) {
             throw new RuntimeException("Cette candidature a déjà été traitée");
         }
         
@@ -468,6 +471,8 @@ public class CandidatureService {
         user.setStatus(UserStatus.REJECTED);
         user.setRejectionReason(internalReason);
         user.setRejectionType("dossier");
+        user.setFor28Token(null);
+        user.setFor28TokenExpiresAt(null);
         
         userRepository.save(user);
         
@@ -533,6 +538,98 @@ public class CandidatureService {
         emailService.sendExpertAccountAccepted(user, generatedPassword);
         
         return generatedPassword;
+    }
+    
+    // ===================================================================
+    // FOR28 WORKFLOW METHODS
+    // ===================================================================
+    
+    /**
+     * Présélectionne un profil après analyse du FOR20.
+     * Génère un token sécurisé et envoie un email avec le lien FOR28.
+     */
+    @Transactional
+    public User preselectProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        if (user.getStatus() != UserStatus.PENDING) {
+            throw new RuntimeException("Seules les candidatures en attente peuvent être présélectionnées");
+        }
+        
+        validateExpertType(user);
+        
+        String token = UUID.randomUUID().toString();
+        user.setFor28Token(token);
+        user.setFor28TokenExpiresAt(LocalDateTime.now().plusDays(30));
+        user.setStatus(UserStatus.PROFILE_PRESELECTED);
+        
+        User savedUser = userRepository.save(user);
+        
+        emailService.sendFor28AccessEmail(user, token);
+        
+        log.info("Profil présélectionné pour {} {} - token FOR28 généré, email envoyé", 
+                user.getPrenom(), user.getNom());
+        
+        return savedUser;
+    }
+    
+    /**
+     * Valide un token FOR28 et retourne les informations du candidat.
+     * Vérifie que le token existe, n'est pas expiré, et que l'email correspond.
+     */
+    public User validateFor28Token(String token, String email) {
+        User user = userRepository.findByFor28Token(token)
+            .orElseThrow(() -> new RuntimeException("Lien invalide ou expiré"));
+        
+        if (user.getFor28TokenExpiresAt() == null || user.getFor28TokenExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Ce lien a expiré. Veuillez contacter l'organisme.");
+        }
+        
+        if (user.getStatus() != UserStatus.PROFILE_PRESELECTED) {
+            throw new RuntimeException("Les documents ont déjà été soumis ou le dossier a été traité.");
+        }
+        
+        if (!user.getEmail().equalsIgnoreCase(email)) {
+            throw new RuntimeException("L'adresse email ne correspond pas au candidat concerné.");
+        }
+        
+        return user;
+    }
+    
+    /**
+     * Soumet les documents FOR28.
+     * Vérifie le token, l'email, sauvegarde les documents et met à jour le statut.
+     */
+    @Transactional
+    public User submitFor28Documents(String token, String email, String documentsJson) {
+        User user = validateFor28Token(token, email);
+        
+        user.setDocumentsJson(documentsJson);
+        user.setFor28SubmittedAt(LocalDateTime.now());
+        user.setStatus(UserStatus.DOCUMENTS_SUBMITTED);
+        user.setFor28Token(null);
+        user.setFor28TokenExpiresAt(null);
+        
+        User savedUser = userRepository.save(user);
+        
+        // Notifier GES_COMPETENCES que les documents ont été soumis
+        List<User> gesUsers = userRepository.findByRole(UserRole.GES_COMPETENCES);
+        String typeLabel = getTypeLabel(user);
+        for (User ges : gesUsers) {
+            notificationService.createNotification(
+                ges.getId(),
+                "Documents FOR28 reçus - " + typeLabel,
+                String.format("Le candidat %s %s (%s) a soumis ses documents FOR28. Le dossier est prêt pour la planification d'un entretien.",
+                    user.getPrenom(), user.getNom(), user.getRegistrationId()),
+                "info"
+            );
+        }
+        
+        log.info("Documents FOR28 soumis par {} {} - statut mis à jour vers DOCUMENTS_SUBMITTED", 
+                user.getPrenom(), user.getNom());
+        
+        return savedUser;
     }
     
     // ===================================================================

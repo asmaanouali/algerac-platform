@@ -27,7 +27,7 @@ interface Candidature {
   telephone: string;
   telephoneMobile?: string;
   dateInscription: string;
-  status: "PENDING" | "INTERVIEW_SCHEDULED" | "INTERVIEW_CONFIRMED" | "INTERVIEW_COMPLETED" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "PROFILE_PRESELECTED" | "DOCUMENTS_SUBMITTED" | "INTERVIEW_SCHEDULED" | "INTERVIEW_CONFIRMED" | "INTERVIEW_COMPLETED" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
   photoBase64?: string;
   dateNaissance?: string;
   nationalite?: string;
@@ -103,7 +103,7 @@ export default function GesCompetencesCandidaturesPage() {
   };
 
   const stats = useMemo(() => {
-    const pending = candidatures.filter(c => c.status === "PENDING").length;
+    const pending = candidatures.filter(c => c.status === "PENDING" || c.status === "PROFILE_PRESELECTED" || c.status === "DOCUMENTS_SUBMITTED").length;
     const interviewing = candidatures.filter(c => ["INTERVIEW_SCHEDULED", "INTERVIEW_CONFIRMED", "INTERVIEW_COMPLETED"].includes(c.status)).length;
     const approved = candidatures.filter(c => c.status === "CANDIDATURE_APPROVED" || c.status === "APPROVED").length;
     const rejected = candidatures.filter(c => c.status === "REJECTED").length;
@@ -113,6 +113,8 @@ export default function GesCompetencesCandidaturesPage() {
   const getStatusBadge = (status: string) => {
     const map: Record<string, { class: string; label: string }> = {
       PENDING: { class: "bg-amber-50 text-amber-700 border-amber-300", label: "En attente" },
+      PROFILE_PRESELECTED: { class: "bg-orange-50 text-orange-700 border-orange-300", label: "Présélectionné (FOR28)" },
+      DOCUMENTS_SUBMITTED: { class: "bg-indigo-50 text-indigo-700 border-indigo-300", label: "Documents reçus" },
       INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
       INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
       INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
@@ -250,11 +252,35 @@ export default function GesCompetencesCandidaturesPage() {
     }
   };
 
+  // Preselect profile (send FOR28 link)
+  const handlePreselectProfile = async (candidatureId: string) => {
+    try {
+      const response = await fetch(`/api/candidatures/experts/${candidatureId}/preselect-profile`, {
+        method: "POST",
+        credentials: "include"
+      });
+      
+      if (response.ok) {
+        toast({ title: "Profil présélectionné", description: "Un email avec le lien FOR28 a été envoyé au candidat." });
+        fetchCandidatures();
+        setSelectedCandidature(null);
+      } else {
+        const error = await response.json();
+        toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+    }
+  };
+
   // Export candidatures to CSV or XLSX
   const handleExport = (format: "csv" | "xlsx" = "csv") => {
     const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Inscription", "Statut", "Type de rejet", "Blacklisté"];
     const statusLabels: Record<string, string> = {
       PENDING: "En attente", INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
+      PENDING: "En attente", PROFILE_PRESELECTED: "Présélectionné (FOR28)", DOCUMENTS_SUBMITTED: "Documents reçus",
+      INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
       INTERVIEW_COMPLETED: "Entretien terminé", CANDIDATURE_APPROVED: "Acceptée", APPROVED: "Compte actif", REJECTED: "Non retenue"
     };
     const rows = filteredCandidatures.map(c => [
@@ -478,6 +504,8 @@ export default function GesCompetencesCandidaturesPage() {
                   <SelectContent>
                     <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="PENDING">En attente</SelectItem>
+                    <SelectItem value="PROFILE_PRESELECTED">Présélectionné (FOR28)</SelectItem>
+                    <SelectItem value="DOCUMENTS_SUBMITTED">Documents reçus</SelectItem>
                     <SelectItem value="INTERVIEW_SCHEDULED">Entretien planifié</SelectItem>
                     <SelectItem value="INTERVIEW_CONFIRMED">Entretien confirmé</SelectItem>
                     <SelectItem value="INTERVIEW_COMPLETED">Entretien terminé</SelectItem>
@@ -688,6 +716,29 @@ export default function GesCompetencesCandidaturesPage() {
 
               {/* Actions for PENDING candidatures */}
               {selectedCandidature.status === "PENDING" && (
+                <div className="flex gap-3 pt-4 border-t flex-wrap">
+                  <Button className="flex-1 bg-orange-500 hover:bg-orange-600" onClick={() => handlePreselectProfile(selectedCandidature.id)}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Présélectionner (FOR28)
+                  </Button>
+                  <Button variant="outline" className="flex-1 text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => setShowRejectDialog(true)}>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Dossier Non Retenu
+                  </Button>
+                  {!selectedCandidature.blacklisted && (
+                    <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => {
+                      setBlacklistingCandidature(selectedCandidature);
+                      setShowBlacklistDialog(true);
+                    }}>
+                      <ShieldBan className="w-4 h-4 mr-1" />
+                      Blacklist
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Actions for DOCUMENTS_SUBMITTED candidatures */}
+              {selectedCandidature.status === "DOCUMENTS_SUBMITTED" && (
                 <div className="flex gap-3 pt-4 border-t flex-wrap">
                   <Button className="flex-1 bg-[#00A63E] hover:bg-[#009235]" onClick={() => {
                     setSchedulingCandidature(selectedCandidature);

@@ -27,4 +27,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(UserRole role);
     
     List<User> findByRoleOrderByCreatedAtDesc(UserRole role);
+    
+    Optional<User> findByFor28Token(String for28Token);
 }

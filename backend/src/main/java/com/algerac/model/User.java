@@ -132,6 +132,12 @@ public class User {
     @Builder.Default
     private Boolean starred = false;
     
+    // FOR28 secure access token
+    @Column(unique = true)
+    private String for28Token;
+    private LocalDateTime for28TokenExpiresAt;
+    private LocalDateTime for28SubmittedAt;
+    
     // Données structurées (JSON)
     @Column(columnDefinition = "TEXT")
     private String formationsAcademiquesJson;

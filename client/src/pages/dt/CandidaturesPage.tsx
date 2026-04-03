@@ -21,7 +21,7 @@ interface Candidature {
   email: string;
   telephone: string;
   dateInscription: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "PROFILE_PRESELECTED" | "DOCUMENTS_SUBMITTED" | "INTERVIEW_SCHEDULED" | "INTERVIEW_CONFIRMED" | "INTERVIEW_COMPLETED" | "CANDIDATURE_APPROVED" | "APPROVED" | "REJECTED";
 }
 
 export default function CandidaturesPage() {
@@ -67,16 +67,19 @@ export default function CandidaturesPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">En attente</Badge>;
-      case "APPROVED":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Approuvé</Badge>;
-      case "REJECTED":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Rejeté</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    const map: Record<string, { class: string; label: string }> = {
+      PENDING: { class: "bg-yellow-50 text-yellow-700 border-yellow-300", label: "En attente" },
+      PROFILE_PRESELECTED: { class: "bg-orange-50 text-orange-700 border-orange-300", label: "Présélectionné (FOR28)" },
+      DOCUMENTS_SUBMITTED: { class: "bg-indigo-50 text-indigo-700 border-indigo-300", label: "Documents reçus" },
+      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
+      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
+      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
+      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: "Acceptée" },
+      APPROVED: { class: "bg-green-50 text-green-700 border-green-300", label: "Approuvé" },
+      REJECTED: { class: "bg-red-50 text-red-700 border-red-300", label: "Rejeté" },
+    };
+    const s = map[status] || { class: "", label: status };
+    return <Badge variant="outline" className={s.class}>{s.label}</Badge>;
   };
 
   const getTypeBadge = (type: string) => {

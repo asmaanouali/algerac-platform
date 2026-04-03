@@ -67,8 +67,18 @@ export default function RegistrationSuccess() {
                           <FileSearch className="w-3.5 h-3.5 text-[#00A63E]" />
                         </div>
                         <div className="text-sm">
-                          <p className="font-medium text-gray-800">Étape 1 - Étude de la candidature</p>
-                          <p className="text-gray-500 text-xs mt-0.5">La Gestion des Compétences va étudier votre candidature et examiner votre dossier.</p>
+                          <p className="font-medium text-gray-800">Étape 1 - Étude du CV (FOR20)</p>
+                          <p className="text-gray-500 text-xs mt-0.5">La Gestion des Compétences va étudier votre CV et évaluer votre profil.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-7 h-7 bg-[#00A63E]/10 rounded-full flex items-center justify-center mt-0.5">
+                          <Mail className="w-3.5 h-3.5 text-[#00A63E]" />
+                        </div>
+                        <div className="text-sm">
+                          <p className="font-medium text-gray-800">Étape 2 - Documents justificatifs (FOR28)</p>
+                          <p className="text-gray-500 text-xs mt-0.5">Si votre profil est présélectionné, vous recevrez un email avec un lien sécurisé pour joindre vos documents confidentiels.</p>
                         </div>
                       </div>
 
@@ -77,8 +87,8 @@ export default function RegistrationSuccess() {
                           <CalendarDays className="w-3.5 h-3.5 text-[#00A63E]" />
                         </div>
                         <div className="text-sm">
-                          <p className="font-medium text-gray-800">Étape 2 - Entretien</p>
-                          <p className="text-gray-500 text-xs mt-0.5">Si votre profil est retenu, vous serez convoqué(e) à un entretien. Vous recevrez un email avec les détails.</p>
+                          <p className="font-medium text-gray-800">Étape 3 - Entretien</p>
+                          <p className="text-gray-500 text-xs mt-0.5">Après réception de vos documents, vous serez convoqué(e) à un entretien.</p>
                         </div>
                       </div>
 
@@ -87,7 +97,7 @@ export default function RegistrationSuccess() {
                           <UserCheck className="w-3.5 h-3.5 text-[#00A63E]" />
                         </div>
                         <div className="text-sm">
-                          <p className="font-medium text-gray-800">Étape 3 - Décision & Activation</p>
+                          <p className="font-medium text-gray-800">Étape 4 - Décision & Activation</p>
                           <p className="text-gray-500 text-xs mt-0.5">Après l'entretien, si votre candidature est acceptée, votre compte sera créé et activé.</p>
                         </div>
                       </div>

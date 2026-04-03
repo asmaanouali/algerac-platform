@@ -973,6 +973,72 @@ public class EmailService {
     }
     
     /**
+     * Email d'accès au formulaire FOR28 (envoi des documents confidentiels)
+     * Envoyé après présélection du profil par GES_COMPETENCES
+     */
+    public void sendFor28AccessEmail(User user, String token) {
+        try {
+            String typeLabel = getExpertTypeLabel(user);
+            String for28Url = "http://localhost:5173/for28/" + token;
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(user.getEmail());
+            message.setSubject("Compléter votre dossier - Documents confidentiels FOR28 - ALGERAC");
+            
+            String emailBody = String.format("""
+                Bonjour %s %s,
+                
+                Nous avons le plaisir de vous informer que votre profil a retenu toute notre attention dans le cadre de votre candidature en tant que %s au sein d'ALGERAC.
+                
+                Après un examen approfondi de votre curriculum vitae (FOR20), nous souhaitons poursuivre l'étude de votre candidature. À cet effet, nous vous invitons à compléter votre dossier en nous transmettant les documents justificatifs requis via le formulaire confidentiel FOR28.
+                
+                ═══════════════════════════════════════
+                  ACCÈS AU FORMULAIRE FOR28
+                ═══════════════════════════════════════
+                
+                Lien sécurisé : %s
+                
+                Référence dossier : %s
+                
+                ═══════════════════════════════════════
+                
+                IMPORTANT - CONFIDENTIALITÉ :
+                Ce lien est strictement personnel et confidentiel. Il est associé uniquement à votre adresse email et ne peut être utilisé par une tierce personne. Pour des raisons de sécurité, vous devrez confirmer votre identité en saisissant votre adresse email avant de pouvoir accéder au formulaire.
+                
+                Ce lien est valable pendant 30 jours à compter de la réception de cet email.
+                
+                Documents à joindre :
+                   • Copie des diplômes et certificats mentionnés dans votre CV
+                   • Attestations de travail et d'expérience professionnelle
+                   • Certificats de formation pertinents
+                   • Tout autre document justificatif de vos qualifications
+                
+                Pour toute question ou difficulté technique, n'hésitez pas à nous contacter à l'adresse %s.
+                
+                Cordialement,
+                
+                Service de Gestion des Compétences
+                ALGERAC - Organisme Algérien d'Accréditation
+                """,
+                user.getPrenom(),
+                user.getNom(),
+                typeLabel,
+                for28Url,
+                user.getRegistrationId(),
+                gesCompetencesEmail
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Email d'accès FOR28 envoyé à : {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email FOR28", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email FOR28", e);
+        }
+    }
+    
+    /**
      * Email de convocation à un entretien
      * Ton professionnel haut niveau, type big company
      */

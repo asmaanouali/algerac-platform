@@ -14,6 +14,7 @@ import ForgotPassword from "@/pages/auth/ForgotPassword";
 import OTPVerification from "@/pages/auth/OTPVerification";
 import NewPassword from "@/pages/auth/NewPassword";
 import RegistrationSuccess from "@/pages/auth/RegistrationSuccess";
+import For28SubmissionPage from "@/pages/auth/For28SubmissionPage";
 import OECDashboard from "@/pages/oec/Dashboard";
 import NewRequestPage from "@/pages/oec/NewRequestPage";
 import PaymentPage from "@/pages/oec/PaymentPage";
@@ -135,6 +136,7 @@ function Router() {
       
       {/* Public routes (no auth required) */}
       <Route path="/complaints/public" component={PublicComplaintPage} />
+      <Route path="/for28/:token" component={For28SubmissionPage} />
       
       {/* OEC Routes */}
       <Route path="/oec" component={OECDashboard} />

@@ -64,7 +64,7 @@ export default function GesCompetencesDashboard() {
   };
 
   const stats = useMemo(() => {
-    const pending = candidatures.filter(c => c.status === "PENDING").length;
+    const pending = candidatures.filter(c => c.status === "PENDING" || c.status === "PROFILE_PRESELECTED" || c.status === "DOCUMENTS_SUBMITTED").length;
     const interviewScheduled = candidatures.filter(c => c.status === "INTERVIEW_SCHEDULED").length;
     const interviewConfirmed = candidatures.filter(c => c.status === "INTERVIEW_CONFIRMED").length;
     const interviewCompleted = candidatures.filter(c => c.status === "INTERVIEW_COMPLETED").length;
@@ -86,7 +86,7 @@ export default function GesCompetencesDashboard() {
 
   const recentCandidatures = useMemo(() => {
     return candidatures
-      .filter(c => c.status === "PENDING")
+      .filter(c => c.status === "PENDING" || c.status === "PROFILE_PRESELECTED" || c.status === "DOCUMENTS_SUBMITTED")
       .sort((a, b) => new Date(b.createdAt || b.dateInscription || "").getTime() - new Date(a.createdAt || a.dateInscription || "").getTime())
       .slice(0, 5);
   }, [candidatures]);

@@ -543,17 +543,6 @@ export default function ExpertRegisterWizard() {
           reader.readAsDataURL(file);
         });
 
-      const allFiles: File[] = [];
-      Object.values(stepFiles).forEach((files) => allFiles.push(...files));
-
-      const documents = await Promise.all(
-        allFiles.map(async (file) => ({
-          name: file.name,
-          base64: await fileToBase64(file),
-          mimeType: file.type,
-        }))
-      );
-
       const nationaliteFinal = formData.nationalite === "Autre" ? formData.nationaliteAutre : formData.nationalite;
 
       const payload = {
@@ -643,7 +632,6 @@ export default function ExpertRegisterWizard() {
             niveauParle: l.parle,
             niveauEcrit: l.ecrit,
           })),
-        documents: documents.length > 0 ? documents : undefined,
       };
 
       const response = await fetch("/api/auth/signup/expert", {
@@ -872,7 +860,7 @@ export default function ExpertRegisterWizard() {
               </div>
             </div>
 
-            {renderFileUpload("step1", "Fichiers justificatifs (pièce d'identité, etc.)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
           </div>
         );
 
@@ -1147,7 +1135,7 @@ export default function ExpertRegisterWizard() {
               <Plus className="w-4 h-4" /> Ajouter une autre formation académique
             </Button>
 
-            {renderFileUpload("step3", "Fichiers justificatifs (diplômes, relevés de notes...)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
           </div>
         );
 
@@ -1287,7 +1275,7 @@ export default function ExpertRegisterWizard() {
               <Plus className="w-4 h-4" /> Ajouter une autre formation
             </Button>
 
-            {renderFileUpload("step4", "Fichiers justificatifs (certificats, attestations...)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
           </div>
         );
 
@@ -1436,7 +1424,7 @@ export default function ExpertRegisterWizard() {
               <Plus className="w-4 h-4" /> Ajouter une autre expérience
             </Button>
 
-            {renderFileUpload("step5", "Fichiers justificatifs (attestations de travail, contrats...)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
           </div>
         );
 
@@ -1620,7 +1608,7 @@ export default function ExpertRegisterWizard() {
                   <Plus className="w-4 h-4" /> Ajouter une autre évaluation / audit
                 </Button>
 
-                {renderFileUpload("step6", "Fichiers justificatifs (rapports d'audit, attestations...)")}
+                {/* Documents justificatifs seront demandés via FOR28 après présélection */}
               </>
             )}
           </div>
@@ -1795,7 +1783,7 @@ export default function ExpertRegisterWizard() {
                   <Plus className="w-4 h-4" /> Ajouter une autre formation dispensée
                 </Button>
 
-                {renderFileUpload("step7", "Fichiers justificatifs (supports de formation, attestations...)")}
+                {/* Documents justificatifs seront demandés via FOR28 après présélection */}
               </>
             )}
           </div>
@@ -1934,7 +1922,7 @@ export default function ExpertRegisterWizard() {
               <Plus className="w-4 h-4" /> Ajouter une autre langue
             </Button>
 
-            {renderFileUpload("step8", "Fichiers justificatifs (certificats de langue...)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
           </div>
         );
 
@@ -1953,7 +1941,7 @@ export default function ExpertRegisterWizard() {
               />
             </div>
 
-            {renderFileUpload("step9", "Autres fichiers complémentaires (CV, lettres de recommandation...)")}
+            {/* Documents justificatifs seront demandés via FOR28 après présélection */}
 
             <div className="pt-6 space-y-4 border-t">
               <h3 className="font-semibold text-lg">Engagements</h3>

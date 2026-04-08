@@ -328,7 +328,6 @@ export default function GesCompetencesCandidaturesPage() {
   const handleExport = (format: "csv" | "xlsx" = "csv") => {
     const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Inscription", "Statut", "Type de rejet", "Blacklisté"];
     const statusLabels: Record<string, string> = {
-      PENDING: "En attente", INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
       PENDING: "En attente", PROFILE_PRESELECTED: "Présélectionné (FOR28)", DOCUMENTS_SUBMITTED: "Documents reçus",
       INTERVIEW_SCHEDULED: "Entretien planifié", INTERVIEW_CONFIRMED: "Entretien confirmé",
       INTERVIEW_COMPLETED: "Entretien terminé", CANDIDATURE_APPROVED: "Acceptée", APPROVED: "Compte actif", REJECTED: "Non retenue"

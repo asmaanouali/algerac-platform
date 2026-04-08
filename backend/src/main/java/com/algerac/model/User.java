@@ -101,6 +101,7 @@ public class User {
     private String fax;
     private String adresseDomicile;
     private String adresseEntreprise;
+    private String wilaya;
     private String contactUrgenceNom;
     private String contactUrgenceTelephone;
     private String contactUrgenceMobile;
@@ -111,11 +112,6 @@ public class User {
     // NOUVEAU: Domaine d'expertise
     private String domaineExpertise;
     private String sousDomaineExpertise;
-    
-    // OEC Data consent
-    private String consentOecData; // "full", "partial", "none"
-    @Column(columnDefinition = "TEXT")
-    private String consentOecDataDetails;
     
     // Blacklist
     @Column(nullable = false)
@@ -180,6 +176,10 @@ public class User {
     
     private String interviewDecision; // "ACCEPTED" or "REJECTED"
     private LocalDateTime interviewDecisionDate;
+    
+    // INTERVIEW PANEL - members who must be present at the interview
+    private Long interviewPanelCdId;  // Chef de Département chosen for this interview
+    private Long interviewPanelRaId;  // Responsable d'Accréditation chosen for this interview
     
     @PrePersist
     protected void onCreate() {

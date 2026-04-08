@@ -121,6 +121,7 @@ import RADossiersPage from "@/pages/ra/DossiersPage";
 import RAPlanningPage from "@/pages/ra/PlanningPage";
 import DTDashboard from "@/pages/dt/Dashboard";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
+import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
 
 function Router() {
   return (
@@ -179,6 +180,7 @@ function Router() {
       <Route path="/ra/quotes" component={RAQuotesPage} />
       <Route path="/ra/dossiers" component={RADossiersPage} />
       <Route path="/ra/planning" component={RAPlanningPage} />
+      <Route path="/ra/entretiens-candidats" component={InterviewPanelPage} />
       
       {/* CD Routes */}
       <Route path="/cd" component={CDDashboard} />
@@ -196,6 +198,7 @@ function Router() {
       <Route path="/cd/multi-sites" component={MultiSitePage} />
       <Route path="/cd/evaluation-distance" component={RemoteEvaluationPage} />
       <Route path="/cd/transferts" component={AccreditationTransferPage} />
+      <Route path="/cd/entretiens-candidats" component={InterviewPanelPage} />
       
       {/* DAG Routes */}
       <Route path="/dag" component={DAGDashboard} />
@@ -218,6 +221,7 @@ function Router() {
       <Route path="/dt/candidatures" component={CandidaturesPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
       <Route path="/dt/certificats" component={CertificateSigningPage} />
+      <Route path="/dt/entretiens-candidats" component={InterviewPanelPage} />
       
       {/* Expert Routes */}
       <Route path="/expert" component={ExpertDashboard} />
@@ -293,6 +297,7 @@ function Router() {
       <Route path="/rq" component={RQComplaintsDashboard} />
       <Route path="/rq/dashboard" component={RQComplaintsDashboard} />
       <Route path="/rq/plaintes" component={RQComplaintsDashboard} />
+      <Route path="/rq/entretiens-candidats" component={InterviewPanelPage} />
       
       {/* Complaints (internal - for authenticated roles) */}
       <Route path="/complaints/internal" component={InternalComplaintsPage} />

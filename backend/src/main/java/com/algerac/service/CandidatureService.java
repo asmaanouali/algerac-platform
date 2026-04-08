@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -258,10 +259,10 @@ public class CandidatureService {
     
     /**
      * Présélectionne une candidature et planifie un entretien
-     * GES_COMPETENCES choisit la date d'entretien
+     * GES_COMPETENCES choisit la date d'entretien et les membres du panel
      */
     @Transactional
-    public User scheduleInterview(Long userId, LocalDateTime interviewDate) {
+    public User scheduleInterview(Long userId, LocalDateTime interviewDate, Long cdId, Long raId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
@@ -270,6 +271,24 @@ public class CandidatureService {
         }
         
         validateExpertType(user);
+
+        // Validate panel members
+        if (cdId != null) {
+            User cd = userRepository.findById(cdId)
+                    .orElseThrow(() -> new RuntimeException("Chef de département non trouvé"));
+            if (!cd.hasRole(UserRole.CD)) {
+                throw new RuntimeException("L'utilisateur sélectionné n'est pas un Chef de Département");
+            }
+            user.setInterviewPanelCdId(cdId);
+        }
+        if (raId != null) {
+            User ra = userRepository.findById(raId)
+                    .orElseThrow(() -> new RuntimeException("Responsable d'accréditation non trouvé"));
+            if (!ra.hasRole(UserRole.RA)) {
+                throw new RuntimeException("L'utilisateur sélectionné n'est pas un Responsable d'Accréditation");
+            }
+            user.setInterviewPanelRaId(raId);
+        }
 
         user.setStatus(UserStatus.INTERVIEW_SCHEDULED);
         user.setInterviewDate(interviewDate);
@@ -280,10 +299,60 @@ public class CandidatureService {
         // Envoyer email de convocation au candidat
         emailService.sendInterviewConvocationEmail(user, interviewDate);
         
-        log.info("Entretien planifié pour {} {} le {} - candidature {}", 
-                user.getPrenom(), user.getNom(), interviewDate, userId);
+        // Notify all panel members (DT, RQ, selected CD, selected RA)
+        notifyInterviewPanel(savedUser, interviewDate);
+        
+        log.info("Entretien planifié pour {} {} le {} - candidature {} (panel: CD={}, RA={})", 
+                user.getPrenom(), user.getNom(), interviewDate, userId, cdId, raId);
         
         return savedUser;
+    }
+    
+    /**
+     * Notifie tous les membres du panel d'entretien
+     * Panel: DT, RQ, CD sélectionné, RA sélectionné, GES_COMPETENCES
+     */
+    private void notifyInterviewPanel(User candidate, LocalDateTime interviewDate) {
+        String typeLabel = getTypeLabel(candidate);
+        String formattedDate = interviewDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"));
+        String candidateName = candidate.getPrenom() + " " + candidate.getNom();
+        
+        String title = "Entretien planifié - " + candidateName;
+        String message = String.format(
+            "Un entretien est planifié le %s pour le candidat %s (%s - %s). " +
+            "Votre présence est requise. Domaine : %s",
+            formattedDate, candidateName, typeLabel, 
+            candidate.getRegistrationId(),
+            candidate.getDomaineExpertise() != null ? candidate.getDomaineExpertise() : "Non spécifié"
+        );
+        
+        // Notify all DT users
+        List<User> dtUsers = userRepository.findByRole(UserRole.DT);
+        for (User dt : dtUsers) {
+            notificationService.createNotification(dt.getId(), title, message, "info");
+        }
+        
+        // Notify all RQ users
+        List<User> rqUsers = userRepository.findByRole(UserRole.RQ);
+        for (User rq : rqUsers) {
+            notificationService.createNotification(rq.getId(), title, message, "info");
+        }
+        
+        // Notify selected CD
+        if (candidate.getInterviewPanelCdId() != null) {
+            notificationService.createNotification(candidate.getInterviewPanelCdId(), title, message, "info");
+        }
+        
+        // Notify selected RA
+        if (candidate.getInterviewPanelRaId() != null) {
+            notificationService.createNotification(candidate.getInterviewPanelRaId(), title, message, "info");
+        }
+        
+        // Send email to panel members
+        emailService.sendInterviewPanelNotification(candidate, interviewDate, dtUsers, rqUsers, 
+            candidate.getInterviewPanelCdId() != null ? userRepository.findById(candidate.getInterviewPanelCdId()).orElse(null) : null,
+            candidate.getInterviewPanelRaId() != null ? userRepository.findById(candidate.getInterviewPanelRaId()).orElse(null) : null
+        );
     }
     
     /**
@@ -738,6 +807,86 @@ public class CandidatureService {
         userRepository.save(user);
         log.info("Candidature {} starred: {}", userId, newValue);
         return newValue;
+    }
+    
+    // ===================================================================
+    // INTERVIEW PANEL METHODS
+    // ===================================================================
+    
+    /**
+     * Récupère les entretiens où l'utilisateur est membre du panel
+     */
+    public List<User> getInterviewsForPanelMember(Long userId, String userRole) {
+        List<User> allInterviews = getScheduledInterviews();
+        // Also include completed/approved/rejected that had interviews
+        List<User> allExpert = getExpertCandidatures();
+        for (User u : allExpert) {
+            if (u.getInterviewDate() != null && !allInterviews.contains(u)) {
+                allInterviews = new java.util.ArrayList<>(allInterviews);
+                allInterviews.add(u);
+            }
+        }
+        
+        return allInterviews.stream()
+            .filter(candidate -> isUserInInterviewPanel(userId, userRole, candidate))
+            .toList();
+    }
+    
+    /**
+     * Vérifie si un utilisateur fait partie du panel d'entretien d'un candidat
+     */
+    public boolean isUserInInterviewPanel(Long userId, String userRole, User candidate) {
+        if (userRole == null) return false;
+        String role = userRole.toUpperCase();
+        
+        // DT and RQ are always part of the panel for all interviews
+        if (role.equals("DT") || role.equals("RQ") || role.equals("GES_COMPETENCES")) {
+            return true;
+        }
+        
+        // CD - only if specifically selected
+        if (role.equals("CD") && candidate.getInterviewPanelCdId() != null 
+            && candidate.getInterviewPanelCdId().equals(userId)) {
+            return true;
+        }
+        
+        // RA - only if specifically selected
+        if (role.equals("RA") && candidate.getInterviewPanelRaId() != null 
+            && candidate.getInterviewPanelRaId().equals(userId)) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Récupère les CD disponibles pour le panel
+     */
+    public List<Map<String, Object>> getAvailableCDs() {
+        return userRepository.findByRole(UserRole.CD).stream()
+            .map(user -> {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", user.getId());
+                map.put("fullName", user.getFullName());
+                map.put("email", user.getEmail());
+                return map;
+            })
+            .toList();
+    }
+    
+    /**
+     * Récupère les RA disponibles pour le panel
+     */
+    public List<Map<String, Object>> getAvailableRAs() {
+        return userRepository.findByRole(UserRole.RA).stream()
+            .map(user -> {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", user.getId());
+                map.put("fullName", user.getFullName());
+                map.put("email", user.getEmail());
+                return map;
+            })
+            .toList();
     }
     
     // ===================================================================

@@ -99,39 +99,39 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
     }
 
     private boolean loadUsers() {
-        oec1 = findUser("oec.test@algerac.dz");
-        oec2 = findUser("oec.labo1@algerac.dz");
-        oec3 = findUser("oec.inspect1@algerac.dz");
-        oec4 = findUser("oec.certif1@algerac.dz");
-        oec5 = findUser("oec.calibration1@algerac.dz");
+        oec1 = findUser("oec.test@algeractestapp.dz");
+        oec2 = findUser("oec.labo1@algeractestapp.dz");
+        oec3 = findUser("oec.inspect1@algeractestapp.dz");
+        oec4 = findUser("oec.certif1@algeractestapp.dz");
+        oec5 = findUser("oec.calibration1@algeractestapp.dz");
 
-        ra1 = findUser("ra.d1.01@algerac.dz");
-        ra2 = findUser("ra.d2.01@algerac.dz");
-        ra3 = findUser("ra.d3.01@algerac.dz");
+        ra1 = findUser("ra.d1.01@algeractestapp.dz");
+        ra2 = findUser("ra.d2.01@algeractestapp.dz");
+        ra3 = findUser("ra.d3.01@algeractestapp.dz");
 
-        cd1 = findUser("cd.domaine1@algerac.dz");
-        cd2 = findUser("cd.domaine2@algerac.dz");
+        cd1 = findUser("cd.domaine1@algeractestapp.dz");
+        cd2 = findUser("cd.domaine2@algeractestapp.dz");
 
-        dag = findUser("dag@algerac.dz");
-        dt = findUser("dt@algerac.dz");
-        dg = findUser("dg@algerac.dz");
+        dag = findUser("dag@algeractestapp.dz");
+        dt = findUser("dt@algeractestapp.dz");
+        dg = findUser("dg@algeractestapp.dz");
 
-        ree1 = findUser("ree1@algerac.dz");
-        ree2 = findUser("ree2@algerac.dz");
+        ree1 = findUser("ree1@algeractestapp.dz");
+        ree2 = findUser("ree2@algeractestapp.dz");
 
-        et1 = findUser("et1@algerac.dz");
-        et2 = findUser("et2@algerac.dz");
-        et3 = findUser("et3@algerac.dz");
+        et1 = findUser("et1@algeractestapp.dz");
+        et2 = findUser("et2@algeractestapp.dz");
+        et3 = findUser("et3@algeractestapp.dz");
 
-        eq1 = findUser("cd.domaine1@algerac.dz"); // CD with EQ role
+        eq1 = findUser("cd.domaine1@algeractestapp.dz"); // CD with EQ role
 
-        exp1 = findUser("exp1@algerac.dz");
-        exp2 = findUser("exp2@algerac.dz");
+        exp1 = findUser("exp1@algeractestapp.dz");
+        exp2 = findUser("exp2@algeractestapp.dz");
 
-        casPresident = findUser("cas.president@algerac.dz");
-        casMember1 = findUser("cas.member1@algerac.dz");
-        casMember2 = findUser("cas.member2@algerac.dz");
-        casMember3 = findUser("cas.member3@algerac.dz");
+        casPresident = findUser("cas.president@algeractestapp.dz");
+        casMember1 = findUser("cas.member1@algeractestapp.dz");
+        casMember2 = findUser("cas.member2@algeractestapp.dz");
+        casMember3 = findUser("cas.member3@algeractestapp.dz");
 
         // Must have at minimum oec1, ra1, cd1
         return oec1 != null && ra1 != null && cd1 != null;

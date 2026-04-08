@@ -13,7 +13,7 @@ UPDATE users SET
     fonction = 'Directeur Technique',
     telephone_direct = '023 45 67 89',
     portee_accreditation = 'Essais matériaux de construction: béton, ciment, granulats, acier'
-WHERE email = 'oec.test@algerac.dz';
+WHERE email = 'oec.test@algeractestapp.dz';
 
 UPDATE users SET 
     organization_name = 'Laboratoire Régional d''Analyses (LRA)',
@@ -22,7 +22,7 @@ UPDATE users SET
     nom_representant = 'Mme. Fatima Hadj',
     fonction = 'Directrice',
     portee_accreditation = 'Essais chimiques et physiques'
-WHERE email = 'oec.labo1@algerac.dz';
+WHERE email = 'oec.labo1@algeractestapp.dz';
 
 UPDATE users SET 
     organization_name = 'Bureau de Contrôle Industriel (BCI)',
@@ -31,7 +31,7 @@ UPDATE users SET
     nom_representant = 'M. Karim Mansouri',
     fonction = 'Gérant',
     portee_accreditation = 'Inspection équipements sous pression, ascenseurs'
-WHERE email = 'oec.inspect1@algerac.dz';
+WHERE email = 'oec.inspect1@algeractestapp.dz';
 
 UPDATE users SET 
     organization_name = 'Organisme Algérien de Certification (OAC)',
@@ -40,7 +40,7 @@ UPDATE users SET
     nom_representant = 'Dr. Amine Khelifi',
     fonction = 'Directeur Général',
     portee_accreditation = 'Certification de produits agroalimentaires'
-WHERE email = 'oec.certif1@algerac.dz';
+WHERE email = 'oec.certif1@algeractestapp.dz';
 
 UPDATE users SET 
     organization_name = 'Centre National de Métrologie (CNM)',
@@ -49,7 +49,7 @@ UPDATE users SET
     nom_representant = 'Prof. Rachid Boumediene',
     fonction = 'Directeur Scientifique',
     portee_accreditation = 'Étalonnage masses, balances, instruments de pesage, température'
-WHERE email = 'oec.calibration1@algerac.dz';
+WHERE email = 'oec.calibration1@algeractestapp.dz';
 
 -- Enrich expert profiles for test
 UPDATE users SET 
@@ -60,7 +60,7 @@ UPDATE users SET
     disponibilite = 'Disponible',
     domaine_expertise = 'Laboratoire d''Essais',
     sous_domaine_expertise = 'Matériaux de construction'
-WHERE email = 'ree1@algerac.dz';
+WHERE email = 'ree1@algeractestapp.dz';
 
 UPDATE users SET 
     specialite = 'Inspection industrielle et contrôle qualité',
@@ -70,7 +70,7 @@ UPDATE users SET
     disponibilite = 'Disponible',
     domaine_expertise = 'Inspection',
     sous_domaine_expertise = 'Équipements industriels'
-WHERE email = 'ree2@algerac.dz';
+WHERE email = 'ree2@algeractestapp.dz';
 
 UPDATE users SET 
     specialite = 'Béton, ciment et matériaux cimentaires',
@@ -79,7 +79,7 @@ UPDATE users SET
     langues = 'Français, Arabe, Anglais',
     domaine_expertise = 'Laboratoire d''Essais',
     sous_domaine_expertise = 'Béton et ciment'
-WHERE email = 'et1@algerac.dz';
+WHERE email = 'et1@algeractestapp.dz';
 
 UPDATE users SET 
     specialite = 'Granulats, sols et géotechnique',
@@ -88,7 +88,7 @@ UPDATE users SET
     langues = 'Français, Arabe',
     domaine_expertise = 'Laboratoire d''Essais',
     sous_domaine_expertise = 'Géotechnique'
-WHERE email = 'et2@algerac.dz';
+WHERE email = 'et2@algeractestapp.dz';
 
 UPDATE users SET 
     specialite = 'Sécurité électrique et compatibilité électromagnétique',
@@ -97,4 +97,4 @@ UPDATE users SET
     langues = 'Français, Arabe, Anglais',
     domaine_expertise = 'Laboratoire d''Essais',
     sous_domaine_expertise = 'Électrique et électronique'
-WHERE email = 'et3@algerac.dz';
+WHERE email = 'et3@algeractestapp.dz';

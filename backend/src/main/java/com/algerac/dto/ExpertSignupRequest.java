@@ -51,6 +51,8 @@ public class ExpertSignupRequest {
     
     private String adresseEntreprise;
     
+    private String wilaya;
+    
     // Contact d'urgence
     private String contactUrgenceNom;
     private String contactUrgenceTelephone;
@@ -81,10 +83,6 @@ public class ExpertSignupRequest {
     private String domaineExpertise;
     
     private String sousDomaineExpertise;
-    
-    // === OEC DATA CONSENT ===
-    private String consentOecData; // "full", "partial", "none"
-    private String consentOecDataDetails; // Details when "partial"
     
     // === METADATA ===
     @NotBlank(message = "Le type d'utilisateur est requis")

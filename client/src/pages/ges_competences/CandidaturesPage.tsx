@@ -17,6 +17,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportToXlsx } from "@/lib/export-utils";
 
+const WILAYAS = [
+  "01 - Adrar", "02 - Chlef", "03 - Laghouat", "04 - Oum El Bouaghi", "05 - Batna",
+  "06 - Béjaïa", "07 - Biskra", "08 - Béchar", "09 - Blida", "10 - Bouira",
+  "11 - Tamanrasset", "12 - Tébessa", "13 - Tlemcen", "14 - Tiaret", "15 - Tizi Ouzou",
+  "16 - Alger", "17 - Djelfa", "18 - Jijel", "19 - Sétif", "20 - Saïda",
+  "21 - Skikda", "22 - Sidi Bel Abbès", "23 - Annaba", "24 - Guelma", "25 - Constantine",
+  "26 - Médéa", "27 - Mostaganem", "28 - M'Sila", "29 - Mascara", "30 - Ouargla",
+  "31 - Oran", "32 - El Bayadh", "33 - Illizi", "34 - Bordj Bou Arréridj", "35 - Boumerdès",
+  "36 - El Tarf", "37 - Tindouf", "38 - Tissemsilt", "39 - El Oued", "40 - Khenchela",
+  "41 - Souk Ahras", "42 - Tipaza", "43 - Mila", "44 - Aïn Defla", "45 - Naâma",
+  "46 - Aïn Témouchent", "47 - Ghardaïa", "48 - Relizane",
+  "49 - El M'Ghair", "50 - El Meniaa", "51 - Ouled Djellal", "52 - Bordj Badji Mokhtar",
+  "53 - Béni Abbès", "54 - Timimoun", "55 - Touggourt", "56 - Djanet", "57 - In Salah", "58 - In Guezzam"
+];
+
 interface Candidature {
   id: string;
   registrationId: string;
@@ -32,6 +47,7 @@ interface Candidature {
   dateNaissance?: string;
   nationalite?: string;
   adresseDomicile?: string;
+  wilaya?: string;
   sousDomaineExpertise?: string;
   rejectionReason?: string;
   documentsJson?: string;
@@ -46,6 +62,8 @@ interface Candidature {
   blacklistReason?: string;
   blacklistedAt?: string;
   starred?: boolean;
+  interviewPanelCdId?: number;
+  interviewPanelRaId?: number;
 }
 
 export default function GesCompetencesCandidaturesPage() {
@@ -63,6 +81,12 @@ export default function GesCompetencesCandidaturesPage() {
   const [interviewTime, setInterviewTime] = useState("");
   const [schedulingCandidature, setSchedulingCandidature] = useState<Candidature | null>(null);
   
+  // Panel member selection for interview
+  const [availableCDs, setAvailableCDs] = useState<Array<{id: number; fullName: string; email: string}>>([]);
+  const [availableRAs, setAvailableRAs] = useState<Array<{id: number; fullName: string; email: string}>>([]);
+  const [selectedPanelCdId, setSelectedPanelCdId] = useState<string>("");
+  const [selectedPanelRaId, setSelectedPanelRaId] = useState<string>("");
+  
   // Reject dialog
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -75,10 +99,12 @@ export default function GesCompetencesCandidaturesPage() {
   
   // Rejection type filter
   const [filterRejectionType, setFilterRejectionType] = useState<string>("all");
+  const [filterWilaya, setFilterWilaya] = useState<string>("all");
 
   useEffect(() => {
     document.title = "Candidatures - Gestion des Compétences | ALGERAC";
     fetchCandidatures();
+    fetchPanelMembers();
   }, []);
 
   const fetchCandidatures = async () => {
@@ -99,6 +125,19 @@ export default function GesCompetencesCandidaturesPage() {
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPanelMembers = async () => {
+    try {
+      const response = await fetch("/api/candidatures/experts/panel-members", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCDs(data.chefsDepartement || []);
+        setAvailableRAs(data.responsablesAccreditation || []);
+      }
+    } catch (error) {
+      console.error("Erreur chargement panel:", error);
     }
   };
 
@@ -144,6 +183,7 @@ export default function GesCompetencesCandidaturesPage() {
     
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
     const matchesType = filterType === "all" || c.userType === filterType;
+    const matchesWilaya = filterWilaya === "all" || c.wilaya === filterWilaya;
     
     // Rejection type filter (only applies when viewing REJECTED status)
     const matchesRejectionType = filterRejectionType === "all" || 
@@ -152,13 +192,17 @@ export default function GesCompetencesCandidaturesPage() {
       (filterRejectionType === "interview" && c.rejectionType === "interview") ||
       (filterRejectionType === "blacklisted" && c.blacklisted);
     
-    return matchesSearch && matchesStatus && matchesType && matchesRejectionType;
+    return matchesSearch && matchesStatus && matchesType && matchesWilaya && matchesRejectionType;
   });
 
   // Schedule interview
   const handleScheduleInterview = async () => {
     if (!schedulingCandidature || !interviewDateObj || !interviewTime) {
       toast({ title: "Erreur", description: "Veuillez sélectionner une date et une heure", variant: "destructive" });
+      return;
+    }
+    if (!selectedPanelCdId || !selectedPanelRaId) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner un Chef de Département et un Responsable d'Accréditation pour le panel", variant: "destructive" });
       return;
     }
 
@@ -172,17 +216,23 @@ export default function GesCompetencesCandidaturesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ interviewDate: dateTime })
+        body: JSON.stringify({ 
+          interviewDate: dateTime,
+          panelCdId: parseInt(selectedPanelCdId),
+          panelRaId: parseInt(selectedPanelRaId)
+        })
       });
       
       if (response.ok) {
-        toast({ title: "Succès", description: "Entretien planifié. Un email de convocation a été envoyé au candidat." });
+        toast({ title: "Succès", description: "Entretien planifié. Tous les membres du panel (DT, RQ, CD, RA) ont été notifiés." });
         fetchCandidatures();
         setShowScheduleDialog(false);
         setSelectedCandidature(null);
         setInterviewDateObj(undefined);
         setInterviewTime("");
         setSchedulingCandidature(null);
+        setSelectedPanelCdId("");
+        setSelectedPanelRaId("");
       } else {
         const error = await response.json();
         toast({ title: "Erreur", description: error.message || "Impossible de planifier l'entretien", variant: "destructive" });
@@ -494,7 +544,7 @@ export default function GesCompetencesCandidaturesPage() {
           {/* Filters */}
           <Card className="mb-6 w-full">
             <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-5">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Rechercher par nom, ID, domaine..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -521,6 +571,15 @@ export default function GesCompetencesCandidaturesPage() {
                     <SelectItem value="EXPERT">Expert</SelectItem>
                     <SelectItem value="EVALUATEUR">Évaluateur</SelectItem>
                     <SelectItem value="FORMATEUR">Formateur</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterWilaya} onValueChange={setFilterWilaya}>
+                  <SelectTrigger><SelectValue placeholder="Wilaya" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les wilayas</SelectItem>
+                    {WILAYAS.map((w) => (
+                      <SelectItem key={w} value={w}>{w}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={filterRejectionType} onValueChange={setFilterRejectionType}>
@@ -782,13 +841,13 @@ export default function GesCompetencesCandidaturesPage() {
 
       {/* Schedule Interview Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Planifier un Entretien</DialogTitle>
             <DialogDescription>
               {schedulingCandidature && `Candidat(e) : ${schedulingCandidature.fullName}`}
               <br />
-              Un email de convocation sera envoyé au candidat avec les détails de l'entretien.
+              Un email de convocation sera envoyé au candidat et à tous les membres du panel d'entretien.
             </DialogDescription>
           </DialogHeader>
 
@@ -814,15 +873,75 @@ export default function GesCompetencesCandidaturesPage() {
                 />
               </div>
             </div>
+            
+            {/* Panel Members Selection */}
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-slate-600" />
+                <Label className="text-base font-semibold">Composition du Panel d'Entretien</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Le Directeur Technique (DT) et le Responsable Qualité (RQ) sont automatiquement inclus. 
+                Veuillez sélectionner le Chef de Département et le Responsable d'Accréditation.
+              </p>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique (automatique)</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité (automatique)</span>
+                </div>
+                
+                <div>
+                  <Label>Chef de Département (CD) *</Label>
+                  <Select value={selectedPanelCdId} onValueChange={setSelectedPanelCdId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Sélectionner un Chef de Département" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCDs.map(cd => (
+                        <SelectItem key={cd.id} value={String(cd.id)}>
+                          {cd.fullName} ({cd.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Responsable d'Accréditation (RA) *</Label>
+                  <Select value={selectedPanelRaId} onValueChange={setSelectedPanelRaId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Sélectionner un Responsable d'Accréditation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRAs.map(ra => (
+                        <SelectItem key={ra.id} value={String(ra.id)}>
+                          {ra.fullName} ({ra.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="font-medium">GES</span> — <span className="text-muted-foreground">Gestionnaire de Compétences (vous)</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDateObj(undefined); setInterviewTime(""); }}>
+            <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDateObj(undefined); setInterviewTime(""); setSelectedPanelCdId(""); setSelectedPanelRaId(""); }}>
               Annuler
             </Button>
-            <Button className="bg-[#00A63E] hover:bg-[#009235]" onClick={handleScheduleInterview} disabled={!interviewDateObj || !interviewTime}>
+            <Button className="bg-[#00A63E] hover:bg-[#009235]" onClick={handleScheduleInterview} disabled={!interviewDateObj || !interviewTime || !selectedPanelCdId || !selectedPanelRaId}>
               <CalendarPlus className="w-4 h-4 mr-2" />
-              Confirmer & Envoyer la Convocation
+              Confirmer & Notifier le Panel
             </Button>
           </DialogFooter>
         </DialogContent>

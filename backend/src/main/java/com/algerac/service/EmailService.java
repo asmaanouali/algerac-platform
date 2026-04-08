@@ -949,7 +949,7 @@ public class EmailService {
                 
                 Cette décision ne remet en aucun cas en question la qualité de votre parcours professionnel ni vos compétences. Nos critères de sélection sont étroitement liés aux spécificités de nos programmes d'accréditation en cours et à la configuration de nos équipes d'évaluation.
                 
-                Votre dossier sera conservé dans notre vivier de compétences et pourra être reconsidéré lors de futures opportunités correspondant davantage à votre profil. Nous vous encourageons à suivre nos appels à candidatures et à renouveler votre intérêt le moment venu.
+                Votre dossier sera conservé dans notre vivier de compétences et pourra être reconsidéré lors de futures opportunités correspondant davantage à votre profil.
                 
                 Nous vous souhaitons plein succès dans la poursuite de votre parcours professionnel.
                 
@@ -1246,6 +1246,114 @@ public class EmailService {
             log.info("Email de notification de recours envoyé à {}", gesUser.getEmail());
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'email de recours : {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Envoie un email de notification aux membres du panel d'entretien
+     * (DT, RQ, CD sélectionné, RA sélectionné) avec les infos du candidat
+     */
+    public void sendInterviewPanelNotification(User candidate, java.time.LocalDateTime interviewDate,
+            java.util.List<User> dtUsers, java.util.List<User> rqUsers, User selectedCd, User selectedRa) {
+        
+        String typeLabel = getExpertTypeLabel(candidate);
+        String formattedDate = interviewDate.format(DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy 'à' HH'h'mm", java.util.Locale.FRENCH));
+        String candidateName = (candidate.getPrenom() != null ? candidate.getPrenom() : "") + " " + (candidate.getNom() != null ? candidate.getNom() : "");
+        
+        String emailBody = String.format("""
+            Bonjour,
+            
+            Vous êtes convié(e) à participer au panel d'entretien pour l'évaluation d'un candidat.
+            
+            ═══════════════════════════════════════
+              DÉTAILS DE L'ENTRETIEN
+            ═══════════════════════════════════════
+            
+              Date et heure : %s
+              Lieu : Siège ALGERAC
+            
+            ═══════════════════════════════════════
+              INFORMATIONS SUR LE CANDIDAT
+            ═══════════════════════════════════════
+            
+              Nom complet : %s
+              Type de candidature : %s
+              Référence : %s
+              Domaine d'expertise : %s
+              Email : %s
+              Téléphone : %s
+            
+            ═══════════════════════════════════════
+              COMPOSITION DU PANEL
+            ═══════════════════════════════════════
+            
+              • Directeur Technique (DT)
+              • Responsable Qualité (RQ)
+              • Chef de Département (CD)%s
+              • Responsable d'Accréditation (RA)%s
+              • Gestionnaire de Compétences
+            
+            ═══════════════════════════════════════
+            
+            Votre présence est requise pour cet entretien. Vous pouvez consulter le dossier complet du candidat sur la plateforme ALGERAC.
+            
+            Cordialement,
+            
+            Service de Gestion des Compétences
+            ALGERAC - Organisme Algérien d'Accréditation
+            """,
+            formattedDate,
+            candidateName.trim(),
+            typeLabel,
+            candidate.getRegistrationId() != null ? candidate.getRegistrationId() : "N/A",
+            candidate.getDomaineExpertise() != null ? candidate.getDomaineExpertise() : "Non spécifié",
+            candidate.getEmail(),
+            candidate.getPhone() != null ? candidate.getPhone() : "Non renseigné",
+            selectedCd != null ? " : " + selectedCd.getFullName() : "",
+            selectedRa != null ? " : " + selectedRa.getFullName() : ""
+        );
+        
+        String subject = String.format("[PANEL] Entretien %s - %s le %s", 
+            typeLabel, candidateName.trim(),
+            interviewDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        
+        // Send to DT users
+        for (User dt : dtUsers) {
+            sendSimpleEmail(dt.getEmail(), subject, emailBody);
+        }
+        
+        // Send to RQ users
+        for (User rq : rqUsers) {
+            sendSimpleEmail(rq.getEmail(), subject, emailBody);
+        }
+        
+        // Send to selected CD
+        if (selectedCd != null) {
+            sendSimpleEmail(selectedCd.getEmail(), subject, emailBody);
+        }
+        
+        // Send to selected RA
+        if (selectedRa != null) {
+            sendSimpleEmail(selectedRa.getEmail(), subject, emailBody);
+        }
+        
+        log.info("Emails de notification panel envoyés pour l'entretien de {} {}", candidate.getPrenom(), candidate.getNom());
+    }
+    
+    /**
+     * Helper: send a simple text email
+     */
+    private void sendSimpleEmail(String to, String subject, String body) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Email envoyé à {}", to);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email à {}", to, e);
         }
     }
 

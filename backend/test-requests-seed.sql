@@ -21,7 +21,7 @@ SELECT
     25,
     NOW() - INTERVAL '2 days',
     NOW() - INTERVAL '2 days'
-FROM users u WHERE u.email = 'oec.test@algerac.dz'
+FROM users u WHERE u.email = 'oec.test@algeractestapp.dz'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO accreditation_requests (
@@ -43,7 +43,7 @@ SELECT
     25,
     NOW() - INTERVAL '1 day',
     NOW() - INTERVAL '1 day'
-FROM users u WHERE u.email = 'oec.test@algerac.dz'
+FROM users u WHERE u.email = 'oec.test@algeractestapp.dz'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO accreditation_requests (
@@ -65,7 +65,7 @@ SELECT
     25,
     NOW() - INTERVAL '3 hours',
     NOW() - INTERVAL '3 hours'
-FROM users u WHERE u.email = 'oec.test@algerac.dz'
+FROM users u WHERE u.email = 'oec.test@algeractestapp.dz'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO accreditation_requests (
@@ -87,7 +87,7 @@ SELECT
     25,
     NOW() - INTERVAL '5 hours',
     NOW() - INTERVAL '5 hours'
-FROM users u WHERE u.email = 'oec.test@algerac.dz'
+FROM users u WHERE u.email = 'oec.test@algeractestapp.dz'
 ON CONFLICT DO NOTHING;
 
 -- Créer les paiements correspondants

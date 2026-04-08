@@ -31,6 +31,7 @@ import {
   Trash2,
   Clock,
   AlertCircle,
+  Users,
 } from "lucide-react";
 
 interface Candidature {
@@ -55,6 +56,8 @@ interface Candidature {
   interviewChecklistJson?: string;
   interviewDecision?: string;
   createdAt?: string;
+  interviewPanelCdId?: number;
+  interviewPanelRaId?: number;
 }
 
 interface ChecklistItem {
@@ -97,10 +100,42 @@ export default function InterviewEvaluationPage() {
   const [rejectNotes, setRejectNotes] = useState("");
   const [acceptRole, setAcceptRole] = useState("EXPERT");
 
+  // Panel members info
+  const [panelMembers, setPanelMembers] = useState<{
+    cd?: { id: number; fullName: string; email: string };
+    ra?: { id: number; fullName: string; email: string };
+  }>({});
+
   useEffect(() => {
     document.title = "Évaluation Entretien - Gestion des Compétences | ALGERAC";
     if (candidateId) fetchCandidature();
   }, [candidateId]);
+
+  // Fetch panel member details when candidature is loaded
+  useEffect(() => {
+    if (candidature) {
+      fetchPanelMemberDetails();
+    }
+  }, [candidature?.interviewPanelCdId, candidature?.interviewPanelRaId]);
+
+  const fetchPanelMemberDetails = async () => {
+    if (!candidature) return;
+    try {
+      const response = await fetch("/api/candidatures/experts/panel-members", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        const allCDs: Array<{id: number; fullName: string; email: string}> = data.chefsDepartement || [];
+        const allRAs: Array<{id: number; fullName: string; email: string}> = data.responsablesAccreditation || [];
+        
+        setPanelMembers({
+          cd: allCDs.find(cd => cd.id === candidature.interviewPanelCdId),
+          ra: allRAs.find(ra => ra.id === candidature.interviewPanelRaId),
+        });
+      }
+    } catch (error) {
+      console.error("Erreur chargement panel:", error);
+    }
+  };
 
   const fetchCandidature = async () => {
     try {
@@ -545,6 +580,47 @@ export default function InterviewEvaluationPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Interview Panel */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Panel d'Entretien
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                      <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                      <span className="font-medium">CD</span> — {panelMembers.cd ? (
+                        <span className="text-muted-foreground">{panelMembers.cd.fullName}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic">Non sélectionné</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
+                      <div className="w-2 h-2 bg-teal-500 rounded-full" />
+                      <span className="font-medium">RA</span> — {panelMembers.ra ? (
+                        <span className="text-muted-foreground">{panelMembers.ra.fullName}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic">Non sélectionné</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="font-medium">GES</span> — <span className="text-muted-foreground">Gestionnaire de Compétences</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Documents */}
               <Card>

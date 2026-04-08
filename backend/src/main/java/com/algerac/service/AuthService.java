@@ -170,15 +170,13 @@ public class AuthService {
             .fax(request.getFax())
             .adresseDomicile(request.getAdresseDomicile())
             .adresseEntreprise(request.getAdresseEntreprise())
+            .wilaya(request.getWilaya())
             .contactUrgenceNom(request.getContactUrgenceNom())
             .contactUrgenceTelephone(request.getContactUrgenceTelephone())
             .contactUrgenceMobile(request.getContactUrgenceMobile())
             // Domaine d'expertise
             .domaineExpertise(request.getDomaineExpertise())
             .sousDomaineExpertise(request.getSousDomaineExpertise())
-            // OEC Data consent
-            .consentOecData(request.getConsentOecData())
-            .consentOecDataDetails(request.getConsentOecDataDetails())
             // Section 8: Divers
             .informationsComplementaires(request.getInformationsComplementaires())
             // Ajout userType

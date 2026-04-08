@@ -69,6 +69,7 @@ export function Sidebar() {
     ],
     ra: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/ra/entretiens-candidats", label: "Entretiens Candidats", icon: Users },
       { href: "/ra/experts", label: "Répertoire Experts", icon: UserCheck },
       { href: "/ra/faisabilite", label: "Recevabilité", icon: ShieldAlert },
       { href: "/ra/quotes", label: "Conventions & Devis", icon: CreditCard },
@@ -86,6 +87,7 @@ export function Sidebar() {
     ],
     dt: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/dt/entretiens-candidats", label: "Entretiens Candidats", icon: Users },
       { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dt/certificats", label: "Certificats", icon: Award },
       { href: "/dt/ordres-mission", label: "Ordres de Mission", icon: Stamp },
@@ -94,6 +96,7 @@ export function Sidebar() {
     ],
     cd: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/cd/entretiens-candidats", label: "Entretiens Candidats", icon: Users },
       { href: "/cd/manage-requests", label: "Gérer Demandes", icon: Files },
       { href: "/cd/accreditations", label: "Accréditations", icon: FileCheck },
       { href: "/cd/revue-documentaire", label: "Revue Documentaire", icon: FileSearch },
@@ -193,6 +196,7 @@ export function Sidebar() {
     ],
     rq: [
       { href: "/rq/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/rq/entretiens-candidats", label: "Entretiens Candidats", icon: Users },
       { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/rq/plaintes", label: "Gestion Plaintes", icon: MessageSquareWarning },
     ],

@@ -518,11 +518,12 @@ public class CandidatureController {
     /**
      * Planifie un entretien pour un candidat expert/évaluateur/formateur
      * Accessible par GES_COMPETENCES
+     * Inclut la sélection du panel d'entretien (CD et RA)
      */
     @PostMapping("/experts/{id}/schedule-interview")
     public ResponseEntity<?> scheduleInterview(
             @PathVariable Long id,
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, Object> request,
             HttpSession session
     ) {
         try {
@@ -531,7 +532,7 @@ public class CandidatureController {
                 return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
             }
 
-            String interviewDateStr = request.get("interviewDate");
+            String interviewDateStr = (String) request.get("interviewDate");
             if (interviewDateStr == null || interviewDateStr.trim().isEmpty()) {
                 return ResponseEntity.status(400).body(Map.of(
                     "success", false,
@@ -539,14 +540,24 @@ public class CandidatureController {
                 ));
             }
 
-            log.info("POST /api/candidatures/experts/{}/schedule-interview - Planification entretien", id);
+            // Extract panel member IDs
+            Long cdId = null;
+            Long raId = null;
+            if (request.get("panelCdId") != null) {
+                cdId = Long.valueOf(request.get("panelCdId").toString());
+            }
+            if (request.get("panelRaId") != null) {
+                raId = Long.valueOf(request.get("panelRaId").toString());
+            }
+
+            log.info("POST /api/candidatures/experts/{}/schedule-interview - Planification entretien (panel CD={}, RA={})", id, cdId, raId);
             
-            User user = candidatureService.scheduleInterview(id, java.time.LocalDateTime.parse(interviewDateStr));
+            User user = candidatureService.scheduleInterview(id, java.time.LocalDateTime.parse(interviewDateStr), cdId, raId);
             log.info("Entretien planifié avec succès pour le candidat {}", id);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Entretien planifié. Un email de convocation a été envoyé au candidat.");
+            response.put("message", "Entretien planifié. Tous les membres du panel ont été notifiés.");
             response.put("user", user);
 
             return ResponseEntity.ok(response);
@@ -1055,6 +1066,88 @@ public class CandidatureController {
         } catch (Exception e) {
             log.error("Erreur lors de l'expiration des entretiens non confirmés", e);
             return ResponseEntity.status(500).body(Map.of("success", false, "message", "Erreur serveur : " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Récupère les entretiens où l'utilisateur connecté est membre du panel
+     * Accessible par DT, RQ, CD, RA
+     */
+    @GetMapping("/experts/my-interviews")
+    public ResponseEntity<?> getMyInterviews(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            Object userRoleObj = session.getAttribute("userRole");
+            String userRole = userRoleObj != null ? userRoleObj.toString() : null;
+            log.info("GET /api/candidatures/experts/my-interviews - userId: {}, role: {}", userId, userRole);
+            
+            List<User> interviews = candidatureService.getInterviewsForPanelMember(userId, userRole);
+            return ResponseEntity.ok(interviews);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des entretiens du panel", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Récupère les détails d'un candidat pour un membre du panel d'entretien
+     * Accessible par DT, RQ, CD, RA, GES_COMPETENCES
+     */
+    @GetMapping("/experts/{id}/panel-view")
+    public ResponseEntity<?> getCandidateForPanel(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            Object userRoleObj = session.getAttribute("userRole");
+            String userRole = userRoleObj != null ? userRoleObj.toString() : null;
+            log.info("GET /api/candidatures/experts/{}/panel-view - userId: {}, role: {}", id, userId, userRole);
+            
+            User candidate = candidatureService.getCandidatureById(id);
+            
+            // Verify the user is part of the panel for this candidate
+            boolean isPanel = candidatureService.isUserInInterviewPanel(userId, userRole, candidate);
+            if (!isPanel) {
+                return ResponseEntity.status(403).body(Map.of("error", "Vous n'êtes pas membre du panel pour cet entretien"));
+            }
+            
+            return ResponseEntity.ok(candidate);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération du candidat pour le panel", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Récupère la liste des CD et RA disponibles pour la sélection du panel d'entretien
+     * Accessible par GES_COMPETENCES
+     */
+    @GetMapping("/experts/panel-members")
+    public ResponseEntity<?> getAvailablePanelMembers(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+            }
+            
+            log.info("GET /api/candidatures/experts/panel-members - Récupération des membres disponibles pour le panel");
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("chefsDepartement", candidatureService.getAvailableCDs());
+            result.put("responsablesAccreditation", candidatureService.getAvailableRAs());
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des membres du panel", e);
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
         }
     }
 }

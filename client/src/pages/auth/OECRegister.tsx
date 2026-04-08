@@ -246,6 +246,151 @@ interface ChangementTransfert {
   systemeManagement: string;
 }
 
+interface ForRow {
+  id: number;
+  [key: string]: string | number;
+}
+
+function newRow(fields: string[]): ForRow {
+  const row: ForRow = { id: Date.now() + Math.random() };
+  fields.forEach((f) => { row[f] = ""; });
+  return row;
+}
+
+function DynamicTable({
+  title, columns, rows, onAdd, onRemove, onUpdate,
+}: {
+  title: string;
+  columns: { key: string; label: string; placeholder?: string; type?: string }[];
+  rows: ForRow[];
+  onAdd: () => void;
+  onRemove: (id: number) => void;
+  onUpdate: (id: number, field: string, value: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <Label className="text-sm font-semibold">{title}</Label>
+        <button type="button" onClick={onAdd} className="inline-flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-slate-50">
+          <Plus className="w-3 h-3" /> Ajouter
+        </button>
+      </div>
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="p-2 text-left text-xs font-medium text-slate-600 w-8">N°</th>
+              {columns.map((col) => (
+                <th key={col.key} className="p-2 text-left text-xs font-medium text-slate-600">{col.label}</th>
+              ))}
+              <th className="p-2 w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={row.id} className="border-t">
+                <td className="p-2 text-xs text-slate-500">{idx + 1}</td>
+                {columns.map((col) => (
+                  <td key={col.key} className="p-1">
+                    <Input
+                      type={col.type || "text"}
+                      value={(row[col.key] as string) || ""}
+                      onChange={(e) => onUpdate(row.id, col.key, e.target.value)}
+                      placeholder={col.placeholder || ""}
+                      className="h-8 text-xs"
+                    />
+                  </td>
+                ))}
+                <td className="p-1">
+                  {rows.length > 1 && (
+                    <button type="button" onClick={() => onRemove(row.id)} className="p-1 hover:bg-red-50 rounded">
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Non-FOR documents (stay as uploads per activity)
+const UPLOAD_DOCS: Record<string, string[]> = {
+  inspection: [
+    "Manuel qualité", "Procédures SM", "Procédures techniques", "Liste des documents",
+    "Dernier rapport d'audit interne", "Dernier CR de revue de direction",
+    "Liste des inspecteurs", "Liste des équipements", "Certificats d'étalonnage",
+    "Police d'assurance", "Liste des sites clients", "Agrément",
+    "Dossier de validation des méthodes", "Spécimen du rapport d'inspection",
+  ],
+  essais: [
+    "Manuel qualité", "Politiques/procédures", "Liste des documents",
+    "Audit interne", "Revue de direction", "Procédure d'incertitudes",
+    "Gestion des risques", "Spécimen rapport d'essai", "Dossier validation des méthodes",
+    "Liste des étalons/équipements", "Certificats d'étalonnage",
+    "Procédure de surveillance", "Rapport essais d'aptitude",
+  ],
+  etalonnage: [
+    "Manuel qualité", "Procédures", "Liste des documents",
+    "Audit interne", "Revue de direction", "Procédure d'incertitudes",
+    "Feuilles de calcul", "Gestion des risques", "Spécimen certificat d'étalonnage",
+    "Liste des étalons", "Équipements étalonnés en interne", "Certificats d'étalonnage",
+    "Procédure de surveillance", "Dossiers de validation",
+    "Rapport essais d'aptitude", "Liste du personnel habilité",
+  ],
+  examens_medicaux: [
+    "Organigramme", "Modalités des biologistes", "Procédure examens urgents",
+    "Procédures gestion du personnel", "Gestion du système d'information",
+    "Procédure validation/vérification méthode", "Procédure CIQ/EEQ",
+    "Résultats EEQ", "Procédure incertitudes", "Manuel qualité",
+    "Liste des documents", "Planning audits internes", "Planning revues de direction",
+    "Spécimen CR résultats", "Procédures SM", "Certificats d'étalonnage",
+  ],
+  essais_aptitude: [
+    "Manuel SM", "Procédures", "Liste des documents",
+    "Audit interne", "Revue de direction", "Dossier complet campagne ILC",
+    "Technique de valeur assignée", "Liste prestataires externes",
+    "Spécimen rapports", "Procédure et matrice des risques",
+  ],
+  cert_sm: [
+    "Manuel SM", "Procédures", "Liste des documents",
+    "Audit interne", "Revue de direction",
+    "Composition comité de décision + preuves de compétences",
+    "Analyse de risque du comité d'impartialité", "Police d'assurance RC",
+    "Liste des documents par référentiel (ISO 9001/14001/22000/45001)",
+    "Matrice des compétences auditeurs", "Liste des clients certifiés",
+    "Planning des audits pour witnessing",
+  ],
+  cert_produits: [
+    "Liste des documents", "Procédures SM et technique",
+    "Programme de certification + PV de validation", "Autorisation du propriétaire",
+    "Audit interne", "Revue de direction", "Dispositif d'impartialité",
+    "Liste des ressources", "Spécimen certificat",
+    "Composition dispositif décisionnel",
+    "Règles de gestion certificat/licence/marque",
+    "Liste des produits certifiés", "Spécimen contrat", "Planning audits de suivi",
+  ],
+  cert_personnes: [
+    "Manuel SM", "Dispositions SM", "Liste des documents",
+    "Audit interne", "Revue de direction",
+    "Composition des dispositifs de gestion/appels/impartialité",
+    "Analyse des risques impartialité",
+    "Programme de certification ISO/IEC 17024 + PV de validation",
+    "Matrice des compétences évaluateurs", "Modèle de certificat",
+    "Calendrier pour witnessing", "Liste des activités externalisées",
+  ],
+  transfert: [
+    "Statut juridique de l'entité réceptrice",
+    "Dispositions gestion des risques", "Spécimens de rapports/certificats",
+    "Rapports d'évaluation les plus récents",
+    "État d'avancement clôture des écarts",
+    "Certificat d'accréditation de l'organisme cédant",
+  ],
+};
+
 interface FormData {
   // Étape 1
   typeDemande: string;
@@ -320,7 +465,7 @@ const STEPS = [
   { id: 5, title: "Personnel" },
   { id: 6, title: "Prestations conseil" },
   { id: 7, title: "Reconnaissances" },
-  { id: 8, title: "Documents techniques" },
+  { id: 8, title: "Formulaires techniques" },
   { id: 9, title: "Documents administratifs" },
   { id: 10, title: "Déclaration et signature" }
 ];
@@ -332,6 +477,52 @@ export default function OECRegister() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
+
+  // FOR form state
+  const addForRow = (setter: React.Dispatch<React.SetStateAction<ForRow[]>>, fields: string[]) =>
+    setter((prev) => [...prev, newRow(fields)]);
+  const removeForRow = (setter: React.Dispatch<React.SetStateAction<ForRow[]>>, id: number) =>
+    setter((prev) => prev.filter((r) => r.id !== id));
+  const updateForRow = (setter: React.Dispatch<React.SetStateAction<ForRow[]>>, id: number, field: string, value: string) =>
+    setter((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
+
+  // FOR 04 - Inspection
+  const [for04Type, setFor04Type] = useState("");
+  const [for04Domaines, setFor04Domaines] = useState<ForRow[]>([newRow(["domaine", "sousDomaine", "objetInspecte", "norme", "typeInspection"])]);
+  const [for04Inspecteurs, setFor04Inspecteurs] = useState<ForRow[]>([newRow(["nom", "qualification", "domaineHabilitation", "experience", "statut"])]);
+  const [for04Equipements, setFor04Equipements] = useState<ForRow[]>([newRow(["designation", "marqueModele", "noSerie", "gamme", "dateEtalonnage"])]);
+  // FOR 05 - Essais
+  const [for05Domaines, setFor05Domaines] = useState<ForRow[]>([newRow(["domaine", "sousDomaine", "produitMatrice", "essaiAnalyse", "methodeRef", "norme"])]);
+  const [for05Methodes, setFor05Methodes] = useState<ForRow[]>([newRow(["reference", "titre", "type", "statutValidation"])]);
+  const [for05Equipements, setFor05Equipements] = useState<ForRow[]>([newRow(["designation", "marqueModele", "gamme", "resolution", "dateEtalonnage", "noCertificat"])]);
+  const [for05Personnel, setFor05Personnel] = useState<ForRow[]>([newRow(["nom", "diplome", "specialite", "fonction", "experience", "habilitations"])]);
+  const [for05ParticipationEIL, setFor05ParticipationEIL] = useState("");
+  const [for05ProcedureIncertitudes, setFor05ProcedureIncertitudes] = useState("");
+  // FOR 06 - Étalonnage
+  const [for06Grandeurs, setFor06Grandeurs] = useState<ForRow[]>([newRow(["grandeur", "domaineMesure", "gamme", "cmc", "methode", "norme"])]);
+  const [for06Etalons, setFor06Etalons] = useState<ForRow[]>([newRow(["designation", "noIdentification", "grandeur", "gamme", "incertitude", "tracabilite", "dateEtalonnage"])]);
+  const [for06Equipements, setFor06Equipements] = useState<ForRow[]>([newRow(["designation", "marqueModele", "gamme", "resolution", "dateEtalonnage"])]);
+  const [for06Personnel, setFor06Personnel] = useState<ForRow[]>([newRow(["nom", "diplome", "specialite", "experience", "habilitations"])]);
+  const [for06ConditionsEnv, setFor06ConditionsEnv] = useState("");
+  // FOR 07 - Certification SM
+  const [for07Referentiels, setFor07Referentiels] = useState<string[]>([]);
+  const [for07Secteurs, setFor07Secteurs] = useState<ForRow[]>([newRow(["codeIAF", "description", "sousSecteurs", "nbAuditeurs"])]);
+  const [for07Auditeurs, setFor07Auditeurs] = useState<ForRow[]>([newRow(["nom", "qualification", "secteursQualifies", "experienceAudits", "statut"])]);
+  const [for07Comite, setFor07Comite] = useState<ForRow[]>([newRow(["nom", "fonction", "domaineCompetence", "representation"])]);
+  const [for07NbClientsCertifies, setFor07NbClientsCertifies] = useState("");
+  // FOR 05-1 - Laboratoires médicales
+  const [for051Disciplines, setFor051Disciplines] = useState<ForRow[]>([newRow(["discipline", "typeExamen", "methode", "automate"])]);
+  const [for051Personnel, setFor051Personnel] = useState<ForRow[]>([newRow(["nom", "qualification", "specialite", "fonction", "experience"])]);
+  const [for051ParticipationEEQ, setFor051ParticipationEEQ] = useState("");
+  // FOR 05-5 - Essais d'aptitude
+  const [for055Programmes, setFor055Programmes] = useState<ForRow[]>([newRow(["domaine", "typeProgramme", "frequence", "nbParticipants", "methodeStatistique"])]);
+  const [for055Personnel, setFor055Personnel] = useState<ForRow[]>([newRow(["nom", "qualification", "role", "experience"])]);
+  // FOR 07-5 - Certification produits
+  const [for075Produits, setFor075Produits] = useState<ForRow[]>([newRow(["categorie", "normeApplicable", "schemaCertification", "programme"])]);
+  const [for075Evaluateurs, setFor075Evaluateurs] = useState<ForRow[]>([newRow(["nom", "qualification", "domaine", "experience"])]);
+  // FOR 07-8 - Certification personnes
+  const [for078Schemas, setFor078Schemas] = useState<ForRow[]>([newRow(["domaine", "referentiel", "niveau", "criteresEligibilite"])]);
+  const [for078Evaluateurs, setFor078Evaluateurs] = useState<ForRow[]>([newRow(["nom", "qualification", "domaineCertifie", "experience"])]);
   
   const [formData, setFormData] = useState<FormData>({
     // Étape 1
@@ -1498,121 +1689,322 @@ export default function OECRegister() {
   );
 
   // ÉTAPE 8: Documents techniques à joindre
+  const renderFor04 = () => (
+    <div className="space-y-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50/30">
+      <h4 className="font-bold text-base text-blue-800">FOR 04 — Renseignements Techniques Inspection (ISO/IEC 17020)</h4>
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Type d'organisme d'inspection</Label>
+        <RadioGroup value={for04Type} onValueChange={setFor04Type} className="flex gap-6">
+          {["A", "B", "C"].map((t) => (<div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`for04-${t}`} /><Label htmlFor={`for04-${t}`}>Type {t}</Label></div>))}
+        </RadioGroup>
+      </div>
+      <DynamicTable title="Domaines d'inspection" columns={[
+        { key: "domaine", label: "Domaine d'activité", placeholder: "Ex: Équipements sous pression" },
+        { key: "sousDomaine", label: "Sous-domaine", placeholder: "Précisez" },
+        { key: "objetInspecte", label: "Objet inspecté", placeholder: "Type d'objet" },
+        { key: "norme", label: "Norme/Méthode", placeholder: "Référence" },
+        { key: "typeInspection", label: "Type", placeholder: "Réglementaire/Client" },
+      ]} rows={for04Domaines} onAdd={() => addForRow(setFor04Domaines, ["domaine", "sousDomaine", "objetInspecte", "norme", "typeInspection"])} onRemove={(id) => removeForRow(setFor04Domaines, id)} onUpdate={(id, f, v) => updateForRow(setFor04Domaines, id, f, v)} />
+      <DynamicTable title="Personnel d'inspection" columns={[
+        { key: "nom", label: "Nom & Prénom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification/Diplôme", placeholder: "Diplôme" },
+        { key: "domaineHabilitation", label: "Domaine d'habilitation", placeholder: "Domaine" },
+        { key: "experience", label: "Expérience (ans)", placeholder: "Années", type: "number" },
+        { key: "statut", label: "Statut", placeholder: "Permanent/Vacataire" },
+      ]} rows={for04Inspecteurs} onAdd={() => addForRow(setFor04Inspecteurs, ["nom", "qualification", "domaineHabilitation", "experience", "statut"])} onRemove={(id) => removeForRow(setFor04Inspecteurs, id)} onUpdate={(id, f, v) => updateForRow(setFor04Inspecteurs, id, f, v)} />
+      <DynamicTable title="Équipements de mesure et d'essai" columns={[
+        { key: "designation", label: "Désignation", placeholder: "Nom équipement" },
+        { key: "marqueModele", label: "Marque/Modèle", placeholder: "Marque" },
+        { key: "noSerie", label: "N° de série", placeholder: "N° série" },
+        { key: "gamme", label: "Gamme de mesure", placeholder: "Gamme" },
+        { key: "dateEtalonnage", label: "Date étalonnage", placeholder: "JJ/MM/AAAA" },
+      ]} rows={for04Equipements} onAdd={() => addForRow(setFor04Equipements, ["designation", "marqueModele", "noSerie", "gamme", "dateEtalonnage"])} onRemove={(id) => removeForRow(setFor04Equipements, id)} onUpdate={(id, f, v) => updateForRow(setFor04Equipements, id, f, v)} />
+    </div>
+  );
+
+  const renderFor05 = () => (
+    <div className="space-y-6 p-4 border-2 border-green-200 rounded-lg bg-green-50/30">
+      <h4 className="font-bold text-base text-green-800">FOR 05 — Renseignements Techniques Laboratoire d'Essais (ISO/IEC 17025)</h4>
+      <DynamicTable title="Portée d'accréditation demandée" columns={[
+        { key: "domaine", label: "Domaine", placeholder: "Ex: Chimie" },
+        { key: "sousDomaine", label: "Sous-domaine", placeholder: "Précisez" },
+        { key: "produitMatrice", label: "Produit/Matrice", placeholder: "Type produit" },
+        { key: "essaiAnalyse", label: "Essai/Analyse", placeholder: "Type essai" },
+        { key: "methodeRef", label: "Méthode", placeholder: "Référence" },
+        { key: "norme", label: "Norme", placeholder: "ISO/NF..." },
+      ]} rows={for05Domaines} onAdd={() => addForRow(setFor05Domaines, ["domaine", "sousDomaine", "produitMatrice", "essaiAnalyse", "methodeRef", "norme"])} onRemove={(id) => removeForRow(setFor05Domaines, id)} onUpdate={(id, f, v) => updateForRow(setFor05Domaines, id, f, v)} />
+      <DynamicTable title="Méthodes d'essai" columns={[
+        { key: "reference", label: "Référence", placeholder: "Réf. méthode" },
+        { key: "titre", label: "Titre", placeholder: "Titre de la méthode" },
+        { key: "type", label: "Type", placeholder: "Normative/Interne" },
+        { key: "statutValidation", label: "Statut validation", placeholder: "Validée/En cours" },
+      ]} rows={for05Methodes} onAdd={() => addForRow(setFor05Methodes, ["reference", "titre", "type", "statutValidation"])} onRemove={(id) => removeForRow(setFor05Methodes, id)} onUpdate={(id, f, v) => updateForRow(setFor05Methodes, id, f, v)} />
+      <DynamicTable title="Équipements principaux" columns={[
+        { key: "designation", label: "Désignation", placeholder: "Nom" },
+        { key: "marqueModele", label: "Marque/Modèle", placeholder: "Marque" },
+        { key: "gamme", label: "Gamme", placeholder: "Gamme mesure" },
+        { key: "resolution", label: "Résolution", placeholder: "Résolution" },
+        { key: "dateEtalonnage", label: "Date étalonnage", placeholder: "Date" },
+        { key: "noCertificat", label: "N° certificat", placeholder: "N°" },
+      ]} rows={for05Equipements} onAdd={() => addForRow(setFor05Equipements, ["designation", "marqueModele", "gamme", "resolution", "dateEtalonnage", "noCertificat"])} onRemove={(id) => removeForRow(setFor05Equipements, id)} onUpdate={(id, f, v) => updateForRow(setFor05Equipements, id, f, v)} />
+      <DynamicTable title="Personnel technique" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "diplome", label: "Diplôme", placeholder: "Diplôme" },
+        { key: "specialite", label: "Spécialité", placeholder: "Spécialité" },
+        { key: "fonction", label: "Fonction", placeholder: "Fonction" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+        { key: "habilitations", label: "Habilitations", placeholder: "Domaines" },
+      ]} rows={for05Personnel} onAdd={() => addForRow(setFor05Personnel, ["nom", "diplome", "specialite", "fonction", "experience", "habilitations"])} onRemove={(id) => removeForRow(setFor05Personnel, id)} onUpdate={(id, f, v) => updateForRow(setFor05Personnel, id, f, v)} />
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="space-y-2"><Label className="text-sm">Participation aux essais d'aptitude (EIL)</Label><Textarea value={for05ParticipationEIL} onChange={(e) => setFor05ParticipationEIL(e.target.value)} placeholder="Programmes, fournisseurs, résultats..." rows={2} /></div>
+        <div className="space-y-2"><Label className="text-sm">Procédure d'estimation des incertitudes</Label><Textarea value={for05ProcedureIncertitudes} onChange={(e) => setFor05ProcedureIncertitudes(e.target.value)} placeholder="Décrivez la procédure..." rows={2} /></div>
+      </div>
+    </div>
+  );
+
+  const renderFor06 = () => (
+    <div className="space-y-6 p-4 border-2 border-purple-200 rounded-lg bg-purple-50/30">
+      <h4 className="font-bold text-base text-purple-800">FOR 06 — Renseignements Techniques Laboratoire d'Étalonnage (ISO/IEC 17025)</h4>
+      <DynamicTable title="Portée d'accréditation — Grandeurs et gammes" columns={[
+        { key: "grandeur", label: "Grandeur", placeholder: "Ex: Masse" },
+        { key: "domaineMesure", label: "Domaine mesure", placeholder: "Précisez" },
+        { key: "gamme", label: "Gamme", placeholder: "Min - Max" },
+        { key: "cmc", label: "CMC", placeholder: "Incertitude meilleure" },
+        { key: "methode", label: "Méthode", placeholder: "Méthode" },
+        { key: "norme", label: "Norme", placeholder: "Référence" },
+      ]} rows={for06Grandeurs} onAdd={() => addForRow(setFor06Grandeurs, ["grandeur", "domaineMesure", "gamme", "cmc", "methode", "norme"])} onRemove={(id) => removeForRow(setFor06Grandeurs, id)} onUpdate={(id, f, v) => updateForRow(setFor06Grandeurs, id, f, v)} />
+      <DynamicTable title="Étalons de référence" columns={[
+        { key: "designation", label: "Désignation", placeholder: "Nom" },
+        { key: "noIdentification", label: "N° identification", placeholder: "N°" },
+        { key: "grandeur", label: "Grandeur", placeholder: "Grandeur" },
+        { key: "gamme", label: "Gamme", placeholder: "Gamme" },
+        { key: "incertitude", label: "Incertitude", placeholder: "U" },
+        { key: "tracabilite", label: "Traçabilité", placeholder: "Organisme" },
+        { key: "dateEtalonnage", label: "Date étalonnage", placeholder: "Date" },
+      ]} rows={for06Etalons} onAdd={() => addForRow(setFor06Etalons, ["designation", "noIdentification", "grandeur", "gamme", "incertitude", "tracabilite", "dateEtalonnage"])} onRemove={(id) => removeForRow(setFor06Etalons, id)} onUpdate={(id, f, v) => updateForRow(setFor06Etalons, id, f, v)} />
+      <DynamicTable title="Équipements" columns={[
+        { key: "designation", label: "Désignation", placeholder: "Nom" },
+        { key: "marqueModele", label: "Marque/Modèle", placeholder: "Marque" },
+        { key: "gamme", label: "Gamme", placeholder: "Gamme" },
+        { key: "resolution", label: "Résolution", placeholder: "Résolution" },
+        { key: "dateEtalonnage", label: "Date étalonnage", placeholder: "Date" },
+      ]} rows={for06Equipements} onAdd={() => addForRow(setFor06Equipements, ["designation", "marqueModele", "gamme", "resolution", "dateEtalonnage"])} onRemove={(id) => removeForRow(setFor06Equipements, id)} onUpdate={(id, f, v) => updateForRow(setFor06Equipements, id, f, v)} />
+      <DynamicTable title="Personnel technique" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "diplome", label: "Diplôme", placeholder: "Diplôme" },
+        { key: "specialite", label: "Spécialité", placeholder: "Spécialité" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+        { key: "habilitations", label: "Habilitations", placeholder: "Domaines" },
+      ]} rows={for06Personnel} onAdd={() => addForRow(setFor06Personnel, ["nom", "diplome", "specialite", "experience", "habilitations"])} onRemove={(id) => removeForRow(setFor06Personnel, id)} onUpdate={(id, f, v) => updateForRow(setFor06Personnel, id, f, v)} />
+      <div className="space-y-2"><Label className="text-sm">Conditions environnementales (température, humidité, contrôle)</Label><Textarea value={for06ConditionsEnv} onChange={(e) => setFor06ConditionsEnv(e.target.value)} placeholder="Décrivez les conditions environnementales du laboratoire..." rows={2} /></div>
+    </div>
+  );
+
+  const renderFor07 = () => (
+    <div className="space-y-6 p-4 border-2 border-orange-200 rounded-lg bg-orange-50/30">
+      <h4 className="font-bold text-base text-orange-800">FOR 07 — Renseignements Techniques Certification SM (ISO/IEC 17021-1)</h4>
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Référentiels de certification couverts</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {["ISO 9001", "ISO 14001", "ISO 22000", "ISO 45001", "ISO 50001", "ISO 13485", "ISO 27001", "ISO 22301"].map((ref) => (
+            <div key={ref} className="flex items-center space-x-2">
+              <Checkbox id={`for07-${ref}`} checked={for07Referentiels.includes(ref)} onCheckedChange={(checked) => setFor07Referentiels((prev) => checked ? [...prev, ref] : prev.filter((r) => r !== ref))} />
+              <Label htmlFor={`for07-${ref}`} className="text-sm cursor-pointer">{ref}</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+      <DynamicTable title="Secteurs d'activité (codes IAF/EA)" columns={[
+        { key: "codeIAF", label: "Code IAF", placeholder: "Ex: IAF 01" },
+        { key: "description", label: "Description", placeholder: "Description secteur" },
+        { key: "sousSecteurs", label: "Sous-secteurs", placeholder: "Précisez" },
+        { key: "nbAuditeurs", label: "Nb auditeurs qualifiés", placeholder: "N", type: "number" },
+      ]} rows={for07Secteurs} onAdd={() => addForRow(setFor07Secteurs, ["codeIAF", "description", "sousSecteurs", "nbAuditeurs"])} onRemove={(id) => removeForRow(setFor07Secteurs, id)} onUpdate={(id, f, v) => updateForRow(setFor07Secteurs, id, f, v)} />
+      <DynamicTable title="Liste des auditeurs" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification", placeholder: "Qualification" },
+        { key: "secteursQualifies", label: "Secteurs qualifiés", placeholder: "Codes IAF" },
+        { key: "experienceAudits", label: "Exp. audits (ans)", placeholder: "Années", type: "number" },
+        { key: "statut", label: "Statut", placeholder: "Permanent/Contractuel" },
+      ]} rows={for07Auditeurs} onAdd={() => addForRow(setFor07Auditeurs, ["nom", "qualification", "secteursQualifies", "experienceAudits", "statut"])} onRemove={(id) => removeForRow(setFor07Auditeurs, id)} onUpdate={(id, f, v) => updateForRow(setFor07Auditeurs, id, f, v)} />
+      <DynamicTable title="Comité de décision de certification" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "fonction", label: "Fonction", placeholder: "Fonction" },
+        { key: "domaineCompetence", label: "Domaine compétence", placeholder: "Domaine" },
+        { key: "representation", label: "Représentation", placeholder: "Partie prenante" },
+      ]} rows={for07Comite} onAdd={() => addForRow(setFor07Comite, ["nom", "fonction", "domaineCompetence", "representation"])} onRemove={(id) => removeForRow(setFor07Comite, id)} onUpdate={(id, f, v) => updateForRow(setFor07Comite, id, f, v)} />
+      <div className="space-y-2"><Label className="text-sm">Nombre de clients certifiés</Label><Input value={for07NbClientsCertifies} onChange={(e) => setFor07NbClientsCertifies(e.target.value)} placeholder="Nombre total" type="number" /></div>
+    </div>
+  );
+
+  const renderFor051 = () => (
+    <div className="space-y-6 p-4 border-2 border-rose-200 rounded-lg bg-rose-50/30">
+      <h4 className="font-bold text-base text-rose-800">FOR 05-1 — Renseignements Techniques Laboratoire Médical (ISO 15189)</h4>
+      <DynamicTable title="Disciplines et examens" columns={[
+        { key: "discipline", label: "Discipline", placeholder: "Ex: Biochimie" },
+        { key: "typeExamen", label: "Type d'examen", placeholder: "Type" },
+        { key: "methode", label: "Méthode", placeholder: "Méthode" },
+        { key: "automate", label: "Automate/Équipement", placeholder: "Équipement" },
+      ]} rows={for051Disciplines} onAdd={() => addForRow(setFor051Disciplines, ["discipline", "typeExamen", "methode", "automate"])} onRemove={(id) => removeForRow(setFor051Disciplines, id)} onUpdate={(id, f, v) => updateForRow(setFor051Disciplines, id, f, v)} />
+      <DynamicTable title="Personnel médical" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification", placeholder: "Diplôme" },
+        { key: "specialite", label: "Spécialité", placeholder: "Spécialité" },
+        { key: "fonction", label: "Fonction", placeholder: "Fonction" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+      ]} rows={for051Personnel} onAdd={() => addForRow(setFor051Personnel, ["nom", "qualification", "specialite", "fonction", "experience"])} onRemove={(id) => removeForRow(setFor051Personnel, id)} onUpdate={(id, f, v) => updateForRow(setFor051Personnel, id, f, v)} />
+      <div className="space-y-2"><Label className="text-sm">Participation aux EEQ (programmes, fournisseurs)</Label><Textarea value={for051ParticipationEEQ} onChange={(e) => setFor051ParticipationEEQ(e.target.value)} placeholder="Programmes EEQ, fournisseurs, résultats..." rows={2} /></div>
+    </div>
+  );
+
+  const renderFor055 = () => (
+    <div className="space-y-6 p-4 border-2 border-teal-200 rounded-lg bg-teal-50/30">
+      <h4 className="font-bold text-base text-teal-800">FOR 05-5 — Renseignements Techniques Essais d'Aptitude (ISO/IEC 17043)</h4>
+      <DynamicTable title="Programmes d'essais d'aptitude" columns={[
+        { key: "domaine", label: "Domaine", placeholder: "Domaine" },
+        { key: "typeProgramme", label: "Type programme", placeholder: "Type" },
+        { key: "frequence", label: "Fréquence", placeholder: "Fréquence" },
+        { key: "nbParticipants", label: "Nb participants", placeholder: "N", type: "number" },
+        { key: "methodeStatistique", label: "Méthode statistique", placeholder: "Méthode" },
+      ]} rows={for055Programmes} onAdd={() => addForRow(setFor055Programmes, ["domaine", "typeProgramme", "frequence", "nbParticipants", "methodeStatistique"])} onRemove={(id) => removeForRow(setFor055Programmes, id)} onUpdate={(id, f, v) => updateForRow(setFor055Programmes, id, f, v)} />
+      <DynamicTable title="Personnel" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification", placeholder: "Qualification" },
+        { key: "role", label: "Rôle", placeholder: "Rôle" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+      ]} rows={for055Personnel} onAdd={() => addForRow(setFor055Personnel, ["nom", "qualification", "role", "experience"])} onRemove={(id) => removeForRow(setFor055Personnel, id)} onUpdate={(id, f, v) => updateForRow(setFor055Personnel, id, f, v)} />
+    </div>
+  );
+
+  const renderFor075 = () => (
+    <div className="space-y-6 p-4 border-2 border-amber-200 rounded-lg bg-amber-50/30">
+      <h4 className="font-bold text-base text-amber-800">FOR 07-5 — Renseignements Techniques Certification Produits (ISO/IEC 17065)</h4>
+      <DynamicTable title="Produits/Services couverts" columns={[
+        { key: "categorie", label: "Catégorie", placeholder: "Catégorie produit" },
+        { key: "normeApplicable", label: "Norme applicable", placeholder: "Norme/Règlement" },
+        { key: "schemaCertification", label: "Schéma", placeholder: "Schéma certification" },
+        { key: "programme", label: "Programme", placeholder: "Programme" },
+      ]} rows={for075Produits} onAdd={() => addForRow(setFor075Produits, ["categorie", "normeApplicable", "schemaCertification", "programme"])} onRemove={(id) => removeForRow(setFor075Produits, id)} onUpdate={(id, f, v) => updateForRow(setFor075Produits, id, f, v)} />
+      <DynamicTable title="Personnel d'évaluation" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification", placeholder: "Qualification" },
+        { key: "domaine", label: "Domaine", placeholder: "Domaine" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+      ]} rows={for075Evaluateurs} onAdd={() => addForRow(setFor075Evaluateurs, ["nom", "qualification", "domaine", "experience"])} onRemove={(id) => removeForRow(setFor075Evaluateurs, id)} onUpdate={(id, f, v) => updateForRow(setFor075Evaluateurs, id, f, v)} />
+    </div>
+  );
+
+  const renderFor078 = () => (
+    <div className="space-y-6 p-4 border-2 border-indigo-200 rounded-lg bg-indigo-50/30">
+      <h4 className="font-bold text-base text-indigo-800">FOR 07-8 — Renseignements Techniques Certification Personnes (ISO/IEC 17024)</h4>
+      <DynamicTable title="Schémas de certification" columns={[
+        { key: "domaine", label: "Domaine", placeholder: "Domaine" },
+        { key: "referentiel", label: "Référentiel", placeholder: "Norme/Référentiel" },
+        { key: "niveau", label: "Niveau", placeholder: "Niveau" },
+        { key: "criteresEligibilite", label: "Critères d'éligibilité", placeholder: "Critères" },
+      ]} rows={for078Schemas} onAdd={() => addForRow(setFor078Schemas, ["domaine", "referentiel", "niveau", "criteresEligibilite"])} onRemove={(id) => removeForRow(setFor078Schemas, id)} onUpdate={(id, f, v) => updateForRow(setFor078Schemas, id, f, v)} />
+      <DynamicTable title="Évaluateurs" columns={[
+        { key: "nom", label: "Nom", placeholder: "Nom complet" },
+        { key: "qualification", label: "Qualification", placeholder: "Qualification" },
+        { key: "domaineCertifie", label: "Domaine certifié", placeholder: "Domaine" },
+        { key: "experience", label: "Exp. (ans)", placeholder: "Années", type: "number" },
+      ]} rows={for078Evaluateurs} onAdd={() => addForRow(setFor078Evaluateurs, ["nom", "qualification", "domaineCertifie", "experience"])} onRemove={(id) => removeForRow(setFor078Evaluateurs, id)} onUpdate={(id, f, v) => updateForRow(setFor078Evaluateurs, id, f, v)} />
+    </div>
+  );
+
   const renderStep8 = () => {
     const selectedActivities = formData.activites;
-    const allDocuments: string[] = [];
-    
-    selectedActivities.forEach(activity => {
-      if (DOCUMENTS_ANNEXES[activity]) {
-        allDocuments.push(...DOCUMENTS_ANNEXES[activity]);
-      }
-    });
-    
-    // Ajouter annexe transfert si applicable
-    if (formData.typeDemande === "transfert" && DOCUMENTS_ANNEXES.transfert) {
-      allDocuments.push(...DOCUMENTS_ANNEXES.transfert);
-    }
 
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold mb-2">Liste des documents à joindre</h3>
+          <h3 className="text-lg font-semibold mb-2">Formulaires techniques à remplir</h3>
           <p className="text-sm text-slate-600 mb-4">
-            Cochez chaque document que vous inclurez dans votre dossier
+            Remplissez les formulaires techniques correspondant à vos activités sélectionnées, puis joignez les documents complémentaires requis.
           </p>
         </div>
 
         {selectedActivities.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            Veuillez sélectionner au moins une activité à l'étape 1 pour voir les documents requis
+            Veuillez sélectionner au moins une activité à l'étape 1 pour voir les formulaires requis
           </div>
         ) : (
-          <div className="space-y-6">
-            {selectedActivities.map(activity => {
-              const activityLabel = TYPES_ACTIVITES.find(a => a.value === activity)?.label || activity;
-              const docs = DOCUMENTS_ANNEXES[activity] || [];
-              
-              return (
-                <div key={activity} className="space-y-3">
-                  <h4 className="font-semibold text-base text-[#00A63E]">
-                    {activityLabel}
-                  </h4>
-                  <div className="space-y-2 pl-4">
-                    {docs.map((doc, idx) => (
-                      <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
-                        <Checkbox 
-                          id={`doc-${activity}-${idx}`}
-                          checked={!!formData.documentsChecked[`${activity}-${doc}`]}
-                          onCheckedChange={() => toggleDocumentCheck(`${activity}-${doc}`)}
-                        />
-                        <div className="flex-1">
-                          <Label htmlFor={`doc-${activity}-${idx}`} className="cursor-pointer text-sm">
-                            {doc}
-                          </Label>
-                          {!!formData.documentsChecked[`${activity}-${doc}`] && (
-                            <div className="mt-1">
-                              <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) setDocumentFiles(prev => ({ ...prev, [`${activity}-${doc}`]: file }));
-                                }}
-                                className="text-xs w-full"
-                              />
-                              {documentFiles[`${activity}-${doc}`] && (
-                                <p className="text-xs text-green-600 mt-0.5">{documentFiles[`${activity}-${doc}`].name}</p>
+          <div className="space-y-8">
+            {/* Fillable FOR forms */}
+            {selectedActivities.includes("inspection") && renderFor04()}
+            {selectedActivities.includes("essais") && renderFor05()}
+            {selectedActivities.includes("etalonnage") && renderFor06()}
+            {selectedActivities.includes("cert_sm") && renderFor07()}
+            {selectedActivities.includes("examens_medicaux") && renderFor051()}
+            {selectedActivities.includes("essais_aptitude") && renderFor055()}
+            {selectedActivities.includes("cert_produits") && renderFor075()}
+            {selectedActivities.includes("cert_personnes") && renderFor078()}
+
+            {/* Non-FOR documents to upload */}
+            <div className="space-y-4 pt-6 border-t">
+              <h3 className="text-lg font-semibold">Documents complémentaires à joindre</h3>
+              <p className="text-sm text-slate-600">Cochez chaque document que vous inclurez et joignez le fichier correspondant.</p>
+
+              {selectedActivities.map(activity => {
+                const activityLabel = TYPES_ACTIVITES.find(a => a.value === activity)?.label || activity;
+                const docs = UPLOAD_DOCS[activity] || [];
+                if (docs.length === 0) return null;
+                return (
+                  <div key={activity} className="space-y-3">
+                    <h4 className="font-semibold text-sm text-[#00A63E]">{activityLabel}</h4>
+                    <div className="space-y-2 pl-4">
+                      {docs.map((doc, idx) => {
+                        const key = `${activity}-${doc}`;
+                        return (
+                          <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
+                            <Checkbox
+                              id={`doc-${key}`}
+                              checked={!!formData.documentsChecked[key]}
+                              onCheckedChange={() => toggleDocumentCheck(key)}
+                            />
+                            <div className="flex-1">
+                              <Label htmlFor={`doc-${key}`} className="cursor-pointer text-sm">{doc}</Label>
+                              {!!formData.documentsChecked[key] && (
+                                <div className="mt-1">
+                                  <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => { const file = e.target.files?.[0]; if (file) setDocumentFiles(prev => ({ ...prev, [key]: file })); }} className="text-xs w-full" />
+                                  {documentFiles[key] && <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {formData.typeDemande === "transfert" && DOCUMENTS_ANNEXES.transfert && (
-              <div className="space-y-3 pt-4 border-t">
-                <h4 className="font-semibold text-base text-[#00A63E]">
-                  Annexe 09 - Documents de transfert
-                </h4>
-                <div className="space-y-2 pl-4">
-                  {DOCUMENTS_ANNEXES.transfert.map((doc, idx) => (
-                    <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
-                      <Checkbox 
-                        id={`doc-transfert-${idx}`}
-                        checked={!!formData.documentsChecked[`transfert-${doc}`]}
-                        onCheckedChange={() => toggleDocumentCheck(`transfert-${doc}`)}
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor={`doc-transfert-${idx}`} className="cursor-pointer text-sm">
-                          {doc}
-                        </Label>
-                        {!!formData.documentsChecked[`transfert-${doc}`] && (
-                          <div className="mt-1">
-                            <input
-                              type="file"
-                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) setDocumentFiles(prev => ({ ...prev, [`transfert-${doc}`]: file }));
-                              }}
-                              className="text-xs w-full"
-                            />
-                            {documentFiles[`transfert-${doc}`] && (
-                              <p className="text-xs text-green-600 mt-0.5">{documentFiles[`transfert-${doc}`].name}</p>
+              {formData.typeDemande === "transfert" && (UPLOAD_DOCS.transfert || []).length > 0 && (
+                <div className="space-y-3 pt-4 border-t">
+                  <h4 className="font-semibold text-sm text-[#00A63E]">Annexe 09 - Documents de transfert</h4>
+                  <div className="space-y-2 pl-4">
+                    {(UPLOAD_DOCS.transfert || []).map((doc, idx) => {
+                      const key = `transfert-${doc}`;
+                      return (
+                        <div key={idx} className="flex items-start space-x-3 p-2 hover:bg-slate-50 rounded">
+                          <Checkbox id={`doc-${key}`} checked={!!formData.documentsChecked[key]} onCheckedChange={() => toggleDocumentCheck(key)} />
+                          <div className="flex-1">
+                            <Label htmlFor={`doc-${key}`} className="cursor-pointer text-sm">{doc}</Label>
+                            {!!formData.documentsChecked[key] && (
+                              <div className="mt-1">
+                                <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => { const file = e.target.files?.[0]; if (file) setDocumentFiles(prev => ({ ...prev, [key]: file })); }} className="text-xs w-full" />
+                                {documentFiles[key] && <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>}
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>

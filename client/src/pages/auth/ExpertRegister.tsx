@@ -140,6 +140,21 @@ const validateChronologicalOrder = (
   return null;
 };
 
+const WILAYAS = [
+  "01 - Adrar", "02 - Chlef", "03 - Laghouat", "04 - Oum El Bouaghi", "05 - Batna",
+  "06 - Béjaïa", "07 - Biskra", "08 - Béchar", "09 - Blida", "10 - Bouira",
+  "11 - Tamanrasset", "12 - Tébessa", "13 - Tlemcen", "14 - Tiaret", "15 - Tizi Ouzou",
+  "16 - Alger", "17 - Djelfa", "18 - Jijel", "19 - Sétif", "20 - Saïda",
+  "21 - Skikda", "22 - Sidi Bel Abbès", "23 - Annaba", "24 - Guelma", "25 - Constantine",
+  "26 - Médéa", "27 - Mostaganem", "28 - M'Sila", "29 - Mascara", "30 - Ouargla",
+  "31 - Oran", "32 - El Bayadh", "33 - Illizi", "34 - Bordj Bou Arréridj", "35 - Boumerdès",
+  "36 - El Tarf", "37 - Tindouf", "38 - Tissemsilt", "39 - El Oued", "40 - Khenchela",
+  "41 - Souk Ahras", "42 - Tipaza", "43 - Mila", "44 - Aïn Defla", "45 - Naâma",
+  "46 - Aïn Témouchent", "47 - Ghardaïa", "48 - Relizane",
+  "49 - El M'Ghair", "50 - El Meniaa", "51 - Ouled Djellal", "52 - Bordj Badji Mokhtar",
+  "53 - Béni Abbès", "54 - Timimoun", "55 - Touggourt", "56 - Djanet", "57 - In Salah", "58 - In Guezzam"
+];
+
 export default function ExpertRegisterWizard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -159,8 +174,6 @@ export default function ExpertRegisterWizard() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
-  const [consent3Type, setConsent3Type] = useState<string>("");
-  const [consent3Details, setConsent3Details] = useState<string>("");
 
   // Step 6 & 7 gate toggles
   const [hasEvaluations, setHasEvaluations] = useState<boolean | null>(null);
@@ -180,6 +193,7 @@ export default function ExpertRegisterWizard() {
     fax: "",
     adresseDomicile: "",
     adresseEntreprise: "",
+    wilaya: "",
     contactUrgenceNom: "",
     contactUrgenceTelephone: "",
     contactUrgenceMobile: "",
@@ -346,6 +360,7 @@ export default function ExpertRegisterWizard() {
         newErrors.adresseDomicile = "Veuillez renseigner au moins une adresse (domicile ou entreprise)";
         newErrors.adresseEntreprise = "Veuillez renseigner au moins une adresse (domicile ou entreprise)";
       }
+      if (!formData.wilaya) newErrors.wilaya = "La wilaya est requise";
     }
 
     if (currentStep === 3) {
@@ -516,11 +531,6 @@ export default function ExpertRegisterWizard() {
       setApiError("Vous devez accepter les deux engagements pour continuer");
       return;
     }
-    if (!consent3Type) {
-      setApiError("Veuillez indiquer votre préférence concernant le partage de données avec les OEC");
-      return;
-    }
-
     if (!formData.nom || !formData.prenom || !formData.email) {
       setApiError("Veuillez remplir tous les champs obligatoires");
       return;
@@ -559,6 +569,7 @@ export default function ExpertRegisterWizard() {
         telephoneMobile: formData.telephoneMobile,
         fax: formData.fax,
         adresseDomicile: formData.adresseDomicile,
+        wilaya: formData.wilaya,
         adresseEntreprise: formData.adresseEntreprise,
         contactUrgenceNom: formData.contactUrgenceNom,
         contactUrgenceTelephone: formData.contactUrgenceTelephone,
@@ -567,8 +578,6 @@ export default function ExpertRegisterWizard() {
         domaineExpertise: "",
         sousDomaineExpertise: "",
         photoBase64: photoBase64,
-        consentOecData: consent3Type,
-        consentOecDataDetails: consent3Details,
         formationsAcademiques: formations
           .filter((f) => f.universite || f.diplome)
           .map((f) => ({
@@ -962,6 +971,28 @@ export default function ExpertRegisterWizard() {
                 />
                 {errors.adresseEntreprise && (
                   <p className="text-xs text-red-500">{errors.adresseEntreprise}</p>
+                )}
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>
+                  Wilaya <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.wilaya}
+                  onValueChange={(val) => setFormData({ ...formData, wilaya: val })}
+                >
+                  <SelectTrigger className={errors.wilaya ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Sélectionnez votre wilaya" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WILAYAS.map((w) => (
+                      <SelectItem key={w} value={w}>{w}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.wilaya && (
+                  <p className="text-xs text-red-500">{errors.wilaya}</p>
                 )}
               </div>
             </div>
@@ -1946,54 +1977,6 @@ export default function ExpertRegisterWizard() {
             <div className="pt-6 space-y-4 border-t">
               <h3 className="font-semibold text-lg">Engagements</h3>
               <div className="flex flex-col gap-3">
-                {/* Consent OEC data sharing */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
-                  <p className="text-sm font-medium text-blue-800">
-                    Si un Organisme d&apos;Évaluation de la Conformité (OEC) a besoin d&apos;informations de votre profil, consentez-vous à ce que nous partagions vos données ? <span className="text-red-500">*</span>
-                  </p>
-                  <RadioGroup
-                    value={consent3Type}
-                    onValueChange={(val) => {
-                      setConsent3Type(val);
-                      if (val !== "partial") setConsent3Details("");
-                    }}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="full" id="consent3-full" />
-                      <Label htmlFor="consent3-full" className="cursor-pointer text-sm">
-                        Oui, tout le CV peut être partagé
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="partial" id="consent3-partial" />
-                      <Label htmlFor="consent3-partial" className="cursor-pointer text-sm">
-                        Oui, mais seulement certaines informations
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="none" id="consent3-none" />
-                      <Label htmlFor="consent3-none" className="cursor-pointer text-sm">
-                        Non, aucune information ne doit être partagée
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {consent3Type === "partial" && (
-                    <div className="mt-2">
-                      <Label className="text-sm">
-                        Précisez les informations que vous autorisez à partager :
-                      </Label>
-                      <Textarea
-                        placeholder="Ex: Nom, domaine d'expertise, expériences professionnelles..."
-                        rows={2}
-                        value={consent3Details}
-                        onChange={(e) => setConsent3Details(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  )}
-                </div>
-
                 <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
                   <Checkbox
                     id="consent1"

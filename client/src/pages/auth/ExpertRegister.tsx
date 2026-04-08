@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { StringDatePicker } from "@/components/ui/date-time-picker";
+import { StringDatePicker, MonthYearPicker } from "@/components/ui/date-time-picker";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const NATIONALITY_KEYS = [
@@ -1076,22 +1076,20 @@ export default function ExpertRegisterWizard() {
                     <Label>
                       {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={formation.dateDebut}
-                      onChange={(e) => updateFormation(index, "dateDebut", e.target.value)}
-                      className={hasError(`formation_${index}_dateDebut`) ? "border-red-500" : ""}
+                      onChange={(v) => updateFormation(index, "dateDebut", v)}
+                      className={hasError(`formation_${index}_dateDebut`) ? "[&_button]:border-red-500" : ""}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>
                       {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={formation.dateFin}
-                      onChange={(e) => updateFormation(index, "dateFin", e.target.value)}
-                      className={hasError(`formation_${index}_dateFin`) ? "border-red-500" : ""}
+                      onChange={(v) => updateFormation(index, "dateFin", v)}
+                      className={hasError(`formation_${index}_dateFin`) ? "[&_button]:border-red-500" : ""}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1203,12 +1201,11 @@ export default function ExpertRegisterWizard() {
                     <Label>
                       {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={formation.dateDebut}
-                      onChange={(e) => updateAutreFormation(index, "dateDebut", e.target.value)}
+                      onChange={(v) => updateAutreFormation(index, "dateDebut", v)}
                       className={
-                        hasError(`autreFormation_${index}_dateDebut`) ? "border-red-500" : ""
+                        hasError(`autreFormation_${index}_dateDebut`) ? "[&_button]:border-red-500" : ""
                       }
                     />
                   </div>
@@ -1216,12 +1213,11 @@ export default function ExpertRegisterWizard() {
                     <Label>
                       {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={formation.dateFin}
-                      onChange={(e) => updateAutreFormation(index, "dateFin", e.target.value)}
+                      onChange={(v) => updateAutreFormation(index, "dateFin", v)}
                       className={
-                        hasError(`autreFormation_${index}_dateFin`) ? "border-red-500" : ""
+                        hasError(`autreFormation_${index}_dateFin`) ? "[&_button]:border-red-500" : ""
                       }
                     />
                   </div>
@@ -1341,22 +1337,20 @@ export default function ExpertRegisterWizard() {
                     <Label>
                       {t("er.labels.dateDebutMonthYear")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={exp.dateDebut}
-                      onChange={(e) => updateExperience(index, "dateDebut", e.target.value)}
-                      className={hasError(`exp_${index}_dateDebut`) ? "border-red-500" : ""}
+                      onChange={(v) => updateExperience(index, "dateDebut", v)}
+                      className={hasError(`exp_${index}_dateDebut`) ? "[&_button]:border-red-500" : ""}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>
                       {t("er.labels.dateFinMonthYear")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      type="month"
+                    <MonthYearPicker
                       value={exp.dateFin}
-                      onChange={(e) => updateExperience(index, "dateFin", e.target.value)}
-                      className={hasError(`exp_${index}_dateFin`) ? "border-red-500" : ""}
+                      onChange={(v) => updateExperience(index, "dateFin", v)}
+                      className={hasError(`exp_${index}_dateFin`) ? "[&_button]:border-red-500" : ""}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1547,22 +1541,20 @@ export default function ExpertRegisterWizard() {
                         <Label>
                           {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          type="month"
+                        <MonthYearPicker
                           value={evalItem.dateDebut}
-                          onChange={(e) => updateEvaluation(index, "dateDebut", e.target.value)}
-                          className={hasError(`eval_${index}_dateDebut`) ? "border-red-500" : ""}
+                          onChange={(v) => updateEvaluation(index, "dateDebut", v)}
+                          className={hasError(`eval_${index}_dateDebut`) ? "[&_button]:border-red-500" : ""}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>
                           {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          type="month"
+                        <MonthYearPicker
                           value={evalItem.dateFin}
-                          onChange={(e) => updateEvaluation(index, "dateFin", e.target.value)}
-                          className={hasError(`eval_${index}_dateFin`) ? "border-red-500" : ""}
+                          onChange={(v) => updateEvaluation(index, "dateFin", v)}
+                          className={hasError(`eval_${index}_dateFin`) ? "[&_button]:border-red-500" : ""}
                         />
                       </div>
                       <div className="space-y-2">
@@ -1719,26 +1711,20 @@ export default function ExpertRegisterWizard() {
                         <Label>
                           {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          type="month"
+                        <MonthYearPicker
                           value={fd.dateDebut}
-                          onChange={(e) =>
-                            updateFormationDispensee(index, "dateDebut", e.target.value)
-                          }
-                          className={hasError(`fd_${index}_dateDebut`) ? "border-red-500" : ""}
+                          onChange={(v) => updateFormationDispensee(index, "dateDebut", v)}
+                          className={hasError(`fd_${index}_dateDebut`) ? "[&_button]:border-red-500" : ""}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>
                           {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                          type="month"
+                        <MonthYearPicker
                           value={fd.dateFin}
-                          onChange={(e) =>
-                            updateFormationDispensee(index, "dateFin", e.target.value)
-                          }
-                          className={hasError(`fd_${index}_dateFin`) ? "border-red-500" : ""}
+                          onChange={(v) => updateFormationDispensee(index, "dateFin", v)}
+                          className={hasError(`fd_${index}_dateFin`) ? "[&_button]:border-red-500" : ""}
                         />
                       </div>
                       <div className="space-y-2">
@@ -2137,7 +2123,7 @@ export default function ExpertRegisterWizard() {
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={loading || !consent1 || !consent2 || !consent3Type}
+                  disabled={loading || !consent1 || !consent2}
                   className="ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm"
                 >
                   {loading ? t("er.buttons.submitting") : t("er.buttons.submit")}

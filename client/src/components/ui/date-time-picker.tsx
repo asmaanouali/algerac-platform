@@ -262,6 +262,75 @@ export function StringDateTimePicker({
 }
 
 // ---------------------------------------------------------------------------
+// MonthYearPicker — two shadcn Select dropdowns for month + year ("YYYY-MM")
+// Drop-in replacement for <Input type="month" value={str} onChange={…} />
+// ---------------------------------------------------------------------------
+
+const MONTH_LABELS = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+]
+
+interface MonthYearPickerProps {
+  value?: string // "YYYY-MM"
+  onChange: (value: string) => void
+  className?: string
+}
+
+export function MonthYearPicker({
+  value,
+  onChange,
+  className,
+}: MonthYearPickerProps) {
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i)
+
+  const selectedMonth = value ? value.split("-")[1] : ""
+  const selectedYear = value ? value.split("-")[0] : ""
+
+  const emit = (m: string, y: string) => {
+    if (m && y) {
+      onChange(`${y}-${m}`)
+    }
+  }
+
+  return (
+    <div className={cn("flex gap-2", className)}>
+      <Select
+        value={selectedMonth}
+        onValueChange={(m) => emit(m, selectedYear || String(currentYear))}
+      >
+        <SelectTrigger className="flex-1">
+          <SelectValue placeholder="Mois" />
+        </SelectTrigger>
+        <SelectContent className="max-h-60">
+          {MONTH_LABELS.map((label, i) => (
+            <SelectItem key={i} value={String(i + 1).padStart(2, "0")}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={selectedYear}
+        onValueChange={(y) => emit(selectedMonth || "01", y)}
+      >
+        <SelectTrigger className="w-[100px]">
+          <SelectValue placeholder="Année" />
+        </SelectTrigger>
+        <SelectContent className="max-h-60">
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)}>
+              {y}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // DateTimePicker — convenience composition of DatePicker + TimePicker
 // ---------------------------------------------------------------------------
 

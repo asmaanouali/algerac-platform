@@ -12,34 +12,32 @@ import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import DatePicker, { registerLocale } from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { fr } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import { StringDatePicker } from "@/components/ui/date-time-picker";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-registerLocale("fr", fr);
-
-const nationalites = [
-  "Algérienne", "Française", "Marocaine", "Tunisienne", "Libyenne", "Égyptienne",
-  "Mauritanienne", "Sénégalaise", "Malienne", "Nigérienne", "Tchadienne", "Soudanaise", "Autre"
+const NATIONALITY_KEYS = [
+  "algerian", "french", "moroccan", "tunisian", "libyan", "egyptian",
+  "mauritanian", "senegalese", "malian", "nigerien", "chadian", "sudanese", "other"
 ];
 
-const situationsFamiliales = [
-  "Célibataire", "Marié(e)", "Divorcé(e)", "Veuf/Veuve"
+const FAMILY_STATUS_KEYS = ["single", "married", "divorced", "widowed"];
+
+const DIPLOMA_KEYS = [
+  "baccalaureat", "bts_dut", "licence_lmd", "licence_classique",
+  "master1", "master2", "ingenieur", "magister",
+  "doctorat", "doctorat_etat", "habilitation",
+  "certificat_pro", "dts", "other"
 ];
 
-const diplomes = [
-  "Baccalauréat", "BTS / DUT", "Licence (LMD)", "Licence classique",
-  "Master 1", "Master 2", "Ingénieur d'État", "Magister",
-  "Doctorat", "Doctorat d'État", "Habilitation Universitaire",
-  "Certificat professionnel", "Diplôme de Technicien Supérieur", "Autre"
+const LANGUAGE_KEYS = [
+  "arabic", "french", "english", "spanish", "german", "italian",
+  "portuguese", "russian", "chinese", "japanese", "turkish", "other"
 ];
 
-const languesListe = [
-  "Arabe", "Français", "Anglais", "Espagnol", "Allemand", "Italien",
-  "Portugais", "Russe", "Chinois", "Japonais", "Turc", "Autre"
-];
+const LEVEL_KEYS = ["basic", "fairlyGood", "good", "veryGood", "excellent"];
 
-const niveauxLangue = ["Basique", "Assez bien", "Bien", "Très bien", "Excellent"];
+
 
 interface FormationAcademique {
   dateDebut: string;
@@ -100,17 +98,6 @@ interface ValidationErrors {
   [key: string]: string;
 }
 
-const STEPS = [
-  { id: 1, title: "Type & Identification" },
-  { id: 2, title: "Contacts" },
-  { id: 3, title: "Formation académique" },
-  { id: 4, title: "Autres Formations" },
-  { id: 5, title: "Expérience professionnelle" },
-  { id: 6, title: "Évaluations / Audits" },
-  { id: 7, title: "Formations dispensées" },
-  { id: 8, title: "Connaissances linguistiques" },
-  { id: 9, title: "Divers" },
-];
 
 // Helper to parse date string "YYYY-MM" into comparable value
 const parseDateForComparison = (dateStr: string): number => {
@@ -158,14 +145,27 @@ const WILAYAS = [
 export default function ExpertRegisterWizard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [showBlacklistDialog, setShowBlacklistDialog] = useState(false);
   const [appealLoading, setAppealLoading] = useState(false);
 
+  const STEPS = [
+    { id: 1, title: t("er.steps.step1") },
+    { id: 2, title: t("er.steps.step2") },
+    { id: 3, title: t("er.steps.step3") },
+    { id: 4, title: t("er.steps.step4") },
+    { id: 5, title: t("er.steps.step5") },
+    { id: 6, title: t("er.steps.step6") },
+    { id: 7, title: t("er.steps.step7") },
+    { id: 8, title: t("er.steps.step8") },
+    { id: 9, title: t("er.steps.step9") },
+  ];
+
   const userTypes = [
-    { value: "EXPERT", label: "Expert" },
-    { value: "EVALUATEUR", label: "Évaluateur" },
-    { value: "FORMATEUR", label: "Formateur" },
+    { value: "EXPERT", label: t("er.userTypes.expert") },
+    { value: "EVALUATEUR", label: t("er.userTypes.evaluateur") },
+    { value: "FORMATEUR", label: t("er.userTypes.formateur") },
   ];
 
   const [photo, setPhoto] = useState<File | null>(null);
@@ -183,7 +183,7 @@ export default function ExpertRegisterWizard() {
     userType: "EXPERT",
     nom: "",
     prenom: "",
-    dateNaissance: null as Date | null,
+    dateNaissance: "",
     nationalite: "",
     nationaliteAutre: "",
     situationFamiliale: "",
@@ -229,6 +229,7 @@ export default function ExpertRegisterWizard() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -265,7 +266,7 @@ export default function ExpertRegisterWizard() {
         <Label className="text-sm font-semibold text-blue-800">{label}</Label>
       </div>
       <p className="text-xs text-blue-600">
-        Joignez les justificatifs correspondants à cette section (diplômes, attestations, certificats...)
+        {t("er.fileUpload.hint")}
       </p>
       <div className="flex items-center gap-4">
         <Button
@@ -275,7 +276,7 @@ export default function ExpertRegisterWizard() {
           className="gap-2 bg-white"
           onClick={() => document.getElementById(`file-${stepKey}`)?.click()}
         >
-          <FileText className="w-4 h-4" /> Ajouter un fichier
+          <FileText className="w-4 h-4" /> {t("er.fileUpload.addFile")}
         </Button>
         <input
           type="file"
@@ -309,7 +310,7 @@ export default function ExpertRegisterWizard() {
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (email && !emailRegex.test(email)) {
-      setErrors((prev) => ({ ...prev, email: "Format d'email invalide" }));
+      setErrors((prev) => ({ ...prev, email: t("er.errors.emailInvalid") }));
       return false;
     } else {
       setErrors((prev) => {
@@ -321,12 +322,13 @@ export default function ExpertRegisterWizard() {
     }
   };
 
-  const validateAge = (dateNaissance: Date | null): boolean => {
+  const validateAge = (dateNaissance: string): boolean => {
     if (!dateNaissance) return false;
+    const d = new Date(dateNaissance + "T00:00:00");
     const today = new Date();
-    let age = today.getFullYear() - dateNaissance.getFullYear();
-    const monthDiff = today.getMonth() - dateNaissance.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateNaissance.getDate())) {
+    let age = today.getFullYear() - d.getFullYear();
+    const monthDiff = today.getMonth() - d.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
       age--;
     }
     return age >= 18;
@@ -336,31 +338,31 @@ export default function ExpertRegisterWizard() {
     const newErrors: ValidationErrors = {};
 
     if (currentStep === 1) {
-      if (!formData.nom) newErrors.nom = "Le nom est requis";
-      if (!formData.prenom) newErrors.prenom = "Le prénom est requis";
-      if (!formData.dateNaissance) newErrors.dateNaissance = "La date de naissance est requise";
+      if (!formData.nom) newErrors.nom = t("er.errors.nomRequired");
+      if (!formData.prenom) newErrors.prenom = t("er.errors.prenomRequired");
+      if (!formData.dateNaissance) newErrors.dateNaissance = t("er.errors.dateNaissanceRequired");
       else if (!validateAge(formData.dateNaissance))
-        newErrors.dateNaissance = "Le candidat doit avoir au moins 18 ans";
-      if (!formData.nationalite) newErrors.nationalite = "La nationalité est requise";
-      if (formData.nationalite === "Autre" && !formData.nationaliteAutre)
-        newErrors.nationaliteAutre = "Veuillez indiquer votre nationalité";
+        newErrors.dateNaissance = t("er.errors.ageMinimum");
+      if (!formData.nationalite) newErrors.nationalite = t("er.errors.nationaliteRequired");
+      if (formData.nationalite === "other" && !formData.nationaliteAutre)
+        newErrors.nationaliteAutre = t("er.errors.nationaliteAutreRequired");
       if (!formData.situationFamiliale)
-        newErrors.situationFamiliale = "La situation familiale est requise";
-      if (!photoBase64) newErrors.photo = "La photo est obligatoire";
+        newErrors.situationFamiliale = t("er.errors.situationRequired");
+      if (!photoBase64) newErrors.photo = t("er.errors.photoRequired");
     }
 
     if (currentStep === 2) {
-      if (!formData.email) newErrors.email = "L'email est requis";
-      if (!formData.telephone) newErrors.telephone = "Le téléphone est requis";
-      if (!formData.telephoneMobile) newErrors.telephoneMobile = "Le mobile est requis";
-      if (!formData.contactUrgenceNom) newErrors.contactUrgenceNom = "Le nom du contact d'urgence est requis";
-      if (!formData.contactUrgenceTelephone) newErrors.contactUrgenceTelephone = "Le téléphone du contact d'urgence est requis";
+      if (!formData.email) newErrors.email = t("er.errors.emailRequired");
+      if (!formData.telephone) newErrors.telephone = t("er.errors.telephoneRequired");
+      if (!formData.telephoneMobile) newErrors.telephoneMobile = t("er.errors.mobileRequired");
+      if (!formData.contactUrgenceNom) newErrors.contactUrgenceNom = t("er.errors.urgenceNomRequired");
+      if (!formData.contactUrgenceTelephone) newErrors.contactUrgenceTelephone = t("er.errors.urgenceTelRequired");
       // At least one address required
       if (!formData.adresseDomicile && !formData.adresseEntreprise) {
-        newErrors.adresseDomicile = "Veuillez renseigner au moins une adresse (domicile ou entreprise)";
-        newErrors.adresseEntreprise = "Veuillez renseigner au moins une adresse (domicile ou entreprise)";
+        newErrors.adresseDomicile = t("er.errors.addressRequired");
+        newErrors.adresseEntreprise = t("er.errors.addressRequired");
       }
-      if (!formData.wilaya) newErrors.wilaya = "La wilaya est requise";
+      if (!formData.wilaya) newErrors.wilaya = t("er.errors.wilayaRequired");
     }
 
     if (currentStep === 3) {
@@ -368,18 +370,18 @@ export default function ExpertRegisterWizard() {
         (f) => f.dateDebut || f.dateFin || f.universite || f.coursSpecialite || f.diplome
       );
       if (filledFormations.length === 0) {
-        newErrors.formations = "Au moins une formation académique est requise";
+        newErrors.formations = t("er.errors.formationRequired");
       } else {
         for (let i = 0; i < filledFormations.length; i++) {
           const f = filledFormations[i];
-          if (!f.dateDebut) newErrors[`formation_${i}_dateDebut`] = "Date début requise";
-          if (!f.dateFin) newErrors[`formation_${i}_dateFin`] = "Date fin requise";
-          if (!f.universite) newErrors[`formation_${i}_universite`] = "Université requise";
-          if (!f.coursSpecialite) newErrors[`formation_${i}_coursSpecialite`] = "Spécialité requise";
-          if (!f.diplome) newErrors[`formation_${i}_diplome`] = "Diplôme requis";
+          if (!f.dateDebut) newErrors[`formation_${i}_dateDebut`] = t("er.errors.dateDebutRequired");
+          if (!f.dateFin) newErrors[`formation_${i}_dateFin`] = t("er.errors.dateFinRequired");
+          if (!f.universite) newErrors[`formation_${i}_universite`] = t("er.errors.universiteRequired");
+          if (!f.coursSpecialite) newErrors[`formation_${i}_coursSpecialite`] = t("er.errors.specialiteRequired");
+          if (!f.diplome) newErrors[`formation_${i}_diplome`] = t("er.errors.diplomeRequired");
         }
       }
-      const chronErr = validateChronologicalOrder(formations.filter((f) => f.dateDebut), "Formation");
+      const chronErr = validateChronologicalOrder(formations.filter((f) => f.dateDebut), t("er.labels.formation"));
       if (chronErr) newErrors.formationsChronology = chronErr;
     }
 
@@ -389,15 +391,15 @@ export default function ExpertRegisterWizard() {
       );
       for (let i = 0; i < filledAutres.length; i++) {
         const f = filledAutres[i];
-        if (!f.dateDebut) newErrors[`autreFormation_${i}_dateDebut`] = "Date début requise";
-        if (!f.dateFin) newErrors[`autreFormation_${i}_dateFin`] = "Date fin requise";
-        if (!f.universite) newErrors[`autreFormation_${i}_universite`] = "Institution requise";
-        if (!f.coursSpecialite) newErrors[`autreFormation_${i}_coursSpecialite`] = "Cours requis";
-        if (!f.diplome) newErrors[`autreFormation_${i}_diplome`] = "Certificat/Diplôme requis";
+        if (!f.dateDebut) newErrors[`autreFormation_${i}_dateDebut`] = t("er.errors.dateDebutRequired");
+        if (!f.dateFin) newErrors[`autreFormation_${i}_dateFin`] = t("er.errors.dateFinRequired");
+        if (!f.universite) newErrors[`autreFormation_${i}_universite`] = t("er.errors.institutionRequired");
+        if (!f.coursSpecialite) newErrors[`autreFormation_${i}_coursSpecialite`] = t("er.errors.coursRequired");
+        if (!f.diplome) newErrors[`autreFormation_${i}_diplome`] = t("er.errors.certificatRequired");
       }
       const chronErr = validateChronologicalOrder(
         autresFormations.filter((f) => f.dateDebut),
-        "Formation"
+        t("er.labels.formation")
       );
       if (chronErr) newErrors.autresFormationsChronology = chronErr;
     }
@@ -407,50 +409,50 @@ export default function ExpertRegisterWizard() {
         (e) => e.dateDebut || e.dateFin || e.organisme || e.posteOccupe
       );
       if (filledExps.length === 0) {
-        newErrors.experiences = "Au moins une expérience professionnelle est requise";
+        newErrors.experiences = t("er.errors.experienceRequired");
       } else {
         for (let i = 0; i < filledExps.length; i++) {
           const e = filledExps[i];
-          if (!e.dateDebut) newErrors[`exp_${i}_dateDebut`] = "Date début requise";
-          if (!e.dateFin) newErrors[`exp_${i}_dateFin`] = "Date fin requise";
-          if (!e.organisme) newErrors[`exp_${i}_organisme`] = "Organisme requis";
-          if (!e.posteOccupe) newErrors[`exp_${i}_posteOccupe`] = "Poste requis";
-          if (!e.activitesPrincipales) newErrors[`exp_${i}_activites`] = "Activités requises";
-          if (!e.domaineCompetence) newErrors[`exp_${i}_domaine`] = "Domaine requis";
-          if (!e.sousDomaineCompetence) newErrors[`exp_${i}_sousDomaine`] = "Sous-domaine requis";
+          if (!e.dateDebut) newErrors[`exp_${i}_dateDebut`] = t("er.errors.dateDebutRequired");
+          if (!e.dateFin) newErrors[`exp_${i}_dateFin`] = t("er.errors.dateFinRequired");
+          if (!e.organisme) newErrors[`exp_${i}_organisme`] = t("er.errors.organismeRequired");
+          if (!e.posteOccupe) newErrors[`exp_${i}_posteOccupe`] = t("er.errors.posteRequired");
+          if (!e.activitesPrincipales) newErrors[`exp_${i}_activites`] = t("er.errors.activitesRequired");
+          if (!e.domaineCompetence) newErrors[`exp_${i}_domaine`] = t("er.errors.domaineRequired");
+          if (!e.sousDomaineCompetence) newErrors[`exp_${i}_sousDomaine`] = t("er.errors.sousDomaineRequired");
         }
       }
       const chronErr = validateChronologicalOrder(
         experiences.filter((e) => e.dateDebut),
-        "Expérience"
+        t("er.labels.experience")
       );
       if (chronErr) newErrors.experiencesChronology = chronErr;
     }
 
     if (currentStep === 6) {
       if (hasEvaluations === null) {
-        newErrors.hasEvaluations = "Veuillez répondre à la question";
+        newErrors.hasEvaluations = t("er.errors.answerRequired");
       }
       if (hasEvaluations) {
         const filledEvals = evaluations.filter(
           (e) => e.dateDebut || e.typeEvaluation || e.roleTenu
         );
         if (filledEvals.length === 0) {
-          newErrors.evaluations = "Veuillez renseigner au moins une évaluation/audit";
+          newErrors.evaluations = t("er.errors.evaluationRequired");
         } else {
           for (let i = 0; i < filledEvals.length; i++) {
             const e = filledEvals[i];
-            if (!e.type) newErrors[`eval_${i}_type`] = "Type requis";
-            if (!e.dateDebut) newErrors[`eval_${i}_dateDebut`] = "Date début requise";
-            if (!e.dateFin) newErrors[`eval_${i}_dateFin`] = "Date fin requise";
-            if (!e.typeEvaluation) newErrors[`eval_${i}_typeEvaluation`] = "Description requise";
-            if (!e.roleTenu) newErrors[`eval_${i}_roleTenu`] = "Rôle requis";
-            if (!e.normesReferentiels) newErrors[`eval_${i}_normes`] = "Normes requises";
+            if (!e.type) newErrors[`eval_${i}_type`] = t("er.errors.typeRequired");
+            if (!e.dateDebut) newErrors[`eval_${i}_dateDebut`] = t("er.errors.dateDebutRequired");
+            if (!e.dateFin) newErrors[`eval_${i}_dateFin`] = t("er.errors.dateFinRequired");
+            if (!e.typeEvaluation) newErrors[`eval_${i}_typeEvaluation`] = t("er.errors.descriptionRequired");
+            if (!e.roleTenu) newErrors[`eval_${i}_roleTenu`] = t("er.errors.roleRequired");
+            if (!e.normesReferentiels) newErrors[`eval_${i}_normes`] = t("er.errors.normesRequired");
           }
         }
         const chronErr = validateChronologicalOrder(
           evaluations.filter((e) => e.dateDebut),
-          "Évaluation/Audit"
+          t("er.labels.evaluationAudit")
         );
         if (chronErr) newErrors.evaluationsChronology = chronErr;
       }
@@ -458,27 +460,27 @@ export default function ExpertRegisterWizard() {
 
     if (currentStep === 7) {
       if (hasFormationsDispensees === null) {
-        newErrors.hasFormationsDispensees = "Veuillez répondre à la question";
+        newErrors.hasFormationsDispensees = t("er.errors.answerRequired");
       }
       if (hasFormationsDispensees) {
         const filledFD = formationsDispensees.filter(
           (f) => f.dateDebut || f.formation
         );
         if (filledFD.length === 0) {
-          newErrors.formationsDispensees = "Veuillez renseigner au moins une formation dispensée";
+          newErrors.formationsDispensees = t("er.errors.formationDispenseeRequired");
         } else {
           for (let i = 0; i < filledFD.length; i++) {
             const f = filledFD[i];
-            if (!f.dateDebut) newErrors[`fd_${i}_dateDebut`] = "Date début requise";
-            if (!f.dateFin) newErrors[`fd_${i}_dateFin`] = "Date fin requise";
-            if (!f.duree) newErrors[`fd_${i}_duree`] = "Durée requise";
-            if (!f.formation) newErrors[`fd_${i}_formation`] = "Intitulé requis";
-            if (!f.organismeBeneficiaire) newErrors[`fd_${i}_organisme`] = "Organisme bénéficiaire requis";
+            if (!f.dateDebut) newErrors[`fd_${i}_dateDebut`] = t("er.errors.dateDebutRequired");
+            if (!f.dateFin) newErrors[`fd_${i}_dateFin`] = t("er.errors.dateFinRequired");
+            if (!f.duree) newErrors[`fd_${i}_duree`] = t("er.errors.dureeRequired");
+            if (!f.formation) newErrors[`fd_${i}_formation`] = t("er.errors.intituleRequired");
+            if (!f.organismeBeneficiaire) newErrors[`fd_${i}_organisme`] = t("er.errors.organismeBenRequired");
           }
         }
         const chronErr = validateChronologicalOrder(
           formationsDispensees.filter((f) => f.dateDebut),
-          "Formation dispensée"
+          t("er.labels.formationDispensee")
         );
         if (chronErr) newErrors.fdChronology = chronErr;
       }
@@ -486,15 +488,15 @@ export default function ExpertRegisterWizard() {
 
     if (currentStep === 8) {
       const hasValidLangue = langues.some((l) => {
-        const langueVal = l.langue === "Autre" ? l.langueAutre : l.langue;
+        const langueVal = l.langue === "other" ? l.langueAutre : l.langue;
         return langueVal && l.lu && l.parle && l.ecrit;
       });
       if (!hasValidLangue) {
-        newErrors.langues = "Veuillez renseigner au moins une langue avec tous les niveaux";
+        newErrors.langues = t("er.errors.langueRequired");
       }
       for (let i = 0; i < langues.length; i++) {
-        if (langues[i].langue === "Autre" && !langues[i].langueAutre) {
-          newErrors[`langue_${i}_autre`] = "Veuillez indiquer la langue";
+        if (langues[i].langue === "other" && !langues[i].langueAutre) {
+          newErrors[`langue_${i}_autre`] = t("er.errors.langueAutreRequired");
         }
       }
     }
@@ -528,16 +530,16 @@ export default function ExpertRegisterWizard() {
 
   const handleSubmit = async () => {
     if (!consent1 || !consent2) {
-      setApiError("Vous devez accepter les deux engagements pour continuer");
+      setApiError(t("er.errors.consentsRequired"));
       return;
     }
     if (!formData.nom || !formData.prenom || !formData.email) {
-      setApiError("Veuillez remplir tous les champs obligatoires");
+      setApiError(t("er.errors.fillRequired"));
       return;
     }
 
     if (!photoBase64) {
-      setApiError("La photo est obligatoire");
+      setApiError(t("er.errors.photoRequired"));
       return;
     }
 
@@ -553,15 +555,13 @@ export default function ExpertRegisterWizard() {
           reader.readAsDataURL(file);
         });
 
-      const nationaliteFinal = formData.nationalite === "Autre" ? formData.nationaliteAutre : formData.nationalite;
+      const nationaliteFinal = formData.nationalite === "other" ? formData.nationaliteAutre : formData.nationalite;
 
       const payload = {
         userType: formData.userType,
         nom: formData.nom,
         prenom: formData.prenom,
-        dateNaissance: formData.dateNaissance
-          ? formData.dateNaissance.toISOString().split("T")[0]
-          : "",
+        dateNaissance: formData.dateNaissance || "",
         nationalite: nationaliteFinal,
         situationFamiliale: formData.situationFamiliale,
         email: formData.email,
@@ -636,7 +636,7 @@ export default function ExpertRegisterWizard() {
         connaissancesLinguistiques: langues
           .filter((l) => l.langue)
           .map((l) => ({
-            langue: l.langue === "Autre" ? l.langueAutre : l.langue,
+            langue: l.langue === "other" ? l.langueAutre : l.langue,
             niveauLu: l.lu,
             niveauParle: l.parle,
             niveauEcrit: l.ecrit,
@@ -651,7 +651,7 @@ export default function ExpertRegisterWizard() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMsg = errorData.message || errorData.error || "Erreur lors de l'inscription";
+        const errorMsg = errorData.message || errorData.error || t("er.errors.registrationError");
         // Check for blacklist error
         if (errorMsg.startsWith("BLACKLISTED:")) {
           setShowBlacklistDialog(true);
@@ -662,7 +662,7 @@ export default function ExpertRegisterWizard() {
 
       setLocation("/auth/success?type=expert");
     } catch (err) {
-      let msg = "Une erreur s'est produite. Veuillez réessayer.";
+      let msg = t("er.errors.genericError");
       if (err instanceof Error) {
         msg = err.message;
       }
@@ -709,14 +709,14 @@ export default function ExpertRegisterWizard() {
           <div className="space-y-6">
             <div className="space-y-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
               <Label className="text-sm font-semibold text-green-800">
-                Type de candidature <span className="text-red-500">*</span>
+                {t("er.labels.candidatureType")} <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.userType}
                 onValueChange={(value) => setFormData({ ...formData, userType: value })}
               >
                 <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Sélectionnez votre type" />
+                  <SelectValue placeholder={t("er.placeholders.selectType")} />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
                   {userTypes.map((type) => (
@@ -731,10 +731,10 @@ export default function ExpertRegisterWizard() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>
-                  Nom <span className="text-red-500">*</span>
+                  {t("er.labels.nom")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  placeholder="Votre nom"
+                  placeholder={t("er.placeholders.nom")}
                   value={formData.nom}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   className={errors.nom ? "border-red-500" : ""}
@@ -744,10 +744,10 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Prénom <span className="text-red-500">*</span>
+                  {t("er.labels.prenom")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  placeholder="Votre prénom"
+                  placeholder={t("er.placeholders.prenom")}
                   value={formData.prenom}
                   onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                   className={errors.prenom ? "border-red-500" : ""}
@@ -757,23 +757,13 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Date de naissance <span className="text-red-500">*</span>
+                  {t("er.labels.dateNaissance")} <span className="text-red-500">*</span>
                 </Label>
-                <DatePicker
-                  selected={formData.dateNaissance}
-                  onChange={(date: Date | null) => setFormData({ ...formData, dateNaissance: date })}
-                  dateFormat="dd/MM/yyyy"
-                  locale="fr"
-                  showYearDropdown
-                  showMonthDropdown
-                  dropdownMode="select"
-                  maxDate={new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
-                  placeholderText="Sélectionnez votre date de naissance"
-                  className={cn(
-                    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    errors.dateNaissance && "border-red-500"
-                  )}
-                  wrapperClassName="w-full"
+                <StringDatePicker
+                  value={formData.dateNaissance}
+                  onChange={(v) => setFormData((prev) => ({ ...prev, dateNaissance: v }))}
+                  placeholder={t("er.labels.dateNaissance")}
+                  className={cn(errors.dateNaissance && "border-red-500")}
                 />
                 {errors.dateNaissance && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
@@ -784,28 +774,28 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Nationalité <span className="text-red-500">*</span>
+                  {t("er.labels.nationalite")} <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.nationalite}
                   onValueChange={(value) => setFormData({ ...formData, nationalite: value })}
                 >
                   <SelectTrigger className={cn("bg-white", errors.nationalite && "border-red-500")}>
-                    <SelectValue placeholder="Sélectionnez" />
+                    <SelectValue placeholder={t("er.placeholders.select")} />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {nationalites.map((nat) => (
-                      <SelectItem key={nat} value={nat}>
-                        {nat}
+                    {NATIONALITY_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {t(`er.nationalities.${key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {errors.nationalite && <p className="text-xs text-red-500">{errors.nationalite}</p>}
-                {formData.nationalite === "Autre" && (
+                {formData.nationalite === "other" && (
                   <div className="mt-2">
                     <Input
-                      placeholder="Indiquez votre nationalité"
+                      placeholder={t("er.placeholders.nationaliteAutre")}
                       value={formData.nationaliteAutre}
                       onChange={(e) => setFormData({ ...formData, nationaliteAutre: e.target.value })}
                       className={errors.nationaliteAutre ? "border-red-500" : ""}
@@ -819,19 +809,19 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Situation familiale <span className="text-red-500">*</span>
+                  {t("er.labels.situationFamiliale")} <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.situationFamiliale}
                   onValueChange={(value) => setFormData({ ...formData, situationFamiliale: value })}
                 >
                   <SelectTrigger className={cn("bg-white", errors.situationFamiliale && "border-red-500")}>
-                    <SelectValue placeholder="Sélectionnez" />
+                    <SelectValue placeholder={t("er.placeholders.select")} />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {situationsFamiliales.map((sit) => (
-                      <SelectItem key={sit} value={sit}>
-                        {sit}
+                    {FAMILY_STATUS_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {t(`er.familyStatus.${key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -843,7 +833,7 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Photo <span className="text-red-500">*</span>
+                  {t("er.labels.photo")} <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex items-center gap-4">
                   <Button
@@ -852,7 +842,7 @@ export default function ExpertRegisterWizard() {
                     className={cn("gap-2 bg-white", errors.photo && "border-red-500")}
                     onClick={() => document.getElementById("photo-file")?.click()}
                   >
-                    <FileText className="w-4 h-4" /> Choisir une photo
+                    <FileText className="w-4 h-4" /> {t("er.labels.choosePhoto")}
                   </Button>
                   <input
                     type="file"
@@ -862,7 +852,7 @@ export default function ExpertRegisterWizard() {
                     onChange={handlePhotoChange}
                   />
                   <span className="text-xs text-slate-400 italic">
-                    {photo ? photo.name : "Aucun fichier sélectionné"}
+                    {photo ? photo.name : t("er.labels.noFileSelected")}
                   </span>
                 </div>
                 {errors.photo && <p className="text-xs text-red-500">{errors.photo}</p>}
@@ -879,7 +869,7 @@ export default function ExpertRegisterWizard() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>
-                  Email <span className="text-red-500">*</span>
+                  {t("er.labels.email")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="email"
@@ -898,7 +888,7 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Téléphone <span className="text-red-500">*</span>
+                  {t("er.labels.telephone")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   placeholder="+213 XXX XXX XXX"
@@ -915,7 +905,7 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2">
                 <Label>
-                  Mobile <span className="text-red-500">*</span>
+                  {t("er.labels.mobile")} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   placeholder="+213 XXX XXX XXX"
@@ -929,7 +919,7 @@ export default function ExpertRegisterWizard() {
               </div>
 
               <div className="space-y-2">
-                <Label>Fax</Label>
+                <Label>{t("er.labels.fax")}</Label>
                 <Input
                   placeholder="+213 XXX XXX XXX"
                   value={formData.fax}
@@ -939,14 +929,14 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2 md:col-span-2">
                 <Label>
-                  Adresse domicile{" "}
+                  {t("er.labels.adresseDomicile")}{" "}
                   {!formData.adresseEntreprise && <span className="text-red-500">*</span>}
                 </Label>
                 <p className="text-xs text-slate-500 mb-1">
-                  Vous devez renseigner au moins une adresse (domicile ou entreprise), vous pouvez renseigner les deux.
+                  {t("er.labels.addressHint")}
                 </p>
                 <Textarea
-                  placeholder="Adresse complète"
+                  placeholder={t("er.placeholders.adresseComplete")}
                   rows={2}
                   value={formData.adresseDomicile}
                   onChange={(e) => setFormData({ ...formData, adresseDomicile: e.target.value })}
@@ -959,11 +949,11 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2 md:col-span-2">
                 <Label>
-                  Adresse entreprise{" "}
+                  {t("er.labels.adresseEntreprise")}{" "}
                   {!formData.adresseDomicile && <span className="text-red-500">*</span>}
                 </Label>
                 <Textarea
-                  placeholder="Adresse complète"
+                  placeholder={t("er.placeholders.adresseComplete")}
                   rows={2}
                   value={formData.adresseEntreprise}
                   onChange={(e) => setFormData({ ...formData, adresseEntreprise: e.target.value })}
@@ -976,14 +966,14 @@ export default function ExpertRegisterWizard() {
 
               <div className="space-y-2 md:col-span-2">
                 <Label>
-                  Wilaya <span className="text-red-500">*</span>
+                  {t("er.labels.wilaya")} <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.wilaya}
                   onValueChange={(val) => setFormData({ ...formData, wilaya: val })}
                 >
                   <SelectTrigger className={errors.wilaya ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Sélectionnez votre wilaya" />
+                    <SelectValue placeholder={t("er.placeholders.selectWilaya")} />
                   </SelectTrigger>
                   <SelectContent>
                     {WILAYAS.map((w) => (
@@ -998,14 +988,14 @@ export default function ExpertRegisterWizard() {
             </div>
 
             <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg space-y-4">
-              <h4 className="font-semibold text-orange-800">Contact d&apos;urgence <span className="text-red-500">*</span></h4>
+              <h4 className="font-semibold text-orange-800">{t("er.labels.contactUrgence")} <span className="text-red-500">*</span></h4>
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>
-                    Nom complet <span className="text-red-500">*</span>
+                    {t("er.labels.nomComplet")} <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    placeholder="Nom du contact"
+                    placeholder={t("er.placeholders.contactNom")}
                     value={formData.contactUrgenceNom}
                     onChange={(e) => setFormData({ ...formData, contactUrgenceNom: e.target.value })}
                     className={errors.contactUrgenceNom ? "border-red-500" : ""}
@@ -1016,7 +1006,7 @@ export default function ExpertRegisterWizard() {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Téléphone <span className="text-red-500">*</span>
+                    {t("er.labels.telephone")} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     placeholder="+213 XXX XXX XXX"
@@ -1031,7 +1021,7 @@ export default function ExpertRegisterWizard() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Mobile</Label>
+                  <Label>{t("er.labels.mobile")}</Label>
                   <Input
                     placeholder="+213 XXX XXX XXX"
                     value={formData.contactUrgenceMobile}
@@ -1049,10 +1039,10 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Formation académique</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.formationAcademique")}</h3>
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
-                  Les renseignements des formations doivent être faits par ordre chronologique ; toujours du plus ancien (Formation 1) au plus récent.
+                  {t("er.labels.chronologicalHint")}
                 </p>
               </div>
               {errors.formations && (
@@ -1067,7 +1057,7 @@ export default function ExpertRegisterWizard() {
               <div key={index} className="p-4 border rounded-lg space-y-4 bg-slate-50 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
-                    Formation {index + 1}
+                    {t("er.labels.formation")} {index + 1}
                   </span>
                   {index >= 1 && (
                     <Button
@@ -1084,7 +1074,7 @@ export default function ExpertRegisterWizard() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>
-                      Date début <span className="text-red-500">*</span>
+                      {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1095,7 +1085,7 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Date fin <span className="text-red-500">*</span>
+                      {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1106,10 +1096,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Université / Institution <span className="text-red-500">*</span>
+                      {t("er.labels.universite")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Nom de l'université ou institution"
+                      placeholder={t("er.placeholders.universite")}
                       value={formation.universite}
                       onChange={(e) => updateFormation(index, "universite", e.target.value)}
                       className={hasError(`formation_${index}_universite`) ? "border-red-500" : ""}
@@ -1117,10 +1107,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Cours / Spécialité <span className="text-red-500">*</span>
+                      {t("er.labels.coursSpecialite")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Ex: Génie industriel"
+                      placeholder={t("er.placeholders.specialite")}
                       value={formation.coursSpecialite}
                       onChange={(e) => updateFormation(index, "coursSpecialite", e.target.value)}
                       className={hasError(`formation_${index}_coursSpecialite`) ? "border-red-500" : ""}
@@ -1128,7 +1118,7 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>
-                      Diplôme <span className="text-red-500">*</span>
+                      {t("er.labels.diplome")} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formation.diplome}
@@ -1137,12 +1127,12 @@ export default function ExpertRegisterWizard() {
                       <SelectTrigger
                         className={cn("bg-white", hasError(`formation_${index}_diplome`) && "border-red-500")}
                       >
-                        <SelectValue placeholder="Sélectionnez le diplôme" />
+                        <SelectValue placeholder={t("er.placeholders.selectDiplome")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {diplomes.map((d) => (
-                          <SelectItem key={d} value={d}>
-                            {d}
+                        {DIPLOMA_KEYS.map((dk) => (
+                          <SelectItem key={dk} value={dk}>
+                            {t(`er.diplomas.${dk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1163,7 +1153,7 @@ export default function ExpertRegisterWizard() {
                 ])
               }
             >
-              <Plus className="w-4 h-4" /> Ajouter une autre formation académique
+              <Plus className="w-4 h-4" /> {t("er.buttons.addFormation")}
             </Button>
 
             {/* Documents justificatifs seront demandés via FOR28 après présélection */}
@@ -1174,13 +1164,13 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Autres Formations</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.autresFormations")}</h3>
               <p className="text-sm text-slate-500 mt-1">
-                Formations complémentaires, certifications professionnelles, etc.
+                {t("er.labels.autresFormationsDesc")}
               </p>
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
-                  Les renseignements des formations doivent être faits par ordre chronologique ; toujours du plus ancien (Formation 1) au plus récent.
+                  {t("er.labels.chronologicalHint")}
                 </p>
               </div>
               {errors.autresFormationsChronology && (
@@ -1192,7 +1182,7 @@ export default function ExpertRegisterWizard() {
               <div key={index} className="p-4 border rounded-lg space-y-4 bg-slate-50 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
-                    Formation {index + 1}
+                    {t("er.labels.formation")} {index + 1}
                   </span>
                   {index >= 1 && (
                     <Button
@@ -1211,7 +1201,7 @@ export default function ExpertRegisterWizard() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>
-                      Date début <span className="text-red-500">*</span>
+                      {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1224,7 +1214,7 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Date fin <span className="text-red-500">*</span>
+                      {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1237,10 +1227,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Institution / Organisme <span className="text-red-500">*</span>
+                      {t("er.labels.institution")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Nom de l'institution ou organisme"
+                      placeholder={t("er.placeholders.institution")}
                       value={formation.universite}
                       onChange={(e) => updateAutreFormation(index, "universite", e.target.value)}
                       className={
@@ -1250,10 +1240,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Cours / Spécialité <span className="text-red-500">*</span>
+                      {t("er.labels.coursSpecialite")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Ex: ISO 9001 Lead Auditor"
+                      placeholder={t("er.placeholders.coursSpecialite")}
                       value={formation.coursSpecialite}
                       onChange={(e) =>
                         updateAutreFormation(index, "coursSpecialite", e.target.value)
@@ -1265,7 +1255,7 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>
-                      Certificat / Diplôme <span className="text-red-500">*</span>
+                      {t("er.labels.certificat")} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formation.diplome}
@@ -1277,12 +1267,12 @@ export default function ExpertRegisterWizard() {
                           hasError(`autreFormation_${index}_diplome`) && "border-red-500"
                         )}
                       >
-                        <SelectValue placeholder="Sélectionnez" />
+                        <SelectValue placeholder={t("er.placeholders.select")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {diplomes.map((d) => (
-                          <SelectItem key={d} value={d}>
-                            {d}
+                        {DIPLOMA_KEYS.map((dk) => (
+                          <SelectItem key={dk} value={dk}>
+                            {t(`er.diplomas.${dk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1314,10 +1304,10 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Expérience professionnelle</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.experiencePro")}</h3>
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
-                  Les renseignements doivent être faits par ordre chronologique ; toujours du plus ancien (Expérience 1) au plus récent.
+                  {t("er.labels.chronologicalHint")}
                 </p>
               </div>
               {errors.experiences && (
@@ -1332,7 +1322,7 @@ export default function ExpertRegisterWizard() {
               <div key={index} className="p-4 border rounded-lg space-y-4 bg-slate-50 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
-                    Expérience {index + 1}
+                    {t("er.labels.experience")} {index + 1}
                   </span>
                   {index >= 1 && (
                     <Button
@@ -1349,7 +1339,7 @@ export default function ExpertRegisterWizard() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>
-                      Date début (mois/année) <span className="text-red-500">*</span>
+                      {t("er.labels.dateDebutMonthYear")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1360,7 +1350,7 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Date fin (mois/année) <span className="text-red-500">*</span>
+                      {t("er.labels.dateFinMonthYear")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="month"
@@ -1371,10 +1361,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Organisme <span className="text-red-500">*</span>
+                      {t("er.labels.organisme")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Nom de l'organisme"
+                      placeholder={t("er.placeholders.organisme")}
                       value={exp.organisme}
                       onChange={(e) => updateExperience(index, "organisme", e.target.value)}
                       className={hasError(`exp_${index}_organisme`) ? "border-red-500" : ""}
@@ -1382,10 +1372,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Poste occupé <span className="text-red-500">*</span>
+                      {t("er.labels.posteOccupe")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Ex: Responsable qualité"
+                      placeholder={t("er.placeholders.poste")}
                       value={exp.posteOccupe}
                       onChange={(e) => updateExperience(index, "posteOccupe", e.target.value)}
                       className={hasError(`exp_${index}_posteOccupe`) ? "border-red-500" : ""}
@@ -1393,10 +1383,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Domaine de compétence <span className="text-red-500">*</span>
+                      {t("er.labels.domaineCompetence")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Ex: Management de la qualité"
+                      placeholder={t("er.placeholders.domaine")}
                       value={exp.domaineCompetence}
                       onChange={(e) => updateExperience(index, "domaineCompetence", e.target.value)}
                       className={hasError(`exp_${index}_domaine`) ? "border-red-500" : ""}
@@ -1404,10 +1394,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Sous-domaine <span className="text-red-500">*</span>
+                      {t("er.labels.sousDomaine")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Ex: Agroalimentaire, Pharmaceutique..."
+                      placeholder={t("er.placeholders.sousDomaine")}
                       value={exp.sousDomaineCompetence}
                       onChange={(e) =>
                         updateExperience(index, "sousDomaineCompetence", e.target.value)
@@ -1417,10 +1407,10 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>
-                      Tâches principales <span className="text-red-500">*</span>
+                      {t("er.labels.tachesPrincipales")} <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
-                      placeholder="Décrivez les activités principales..."
+                      placeholder={t("er.placeholders.taches")}
                       rows={2}
                       value={exp.activitesPrincipales}
                       onChange={(e) =>
@@ -1452,7 +1442,7 @@ export default function ExpertRegisterWizard() {
                 ])
               }
             >
-              <Plus className="w-4 h-4" /> Ajouter une autre expérience
+              <Plus className="w-4 h-4" /> {t("er.buttons.addExperience")}
             </Button>
 
             {/* Documents justificatifs seront demandés via FOR28 après présélection */}
@@ -1463,12 +1453,12 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Évaluations / Audits</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.evaluationsAudits")}</h3>
             </div>
 
             <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-4">
               <p className="font-medium text-blue-800">
-                Avez-vous déjà réalisé une évaluation ou un audit ?
+                {t("er.labels.hasEvaluationsQuestion")}
               </p>
               {errors.hasEvaluations && (
                 <p className="text-xs text-red-500">{errors.hasEvaluations}</p>
@@ -1481,13 +1471,13 @@ export default function ExpertRegisterWizard() {
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="oui" id="eval-oui" />
                   <Label htmlFor="eval-oui" className="cursor-pointer">
-                    Oui
+                    {t("er.labels.yes")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="non" id="eval-non" />
                   <Label htmlFor="eval-non" className="cursor-pointer">
-                    Non
+                    {t("er.labels.no")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -1497,7 +1487,7 @@ export default function ExpertRegisterWizard() {
               <>
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-sm text-amber-800 font-medium">
-                    Les renseignements doivent être faits par ordre chronologique (du plus ancien au plus récent).
+                    {t("er.labels.chronologicalHint")}
                   </p>
                 </div>
                 {errors.evaluations && (
@@ -1514,7 +1504,7 @@ export default function ExpertRegisterWizard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-slate-700">
-                        Évaluation / Audit {index + 1}
+                        {t("er.labels.evaluationAudit")} {index + 1}
                       </span>
                       {index >= 1 && (
                         <Button
@@ -1545,17 +1535,17 @@ export default function ExpertRegisterWizard() {
                               hasError(`eval_${index}_type`) && "border-red-500"
                             )}
                           >
-                            <SelectValue placeholder="Évaluation ou Audit ?" />
+                            <SelectValue placeholder={t("er.placeholders.evalOrAudit")} />
                           </SelectTrigger>
                           <SelectContent className="bg-white">
-                            <SelectItem value="evaluation">Évaluation</SelectItem>
-                            <SelectItem value="audit">Audit</SelectItem>
+                            <SelectItem value="evaluation">{t("er.labels.evaluation")}</SelectItem>
+                            <SelectItem value="audit">{t("er.labels.audit")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Date début <span className="text-red-500">*</span>
+                          {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           type="month"
@@ -1566,7 +1556,7 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Date fin <span className="text-red-500">*</span>
+                          {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           type="month"
@@ -1577,10 +1567,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Type d&apos;évaluation ou d&apos;audit <span className="text-red-500">*</span>
+                          {t("er.labels.typeEvaluation")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Ex: Audit de certification ISO 9001"
+                          placeholder={t("er.placeholders.typeEvaluation")}
                           value={evalItem.typeEvaluation}
                           onChange={(e) =>
                             updateEvaluation(index, "typeEvaluation", e.target.value)
@@ -1592,10 +1582,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Rôle tenu dans l&apos;équipe <span className="text-red-500">*</span>
+                          {t("er.labels.roleTenu")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Ex: Auditeur principal"
+                          placeholder={t("er.placeholders.roleTenu")}
                           value={evalItem.roleTenu}
                           onChange={(e) => updateEvaluation(index, "roleTenu", e.target.value)}
                           className={hasError(`eval_${index}_roleTenu`) ? "border-red-500" : ""}
@@ -1603,10 +1593,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>
-                          Normes utilisées comme référentiels <span className="text-red-500">*</span>
+                          {t("er.labels.normesReferentiels")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Ex: ISO 9001:2015, ISO 19011"
+                          placeholder={t("er.placeholders.normes")}
                           value={evalItem.normesReferentiels}
                           onChange={(e) =>
                             updateEvaluation(index, "normesReferentiels", e.target.value)
@@ -1636,7 +1626,7 @@ export default function ExpertRegisterWizard() {
                     ])
                   }
                 >
-                  <Plus className="w-4 h-4" /> Ajouter une autre évaluation / audit
+                  <Plus className="w-4 h-4" /> {t("er.buttons.addEvaluation")}
                 </Button>
 
                 {/* Documents justificatifs seront demandés via FOR28 après présélection */}
@@ -1649,12 +1639,12 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Formations dispensées</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.formationsDispensees")}</h3>
             </div>
 
             <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg space-y-4">
               <p className="font-medium text-blue-800">
-                Avez-vous déjà dispensé une formation en tant que formateur ?
+                {t("er.labels.hasFormationsDispenseesQuestion")}
               </p>
               {errors.hasFormationsDispensees && (
                 <p className="text-xs text-red-500">{errors.hasFormationsDispensees}</p>
@@ -1673,13 +1663,13 @@ export default function ExpertRegisterWizard() {
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="oui" id="fd-oui" />
                   <Label htmlFor="fd-oui" className="cursor-pointer">
-                    Oui
+                    {t("er.labels.yes")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="non" id="fd-non" />
                   <Label htmlFor="fd-non" className="cursor-pointer">
-                    Non
+                    {t("er.labels.no")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -1689,7 +1679,7 @@ export default function ExpertRegisterWizard() {
               <>
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-sm text-amber-800 font-medium">
-                    Les renseignements doivent être faits par ordre chronologique (du plus ancien au plus récent).
+                    {t("er.labels.chronologicalHint")}
                   </p>
                 </div>
                 {errors.formationsDispensees && (
@@ -1706,7 +1696,7 @@ export default function ExpertRegisterWizard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-slate-700">
-                        Formation dispensée {index + 1}
+                        {t("er.labels.formationDispensee")} {index + 1}
                       </span>
                       {index >= 1 && (
                         <Button
@@ -1727,7 +1717,7 @@ export default function ExpertRegisterWizard() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>
-                          Date début <span className="text-red-500">*</span>
+                          {t("er.labels.dateDebut")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           type="month"
@@ -1740,7 +1730,7 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Date fin <span className="text-red-500">*</span>
+                          {t("er.labels.dateFin")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           type="month"
@@ -1753,10 +1743,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Durée <span className="text-red-500">*</span>
+                          {t("er.labels.duree")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Ex: 5 jours, 3 mois..."
+                          placeholder={t("er.placeholders.duree")}
                           value={fd.duree}
                           onChange={(e) =>
                             updateFormationDispensee(index, "duree", e.target.value)
@@ -1766,10 +1756,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2">
                         <Label>
-                          Organisme bénéficiaire <span className="text-red-500">*</span>
+                          {t("er.labels.organismeBeneficiaire")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Nom de l'organisme bénéficiaire"
+                          placeholder={t("er.placeholders.organismeBeneficiaire")}
                           value={fd.organismeBeneficiaire}
                           onChange={(e) =>
                             updateFormationDispensee(index, "organismeBeneficiaire", e.target.value)
@@ -1779,10 +1769,10 @@ export default function ExpertRegisterWizard() {
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>
-                          Intitulé de la formation <span className="text-red-500">*</span>
+                          {t("er.labels.intituleFormation")} <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Intitulé de la formation dispensée"
+                          placeholder={t("er.placeholders.intituleFormation")}
                           value={fd.formation}
                           onChange={(e) =>
                             updateFormationDispensee(index, "formation", e.target.value)
@@ -1811,7 +1801,7 @@ export default function ExpertRegisterWizard() {
                     ])
                   }
                 >
-                  <Plus className="w-4 h-4" /> Ajouter une autre formation dispensée
+                  <Plus className="w-4 h-4" /> {t("er.buttons.addFormationDispensee")}
                 </Button>
 
                 {/* Documents justificatifs seront demandés via FOR28 après présélection */}
@@ -1825,10 +1815,10 @@ export default function ExpertRegisterWizard() {
           <div className="space-y-6">
             <div>
               <h3 className="font-semibold text-lg">
-                Connaissance linguistique <span className="text-red-500">*</span>
+                {t("er.titles.connaissancesLinguistiques")} <span className="text-red-500">*</span>
               </h3>
               <p className="text-sm text-slate-500 mt-1">
-                Indiquez vos compétences linguistiques. Au moins une langue est requise.
+                {t("er.labels.langueHint")}
               </p>
               {errors.langues && <p className="text-sm text-red-500 mt-2">{errors.langues}</p>}
             </div>
@@ -1837,7 +1827,7 @@ export default function ExpertRegisterWizard() {
               <div key={index} className="p-4 border rounded-lg space-y-4 bg-slate-50 relative">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
-                    Langue {index + 1}
+                    {t("er.labels.langue")} {index + 1}
                   </span>
                   {langues.length > 1 && (
                     <Button
@@ -1853,25 +1843,25 @@ export default function ExpertRegisterWizard() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label>Langue <span className="text-red-500">*</span></Label>
+                    <Label>{t("er.labels.langue")} <span className="text-red-500">*</span></Label>
                     <Select
                       value={langue.langue}
                       onValueChange={(value) => updateLangue(index, "langue", value)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Sélectionnez" />
+                        <SelectValue placeholder={t("er.placeholders.select")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {languesListe.map((l) => (
-                          <SelectItem key={l} value={l}>
-                            {l}
+                        {LANGUAGE_KEYS.map((lk) => (
+                          <SelectItem key={lk} value={lk}>
+                            {t(`er.languages.${lk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {langue.langue === "Autre" && (
+                    {langue.langue === "other" && (
                       <Input
-                        placeholder="Indiquez la langue"
+                        placeholder={t("er.placeholders.langueAutre")}
                         value={langue.langueAutre}
                         onChange={(e) => updateLangue(index, "langueAutre", e.target.value)}
                         className={cn("mt-1", hasError(`langue_${index}_autre`) && "border-red-500")}
@@ -1882,54 +1872,54 @@ export default function ExpertRegisterWizard() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Lu</Label>
+                    <Label>{t("er.labels.lu")}</Label>
                     <Select
                       value={langue.lu}
                       onValueChange={(value) => updateLangue(index, "lu", value)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Niveau" />
+                        <SelectValue placeholder={t("er.placeholders.level")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {niveauxLangue.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
+                        {LEVEL_KEYS.map((lk) => (
+                          <SelectItem key={lk} value={lk}>
+                            {t(`er.levels.${lk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Parlé</Label>
+                    <Label>{t("er.labels.parle")}</Label>
                     <Select
                       value={langue.parle}
                       onValueChange={(value) => updateLangue(index, "parle", value)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Niveau" />
+                        <SelectValue placeholder={t("er.placeholders.level")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {niveauxLangue.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
+                        {LEVEL_KEYS.map((lk) => (
+                          <SelectItem key={lk} value={lk}>
+                            {t(`er.levels.${lk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Écrit</Label>
+                    <Label>{t("er.labels.ecrit")}</Label>
                     <Select
                       value={langue.ecrit}
                       onValueChange={(value) => updateLangue(index, "ecrit", value)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Niveau" />
+                        <SelectValue placeholder={t("er.placeholders.level")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        {niveauxLangue.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
+                        {LEVEL_KEYS.map((lk) => (
+                          <SelectItem key={lk} value={lk}>
+                            {t(`er.levels.${lk}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1950,7 +1940,7 @@ export default function ExpertRegisterWizard() {
                 ])
               }
             >
-              <Plus className="w-4 h-4" /> Ajouter une autre langue
+              <Plus className="w-4 h-4" /> {t("er.buttons.addLangue")}
             </Button>
 
             {/* Documents justificatifs seront demandés via FOR28 après présélection */}
@@ -1961,9 +1951,9 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label>Informations complémentaires</Label>
+              <Label>{t("er.labels.informationsComplementaires")}</Label>
               <Textarea
-                placeholder="Toute information pertinente pour votre candidature..."
+                placeholder={t("er.placeholders.informationsComplementaires")}
                 rows={4}
                 value={formData.informationsComplementaires}
                 onChange={(e) =>
@@ -1975,7 +1965,7 @@ export default function ExpertRegisterWizard() {
             {/* Documents justificatifs seront demandés via FOR28 après présélection */}
 
             <div className="pt-6 space-y-4 border-t">
-              <h3 className="font-semibold text-lg">Engagements</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.engagements")}</h3>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
                   <Checkbox
@@ -1988,16 +1978,16 @@ export default function ExpertRegisterWizard() {
                     htmlFor="consent1"
                     className="text-sm leading-relaxed font-medium cursor-pointer"
                   >
-                    J&apos;ai lu et j&apos;accepte la{" "}
+                    {t("er.labels.consent1")}{" "}
                     <a
                       href="https://algerac.dz"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#00A63E] underline hover:text-[#008f35]"
                     >
-                      politique de confidentialité
+                      {t("er.labels.privacyPolicy")}
                     </a>{" "}
-                    d&apos;ALGERAC. <span className="text-red-500">*</span>
+                    {t("er.labels.consent1End")} <span className="text-red-500">*</span>
                   </Label>
                 </div>
                 <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border">
@@ -2011,18 +2001,16 @@ export default function ExpertRegisterWizard() {
                     htmlFor="consent2"
                     className="text-sm leading-relaxed font-medium cursor-pointer"
                   >
-                    Je consens à ce que mes données personnelles soient collectées et traitées
-                    conformément à la{" "}
+                    {t("er.labels.consent2")}{" "}
                     <a
                       href="https://algerac.dz"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#00A63E] underline hover:text-[#008f35]"
                     >
-                      loi n° X
+                      {t("er.labels.dataProtectionLaw")}
                     </a>{" "}
-                    relative à la protection des personnes physiques à l&apos;égard du traitement des
-                    données à caractère personnel.{" "}
+                    {t("er.labels.consent2End")}{" "}
                     <span className="text-red-500">*</span>
                   </Label>
                 </div>
@@ -2047,15 +2035,18 @@ export default function ExpertRegisterWizard() {
             <div>
               <h1 className="text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
               <p className="text-xs text-gray-500">
-                Inscription Expert / Évaluateur / Formateur
+                {t("er.header.subtitle")}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
-            <Link href="/auth/register">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Retour
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher variant="compact" />
+            <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
+              <Link href="/auth/register">
+                <ChevronLeft className="w-4 h-4 mr-1" /> {t("er.buttons.back")}
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -2066,7 +2057,7 @@ export default function ExpertRegisterWizard() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">
-                Étape {currentStep} sur {STEPS.length}
+                {t("er.progress.step", { current: currentStep, total: STEPS.length })}
               </h2>
               <p className="text-sm text-gray-500">{STEPS[currentStep - 1].title}</p>
             </div>
@@ -2130,7 +2121,7 @@ export default function ExpertRegisterWizard() {
             <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
               {currentStep > 1 && (
                 <Button type="button" variant="outline" onClick={prevStep} className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50">
-                  <ChevronLeft className="w-4 h-4" /> Précédent
+                  <ChevronLeft className="w-4 h-4" /> {t("er.buttons.previous")}
                 </Button>
               )}
 
@@ -2140,7 +2131,7 @@ export default function ExpertRegisterWizard() {
                   onClick={nextStep}
                   className="gap-2 ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm"
                 >
-                  Suivant <ArrowRight className="w-4 h-4" />
+                  {t("er.buttons.next")} <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
                 <Button
@@ -2149,7 +2140,7 @@ export default function ExpertRegisterWizard() {
                   disabled={loading || !consent1 || !consent2 || !consent3Type}
                   className="ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm"
                 >
-                  {loading ? "Envoi en cours..." : "Soumettre ma candidature"}
+                  {loading ? t("er.buttons.submitting") : t("er.buttons.submit")}
                 </Button>
               )}
             </div>
@@ -2164,24 +2155,22 @@ export default function ExpertRegisterWizard() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-amber-700">
             <ShieldAlert className="w-5 h-5" />
-            Inscription impossible
+            {t("er.blacklist.title")}
           </DialogTitle>
           <DialogDescription>
-            Votre adresse email est associée à un compte qui a fait l'objet d'une décision de blocage.
-            Si vous estimez que cette décision est injustifiée, vous pouvez introduire un recours.
+            {t("er.blacklist.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-800">
-            En introduisant un recours, votre demande sera examinée par le service compétent.
-            Vous recevrez une réponse par email dans les meilleurs délais.
+            {t("er.blacklist.appealInfo")}
           </p>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => setShowBlacklistDialog(false)}>
-            Fermer
+            {t("er.buttons.close")}
           </Button>
           <Button
             className="bg-amber-600 hover:bg-amber-700 text-white"
@@ -2200,21 +2189,21 @@ export default function ExpertRegisterWizard() {
                 if (response.ok) {
                   setShowBlacklistDialog(false);
                   toast({
-                    title: "Recours enregistré",
-                    description: "Votre recours a bien été pris en compte. Vous recevrez une réponse par email dans les meilleurs délais.",
+                    title: t("er.blacklist.appealSuccess"),
+                    description: t("er.blacklist.appealSuccessDesc"),
                   });
                 } else {
                   const err = await response.json();
                   toast({
-                    title: "Erreur",
-                    description: err.error || "Impossible de soumettre le recours",
+                    title: t("er.blacklist.error"),
+                    description: err.error || t("er.blacklist.appealError"),
                     variant: "destructive",
                   });
                 }
               } catch {
                 toast({
-                  title: "Erreur",
-                  description: "Une erreur est survenue lors de l'envoi du recours",
+                  title: t("er.blacklist.error"),
+                  description: t("er.blacklist.networkError"),
                   variant: "destructive",
                 });
               } finally {
@@ -2222,7 +2211,7 @@ export default function ExpertRegisterWizard() {
               }
             }}
           >
-            {appealLoading ? "Envoi en cours..." : "Introduire un recours"}
+            {appealLoading ? t("er.buttons.submitting") : t("er.buttons.fileAppeal")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -26,17 +26,17 @@ public class For28Controller {
     public ResponseEntity<?> validateToken(@RequestBody Map<String, String> request) {
         try {
             String token = request.get("token");
-            String email = request.get("email");
+            String code = request.get("code");
 
             if (token == null || token.isBlank()) {
                 return ResponseEntity.status(400).body(Map.of("success", false, "message", "Token manquant"));
             }
-            if (email == null || email.isBlank()) {
-                return ResponseEntity.status(400).body(Map.of("success", false, "message", "Email requis pour vérification"));
+            if (code == null || code.isBlank()) {
+                return ResponseEntity.status(400).body(Map.of("success", false, "message", "Code secret requis pour vérification"));
             }
 
             log.info("POST /api/for28/validate - Validation token FOR28");
-            User user = candidatureService.validateFor28Token(token, email);
+            User user = candidatureService.validateFor28Token(token, code);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -61,21 +61,21 @@ public class For28Controller {
     public ResponseEntity<?> submitDocuments(@RequestBody Map<String, String> request) {
         try {
             String token = request.get("token");
-            String email = request.get("email");
+            String code = request.get("code");
             String documentsJson = request.get("documents");
 
             if (token == null || token.isBlank()) {
                 return ResponseEntity.status(400).body(Map.of("success", false, "message", "Token manquant"));
             }
-            if (email == null || email.isBlank()) {
-                return ResponseEntity.status(400).body(Map.of("success", false, "message", "Email requis pour vérification"));
+            if (code == null || code.isBlank()) {
+                return ResponseEntity.status(400).body(Map.of("success", false, "message", "Code secret requis pour vérification"));
             }
             if (documentsJson == null || documentsJson.isBlank()) {
                 return ResponseEntity.status(400).body(Map.of("success", false, "message", "Aucun document fourni"));
             }
 
             log.info("POST /api/for28/submit - Soumission documents FOR28");
-            User user = candidatureService.submitFor28Documents(token, email, documentsJson);
+            User user = candidatureService.submitFor28Documents(token, code, documentsJson);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

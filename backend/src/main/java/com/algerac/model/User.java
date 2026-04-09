@@ -131,6 +131,7 @@ public class User {
     // FOR28 secure access token
     @Column(unique = true)
     private String for28Token;
+    private String for28SecretCode;
     private LocalDateTime for28TokenExpiresAt;
     private LocalDateTime for28SubmittedAt;
     

@@ -36,7 +36,8 @@ public class AuthenticationFilter implements Filter {
     );
 
     private static final Set<String> PUBLIC_PREFIXES = Set.of(
-            "/api/auth/"
+            "/api/auth/",
+            "/api/for28/"
     );
 
     private final ObjectMapper objectMapper = new ObjectMapper();

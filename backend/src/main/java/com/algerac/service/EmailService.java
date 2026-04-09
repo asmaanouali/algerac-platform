@@ -976,7 +976,7 @@ public class EmailService {
      * Email d'accès au formulaire FOR28 (envoi des documents confidentiels)
      * Envoyé après présélection du profil par GES_COMPETENCES
      */
-    public void sendFor28AccessEmail(User user, String token) {
+    public void sendFor28AccessEmail(User user, String token, String secretCode) {
         try {
             String typeLabel = getExpertTypeLabel(user);
             String for28Url = "http://localhost:5173/for28/" + token;
@@ -999,12 +999,16 @@ public class EmailService {
                 
                 Lien sécurisé : %s
                 
+                Code secret d'accès : %s
+                
                 Référence dossier : %s
                 
                 ═══════════════════════════════════════
                 
                 IMPORTANT - CONFIDENTIALITÉ :
-                Ce lien est strictement personnel et confidentiel. Il est associé uniquement à votre adresse email et ne peut être utilisé par une tierce personne. Pour des raisons de sécurité, vous devrez confirmer votre identité en saisissant votre adresse email avant de pouvoir accéder au formulaire.
+                Ce lien et ce code sont strictement personnels et confidentiels.
+                Vous devrez saisir le code secret ci-dessus pour accéder au formulaire.
+                Ne partagez ce code avec personne.
                 
                 Ce lien est valable pendant 30 jours à compter de la réception de cet email.
                 
@@ -1025,6 +1029,7 @@ public class EmailService {
                 user.getNom(),
                 typeLabel,
                 for28Url,
+                secretCode,
                 user.getRegistrationId(),
                 gesCompetencesEmail
             );

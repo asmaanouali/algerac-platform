@@ -24,7 +24,7 @@ export default function For28SubmissionPage() {
   const token = params?.token || "";
 
   const [pageState, setPageState] = useState<PageState>("verify");
-  const [email, setEmail] = useState("");
+  const [secretCode, setSecretCode] = useState("");
   const [candidateName, setCandidateName] = useState("");
   const [registrationId, setRegistrationId] = useState("");
   const [userType, setUserType] = useState("");
@@ -39,9 +39,9 @@ export default function For28SubmissionPage() {
     FORMATEUR: "Formateur",
   };
 
-  const handleVerifyEmail = async (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!secretCode.trim()) return;
 
     setLoading(true);
     setErrorMessage("");
@@ -50,7 +50,7 @@ export default function For28SubmissionPage() {
       const res = await fetch("/api/for28/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email: email.trim() }),
+        body: JSON.stringify({ token, code: secretCode.trim() }),
       });
 
       const data = await res.json();
@@ -134,7 +134,7 @@ export default function For28SubmissionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          email: email.trim(),
+          code: secretCode.trim(),
           documents: JSON.stringify(files),
         }),
       });
@@ -210,8 +210,8 @@ export default function For28SubmissionPage() {
                         Vérification d'identité
                       </h2>
                       <p className="text-sm text-gray-500">
-                        Pour accéder au formulaire FOR28, veuillez confirmer votre identité
-                        en saisissant l'adresse email utilisée lors de votre candidature.
+                        Pour accéder au formulaire FOR28, veuillez saisir le code secret
+                        à 6 chiffres reçu dans l'email de présélection.
                       </p>
                     </div>
 
@@ -221,24 +221,26 @@ export default function For28SubmissionPage() {
                         <div className="text-sm text-amber-800">
                           <p className="font-medium">Accès sécurisé et confidentiel</p>
                           <p className="mt-1 text-xs">
-                            Ce formulaire est strictement personnel. Seul le candidat
-                            dont l'email correspond peut y accéder et soumettre des documents.
+                            Ce formulaire est strictement personnel. Le code secret a été
+                            envoyé uniquement à l'adresse email du candidat concerné.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <form onSubmit={handleVerifyEmail} className="space-y-4">
+                    <form onSubmit={handleVerifyCode} className="space-y-4">
                       <div>
-                        <Label htmlFor="email">Adresse email de candidature</Label>
+                        <Label htmlFor="code">Code secret d'accès</Label>
                         <Input
-                          id="email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="votre.email@exemple.com"
+                          id="code"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={secretCode}
+                          onChange={(e) => setSecretCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="000000"
                           required
-                          className="mt-1.5"
+                          className="mt-1.5 text-center text-2xl tracking-[0.5em] font-mono"
                         />
                       </div>
 
@@ -254,7 +256,7 @@ export default function For28SubmissionPage() {
                       <Button
                         type="submit"
                         className="w-full bg-[#00A63E] hover:bg-[#008c34]"
-                        disabled={loading || !email.trim()}
+                        disabled={loading || secretCode.length !== 6}
                       >
                         {loading ? (
                           <>

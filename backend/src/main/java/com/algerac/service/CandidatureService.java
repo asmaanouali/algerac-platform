@@ -629,13 +629,15 @@ public class CandidatureService {
         validateExpertType(user);
         
         String token = UUID.randomUUID().toString();
+        String secretCode = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
         user.setFor28Token(token);
+        user.setFor28SecretCode(secretCode);
         user.setFor28TokenExpiresAt(LocalDateTime.now().plusDays(30));
         user.setStatus(UserStatus.PROFILE_PRESELECTED);
         
         User savedUser = userRepository.save(user);
         
-        emailService.sendFor28AccessEmail(user, token);
+        emailService.sendFor28AccessEmail(user, token, secretCode);
         
         log.info("Profil présélectionné pour {} {} - token FOR28 généré, email envoyé", 
                 user.getPrenom(), user.getNom());
@@ -647,7 +649,7 @@ public class CandidatureService {
      * Valide un token FOR28 et retourne les informations du candidat.
      * Vérifie que le token existe, n'est pas expiré, et que l'email correspond.
      */
-    public User validateFor28Token(String token, String email) {
+    public User validateFor28Token(String token, String secretCode) {
         User user = userRepository.findByFor28Token(token)
             .orElseThrow(() -> new RuntimeException("Lien invalide ou expiré"));
         
@@ -659,8 +661,8 @@ public class CandidatureService {
             throw new RuntimeException("Les documents ont déjà été soumis ou le dossier a été traité.");
         }
         
-        if (!user.getEmail().equalsIgnoreCase(email)) {
-            throw new RuntimeException("L'adresse email ne correspond pas au candidat concerné.");
+        if (user.getFor28SecretCode() == null || !user.getFor28SecretCode().equals(secretCode)) {
+            throw new RuntimeException("Le code secret est incorrect.");
         }
         
         return user;
@@ -671,13 +673,14 @@ public class CandidatureService {
      * Vérifie le token, l'email, sauvegarde les documents et met à jour le statut.
      */
     @Transactional
-    public User submitFor28Documents(String token, String email, String documentsJson) {
-        User user = validateFor28Token(token, email);
+    public User submitFor28Documents(String token, String secretCode, String documentsJson) {
+        User user = validateFor28Token(token, secretCode);
         
         user.setDocumentsJson(documentsJson);
         user.setFor28SubmittedAt(LocalDateTime.now());
         user.setStatus(UserStatus.DOCUMENTS_SUBMITTED);
         user.setFor28Token(null);
+        user.setFor28SecretCode(null);
         user.setFor28TokenExpiresAt(null);
         
         User savedUser = userRepository.save(user);

@@ -82,8 +82,8 @@ export default function GesCompetencesCandidaturesPage() {
   const [schedulingCandidature, setSchedulingCandidature] = useState<Candidature | null>(null);
   
   // Panel member selection for interview
-  const [availableCDs, setAvailableCDs] = useState<Array<{id: number; fullName: string; email: string}>>([]);
-  const [availableRAs, setAvailableRAs] = useState<Array<{id: number; fullName: string; email: string}>>([]);
+  const [availableCDs, setAvailableCDs] = useState<Array<{id: number; fullName: string; email: string; domaineExpertise: string}>>([]);
+  const [availableRAs, setAvailableRAs] = useState<Array<{id: number; fullName: string; email: string; domaineExpertise: string}>>([]);
   const [selectedPanelCdId, setSelectedPanelCdId] = useState<string>("");
   const [selectedPanelRaId, setSelectedPanelRaId] = useState<string>("");
   
@@ -896,7 +896,7 @@ export default function GesCompetencesCandidaturesPage() {
                 
                 <div>
                   <Label>Chef de Département (CD) *</Label>
-                  <Select value={selectedPanelCdId} onValueChange={setSelectedPanelCdId}>
+                  <Select value={selectedPanelCdId} onValueChange={(val) => { setSelectedPanelCdId(val); setSelectedPanelRaId(""); }}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Sélectionner un Chef de Département" />
                     </SelectTrigger>
@@ -912,12 +912,17 @@ export default function GesCompetencesCandidaturesPage() {
                 
                 <div>
                   <Label>Responsable d'Accréditation (RA) *</Label>
-                  <Select value={selectedPanelRaId} onValueChange={setSelectedPanelRaId}>
+                  <Select value={selectedPanelRaId} onValueChange={setSelectedPanelRaId} disabled={!selectedPanelCdId}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Sélectionner un Responsable d'Accréditation" />
+                      <SelectValue placeholder={selectedPanelCdId ? "Sélectionner un Responsable d'Accréditation" : "Veuillez d'abord sélectionner un CD"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableRAs.map(ra => (
+                      {availableRAs
+                        .filter(ra => {
+                          const selectedCD = availableCDs.find(cd => String(cd.id) === selectedPanelCdId);
+                          return selectedCD ? ra.domaineExpertise === selectedCD.domaineExpertise : true;
+                        })
+                        .map(ra => (
                         <SelectItem key={ra.id} value={String(ra.id)}>
                           {ra.fullName} ({ra.email})
                         </SelectItem>

@@ -872,6 +872,7 @@ public class CandidatureService {
                 map.put("id", user.getId());
                 map.put("fullName", user.getFullName());
                 map.put("email", user.getEmail());
+                map.put("domaineExpertise", user.getDomaineExpertise());
                 return map;
             })
             .toList();
@@ -887,6 +888,7 @@ public class CandidatureService {
                 map.put("id", user.getId());
                 map.put("fullName", user.getFullName());
                 map.put("email", user.getEmail());
+                map.put("domaineExpertise", user.getDomaineExpertise());
                 return map;
             })
             .toList();

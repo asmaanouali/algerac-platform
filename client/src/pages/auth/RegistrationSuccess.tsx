@@ -67,7 +67,7 @@ export default function RegistrationSuccess() {
                           <FileSearch className="w-3.5 h-3.5 text-[#00A63E]" />
                         </div>
                         <div className="text-sm">
-                          <p className="font-medium text-gray-800">Étape 1 - Étude du CV (FOR20)</p>
+                          <p className="font-medium text-gray-800">Étape 1 - Étude du CV</p>
                           <p className="text-gray-500 text-xs mt-0.5">La Gestion des Compétences va étudier votre CV et évaluer votre profil.</p>
                         </div>
                       </div>
@@ -77,7 +77,7 @@ export default function RegistrationSuccess() {
                           <Mail className="w-3.5 h-3.5 text-[#00A63E]" />
                         </div>
                         <div className="text-sm">
-                          <p className="font-medium text-gray-800">Étape 2 - Documents justificatifs (FOR28)</p>
+                          <p className="font-medium text-gray-800">Étape 2 - Documents justificatifs</p>
                           <p className="text-gray-500 text-xs mt-0.5">Si votre profil est présélectionné, vous recevrez un email avec un lien sécurisé pour joindre vos documents confidentiels.</p>
                         </div>
                       </div>

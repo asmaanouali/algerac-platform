@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { StringDatePicker, MonthYearPicker } from "@/components/ui/date-time-picker";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { COMPETENCE_CATEGORIES } from "@/lib/competence-domains";
 
 const NATIONALITY_KEYS = [
   "algerian", "french", "moroccan", "tunisian", "libyan", "egyptian",
@@ -61,6 +62,7 @@ interface ExperienceProfessionnelle {
   organisme: string;
   posteOccupe: string;
   activitesPrincipales: string;
+  categorieCompetence: string;
   domaineCompetence: string;
   sousDomaineCompetence: string;
 }
@@ -210,7 +212,7 @@ export default function ExpertRegisterWizard() {
   ]);
 
   const [experiences, setExperiences] = useState<ExperienceProfessionnelle[]>([
-    { dateDebut: "", dateFin: "", organisme: "", posteOccupe: "", activitesPrincipales: "", domaineCompetence: "", sousDomaineCompetence: "" },
+    { dateDebut: "", dateFin: "", organisme: "", posteOccupe: "", activitesPrincipales: "", categorieCompetence: "", domaineCompetence: "", sousDomaineCompetence: "" },
   ]);
 
   const [evaluations, setEvaluations] = useState<EvaluationAudit[]>([
@@ -418,6 +420,7 @@ export default function ExpertRegisterWizard() {
           if (!e.organisme) newErrors[`exp_${i}_organisme`] = t("er.errors.organismeRequired");
           if (!e.posteOccupe) newErrors[`exp_${i}_posteOccupe`] = t("er.errors.posteRequired");
           if (!e.activitesPrincipales) newErrors[`exp_${i}_activites`] = t("er.errors.activitesRequired");
+          if (!e.categorieCompetence) newErrors[`exp_${i}_categorie`] = t("er.errors.categorieRequired");
           if (!e.domaineCompetence) newErrors[`exp_${i}_domaine`] = t("er.errors.domaineRequired");
           if (!e.sousDomaineCompetence) newErrors[`exp_${i}_sousDomaine`] = t("er.errors.sousDomaineRequired");
         }
@@ -555,7 +558,9 @@ export default function ExpertRegisterWizard() {
           reader.readAsDataURL(file);
         });
 
-      const nationaliteFinal = formData.nationalite === "other" ? formData.nationaliteAutre : formData.nationalite;
+      const nationaliteFinal = formData.nationalite === "other"
+        ? formData.nationaliteAutre
+        : t(`er.nationalities.${formData.nationalite}`);
 
       const payload = {
         userType: formData.userType,
@@ -563,7 +568,7 @@ export default function ExpertRegisterWizard() {
         prenom: formData.prenom,
         dateNaissance: formData.dateNaissance || "",
         nationalite: nationaliteFinal,
-        situationFamiliale: formData.situationFamiliale,
+        situationFamiliale: formData.situationFamiliale ? t(`er.familyStatus.${formData.situationFamiliale}`) : "",
         email: formData.email,
         telephone: formData.telephone,
         telephoneMobile: formData.telephoneMobile,
@@ -575,8 +580,9 @@ export default function ExpertRegisterWizard() {
         contactUrgenceTelephone: formData.contactUrgenceTelephone,
         contactUrgenceMobile: formData.contactUrgenceMobile,
         informationsComplementaires: formData.informationsComplementaires,
-        domaineExpertise: "",
-        sousDomaineExpertise: "",
+        categorieCompetence: experiences[0]?.categorieCompetence || "",
+        domaineExpertise: experiences[0]?.domaineCompetence || "",
+        sousDomaineExpertise: experiences[0]?.sousDomaineCompetence || "",
         photoBase64: photoBase64,
         formationsAcademiques: formations
           .filter((f) => f.universite || f.diplome)
@@ -586,7 +592,7 @@ export default function ExpertRegisterWizard() {
             universite: f.universite,
             cours: f.coursSpecialite,
             specialite: f.coursSpecialite,
-            diplome: f.diplome,
+            diplome: f.diplome === "other" ? f.diplome : (f.diplome ? t(`er.diplomas.${f.diplome}`) : ""),
           })),
         autresFormations: autresFormations
           .filter((f) => f.universite || f.diplome)
@@ -596,7 +602,7 @@ export default function ExpertRegisterWizard() {
             institution: f.universite,
             cours: f.coursSpecialite,
             specialite: f.coursSpecialite,
-            certificat: f.diplome,
+            certificat: f.diplome === "other" ? f.diplome : (f.diplome ? t(`er.diplomas.${f.diplome}`) : ""),
           })),
         experiencesProfessionnelles: experiences
           .filter((e) => e.organisme || e.posteOccupe)
@@ -606,6 +612,7 @@ export default function ExpertRegisterWizard() {
             organisme: e.organisme,
             poste: e.posteOccupe,
             activitesPrincipales: e.activitesPrincipales,
+            categorieCompetence: e.categorieCompetence,
             domaineCompetence: e.domaineCompetence,
             sousDomaineCompetence: e.sousDomaineCompetence,
           })),
@@ -636,10 +643,10 @@ export default function ExpertRegisterWizard() {
         connaissancesLinguistiques: langues
           .filter((l) => l.langue)
           .map((l) => ({
-            langue: l.langue === "other" ? l.langueAutre : l.langue,
-            niveauLu: l.lu,
-            niveauParle: l.parle,
-            niveauEcrit: l.ecrit,
+            langue: l.langue === "other" ? l.langueAutre : t(`er.languages.${l.langue}`),
+            niveauLu: l.lu ? t(`er.levels.${l.lu}`) : "",
+            niveauParle: l.parle ? t(`er.levels.${l.parle}`) : "",
+            niveauEcrit: l.ecrit ? t(`er.levels.${l.ecrit}`) : "",
           })),
       };
 
@@ -1377,27 +1384,89 @@ export default function ExpertRegisterWizard() {
                   </div>
                   <div className="space-y-2">
                     <Label>
+                      {t("er.labels.categorieCompetence")} <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={exp.categorieCompetence}
+                      onValueChange={(value) => {
+                        const updated = [...experiences];
+                        updated[index] = { ...updated[index], categorieCompetence: value, domaineCompetence: "", sousDomaineCompetence: "" };
+                        setExperiences(updated);
+                      }}
+                    >
+                      <SelectTrigger className={cn("bg-white", hasError(`exp_${index}_categorie`) && "border-red-500")}>
+                        <SelectValue placeholder={t("er.placeholders.categorie")} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {COMPETENCE_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.code} value={cat.label}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
                       {t("er.labels.domaineCompetence")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      placeholder={t("er.placeholders.domaine")}
+                    <Select
                       value={exp.domaineCompetence}
-                      onChange={(e) => updateExperience(index, "domaineCompetence", e.target.value)}
-                      className={hasError(`exp_${index}_domaine`) ? "border-red-500" : ""}
-                    />
+                      onValueChange={(value) => {
+                        const updated = [...experiences];
+                        updated[index] = { ...updated[index], domaineCompetence: value, sousDomaineCompetence: "" };
+                        setExperiences(updated);
+                      }}
+                      disabled={!exp.categorieCompetence}
+                    >
+                      <SelectTrigger className={cn("bg-white", hasError(`exp_${index}_domaine`) && "border-red-500")}>
+                        <SelectValue placeholder={t("er.placeholders.domaine")} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white max-h-60">
+                        {(COMPETENCE_CATEGORIES.find((c) => c.label === exp.categorieCompetence)?.domaines ?? []).map((d) => (
+                          <SelectItem key={d.label} value={d.label}>
+                            {d.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>
                       {t("er.labels.sousDomaine")} <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      placeholder={t("er.placeholders.sousDomaine")}
-                      value={exp.sousDomaineCompetence}
-                      onChange={(e) =>
-                        updateExperience(index, "sousDomaineCompetence", e.target.value)
+                    {(() => {
+                      const cat = COMPETENCE_CATEGORIES.find((c) => c.label === exp.categorieCompetence);
+                      const dom = cat?.domaines.find((d) => d.label === exp.domaineCompetence);
+                      const subs = dom?.sousDomaines ?? [];
+                      if (subs.length === 0) {
+                        return (
+                          <Input
+                            placeholder={t("er.placeholders.sousDomaine")}
+                            value={exp.sousDomaineCompetence}
+                            onChange={(e) => updateExperience(index, "sousDomaineCompetence", e.target.value)}
+                            disabled={!exp.domaineCompetence}
+                            className={hasError(`exp_${index}_sousDomaine`) ? "border-red-500" : ""}
+                          />
+                        );
                       }
-                      className={hasError(`exp_${index}_sousDomaine`) ? "border-red-500" : ""}
-                    />
+                      return (
+                        <Select
+                          value={exp.sousDomaineCompetence}
+                          onValueChange={(value) => updateExperience(index, "sousDomaineCompetence", value)}
+                          disabled={!exp.domaineCompetence}
+                        >
+                          <SelectTrigger className={cn("bg-white", hasError(`exp_${index}_sousDomaine`) && "border-red-500")}>
+                            <SelectValue placeholder={t("er.placeholders.sousDomaine")} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white max-h-60">
+                            {subs.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>
@@ -1430,6 +1499,7 @@ export default function ExpertRegisterWizard() {
                     organisme: "",
                     posteOccupe: "",
                     activitesPrincipales: "",
+                    categorieCompetence: "",
                     domaineCompetence: "",
                     sousDomaineCompetence: "",
                   },

@@ -984,7 +984,7 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
-            message.setSubject("Compléter votre dossier - Documents confidentiels FOR28 - ALGERAC");
+            message.setSubject("Compléter votre dossier - Documents confidentiels - ALGERAC");
             
             String emailBody = String.format("""
                 Bonjour %s %s,

@@ -5,6 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Clock, AlertCircle, ArrowRight } from "lucide-react";
 
+const PENDING_WITH_LABELS: Record<string, string> = {
+  DT:  "Direction Technique",
+  CD:  "Chef de Département",
+  RA:  "Responsable d'Accréditation",
+  DAG: "Direction Administrative et Générale",
+  DG:  "Direction Générale",
+  CAS: "Commission d'Accréditation et de Supervision",
+  OEC: "Votre organisme",
+  REE: "Responsable Équipe d'Évaluation",
+  GES_COMPETENCES: "Gestion des Compétences",
+  RQ:  "Responsable Qualité",
+};
+
+function formatPendingWith(raw: string): string {
+  return PENDING_WITH_LABELS[raw.trim()] ?? raw;
+}
+
 const PHASE_ORDER = [
   "INITIAL",
   "RECEVABILITE",
@@ -109,7 +126,7 @@ export function WorkflowTimeline({ requestId, compact = false }: WorkflowTimelin
             <div className="flex items-center gap-2">
               <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
               <span className="text-xs text-muted-foreground">
-                {t("workflow.pendingWith", "En attente de")}: <strong>{progress.pendingWith}</strong>
+                {t("workflow.pendingWith", "En attente de")} : <strong>{formatPendingWith(progress.pendingWith)}</strong>
               </span>
             </div>
           )}

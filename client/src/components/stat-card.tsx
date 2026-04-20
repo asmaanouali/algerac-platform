@@ -21,7 +21,7 @@ export function StatCard({ title, value, icon: Icon, description, trend, classNa
         <Icon className="h-4 w-4 text-primary opacity-70" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold font-display text-slate-800">{value}</div>
+        <div className="text-2xl font-bold font-display text-slate-800 dark:text-slate-100">{value}</div>
         {(description || trend) && (
           <p className="text-xs text-muted-foreground mt-1">
             {trend && <span className="text-emerald-600 font-medium mr-1">{trend}</span>}

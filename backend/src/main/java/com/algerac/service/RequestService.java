@@ -90,7 +90,7 @@ public class RequestService {
         request.setStatus(RequestStatus.PENDING_DT_REVIEW);
         request.setSubmissionDate(LocalDateTime.now());
         request.setProgress(5);
-        request.setNextAction("DT doit vérifier les documents de la demande");
+        request.setNextAction("Votre dossier est en cours d'examen par la Direction Technique");
         request.setPendingWith("DT");
         
         // Générer le numéro de référence automatiquement à la soumission
@@ -181,7 +181,7 @@ public class RequestService {
         request.setProgress(5);
         request.setCurrentPhase("INITIAL");
         request.setCurrentStep("Documents corrigés - nouvelle vérification");
-        request.setNextAction("DT doit vérifier les documents corrigés");
+        request.setNextAction("Votre dossier corrigé est en cours d'examen par la Direction Technique");
         request.setPendingWith("DT");
         
         request = requestRepository.save(request);

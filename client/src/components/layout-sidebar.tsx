@@ -242,7 +242,7 @@ export function Sidebar() {
 
   const sidebarContent = (
     <>
-      <div className="p-6 border-b flex items-center justify-center">
+      <div className="p-6 border-b dark:border-slate-700/60 flex items-center justify-center">
         <div className="flex items-center gap-3 font-display text-2xl font-bold text-primary">
           <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
           ALGERAC
@@ -266,7 +266,7 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="p-4 border-t">
+      <div className="p-4 border-t dark:border-slate-700/60">
         <Button
           variant="ghost"
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -282,7 +282,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <div className="hidden md:flex w-64 bg-white border-r h-screen flex-col fixed left-0 top-0 z-30 shadow-lg">
+      <div className="hidden md:flex w-64 bg-white dark:bg-[#0e1118] border-r dark:border-slate-700/60 h-screen flex-col fixed left-0 top-0 z-30 shadow-lg dark:shadow-slate-950/50">
         {sidebarContent}
       </div>
 

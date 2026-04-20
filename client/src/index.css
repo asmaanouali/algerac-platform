@@ -41,33 +41,40 @@
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
-  
-  --primary: 142 76% 45%;
-  --primary-foreground: 120 47% 11%;
-  
-  --secondary: 217 32% 17%;
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 217 32% 17%;
-  --muted-foreground: 215 20% 65%;
-  
-  --accent: 217 32% 17%;
-  --accent-foreground: 210 40% 98%;
-  
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --border: 217 32% 17%;
-  --input: 217 32% 17%;
-  --ring: 224 76% 48%;
-  
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
+  /* ── Depth-based surface hierarchy (Linear / GitHub-inspired) ── */
+  --background:           224 20%  9%;   /* #0e1118 – deepest canvas */
+  --foreground:           215 20% 88%;   /* #d7dde9 – primary text */
 
-  --card: 217 32% 20%;
-  --card-foreground: 210 40% 98%;
+  --primary:              142 72% 45%;   /* vivid green */
+  --primary-foreground:   0   0% 100%;
+
+  /* Card: first elevated layer */
+  --card:                 222 20% 13%;   /* #181e2b */
+  --card-foreground:      215 20% 88%;
+
+  /* Popover / dropdown overlay */
+  --popover:              222 22% 11%;   /* #14192a */
+  --popover-foreground:   215 20% 88%;
+
+  /* Secondary & muted: subtle fills */
+  --secondary:            220 18% 17%;   /* #1e2535 */
+  --secondary-foreground: 215 20% 82%;
+
+  --muted:                220 18% 15%;   /* #1a2030 */
+  --muted-foreground:     215 15% 52%;
+
+  /* Accent: hover / focus fill */
+  --accent:               220 18% 21%;   /* #22293b */
+  --accent-foreground:    215 20% 88%;
+
+  /* Destructive: visible red */
+  --destructive:          0 65% 52%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Structural */
+  --border:               220 16% 22%;   /* #282e3d */
+  --input:                220 16% 17%;   /* #1c2232 */
+  --ring:                 142 72% 45%;
 }
 
 @layer base {
@@ -84,19 +91,22 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/80 dark:bg-slate-800/60 backdrop-blur-md border border-white/20 dark:border-slate-700/40 shadow-xl;
   }
   
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-slate-100 text-slate-600 hover:text-slate-900;
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
+           hover:bg-slate-100 dark:hover:bg-slate-700/50
+           text-slate-600 dark:text-slate-300
+           hover:text-slate-900 dark:hover:text-slate-100;
   }
   
   .sidebar-link.active {
-    @apply bg-primary/10 text-primary font-semibold;
+    @apply bg-primary/10 dark:bg-primary/20 text-primary font-semibold;
   }
 
   .form-label {
-    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700;
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700 dark:text-slate-300;
   }
 
   .form-input {
@@ -162,3 +172,82 @@
 /* Error alert */
 .dark .registration-wizard .bg-red-50   { background-color: rgb(69 10 10 / 0.5); }
 .dark .registration-wizard .text-red-700 { color: rgb(248 113 113); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRODUCTION DARK MODE — Global utility overrides
+   These run after @tailwind utilities in the cascade, so they correctly
+   transform hardcoded light-mode classes app-wide in dark mode.
+   Explicit `dark:*` classes on auth pages still apply because they share
+   the same selector specificity and the Tailwind-generated dark variants
+   for *those specific* properties override the base class, not these rules.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Page / layout backgrounds ─────────────────────────────────────── */
+.dark .bg-slate-50  { background-color: hsl(var(--background)); }
+.dark .bg-gray-50   { background-color: hsl(var(--background)); }
+/* Tailwind opacity modifier variants (e.g. bg-gray-50/50) */
+.dark .bg-gray-50\/50  { background-color: hsl(var(--background)); }
+.dark .bg-slate-50\/50 { background-color: hsl(var(--background)); }
+.dark .bg-gray-100  { background-color: hsl(220 18% 16%); }
+
+/* ── Primary text colors (dark text → light in dark mode) ───────────── */
+.dark .text-slate-900 { color: hsl(215 20% 88%); }
+.dark .text-slate-800 { color: hsl(215 20% 83%); }
+.dark .text-gray-900  { color: hsl(215 20% 88%); }
+.dark .text-gray-800  { color: hsl(215 20% 83%); }
+
+/* ── Semantic status badge chips ────────────────────────────────────── */
+/* Slate / neutral */
+.dark .bg-slate-100  { background-color: hsl(220 18% 18%); }
+.dark .text-slate-700 { color: hsl(215 18% 72%); }
+
+/* Blue */
+.dark .bg-blue-100   { background-color: hsl(215 55% 18%); }
+.dark .bg-blue-50    { background-color: hsl(215 55% 14%); }
+.dark .text-blue-700 { color: hsl(213 90% 68%); }
+.dark .text-blue-800 { color: hsl(213 90% 72%); }
+
+/* Amber / orange */
+.dark .bg-amber-100  { background-color: hsl(38 50% 15%); }
+.dark .text-amber-700 { color: hsl(38 95% 62%); }
+.dark .bg-orange-100  { background-color: hsl(24 50% 15%); }
+.dark .text-orange-700 { color: hsl(24 90% 62%); }
+.dark .text-orange-800 { color: hsl(24 90% 66%); }
+
+/* Green / emerald */
+.dark .bg-green-100   { background-color: hsl(142 40% 14%); }
+.dark .text-green-700 { color: hsl(142 60% 55%); }
+.dark .text-green-800 { color: hsl(142 65% 60%); }
+.dark .bg-emerald-100 { background-color: hsl(152 40% 14%); }
+.dark .text-emerald-700 { color: hsl(152 65% 52%); }
+
+/* Red / rose */
+.dark .bg-red-100    { background-color: hsl(0 50% 15%); }
+.dark .bg-red-50     { background-color: hsl(0 45% 12%); }
+.dark .text-red-700  { color: hsl(0 85% 65%); }
+.dark .text-red-800  { color: hsl(0 85% 68%); }
+.dark .bg-rose-100   { background-color: hsl(350 50% 15%); }
+.dark .text-rose-700 { color: hsl(350 85% 65%); }
+.dark .text-rose-800 { color: hsl(350 85% 68%); }
+
+/* Indigo / purple */
+.dark .bg-indigo-100  { background-color: hsl(234 50% 17%); }
+.dark .text-indigo-700 { color: hsl(234 90% 72%); }
+.dark .bg-purple-100  { background-color: hsl(270 45% 16%); }
+.dark .text-purple-700 { color: hsl(270 75% 72%); }
+.dark .text-purple-800 { color: hsl(270 80% 76%); }
+
+/* Yellow / teal */
+.dark .bg-yellow-100  { background-color: hsl(48 50% 14%); }
+.dark .text-yellow-700 { color: hsl(48 90% 60%); }
+.dark .bg-teal-100    { background-color: hsl(172 40% 14%); }
+.dark .text-teal-700  { color: hsl(172 60% 52%); }
+.dark .text-teal-800  { color: hsl(172 65% 58%); }
+
+/* ── Border colors ──────────────────────────────────────────────────── */
+.dark .border-gray-200 { border-color: hsl(220 16% 22%); }
+.dark .border-gray-100 { border-color: hsl(220 16% 19%); }
+.dark .border-slate-200 { border-color: hsl(220 16% 22%); }
+
+/* ── Emerald accent text (trend indicators) ─────────────────────────── */
+.dark .text-emerald-600 { color: hsl(152 65% 52%); }

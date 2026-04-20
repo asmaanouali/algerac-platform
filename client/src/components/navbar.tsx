@@ -42,7 +42,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white dark:bg-slate-900 border-b dark:border-slate-700/60 px-4 md:px-8 py-4 sticky top-0 z-20 transition-colors">
+    <nav className="bg-white dark:bg-card border-b dark:border-slate-700/60 px-4 md:px-8 py-4 sticky top-0 z-20 transition-colors">
       <div className="flex items-center justify-between">
         {/* Hamburger -- mobile only */}
         <Button

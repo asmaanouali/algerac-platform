@@ -56,7 +56,7 @@ public class WorkflowController {
                     result.put("requestId", req.getId());
                     result.put("referenceNumber", req.getReferenceNumber());
                     result.put("status", req.getStatus().name());
-                    result.put("progress", state.progress());
+                    result.put("progress", req.getProgress() > 0 ? req.getProgress() : state.progress());
                     result.put("phase", state.phase());
                     result.put("phaseLabel", state.phaseLabel());
                     result.put("stepLabel", state.stepLabel());

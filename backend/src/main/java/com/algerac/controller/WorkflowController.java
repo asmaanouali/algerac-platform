@@ -2571,6 +2571,21 @@ public class WorkflowController {
 
             CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
 
+            // PRO 07 §5.10 — Member who was evaluator/expert on the case must withdraw from deliberation
+            Long requestId = meeting.getRequestId();
+            if (requestId != null) {
+                List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+                for (EvaluationTeam team : teams) {
+                    boolean wasEvaluator = team.getMembers().stream()
+                            .anyMatch(m -> m.getExpert() != null && m.getExpert().getId().equals(userId));
+                    if (wasEvaluator) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(ApiResponse.error("PRO 07 §5.10 — Vous avez participé à l'évaluation de ce dossier. " +
+                                        "Le membre qui a été évaluateur ou expert technique se retire de la délibération."));
+                    }
+                }
+            }
+
             // Check if user already submitted attendance (PENDING vote) — update existing record
             List<CASVote> existingVotes = casVoteRepository.findByMeeting_Id(meetingId);
             CASVote existingAttendance = existingVotes.stream()
@@ -2783,18 +2798,110 @@ public class WorkflowController {
         return ResponseEntity.ok(attendees);
     }
 
+    // PRO 07 §5.9 - Compute vote results with majority logic and tie-breaking (president double vote)
+    @GetMapping("/cas/{meetingId}/vote-results")
+    public ResponseEntity<?> getVoteResults(@PathVariable Long meetingId) {
+        try {
+            CASMeeting meeting = casMeetingRepository.findById(meetingId)
+                    .orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+            List<CASVote> allVotes = casVoteRepository.findByMeeting_Id(meetingId);
+            List<CASVote> actualVotes = allVotes.stream()
+                    .filter(v -> v.getVote() != null && !"PENDING".equals(v.getVote()))
+                    .collect(Collectors.toList());
+
+            // Count votes by category (normalize ACCORDER variants)
+            Map<String, Long> breakdown = new LinkedHashMap<>();
+            long accorderCount = actualVotes.stream().filter(v -> v.getVote().startsWith("ACCORDER")).count();
+            long refuserCount = actualVotes.stream().filter(v -> "REFUSER".equals(v.getVote())).count();
+            long ajournerCount = actualVotes.stream().filter(v -> "AJOURNER".equals(v.getVote())).count();
+            long abstentionCount = actualVotes.stream().filter(v -> "ABSTENTION".equals(v.getVote())).count();
+            breakdown.put("ACCORDER", accorderCount);
+            breakdown.put("REFUSER", refuserCount);
+            breakdown.put("AJOURNER", ajournerCount);
+            breakdown.put("ABSTENTION", abstentionCount);
+
+            // PRO 07 §5.9 — Simple majority (excluding abstentions)
+            long totalVotesExclAbstention = accorderCount + refuserCount + ajournerCount;
+            long majorityThreshold = totalVotesExclAbstention > 0 ? (totalVotesExclAbstention / 2) + 1 : 0;
+
+            String majorityResult = null;
+            boolean isTie = false;
+            boolean presidentDoubleVoteApplied = false;
+
+            if (totalVotesExclAbstention > 0) {
+                // Find the option with the most votes
+                long maxVotes = Math.max(accorderCount, Math.max(refuserCount, ajournerCount));
+                List<String> topOptions = new ArrayList<>();
+                if (accorderCount == maxVotes) topOptions.add("ACCORDER");
+                if (refuserCount == maxVotes) topOptions.add("REFUSER");
+                if (ajournerCount == maxVotes) topOptions.add("AJOURNER");
+
+                if (topOptions.size() == 1 && maxVotes >= majorityThreshold) {
+                    majorityResult = topOptions.get(0);
+                } else if (topOptions.size() > 1) {
+                    // PRO 07 §5.9 — Tie: President gets a double vote
+                    isTie = true;
+                    // Find president's vote to determine tie-break
+                    List<User> presidents = userRepository.findByRole(UserRole.CAS_PRESIDENT);
+                    Optional<CASVote> presidentVote = actualVotes.stream()
+                            .filter(v -> presidents.stream().anyMatch(p -> p.getId().equals(v.getVoterId())))
+                            .findFirst();
+                    if (presidentVote.isPresent()) {
+                        String pVote = presidentVote.get().getVote().startsWith("ACCORDER") ? "ACCORDER" : presidentVote.get().getVote();
+                        if (topOptions.contains(pVote)) {
+                            majorityResult = pVote;
+                            presidentDoubleVoteApplied = true;
+                        }
+                    }
+                }
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("meetingId", meetingId);
+            result.put("totalVotes", actualVotes.size());
+            result.put("totalVotesExcludingAbstention", totalVotesExclAbstention);
+            result.put("breakdown", breakdown);
+            result.put("majorityThreshold", majorityThreshold);
+            result.put("majorityResult", majorityResult);
+            result.put("isTie", isTie);
+            result.put("presidentDoubleVoteApplied", presidentDoubleVoteApplied);
+            result.put("quorumReached", meeting.getQuorumReached());
+            result.put("attendeesConfirmed", meeting.getAttendeesConfirmed());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/cas/{meetingId}/decide")
     public ResponseEntity<ApiResponse> makeCASDecision(@PathVariable Long meetingId, @RequestBody Map<String, String> body, HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
+            // PRO 07 §5.9 — Only CAS President can make the decision
+            User currentUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            if (currentUser.getRole() != UserRole.CAS_PRESIDENT) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Seul le Président du CAS peut prendre la décision (PRO 07 §5.9)"));
+            }
+
             CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+
+            // Validate meeting is in correct state
+            if (meeting.getStatus() != CASMeetingStatus.VOTING && meeting.getStatus() != CASMeetingStatus.IN_PROGRESS) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(
+                        "La réunion doit être en cours ou le vote ouvert pour prendre une décision"));
+            }
+
             meeting.setFinalDecision(body.get("decision"));
             meeting.setPresidentNotes(body.get("presidentNotes"));
             meeting.setStatus(CASMeetingStatus.DECIDED);
             meeting.setDecidedAt(LocalDateTime.now());
-            meeting.setVotingClosedAt(LocalDateTime.now());
+            if (meeting.getVotingClosedAt() == null) {
+                meeting.setVotingClosedAt(LocalDateTime.now());
+            }
 
             // FOR 15 fields (PRO 16 - Prise de Décision)
             meeting.setFor15DecisionJustification(body.get("for15DecisionJustification"));
@@ -2849,32 +2956,53 @@ public class WorkflowController {
             String decision = meeting.getFinalDecision();
             String notes = meeting.getPresidentNotes() != null ? meeting.getPresidentNotes() : "";
 
-            // Create formal CASDecision entity so certificate preparation can find it
-            CASDecisionType decisionType = decision.startsWith("ACCORDER") ? CASDecisionType.GRANT_FULL :
-                    "REFUSER".equals(decision) ? CASDecisionType.REFUSAL : CASDecisionType.POSTPONEMENT;
+            // Map decision type properly from FOR 15
+            CASDecisionType decisionType;
+            if ("ACCORDER".equals(decision)) {
+                decisionType = CASDecisionType.GRANT_FULL;
+            } else if ("ACCORDER_REDUIT".equals(decision)) {
+                decisionType = CASDecisionType.GRANT_REDUCED;
+            } else if ("ACCORDER_RESERVES".equals(decision)) {
+                decisionType = CASDecisionType.GRANT_WITH_RESERVES;
+            } else if ("REFUSER".equals(decision)) {
+                decisionType = CASDecisionType.REFUSAL;
+            } else if ("AJOURNER".equals(decision)) {
+                decisionType = CASDecisionType.POSTPONEMENT;
+            } else {
+                decisionType = CASDecisionType.REPORT_DECISION;
+            }
+
             String decisionNumber = "DEC-CAS-" + java.time.Year.now().getValue() + "-" +
                     String.format("%04d", new java.util.Random().nextInt(9999));
+
+            // Create formal CASDecision with ALL FOR 15 fields properly mapped
             CASDecision casDecision = CASDecision.builder()
                     .request(request)
                     .decisionNumber(decisionNumber)
                     .decisionType(decisionType)
                     .meetingDate(meeting.getMeetingDate())
-                    .justification(notes)
-                    .minutesAndJustifications(notes)
+                    .justification(meeting.getFor15DecisionJustification())
+                    .scope(meeting.getFor15ScopeDecision())
+                    .conditions(meeting.getFor15Conditions())
+                    .reservesToLift(meeting.getFor15ReservesToLift())
+                    .reservesDeadline(meeting.getFor15ReservesDeadline())
+                    .appealRightNotified(meeting.getFor15AppealRightsNotice() != null && !meeting.getFor15AppealRightsNotice().isEmpty())
+                    .minutesAndJustifications(meeting.getMeetingMinutes())
                     .build();
             casDecisionRepository.save(casDecision);
 
             // Notify OEC and transition request status
+            String justification = meeting.getFor15DecisionJustification() != null ? meeting.getFor15DecisionJustification() : notes;
             if (decision.startsWith("ACCORDER")) {
-                notificationService.notifyOECAccreditationGranted(request, com.algerac.model.CASDecisionType.GRANT_FULL, notes);
+                notificationService.notifyOECAccreditationGranted(request, decisionType, justification);
                 request.setStatus(RequestStatus.CERTIFICATE_PREPARATION);
                 request.setCurrentStep("Accréditation accordée — certificat en préparation");
             } else if ("REFUSER".equals(decision)) {
-                notificationService.notifyOECAccreditationRefused(request, notes);
+                notificationService.notifyOECAccreditationRefused(request, justification);
                 request.setStatus(RequestStatus.CAS_DECISION_REFUSAL);
                 request.setCurrentStep("Accréditation refusée — OEC informé");
             } else {
-                notificationService.notifyOECAccreditationPostponed(request, notes);
+                notificationService.notifyOECAccreditationPostponed(request, justification);
                 request.setStatus(RequestStatus.CAS_DECISION_POSTPONEMENT);
                 request.setCurrentStep("Décision ajournée — OEC informé");
             }

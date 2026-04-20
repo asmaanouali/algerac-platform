@@ -424,13 +424,13 @@ export default function CASMemberDashboard() {
                         {/* FOR 14 TAB */}
                         <TabsContent value="for14">
                           <div className="space-y-4">
-                            {myVotes.length > 0 ? (
+                            {myVotes.filter((v: any) => v.vote && v.vote !== "PENDING").length > 0 ? (
                               <div className="p-4 border rounded-lg bg-green-50/30 border-green-200">
                                 <div className="flex items-center gap-2 mb-3">
                                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                                   <p className="font-medium">Avis FOR 14 enregistré</p>
                                 </div>
-                                {myVotes.map((v: any) => (
+                                {myVotes.filter((v: any) => v.vote && v.vote !== "PENDING").map((v: any) => (
                                   <div key={v.id} className="space-y-2">
                                     <Badge className={voteLabels[v.vote]?.color || "bg-gray-100 text-gray-800"}>
                                       {voteLabels[v.vote]?.label || v.vote}
@@ -475,14 +475,14 @@ export default function CASMemberDashboard() {
                         {/* RESULTS TAB */}
                         <TabsContent value="results">
                           <div className="space-y-4">
-                            {votes.length > 0 && (
+                            {votes.filter((v: any) => v.vote && v.vote !== "PENDING").length > 0 && (
                               <>
                                 <h3 className="font-medium flex items-center gap-2">
-                                  <Vote className="w-5 h-5" /> Synthèse des votes ({votes.length} avis)
+                                  <Vote className="w-5 h-5" /> Synthèse des votes ({votes.filter((v: any) => v.vote && v.vote !== "PENDING").length} avis)
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                   {["ACCORDER", "REFUSER", "AJOURNER", "ABSTENTION"].map(key => {
-                                    const count = votes.filter((v: any) => v.vote === key || v.vote?.startsWith(key)).length;
+                                    const count = votes.filter((v: any) => v.vote && v.vote !== "PENDING" && (v.vote === key || v.vote?.startsWith(key))).length;
                                     const info = voteLabels[key];
                                     return (
                                       <div key={key} className={`text-center p-3 rounded-lg ${info?.color || "bg-gray-50"}`}>
@@ -501,7 +501,7 @@ export default function CASMemberDashboard() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {votes.map((v: any) => (
+                                    {votes.filter((v: any) => v.vote && v.vote !== "PENDING").map((v: any) => (
                                       <TableRow key={v.id}>
                                         <TableCell className="font-medium">{v.voterName || `Membre #${v.voterId}`}</TableCell>
                                         <TableCell><Badge className={voteLabels[v.vote]?.color || "bg-gray-100"}>{voteLabels[v.vote]?.label || v.vote}</Badge></TableCell>
@@ -512,7 +512,7 @@ export default function CASMemberDashboard() {
                                 </Table>
                               </>
                             )}
-                            {votes.length === 0 && (
+                            {votes.filter((v: any) => v.vote && v.vote !== "PENDING").length === 0 && (
                               <div className="text-center py-8 text-muted-foreground">
                                 <Vote className="w-8 h-8 mx-auto mb-2 opacity-30" />
                                 <p className="text-sm">Aucun avis enregistré</p>

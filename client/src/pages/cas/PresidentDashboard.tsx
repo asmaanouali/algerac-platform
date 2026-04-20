@@ -43,6 +43,7 @@ export default function CASPresidentDashboard() {
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [votes, setVotes] = useState<any[]>([]);
   const [attendees, setAttendees] = useState<any[]>([]);
+  const [voteResults, setVoteResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -80,9 +81,10 @@ export default function CASPresidentDashboard() {
   const selectMeeting = async (meeting: any) => {
     setSelectedMeeting(meeting);
     try {
-      const [vRes, aRes] = await Promise.all([
+      const [vRes, aRes, vrRes] = await Promise.all([
         fetch(`/api/workflow/cas/${meeting.id}/votes`, { credentials: "include" }),
         fetch(`/api/workflow/cas/${meeting.id}/attendees`, { credentials: "include" }),
+        fetch(`/api/workflow/cas/${meeting.id}/vote-results`, { credentials: "include" }),
       ]);
       if (vRes.ok) {
         const allVotes = await vRes.json();
@@ -91,6 +93,9 @@ export default function CASPresidentDashboard() {
       if (aRes.ok) {
         const atts = await aRes.json();
         setAttendees(Array.isArray(atts) ? atts : []);
+      }
+      if (vrRes.ok) {
+        setVoteResults(await vrRes.json());
       }
     } catch (e) { console.error(e); }
   };
@@ -668,6 +673,53 @@ export default function CASPresidentDashboard() {
                                   );
                                 })}
                               </div>
+                            )}
+
+                            {/* PRO 07 §5.9 — Vote Results & Majority Analysis */}
+                            {voteResults && actualVotes.length > 0 && (
+                              <Card className={`border-2 ${voteResults.isTie ? "border-amber-400 bg-amber-50/30" : voteResults.majorityResult ? "border-green-400 bg-green-50/30" : "border-gray-200"}`}>
+                                <CardContent className="pt-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold flex items-center gap-2">
+                                      <BarChart3 className="w-5 h-5" /> Résultat du vote (PRO 07 §5.9)
+                                    </h4>
+                                    {voteResults.majorityResult && (
+                                      <Badge className={voteLabels[voteResults.majorityResult]?.color || "bg-green-100 text-green-800"}>
+                                        Majorité : {voteLabels[voteResults.majorityResult]?.label || voteResults.majorityResult}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                    <div className="p-2 bg-white/80 rounded border">
+                                      <p className="text-xs text-muted-foreground">Total des votes</p>
+                                      <p className="font-bold text-lg">{voteResults.totalVotes}</p>
+                                    </div>
+                                    <div className="p-2 bg-white/80 rounded border">
+                                      <p className="text-xs text-muted-foreground">Votes délibérants</p>
+                                      <p className="font-bold text-lg">{voteResults.totalVotesExcludingAbstention}</p>
+                                    </div>
+                                    <div className="p-2 bg-white/80 rounded border">
+                                      <p className="text-xs text-muted-foreground">Seuil majorité</p>
+                                      <p className="font-bold text-lg">{voteResults.majorityThreshold}</p>
+                                    </div>
+                                  </div>
+                                  {voteResults.isTie && (
+                                    <div className={`p-3 rounded-lg border ${voteResults.presidentDoubleVoteApplied ? "bg-green-50 border-green-300" : "bg-amber-50 border-amber-300"}`}>
+                                      <p className="font-medium flex items-center gap-2 text-sm">
+                                        <AlertTriangle className="w-4 h-4" />
+                                        {voteResults.presidentDoubleVoteApplied
+                                          ? "Égalité — Voix prépondérante du Président appliquée (PRO 07 §5.9)"
+                                          : "Égalité des voix — La voix du Président est prépondérante (PRO 07 §5.9)"}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {!voteResults.majorityResult && !voteResults.isTie && actualVotes.length > 0 && (
+                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <p className="text-sm text-blue-800">Pas de majorité simple atteinte — le Président prend la décision finale</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
                             )}
 
                             {/* Detailed votes */}

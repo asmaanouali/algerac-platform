@@ -29,7 +29,6 @@ export default function CASPreparationPage() {
   const [showDecision, setShowDecision] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({ meetingDate: "", agenda: "", dossierSummary: "" });
-  const [decisionForm, setDecisionForm] = useState({ decision: "ACCORDER", presidentNotes: "" });
 
   useEffect(() => { loadData(); }, []);
 
@@ -90,16 +89,14 @@ export default function CASPreparationPage() {
     }
   };
 
-  const makeDecision = async () => {
-    const meeting = meetings[0];
+  const sendDecisionToOEC = async () => {
+    if (!selectedRequest) return;
+    setSubmitting(true);
     try {
-      const res = await apiRequest("POST", `/api/workflow/cas/${meeting.id}/decide`, {
-        decision: decisionForm.decision,
-        presidentNotes: decisionForm.presidentNotes,
-      });
+      const res = await apiRequest("POST", `/api/workflow/cas/by-request/${selectedRequest.id}/send-decision-to-oec`, {});
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Décision CAS enregistrée et transmise" });
+        toast({ title: "Succès", description: "Décision CAS transmise à l'OEC" });
         setShowDecision(false);
         loadData();
         selectRequest(selectedRequest);
@@ -107,6 +104,7 @@ export default function CASPreparationPage() {
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
     }
+    setSubmitting(false);
   };
 
   if (!user) return null;
@@ -403,9 +401,9 @@ export default function CASPreparationPage() {
                             </div>
                           )}
 
-                          {meetings.length > 0 && meetings[0].status !== "DECIDED" && (
-                            <Button onClick={() => setShowDecision(true)}>
-                              <Gavel className="w-4 h-4 mr-2" />Prendre la Décision Finale (FOR 15)
+                          {meetings.length > 0 && meetings[0].finalDecision && !["CERTIFICATE_PREPARATION", "COMPLETED"].includes(selectedRequest?.status) && (
+                            <Button onClick={() => sendDecisionToOEC()} disabled={submitting}>
+                              <Send className="w-4 h-4 mr-2" />Transmettre la Décision à l'OEC
                             </Button>
                           )}
 
@@ -479,25 +477,35 @@ export default function CASPreparationPage() {
           <Dialog open={showDecision} onOpenChange={setShowDecision}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Décision du Président du CAS</DialogTitle>
-                <DialogDescription>Enregistrez la décision finale du comité</DialogDescription>
+                <DialogTitle>Transmettre la Décision à l'OEC</DialogTitle>
+                <DialogDescription>Confirmez la transmission de la décision du CAS à l'Organisme d'Évaluation de la Conformité</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div><label className="text-sm font-medium">Décision</label>
-                  <select className="w-full border rounded-md p-2" value={decisionForm.decision}
-                    onChange={(e) => setDecisionForm({ ...decisionForm, decision: e.target.value })}>
-                    <option value="ACCORDER">Accréditation accordée</option>
-                    <option value="REFUSER">Accréditation refusée</option>
-                    <option value="AJOURNER">Décision ajournée</option>
-                  </select>
-                </div>
-                <div><label className="text-sm font-medium">Notes du président</label>
-                  <Textarea value={decisionForm.presidentNotes} onChange={(e) => setDecisionForm({ ...decisionForm, presidentNotes: e.target.value })}
-                    placeholder="Observations et justification de la décision..." rows={4} /></div>
+                {meetings.length > 0 && meetings[0].finalDecision && (
+                  <div className="p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Décision du CAS</p>
+                    <Badge className={
+                      meetings[0].finalDecision?.startsWith("ACCORDER") ? "bg-green-100 text-green-800" :
+                      meetings[0].finalDecision === "REFUSER" ? "bg-red-100 text-red-800" :
+                      "bg-amber-100 text-amber-800"
+                    }>
+                      {meetings[0].finalDecision}
+                    </Badge>
+                    {meetings[0].for15DecisionJustification && (
+                      <p className="text-sm mt-2">{meetings[0].for15DecisionJustification}</p>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  L'OEC sera notifié de la décision avec mention du droit de recours (GEN 04).
+                </p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDecision(false)}>Annuler</Button>
-                <Button onClick={makeDecision}>Enregistrer la Décision</Button>
+                <Button onClick={sendDecisionToOEC} disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                  Confirmer la transmission
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

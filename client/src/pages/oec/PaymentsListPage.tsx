@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, CreditCard, Eye } from "lucide-react";
+import { Loader2, CreditCard, Eye, AlertTriangle } from "lucide-react";
 
 interface Payment {
   id: number;
@@ -18,6 +19,9 @@ interface Payment {
   paymentType?: string;
   paymentDate?: string;
   createdAt: string;
+  dueDate?: string;
+  currency?: string;
+  invoiceNumber?: string;
   request?: {
     id: number;
     referenceNumber?: string;
@@ -113,6 +117,23 @@ export default function PaymentsListPage() {
     }
   };
 
+  const isOverdue = (p: Payment) => p.dueDate && new Date(p.dueDate) < new Date() && p.status === "PENDING";
+
+  const fmtPaymentType = (t: string) => ({
+    REGISTRATION_FEE: "Inscription dossier",
+    EVALUATION_FEE: "Frais d'évaluation",
+    ANNUAL_FEE: "Redevance annuelle",
+    SURVEILLANCE_FEE: "Surveillance",
+    RENEWAL_FEE: "Renouvellement",
+    EXTENSION_FEE: "Extension de portée",
+    SUSPENSION_LIFT_FEE: "Levée de suspension",
+    TRANSFER_FEE: "Transfert forfaitaire",
+    CERTIFICATE_DELIVERY_FEE: "Délivrance certificat",
+    COMPLEMENTARY_EVAL_FEE: "Éval. complémentaire",
+    ADDITIONAL_EVAL_FEE: "Éval. supplémentaire",
+    MULTISITE_FEE: "Multi-sites",
+  }[t] || t?.replace(/_/g, " ") || "—");
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
       AWAITING_FEE_SETTING: { label: "En attente des frais", className: "bg-amber-100 text-amber-800" },
@@ -145,7 +166,7 @@ export default function PaymentsListPage() {
                   Mes Paiements
                 </CardTitle>
                 <CardDescription>
-                  Historique et statut de vos paiements (frais d'enregistrement, frais d'évaluation, etc.)
+                  Toutes vos factures : inscription, évaluation, redevance annuelle, etc. (PRO_18 / PRO_18-1)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -159,36 +180,51 @@ export default function PaymentsListPage() {
                     <p>Aucun paiement trouvé</p>
                   </div>
                 ) : (
+                  <>
+                    {payments.some(isOverdue) && (
+                      <Alert className="mb-4 border-red-300 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-900">
+                          <strong>Attention :</strong> Vous avez {payments.filter(isOverdue).length} facture(s) en retard de paiement.
+                          Veuillez régulariser pour éviter l'interruption de votre dossier (PRO_18 §6).
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Référence Demande</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>N° Facture</TableHead>
+                        <TableHead>Type de frais</TableHead>
                         <TableHead>Montant</TableHead>
+                        <TableHead>Devise</TableHead>
+                        <TableHead>Échéance</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead>Date</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {payments.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
+                      {payments.map((payment) => {
+                        const overdue = isOverdue(payment);
+                        const dueDate = payment.dueDate ? new Date(payment.dueDate) : null;
+                        const daysRemaining = dueDate ? Math.ceil((dueDate.getTime() - new Date().getTime()) / 86400000) : null;
+                        return (
+                        <TableRow key={payment.id} className={overdue ? "bg-red-50/60" : ""}>
+                          <TableCell className="font-medium font-mono text-sm">
                             {payment.request?.referenceNumber || `#${payment.request?.id}`}
                           </TableCell>
-                          <TableCell>
-                            {payment.paymentType === "EVALUATION_FEE" ? "Frais d'évaluation" 
-                              : payment.paymentType === "REGISTRATION_FEE" ? "Frais d'enregistrement" 
-                              : payment.paymentType || payment.request?.type}
+                          <TableCell className="font-mono text-xs">{payment.invoiceNumber || "—"}</TableCell>
+                          <TableCell className="text-sm">{fmtPaymentType(payment.paymentType || "")}</TableCell>
+                          <TableCell className="font-bold tabular-nums">{payment.amount.toLocaleString()} {payment.currency || "DZD"}</TableCell>
+                          <TableCell className="font-mono text-xs">{payment.currency || "DZD"}</TableCell>
+                          <TableCell className={`text-sm ${overdue ? "text-red-700 font-semibold" : daysRemaining !== null && daysRemaining <= 5 && daysRemaining >= 0 ? "text-amber-700 font-semibold" : ""}` }>
+                            {dueDate ? dueDate.toLocaleDateString("fr-FR") : "—"}
+                            {overdue && <div className="text-xs text-red-600">⚠ En retard</div>}
+                            {!overdue && daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 5 && (
+                              <div className="text-xs text-amber-600">J−{daysRemaining}</div>
+                            )}
                           </TableCell>
-                          <TableCell className="font-bold">{payment.amount.toLocaleString()} DA</TableCell>
                           <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                          <TableCell>
-                            {payment.paymentDate 
-                              ? new Date(payment.paymentDate).toLocaleDateString('fr-FR')
-                              : new Date(payment.createdAt).toLocaleDateString('fr-FR')
-                            }
-                          </TableCell>
                           <TableCell className="text-right">
                             {(payment.status === 'PENDING' || payment.status === 'DAG_REJECTED') && (
                               <Button
@@ -209,9 +245,11 @@ export default function PaymentsListPage() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
+                  </>
                 )}
               </CardContent>
             </Card>

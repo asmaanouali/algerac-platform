@@ -62,6 +62,16 @@ public class Payment {
     private LocalDateTime feeSetDate;
     
     private Long feeSetById; // ID du DAG qui a fixé les frais
+
+    // Échéance de paiement (PRO18 §6: 20 jours frais évaluation, 60 jours redevance annuelle)
+    private LocalDateTime dueDate;
+
+    // Devise : DZD pour OEC nationaux, EUR ou USD pour OEC étrangers (PRO18-1)
+    @Builder.Default
+    private String currency = "DZD";
+
+    // Numéro de facture (format: FACT-YYYY-NNNN)
+    private String invoiceNumber;
     
     @Column(nullable = false)
     private LocalDateTime createdAt;

@@ -37,6 +37,9 @@ interface PaymentRecord {
   dagComments?: string;
   dagValidatedDate?: string;
   requestRef?: string;
+  dueDate?: string;
+  currency?: string;
+  invoiceNumber?: string;
 }
 
 export default function DAGPaymentTracking() {
@@ -66,6 +69,14 @@ export default function DAGPaymentTracking() {
   // Details dialog
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPayment, setDetailsPayment] = useState<PaymentRecord | null>(null);
+
+  // Create fee dialog (PRO_18 arbitrary invoice)
+  const [createFeeOpen, setCreateFeeOpen] = useState(false);
+  const [creatingFee, setCreatingFee] = useState(false);
+  const [createFeeForm, setCreateFeeForm] = useState({
+    requestId: "", paymentType: "ANNUAL_FEE", amount: "",
+    currency: "DZD", dueDays: "60", invoiceNumber: ""
+  });
 
   useEffect(() => {
     if (user && !authLoading) loadPayments();
@@ -163,26 +174,65 @@ export default function DAGPaymentTracking() {
     } finally { setRejecting(false); }
   };
 
+  // ── Create arbitrary fee (PRO_18) ─────────────────────────────────────
+
+  const handleCreateFee = async () => {
+    const { requestId, paymentType, amount, currency, dueDays, invoiceNumber } = createFeeForm;
+    if (!requestId.trim() || !amount || parseFloat(amount) <= 0) {
+      toast({ variant: "destructive", title: "Erreur", description: "ID demande et montant valide requis" });
+      return;
+    }
+    try {
+      setCreatingFee(true);
+      await apiRequest("POST", "/api/payments/create-fee", {
+        requestId: parseInt(requestId),
+        paymentType, amount: parseFloat(amount),
+        currency: currency || "DZD",
+        dueDays: parseInt(dueDays) || 60,
+        invoiceNumber: invoiceNumber.trim() || undefined,
+      });
+      toast({ title: "Facture créée", description: "L'OEC a été notifié de la nouvelle facture." });
+      setCreateFeeOpen(false);
+      setCreateFeeForm({ requestId: "", paymentType: "ANNUAL_FEE", amount: "", currency: "DZD", dueDays: "60", invoiceNumber: "" });
+      loadPayments();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setCreatingFee(false); }
+  };
+
   // ── Filtering ──────────────────────────────────────────────────────────
+
+  const isOverdue = (p: PaymentRecord) => p.dueDate && new Date(p.dueDate) < new Date() && p.status === "PENDING";
 
   const awaitingFees = payments.filter(p => p.status === "AWAITING_FEE_SETTING");
   const awaitingValidation = payments.filter(p => p.status === "PROOF_SUBMITTED");
+  const overduePayments = payments.filter(isOverdue);
   const allFiltered = payments.filter(p => {
     const matchSearch = (p.oecName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (p.requestReferenceNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (p.transactionId || "").toLowerCase().includes(searchTerm.toLowerCase());
+                        (p.transactionId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (p.invoiceNumber || "").toLowerCase().includes(searchTerm.toLowerCase());
     return matchSearch;
   });
 
+  const fmtPaymentType = (t: string) => ({
+    REGISTRATION_FEE: "Inscription dossier", EVALUATION_FEE: "Frais d'évaluation",
+    ANNUAL_FEE: "Redevance annuelle", SURVEILLANCE_FEE: "Surveillance",
+    RENEWAL_FEE: "Renouvellement", EXTENSION_FEE: "Extension de portée",
+    SUSPENSION_LIFT_FEE: "Levée de suspension", TRANSFER_FEE: "Transfert forfaitaire",
+    CERTIFICATE_DELIVERY_FEE: "Délivrance certificat", COMPLEMENTARY_EVAL_FEE: "Éval. complémentaire",
+    ADDITIONAL_EVAL_FEE: "Éval. supplémentaire", MULTISITE_FEE: "Multi-sites",
+  }[t] || t.replace(/_/g, " "));
+
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "AWAITING_FEE_SETTING": return <Badge className="bg-amber-500">Frais à fixer</Badge>;
-      case "PENDING": return <Badge className="bg-yellow-500">En attente paiement</Badge>;
-      case "PROOF_SUBMITTED": return <Badge className="bg-blue-500">Preuve reçue</Badge>;
-      case "DAG_VALIDATED": return <Badge className="bg-green-500">Validé</Badge>;
-      case "DAG_REJECTED": return <Badge className="bg-red-500">Rejeté</Badge>;
-      case "COMPLETED": return <Badge className="bg-green-500">Complété</Badge>;
-      default: return <Badge>{status}</Badge>;
+      case "AWAITING_FEE_SETTING": return <Badge className="bg-amber-500 text-white">Frais à fixer</Badge>;
+      case "PENDING": return <Badge className="bg-yellow-500 text-white">En attente paiement</Badge>;
+      case "PROOF_SUBMITTED": return <Badge className="bg-blue-500 text-white">Preuve reçue</Badge>;
+      case "DAG_VALIDATED": return <Badge className="bg-green-600 text-white">Validé</Badge>;
+      case "DAG_REJECTED": return <Badge className="bg-red-500 text-white">Rejeté</Badge>;
+      case "COMPLETED": return <Badge className="bg-green-700 text-white">Complété</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -191,6 +241,7 @@ export default function DAGPaymentTracking() {
     awaitingFees: awaitingFees.length,
     awaitingValidation: awaitingValidation.length,
     validated: payments.filter(p => p.status === "DAG_VALIDATED" || p.status === "COMPLETED").length,
+    overdue: overduePayments.length,
   };
 
   return (
@@ -200,11 +251,16 @@ export default function DAGPaymentTracking() {
         <Navbar />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Gestion des Paiements</h1>
-              <p className="text-muted-foreground mt-2">
-                Fixez les frais d'enregistrement et vérifiez les preuves de paiement des organismes
-              </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Gestion des Paiements</h1>
+                <p className="text-muted-foreground mt-2">
+                  Fixez les frais d'enregistrement et vérifiez les preuves de paiement des organismes
+                </p>
+              </div>
+              <Button onClick={() => setCreateFeeOpen(true)}>
+                <DollarSign className="w-4 h-4 mr-2" />Créer une facture
+              </Button>
             </div>
 
             {/* Stats */}
@@ -253,22 +309,37 @@ export default function DAGPaymentTracking() {
                   </div>
                 </CardContent>
               </Card>
+              <Card className={stats.overdue > 0 ? "ring-2 ring-red-400" : ""}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">En retard</p>
+                      <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-red-400" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="awaiting-fees" className="gap-2">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="awaiting-fees" className="gap-1 text-xs">
                   <DollarSign className="h-4 w-4" />
                   Frais à fixer ({awaitingFees.length})
                 </TabsTrigger>
-                <TabsTrigger value="awaiting-validation" className="gap-2">
+                <TabsTrigger value="awaiting-validation" className="gap-1 text-xs">
                   <FileText className="h-4 w-4" />
-                  Preuves à vérifier ({awaitingValidation.length})
+                  Preuves ({awaitingValidation.length})
                 </TabsTrigger>
-                <TabsTrigger value="all" className="gap-2">
+                <TabsTrigger value="overdue" className="gap-1 text-xs">
+                  <AlertTriangle className="h-4 w-4" />
+                  En retard ({overduePayments.length})
+                </TabsTrigger>
+                <TabsTrigger value="all" className="gap-1 text-xs">
                   <CreditCard className="h-4 w-4" />
-                  Tous les paiements
+                  Tous
                 </TabsTrigger>
               </TabsList>
 
@@ -398,6 +469,53 @@ export default function DAGPaymentTracking() {
                 </Card>
               </TabsContent>
 
+              {/* Tab: En retard */}
+              <TabsContent value="overdue">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Paiements en retard</CardTitle>
+                    <CardDescription>Factures dont la date d'échéance est dépassée et le paiement non reçu (PRO_18 §6).</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {overduePayments.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground">Aucun paiement en retard</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="text-xs">
+                              <TableHead>Référence</TableHead><TableHead>Facture</TableHead>
+                              <TableHead>Organisme</TableHead><TableHead>Type</TableHead>
+                              <TableHead>Montant</TableHead><TableHead>Devise</TableHead>
+                              <TableHead>Échéance</TableHead><TableHead>Retard</TableHead>
+                              <TableHead>Statut</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {overduePayments.map(p => {
+                              const daysLate = p.dueDate ? Math.floor((new Date().getTime() - new Date(p.dueDate).getTime()) / 86400000) : 0;
+                              return (
+                                <TableRow key={p.id} className="bg-red-50/60 text-xs">
+                                  <TableCell className="font-mono">{p.requestReferenceNumber || `#${p.requestId}`}</TableCell>
+                                  <TableCell className="font-mono text-xs">{p.invoiceNumber || "—"}</TableCell>
+                                  <TableCell><div className="font-medium">{p.oecName}</div><div className="text-muted-foreground">{p.oecEmail}</div></TableCell>
+                                  <TableCell>{fmtPaymentType(p.paymentType)}</TableCell>
+                                  <TableCell className="font-semibold tabular-nums">{Number(p.amount).toLocaleString()} {p.currency || "DZD"}</TableCell>
+                                  <TableCell className="font-mono">{p.currency || "DZD"}</TableCell>
+                                  <TableCell className="text-red-700 font-medium">{p.dueDate ? new Date(p.dueDate).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                                  <TableCell><span className="text-red-700 font-bold">{daysLate}j de retard</span></TableCell>
+                                  <TableCell>{getStatusBadge(p.status)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               {/* Tab: Tous les paiements */}
               <TabsContent value="all">
                 <Card>
@@ -426,37 +544,38 @@ export default function DAGPaymentTracking() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Référence</TableHead>
+                              <TableHead>Facture</TableHead>
                               <TableHead>Organisme</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Montant</TableHead>
-                              <TableHead>Transaction</TableHead>
-                              <TableHead>Date</TableHead>
+                              <TableHead>Dev.</TableHead>
+                              <TableHead>Échéance</TableHead>
                               <TableHead>Statut</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {allFiltered.map((payment) => (
-                              <TableRow key={payment.id}>
-                                <TableCell className="font-mono text-sm">{payment.requestReferenceNumber || `#${payment.requestId}`}</TableCell>
+                              <TableRow key={payment.id} className={isOverdue(payment) ? "bg-red-50/60" : ""}>
+                                <TableCell className="font-mono text-xs">{payment.requestReferenceNumber || `#${payment.requestId}`}</TableCell>
+                                <TableCell className="font-mono text-xs">{payment.invoiceNumber || "—"}</TableCell>
                                 <TableCell>
                                   <div>
-                                    <p className="font-medium">{payment.oecName || "N/A"}</p>
+                                    <p className="font-medium text-sm">{payment.oecName || "N/A"}</p>
                                     <p className="text-xs text-muted-foreground">{payment.oecEmail}</p>
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline">
-                                    {payment.paymentType === "EVALUATION_FEE" ? "Frais d'évaluation" 
-                                      : payment.paymentType === "REGISTRATION_FEE" ? "Frais d'enregistrement" 
-                                      : payment.paymentType || "—"}
-                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">{fmtPaymentType(payment.paymentType)}</Badge>
                                 </TableCell>
-                                <TableCell className="font-semibold">
-                                  {payment.amount > 0 ? `${Number(payment.amount).toLocaleString()} DA` : "-"}
+                                <TableCell className="font-semibold tabular-nums text-sm">
+                                  {payment.amount > 0 ? Number(payment.amount).toLocaleString() : "-"}
                                 </TableCell>
-                                <TableCell className="font-mono text-sm">{payment.transactionId || "-"}</TableCell>
-                                <TableCell>{new Date(payment.createdAt).toLocaleDateString("fr-FR")}</TableCell>
+                                <TableCell className="font-mono text-xs">{payment.currency || "DZD"}</TableCell>
+                                <TableCell className={isOverdue(payment) ? "text-red-700 font-medium text-xs" : "text-xs"}>
+                                  {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString("fr-FR") : "—"}
+                                  {isOverdue(payment) && <div className="text-red-600 text-xs">En retard</div>}
+                                </TableCell>
                                 <TableCell>{getStatusBadge(payment.status)}</TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex gap-2 justify-end">
@@ -604,6 +723,83 @@ export default function DAGPaymentTracking() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: Créer une facture PRO_18 */}
+      <Dialog open={createFeeOpen} onOpenChange={setCreateFeeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><DollarSign className="w-5 h-5" />Créer une facture — PRO_18</DialogTitle>
+            <DialogDescription>Émettez une facture pour tout type de frais (redevance annuelle, surveillance, levée de suspension, etc.)</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label>ID Demande *</Label>
+                <Input type="number" value={createFeeForm.requestId} onChange={e => setCreateFeeForm({ ...createFeeForm, requestId: e.target.value })} placeholder="ex: 42" />
+              </div>
+              <div className="col-span-2">
+                <Label>Type de frais *</Label>
+                <Select value={createFeeForm.paymentType} onValueChange={v => {
+                  const dueDays = v === "ANNUAL_FEE" ? "60" : "20";
+                  setCreateFeeForm({ ...createFeeForm, paymentType: v, dueDays });
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ANNUAL_FEE">Redevance annuelle (§5.5 — 60j)</SelectItem>
+                    <SelectItem value="SURVEILLANCE_FEE">Surveillance (§5.6)</SelectItem>
+                    <SelectItem value="RENEWAL_FEE">Renouvellement (§5.7)</SelectItem>
+                    <SelectItem value="EXTENSION_FEE">Extension de portée (§5.8)</SelectItem>
+                    <SelectItem value="SUSPENSION_LIFT_FEE">Levée de suspension (§5.11)</SelectItem>
+                    <SelectItem value="TRANSFER_FEE">Transfert forfaitaire (§5.12)</SelectItem>
+                    <SelectItem value="CERTIFICATE_DELIVERY_FEE">Délivrance certificat (§5.4/5.14)</SelectItem>
+                    <SelectItem value="COMPLEMENTARY_EVAL_FEE">Évaluation complémentaire (§5.9)</SelectItem>
+                    <SelectItem value="ADDITIONAL_EVAL_FEE">Évaluation supplémentaire (§5.10)</SelectItem>
+                    <SelectItem value="MULTISITE_FEE">Multi-sites (§5.13)</SelectItem>
+                    <SelectItem value="EVALUATION_FEE">Frais d'évaluation (§5.2)</SelectItem>
+                    <SelectItem value="REGISTRATION_FEE">Frais d'inscription (§5.1)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Montant *</Label>
+                <Input type="number" min="0" value={createFeeForm.amount} onChange={e => setCreateFeeForm({ ...createFeeForm, amount: e.target.value })} placeholder="0" />
+              </div>
+              <div>
+                <Label>Devise</Label>
+                <Select value={createFeeForm.currency} onValueChange={v => setCreateFeeForm({ ...createFeeForm, currency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DZD">DZD (Nationaux — CPA)</SelectItem>
+                    <SelectItem value="EUR">EUR (Étrangers — BEA)</SelectItem>
+                    <SelectItem value="USD">USD (Étrangers — BEA)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Délai de paiement (jours)</Label>
+                <Input type="number" min="1" value={createFeeForm.dueDays} onChange={e => setCreateFeeForm({ ...createFeeForm, dueDays: e.target.value })} />
+                <p className="text-xs text-muted-foreground mt-1">20j évaluation · 60j redevance annuelle</p>
+              </div>
+              <div>
+                <Label>N° Facture (facultatif)</Label>
+                <Input value={createFeeForm.invoiceNumber} onChange={e => setCreateFeeForm({ ...createFeeForm, invoiceNumber: e.target.value })} placeholder="FACT-2025-00001" />
+                <p className="text-xs text-muted-foreground mt-1">Auto-généré si vide</p>
+              </div>
+            </div>
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertDescription className="text-blue-800 text-xs">
+                L'OEC sera notifié par email. Le paiement devra être effectué par virement CPA (nationaux) ou BEA SWIFT <span className="font-mono">BEXADZAL038</span> (étrangers) dans le délai imparti.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateFeeOpen(false)}>Annuler</Button>
+            <Button onClick={handleCreateFee} disabled={creatingFee}>
+              {creatingFee ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</> : <><Send className="mr-2 h-4 w-4" />Émettre la facture</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog: Détails paiement */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-lg">
@@ -616,10 +812,12 @@ export default function DAGPaymentTracking() {
               <div className="grid grid-cols-2 gap-4">
                 <div><Label className="text-muted-foreground text-xs">Organisme</Label><p className="font-medium">{detailsPayment.oecName}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Email</Label><p>{detailsPayment.oecEmail}</p></div>
-                <div><Label className="text-muted-foreground text-xs">Montant</Label><p className="font-bold text-lg">{detailsPayment.amount > 0 ? `${Number(detailsPayment.amount).toLocaleString()} DA` : "Non fixé"}</p></div>
+                <div><Label className="text-muted-foreground text-xs">Montant</Label><p className="font-bold text-lg">{detailsPayment.amount > 0 ? `${Number(detailsPayment.amount).toLocaleString()} ${detailsPayment.currency || "DZD"}` : "Non fixé"}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Statut</Label><p>{getStatusBadge(detailsPayment.status)}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Transaction ID</Label><p className="font-mono">{detailsPayment.transactionId || "-"}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Date de création</Label><p>{new Date(detailsPayment.createdAt).toLocaleDateString("fr-FR")}</p></div>
+                {detailsPayment.invoiceNumber && (<div><Label className="text-muted-foreground text-xs">N° Facture</Label><p className="font-mono">{detailsPayment.invoiceNumber}</p></div>)}
+                {detailsPayment.dueDate && (<div><Label className="text-muted-foreground text-xs">Échéance</Label><p className={isOverdue(detailsPayment) ? "text-red-600 font-semibold" : ""}>{new Date(detailsPayment.dueDate).toLocaleDateString("fr-FR")}{isOverdue(detailsPayment) && " ⚠ Dépassée"}</p></div>)}
                 {detailsPayment.proofDocumentName && (
                   <div><Label className="text-muted-foreground text-xs">Preuve paiement</Label><p>{detailsPayment.proofDocumentName}</p></div>
                 )}

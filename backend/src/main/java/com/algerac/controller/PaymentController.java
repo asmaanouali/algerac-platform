@@ -219,6 +219,49 @@ public class PaymentController {
     }
     
     /**
+     * DAG: Créer un paiement de tout type (redevance annuelle, surveillance, levée de suspension, etc.)
+     * PRO_18 §5 - couvre tous les types de frais définis dans la procédure.
+     */
+    @PostMapping("/create-fee")
+    public ResponseEntity<ApiResponse> createFee(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (currentUser.getRole() != UserRole.DAG) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Seul le DAG peut créer des paiements"));
+            }
+
+            Long requestId = Long.parseLong(body.get("requestId").toString());
+            String paymentType = (String) body.get("paymentType");
+            BigDecimal amount = new BigDecimal(body.get("amount").toString());
+            String currency = body.getOrDefault("currency", "DZD").toString();
+            Integer dueDays = body.get("dueDays") != null ? ((Number) body.get("dueDays")).intValue() : null;
+            String invoiceNumber = (String) body.get("invoiceNumber");
+
+            Payment payment = paymentService.createArbitraryFeePayment(
+                    requestId, paymentType, amount, currency, dueDays, invoiceNumber, userId);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Facture créée — L'OEC sera notifié.",
+                    payment
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * Legacy: Simuler un paiement (gardé pour compatibilité)
      */
     @SuppressWarnings("deprecation")

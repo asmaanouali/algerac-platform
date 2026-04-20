@@ -458,6 +458,64 @@ public class PaymentService {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
     }
+
+    /**
+     * PRO_18 §5 - DAG: Créer un paiement de tout type pour un dossier.
+     * Permet au DAG de facturer directement : redevance annuelle, surveillance,
+     * renouvellement, extension, levée de suspension, transfert, etc.
+     * @param paymentType  ex: ANNUAL_FEE, SURVEILLANCE_FEE, RENEWAL_FEE, EXTENSION_FEE,
+     *                         SUSPENSION_LIFT_FEE, TRANSFER_FEE, CERTIFICATE_DELIVERY_FEE,
+     *                         COMPLEMENTARY_EVAL_FEE, ADDITIONAL_EVAL_FEE, MULTISITE_FEE
+     * @param amount       Montant en devises
+     * @param currency     "DZD" pour nationaux, "EUR"/"USD" pour étrangers (PRO18-1)
+     * @param dueDays      Délai de paiement : 20j évaluation, 60j redevance annuelle (PRO18 §6)
+     * @param invoiceNumber Numéro de facture (si null, auto-généré)
+     */
+    @Transactional
+    public Payment createArbitraryFeePayment(Long requestId, String paymentType, BigDecimal amount,
+            String currency, Integer dueDays, String invoiceNumber, Long dagUserId) {
+        User dagUser = userRepository.findById(dagUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
+        if (dagUser.getRole() != UserRole.DAG) {
+            throw new RuntimeException("Seul le DAG peut créer des paiements");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Le montant doit être positif");
+        }
+
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        int effectiveDueDays = dueDays != null ? dueDays : 20;
+        LocalDateTime dueDate = LocalDateTime.now().plusDays(effectiveDueDays);
+
+        String generatedInvoiceNumber = invoiceNumber != null ? invoiceNumber
+                : "FACT-" + java.time.Year.now().getValue() + "-" + String.format("%05d", System.nanoTime() % 100000);
+
+        Payment payment = Payment.builder()
+                .request(request)
+                .amount(amount)
+                .paymentType(paymentType)
+                .currency(currency != null ? currency : "DZD")
+                .status(PaymentStatus.PENDING)
+                .feeSetDate(LocalDateTime.now())
+                .feeSetById(dagUserId)
+                .dueDate(dueDate)
+                .invoiceNumber(generatedInvoiceNumber)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        payment = paymentRepository.save(payment);
+
+        log.info("Paiement {} ({} {}) créé par DAG {} pour la demande {} — Échéance: {}",
+                paymentType, amount, currency, dagUserId, request.getReferenceNumber(), dueDate);
+
+        // Notifier l'OEC qu'une nouvelle facture est disponible
+        notifyOECNewInvoice(request, paymentType, amount, currency, dueDate, generatedInvoiceNumber);
+
+        return payment;
+    }
+
     
     private PaymentDTO convertToDTO(Payment payment) {
         return PaymentDTO.builder()
@@ -564,4 +622,39 @@ public class PaymentService {
             );
         }
     }
+
+    private void notifyOECNewInvoice(AccreditationRequest request, String paymentType, BigDecimal amount,
+            String currency, LocalDateTime dueDate, String invoiceNumber) {
+        String label = formatPaymentTypeLabel(paymentType);
+        String dateStr = dueDate.toLocalDate().toString();
+        notificationService.createNotification(
+            request.getOec().getId(),
+            "Nouvelle facture — " + label,
+            "Une nouvelle facture (" + invoiceNumber + ") a été émise pour votre dossier "
+                + (request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId())
+                + " : " + label + " — " + amount.toPlainString() + " " + currency
+                + ". Date d'échéance : " + dateStr + ". Accédez à votre espace Facturation pour payer.",
+            "ACTION_REQUIRED"
+        );
+    }
+
+    private String formatPaymentTypeLabel(String paymentType) {
+        return switch (paymentType) {
+            case "REGISTRATION_FEE"        -> "Frais d'inscription du dossier";
+            case "DOC_REVIEW_FEE"          -> "Frais d'analyse documentaire";
+            case "EVALUATION_FEE"          -> "Frais d'évaluation";
+            case "ANNUAL_FEE"              -> "Redevance annuelle";
+            case "SURVEILLANCE_FEE"        -> "Frais de surveillance";
+            case "RENEWAL_FEE"             -> "Frais de renouvellement";
+            case "EXTENSION_FEE"           -> "Frais d'extension";
+            case "SUSPENSION_LIFT_FEE"     -> "Frais de levée de suspension";
+            case "TRANSFER_FEE"            -> "Frais de transfert d'accréditation";
+            case "CERTIFICATE_DELIVERY_FEE"-> "Frais de délivrance du certificat";
+            case "COMPLEMENTARY_EVAL_FEE"  -> "Frais d'évaluation complémentaire";
+            case "ADDITIONAL_EVAL_FEE"     -> "Frais d'évaluation supplémentaire";
+            case "MULTISITE_FEE"           -> "Frais d'accréditation multi-sites";
+            default -> paymentType;
+        };
+    }
 }
+

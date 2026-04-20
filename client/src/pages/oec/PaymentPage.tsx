@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, CreditCard, CheckCircle, Upload, AlertTriangle, Clock, XCircle } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle, Upload, AlertTriangle, Clock, XCircle, Building2, Globe2, FileText, Calendar } from "lucide-react";
 
 export default function PaymentPage() {
   const { requestId } = useParams();
@@ -143,6 +145,29 @@ export default function PaymentPage() {
   const isValidated = status === "DAG_VALIDATED" || status === "COMPLETED";
   const isRejected = status === "DAG_REJECTED";
 
+  const currency = payment?.currency || "DZD";
+  const isNational = currency === "DZD";
+
+  const dueDate = payment?.dueDate ? new Date(payment.dueDate) : null;
+  const now = new Date();
+  const isOverdue = dueDate && dueDate < now && isPending;
+  const daysRemaining = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / 86400000) : null;
+
+  const fmtPaymentType = (t: string) => ({
+    REGISTRATION_FEE: "Frais d'inscription dossier (§5.1)",
+    EVALUATION_FEE: "Frais d'évaluation (§5.2)",
+    ANNUAL_FEE: "Redevance annuelle (§5.5)",
+    SURVEILLANCE_FEE: "Frais de surveillance (§5.6)",
+    RENEWAL_FEE: "Frais de renouvellement (§5.7)",
+    EXTENSION_FEE: "Frais d'extension de portée (§5.8)",
+    SUSPENSION_LIFT_FEE: "Frais de levée de suspension (§5.11)",
+    TRANSFER_FEE: "Transfert forfaitaire (§5.12)",
+    CERTIFICATE_DELIVERY_FEE: "Délivrance / modification certificat (§5.4)",
+    COMPLEMENTARY_EVAL_FEE: "Frais d'évaluation complémentaire (§5.9)",
+    ADDITIONAL_EVAL_FEE: "Frais d'évaluation supplémentaire (§5.10)",
+    MULTISITE_FEE: "Frais multi-sites (§5.13)",
+  }[t] || t.replace(/_/g, " "));
+
   return (
     <div className="flex h-screen w-full bg-slate-50">
       <Sidebar />
@@ -214,21 +239,86 @@ export default function PaymentPage() {
                     </div>
                   )}
 
-                  {/* Montant */}
+                  {/* Numéro de facture & échéance */}
                   {payment && !isAwaitingFees && (
                     <div className="border rounded-lg p-4 space-y-2">
                       <div className="flex justify-between text-lg">
-                        <span className="font-medium">Montant à payer:</span>
-                        <span className="font-bold">{Number(payment.amount).toLocaleString()} DA</span>
+                        <span className="font-medium">Montant à payer :</span>
+                        <span className="font-bold text-xl">{Number(payment.amount).toLocaleString()} {currency}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Type de frais:</span>
-                        <span className="text-sm">{payment.paymentType === "EVALUATION_FEE" ? "Frais d'évaluation" : payment.paymentType === "REGISTRATION_FEE" ? "Frais d'enregistrement" : payment.paymentType}</span>
+                        <span className="text-sm text-muted-foreground">Type de frais :</span>
+                        <span className="text-sm font-medium">{fmtPaymentType(payment.paymentType)}</span>
                       </div>
+                      {payment.invoiceNumber && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1"><FileText className="w-3 h-3" />N° Facture :</span>
+                          <span className="text-sm font-mono font-semibold">{payment.invoiceNumber}</span>
+                        </div>
+                      )}
+                      {dueDate && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Échéance :</span>
+                          <span className={`text-sm font-semibold ${isOverdue ? "text-red-600" : daysRemaining !== null && daysRemaining <= 5 ? "text-amber-600" : "text-foreground"}`}>
+                            {dueDate.toLocaleDateString("fr-FR")}
+                            {isOverdue
+                              ? ` — ⚠ Dépassée de ${Math.abs(daysRemaining ?? 0)}j`
+                              : daysRemaining !== null && daysRemaining >= 0
+                              ? ` — J−${daysRemaining}`
+                              : ""}
+                          </span>
+                        </div>
+                      )}
                       {payment.transactionId && (
                         <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                          <span className="text-sm text-muted-foreground">Transaction ID :</span>
                           <span className="text-sm font-mono">{payment.transactionId}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Overdue alert */}
+                  {isOverdue && (
+                    <Alert className="bg-red-50 border-red-400">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <AlertDescription className="text-red-900">
+                        <strong>Paiement en retard !</strong> La date d'échéance du {dueDate?.toLocaleDateString("fr-FR")} est dépassée.
+                        Veuillez régulariser immédiatement pour éviter l'interruption de votre dossier (PRO_18 §6).
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Bank details block */}
+                  {isPending && (
+                    <div className="border rounded-lg overflow-hidden">
+                      {isNational ? (
+                        <div className="p-4 bg-blue-50/60">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="w-5 h-5 text-blue-600" />
+                            <span className="font-semibold text-blue-900">Virement bancaire — OEC National — DZD</span>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between"><span className="text-muted-foreground">Banque :</span><span className="font-medium">Crédit Populaire d'Algérie (CPA)</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">N° Compte :</span><span className="font-mono font-semibold">007 00400 2500001 02 67</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Bénéficiaire :</span><span className="font-medium">ALGERAC — Organisme Algérien d'Accréditation</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Motif :</span><span className="font-medium">{payment?.invoiceNumber ? `Réf. ${payment.invoiceNumber}` : `Demande ${requestId}`}</span></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-emerald-50/60">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Globe2 className="w-5 h-5 text-emerald-600" />
+                            <span className="font-semibold text-emerald-900">Wire Transfer — Foreign OEC — {currency}</span>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between"><span className="text-muted-foreground">Bank :</span><span className="font-medium">Banque Extérieure d'Algérie (BEA) — Agence 038HBB</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Account No. :</span><span className="font-mono font-semibold">002000380383000019/97</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">SWIFT/BIC :</span><span className="font-mono font-semibold">BEXADZAL038</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Address :</span><span>88 Rue Hassiba Ben Bouali, Alger</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Beneficiary :</span><span className="font-medium">ALGERAC — Organisme Algérien d'Accréditation</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Reference :</span><span className="font-medium">{payment?.invoiceNumber ? `Ref. ${payment.invoiceNumber}` : `Request ${requestId}`}</span></div>
+                          </div>
                         </div>
                       )}
                     </div>

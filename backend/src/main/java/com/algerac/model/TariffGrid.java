@@ -61,10 +61,45 @@ public class TariffGrid {
     private BigDecimal extensionFee;        // Frais d'extension de portée
 
     @Column(precision = 12, scale = 2)
-    private BigDecimal travelSupplement;    // Supplément frais de déplacement
+    private BigDecimal travelSupplement;    // Supplément frais de déplacement (OEC étrangers PRO18-1)
 
     @Column(precision = 12, scale = 2)
     private BigDecimal administrativeFee;   // Frais administratifs
+
+    // Section 5.4 / 5.5 PRO18 - Certificat et redevance annuelle
+    @Column(precision = 12, scale = 2)
+    private BigDecimal annualFee;           // Redevance annuelle (base 12 mois) — proratée: (annualFee/12)×M
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal certificateDeliveryFee;    // Délivrance certificat + annexes techniques (5.4 PRO18)
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal certificateModificationFee; // Modification certificat/annexes (surveillance avec changement)
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal certificateTranslationFee;  // Traduction certificat (sur demande OEC) (5.16 PRO18-1)
+
+    // Section 5.11 PRO18 - Levée de suspension
+    @Column(precision = 12, scale = 2)
+    private BigDecimal suspensionLiftFee;   // Frais de levée de suspension (documental ou visite sur site)
+
+    // Section 5.12 PRO18 - Transfert d'accréditation (forfaitaire)
+    @Column(precision = 12, scale = 2)
+    private BigDecimal transferFlatRate;    // Montant forfaitaire pour transfert d'accréditation
+
+    // Section 5.13 PRO18 - Multi-sites (Annexe 2)
+    @Column(precision = 12, scale = 2)
+    private BigDecimal multiSiteAdditionalSiteFee; // Supplément par site additionnel
+
+    // Délais de paiement (PRO18 Section 6)
+    @Builder.Default
+    private Integer paymentTermDaysEvaluation = 20; // Délai paiement frais évaluation = 20 jours (§6 PRO18)
+
+    @Builder.Default
+    private Integer paymentTermDaysAnnual = 60;     // Délai paiement redevance annuelle = 60 jours (§5.5/5.17 PRO18)
+
+    // Devise applicable
+    private String currency;                // "DZD" pour OEC nationaux, "EUR" ou "USD" pour OEC étrangers (PRO18-1)
 
     // Durée d'évaluation standard (en jours/homme)
     private Integer standardEvaluationDaysMin;

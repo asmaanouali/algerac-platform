@@ -30,6 +30,8 @@ interface TrackingResult {
   status: string;
   createdAt: string;
   category: string;
+  decision?: string;
+  decisionDate?: string;
 }
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string; label: string; description: string }> = {
@@ -275,6 +277,17 @@ export function ComplaintTrackingDialog({ open, onOpenChange }: ComplaintTrackin
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Decision info */}
+              {result.decision && (
+                <div className="rounded-lg p-4 border bg-slate-50 space-y-1">
+                  <h4 className="text-sm font-semibold">Décision</h4>
+                  <p className="text-sm">{result.decision}</p>
+                  {result.decisionDate && (
+                    <p className="text-xs text-muted-foreground">Date : {new Date(result.decisionDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+                  )}
                 </div>
               )}
 

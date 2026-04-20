@@ -2,6 +2,7 @@ package com.algerac.controller;
 
 import com.algerac.dto.ApiResponse;
 import com.algerac.model.Complaint;
+import com.algerac.model.ComplaintStatus;
 import com.algerac.model.UserRole;
 import com.algerac.service.ComplaintService;
 import jakarta.servlet.http.HttpSession;
@@ -156,7 +157,7 @@ public class ComplaintController {
     }
 
     /**
-     * Get complaint statistics (for RQ dashboard)
+     * Get complaint statistics (for RQ dashboard) - optimized with repository counts
      */
     @GetMapping("/stats")
     public ResponseEntity<?> getComplaintStats(HttpSession session) {
@@ -175,51 +176,271 @@ public class ComplaintController {
 
         List<Complaint> all = complaintService.getAllComplaints();
         long total = all.size();
-        long received = all.stream().filter(c -> c.getStatus().name().equals("RECEIVED")).count();
-        long underReview = all.stream().filter(c -> c.getStatus().name().equals("UNDER_REVIEW")).count();
-        long investigation = all.stream().filter(c -> c.getStatus().name().equals("INVESTIGATION")).count();
-        long founded = all.stream().filter(c -> c.getStatus().name().equals("FOUNDED")).count();
-        long unfounded = all.stream().filter(c -> c.getStatus().name().equals("UNFOUNDED")).count();
-        long resolved = all.stream().filter(c -> c.getStatus().name().equals("RESOLVED")).count();
-        long closed = all.stream().filter(c -> c.getStatus().name().equals("CLOSED")).count();
+        long received = all.stream().filter(c -> c.getStatus() == ComplaintStatus.RECEIVED).count();
+        long underReview = all.stream().filter(c -> c.getStatus() == ComplaintStatus.UNDER_REVIEW).count();
+        long assigned = all.stream().filter(c -> c.getStatus() == ComplaintStatus.ASSIGNED).count();
+        long investigation = all.stream().filter(c -> c.getStatus() == ComplaintStatus.INVESTIGATION).count();
+        long founded = all.stream().filter(c -> c.getStatus() == ComplaintStatus.FOUNDED).count();
+        long unfounded = all.stream().filter(c -> c.getStatus() == ComplaintStatus.UNFOUNDED).count();
+        long correctiveActions = all.stream().filter(c -> c.getStatus() == ComplaintStatus.CORRECTIVE_ACTIONS).count();
+        long resolved = all.stream().filter(c -> c.getStatus() == ComplaintStatus.RESOLVED).count();
+        long closed = all.stream().filter(c -> c.getStatus() == ComplaintStatus.CLOSED).count();
         long publicCount = all.stream().filter(c -> Boolean.TRUE.equals(c.getIsPublic())).count();
         long internalCount = all.stream().filter(c -> !Boolean.TRUE.equals(c.getIsPublic())).count();
+
+        // Deadline info
+        Map<String, List<Complaint>> deadlineAlerts = complaintService.getDeadlineAlerts();
 
         return ResponseEntity.ok(ApiResponse.success("Statistiques", Map.of(
                 "total", total,
                 "received", received,
                 "underReview", underReview,
+                "assigned", assigned,
                 "investigation", investigation,
                 "founded", founded,
                 "unfounded", unfounded,
+                "correctiveActions", correctiveActions,
                 "resolved", resolved,
                 "closed", closed,
                 "public", publicCount,
-                "internal", internalCount
+                "internal", internalCount,
+                "overdueCount", deadlineAlerts.get("overdue").size(),
+                "approachingDeadlineCount", deadlineAlerts.get("approaching").size()
         )));
     }
 
     /**
-     * Track a public complaint by tracking code (no auth)
+     * Track a public complaint by tracking code (no auth) - optimized
      */
     @GetMapping("/track/{trackingCode}")
     public ResponseEntity<?> trackComplaint(@PathVariable String trackingCode) {
         try {
-            var complaint = complaintService.getAllComplaints().stream()
-                    .filter(c -> c.getTrackingCode().equals(trackingCode))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Code de suivi invalide"));
+            var complaint = complaintService.findByTrackingCode(trackingCode);
+            if (complaint == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Code de suivi invalide"));
+            }
 
-            return ResponseEntity.ok(ApiResponse.success("Plainte trouvée", Map.of(
+            Map<String, Object> result = new java.util.HashMap<>(Map.of(
                     "trackingCode", complaint.getTrackingCode(),
                     "subject", complaint.getSubject(),
                     "status", complaint.getStatus().name(),
                     "createdAt", complaint.getCreatedAt().toString(),
                     "category", complaint.getCategory() != null ? complaint.getCategory() : ""
-            )));
+            ));
+
+            // Include decision info if decision has been made
+            if (complaint.getDecisionDate() != null) {
+                result.put("decisionDate", complaint.getDecisionDate().toString());
+            }
+            if (complaint.getDecision() != null) {
+                result.put("decision", complaint.getDecision());
+            }
+            if (complaint.getInvestigationDeadline() != null) {
+                result.put("investigationDeadline", complaint.getInvestigationDeadline().toString());
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Plainte trouvée", result));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /**
+     * Update complaint status (RECEIVED → UNDER_REVIEW → INVESTIGATION)
+     */
+    @PostMapping("/{id}/status")
+    public ResponseEntity<ApiResponse> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> data,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        try {
+            String statusStr = (String) data.get("status");
+            String notes = (String) data.get("notes");
+            ComplaintStatus newStatus = ComplaintStatus.valueOf(statusStr);
+
+            Complaint complaint = complaintService.updateStatus(id, newStatus, notes);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Statut mis à jour: " + complaint.getStatus().name(),
+                    Map.of(
+                            "id", complaint.getId(),
+                            "trackingCode", complaint.getTrackingCode(),
+                            "status", complaint.getStatus().name()
+                    )
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error updating status for complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Assign an investigator to a complaint (PRO_21: person not involved)
+     */
+    @PostMapping("/{id}/assign")
+    public ResponseEntity<ApiResponse> assignInvestigator(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> data,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Seul le RQ peut assigner une plainte"));
+        }
+
+        try {
+            Long investigatorId = Long.valueOf(data.get("investigatorId").toString());
+            Complaint complaint = complaintService.assignInvestigator(id, investigatorId);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Plainte assignée avec succès",
+                    Map.of(
+                            "id", complaint.getId(),
+                            "trackingCode", complaint.getTrackingCode(),
+                            "status", complaint.getStatus().name(),
+                            "assignedTo", complaint.getAssignedToUser().getFullName(),
+                            "deadline", complaint.getInvestigationDeadline().toString()
+                    )
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error assigning complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolve a founded complaint (corrective actions completed)
+     */
+    @PostMapping("/{id}/resolve")
+    public ResponseEntity<ApiResponse> resolveComplaint(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> data,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        try {
+            String notes = (String) data.get("notes");
+            Complaint complaint = complaintService.resolveComplaint(id, notes);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Plainte marquée comme résolue",
+                    Map.of("id", complaint.getId(), "status", complaint.getStatus().name())
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error resolving complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Close a complaint with a final response (PRO_21)
+     */
+    @PostMapping("/{id}/close")
+    public ResponseEntity<ApiResponse> closeComplaint(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> data,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        try {
+            String finalResponse = (String) data.get("finalResponse");
+            Complaint complaint = complaintService.closeComplaint(id, finalResponse);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Plainte clôturée avec succès",
+                    Map.of("id", complaint.getId(), "status", complaint.getStatus().name())
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error closing complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get deadline alerts (overdue and approaching complaints)
+     */
+    @GetMapping("/deadlines")
+    public ResponseEntity<?> getDeadlineAlerts(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        Map<String, List<Complaint>> alerts = complaintService.getDeadlineAlerts();
+        return ResponseEntity.ok(ApiResponse.success("Alertes délais", alerts));
+    }
+
+    /**
+     * Get available staff for investigation assignment (RQ endpoint)
+     */
+    @GetMapping("/assignable-staff")
+    public ResponseEntity<?> getAssignableStaff(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        List<Map<String, Object>> staff = complaintService.getAssignableStaff();
+        return ResponseEntity.ok(ApiResponse.success("Personnel disponible", staff));
     }
 }

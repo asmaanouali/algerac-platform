@@ -91,6 +91,7 @@ import NotificationsPage from "@/pages/notifications-page";
 
 // Complaints system
 import PublicComplaintPage from "@/pages/complaints/PublicComplaintPage";
+import PublicTrackingPage from "@/pages/complaints/PublicTrackingPage";
 import InternalComplaintsPage from "@/pages/complaints/InternalComplaintsPage";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 
@@ -143,6 +144,7 @@ function Router() {
       
       {/* Public routes (no auth required) */}
       <Route path="/complaints/public" component={PublicComplaintPage} />
+      <Route path="/complaints/track" component={PublicTrackingPage} />
       <Route path="/for28/:token" component={For28SubmissionPage} />
       
       {/* OEC Routes */}

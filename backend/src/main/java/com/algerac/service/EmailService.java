@@ -1669,4 +1669,22 @@ public class EmailService {
             throw new RuntimeException("Erreur lors de l'envoi de l'email de rejet pour non-paiement", e);
         }
     }
+
+    /**
+     * Generic HTML email sender for complaint workflow notifications
+     */
+    public void sendGenericEmail(String recipientEmail, String subject, String htmlBody) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(recipientEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            mailSender.send(mimeMessage);
+            log.info("Generic email sent to {} - Subject: {}", recipientEmail, subject);
+        } catch (Exception e) {
+            log.error("Failed to send generic email to {}: {}", recipientEmail, e.getMessage());
+        }
+    }
 }

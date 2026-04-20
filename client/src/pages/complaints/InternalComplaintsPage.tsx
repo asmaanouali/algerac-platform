@@ -45,6 +45,18 @@ const categoryLabels: Record<string, string> = {
   other: "Autre",
 };
 
+const statusLabels: Record<string, string> = {
+  RECEIVED: "Reçue",
+  UNDER_REVIEW: "En examen",
+  ASSIGNED: "Assignée",
+  INVESTIGATION: "Investigation",
+  FOUNDED: "Fondée",
+  UNFOUNDED: "Non fondée",
+  CORRECTIVE_ACTIONS: "Actions correctives",
+  RESOLVED: "Résolue",
+  CLOSED: "Clôturée",
+};
+
 export default function InternalComplaintsPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -69,12 +81,12 @@ export default function InternalComplaintsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const categories = [
-    { value: "quality", label: "Qualité du service" },
-    { value: "delay", label: "Délais de traitement" },
-    { value: "competence", label: "Compétence technique" },
-    { value: "impartiality", label: "Impartialité" },
-    { value: "confidentiality", label: "Confidentialité" },
-    { value: "other", label: "Autre" },
+    { value: "quality", label: t('complaints.categories.quality') },
+    { value: "delay", label: t('complaints.categories.delay') },
+    { value: "competence", label: t('complaints.categories.competence') },
+    { value: "impartiality", label: t('complaints.categories.impartiality') },
+    { value: "confidentiality", label: t('complaints.categories.confidentiality') },
+    { value: "other", label: t('complaints.categories.other') },
   ];
 
   // Redirect unauthenticated users via useEffect (React best practice)
@@ -162,9 +174,11 @@ export default function InternalComplaintsPage() {
     const map: Record<string, { color: string; label: string }> = {
       RECEIVED: { color: "bg-blue-500", label: "Reçue" },
       UNDER_REVIEW: { color: "bg-yellow-500", label: "En examen" },
+      ASSIGNED: { color: "bg-indigo-500", label: "Assignée" },
       INVESTIGATION: { color: "bg-orange-500", label: "Investigation" },
       FOUNDED: { color: "bg-red-500", label: "Fondée" },
       UNFOUNDED: { color: "bg-gray-500", label: "Non fondée" },
+      CORRECTIVE_ACTIONS: { color: "bg-amber-500", label: "Actions correctives" },
       RESOLVED: { color: "bg-green-500", label: "Résolue" },
       CLOSED: { color: "bg-slate-500", label: "Clôturée" },
     };

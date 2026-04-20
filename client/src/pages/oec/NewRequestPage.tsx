@@ -1550,7 +1550,7 @@ export default function NewRequestPage() {
         </main>
       </div>
 
-      {/* Payment dialog */}
+      {/* Submission success dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
@@ -1559,7 +1559,7 @@ export default function NewRequestPage() {
               Demande soumise avec succès
             </DialogTitle>
             <DialogDescription>
-              Votre demande d'accréditation a été enregistrée et transmise au service administratif.
+              Votre demande d'accréditation a été enregistrée et transmise à la Direction Technique.
             </DialogDescription>
           </DialogHeader>
 
@@ -1568,14 +1568,14 @@ export default function NewRequestPage() {
               <div className="flex items-start gap-3">
                 <CreditCard className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-blue-900">Frais d'enregistrement du dossier</p>
+                  <p className="font-medium text-blue-900">Prochaines étapes</p>
                   <p className="text-sm text-blue-700 mt-2">
-                    Vous allez recevoir prochainement les frais d'enregistrement de votre dossier.
-                    Le Directeur Administratif et Financier (DAG) va examiner votre dossier et fixer le montant des frais.
+                    La Direction Technique (DT) va vérifier vos documents. Si votre dossier est conforme,
+                    il sera transmis au Chef de Département qui assignera un Responsable d'Accréditation.
                   </p>
                   <p className="text-sm text-blue-700 mt-2">
-                    Vous serez notifié par email dès que les frais seront fixés.
-                    Vous pourrez alors vous connecter à la plateforme et effectuer le paiement depuis votre <strong>page de facturation</strong>.
+                    Les frais d'enregistrement vous seront communiqués ultérieurement.
+                    Vous serez notifié à chaque étape de l'avancement de votre demande.
                   </p>
                 </div>
               </div>
@@ -1588,12 +1588,6 @@ export default function NewRequestPage() {
               className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}
             >
               Voir mes demandes
-            </Button>
-            <Button
-              onClick={goToPayment}
-              variant="outline" className="w-full" size="lg"
-            >
-              <CreditCard className="w-4 h-4 mr-2" /> Consulter les paiements
             </Button>
           </DialogFooter>
         </DialogContent>

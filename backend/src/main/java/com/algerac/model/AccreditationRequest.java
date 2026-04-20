@@ -47,12 +47,24 @@ public class AccreditationRequest {
     
     // Workflow fields
     @ManyToOne
+    @JoinColumn(name = "assigned_to_cd")
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    private User assignedToCd; // CD assigné (basé sur le domaine)
+    
+    @ManyToOne
     @JoinColumn(name = "assigned_to_ra")
     @JsonIgnore
     @Getter(AccessLevel.NONE)
     private User assignedToRa; // RA assigné par le CD
     
     private LocalDateTime assignmentDate; // Date d'assignation au RA
+    
+    // DT review
+    @Column(columnDefinition = "TEXT")
+    private String dtReviewComments; // Commentaires du DT lors de la vérification des documents
+    
+    private LocalDateTime dtReviewDate; // Date de la revue DT
     
     // Recevabilité
     @Column(columnDefinition = "TEXT")
@@ -145,12 +157,26 @@ public class AccreditationRequest {
                 .build();
     }
     
+    @JsonGetter("assignedToCd")
+    public SimpleUserDTO getAssignedToCdForJson() {
+        if (assignedToCd == null) return null;
+        return SimpleUserDTO.builder()
+                .id(assignedToCd.getId())
+                .email(assignedToCd.getEmail())
+                .fullName(assignedToCd.getFullName())
+                .build();
+    }
+    
     public User getOec() {
         return oec;
     }
     
     public User getAssignedToRa() {
         return assignedToRa;
+    }
+    
+    public User getAssignedToCd() {
+        return assignedToCd;
     }
     
     public Long getOecId() {

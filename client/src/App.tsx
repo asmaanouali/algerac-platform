@@ -67,6 +67,10 @@ import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import GCCandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 import InterviewPlanningPage from "@/pages/ges_competences/InterviewPlanningPage";
 import InterviewEvaluationPage from "@/pages/ges_competences/InterviewEvaluationPage";
+import QualificationsPage from "@/pages/ges_competences/QualificationsPage";
+import CommissionPage from "@/pages/ges_competences/CommissionPage";
+import ObservationsPage from "@/pages/ges_competences/ObservationsPage";
+import SurveillanceQualPage from "@/pages/ges_competences/SurveillancePage";
 
 // Phase II - Évaluation sur site
 import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
@@ -120,6 +124,7 @@ import RAQuotesPage from "@/pages/ra/QuotesPage";
 import RADossiersPage from "@/pages/ra/DossiersPage";
 import RAPlanningPage from "@/pages/ra/PlanningPage";
 import DTDashboard from "@/pages/dt/Dashboard";
+import DTRequestReviewPage from "@/pages/dt/RequestReviewPage";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
 import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
 
@@ -217,6 +222,7 @@ function Router() {
       <Route path="/risques-opportunites" component={RiskOpportunityPage} />
       <Route path="/dt" component={DTDashboard} />
       <Route path="/dt/dashboard" component={DTDashboard} />
+      <Route path="/dt/demandes-accreditation" component={DTRequestReviewPage} />
       <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
       <Route path="/dt/candidatures" component={CandidaturesPage} />
       <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
@@ -292,6 +298,10 @@ function Router() {
       <Route path="/ges-competences/candidatures" component={GCCandidaturesPage} />
       <Route path="/ges-competences/entretiens" component={InterviewPlanningPage} />
       <Route path="/ges-competences/entretien/:id" component={InterviewEvaluationPage} />
+      <Route path="/ges-competences/qualifications" component={QualificationsPage} />
+      <Route path="/ges-competences/commission" component={CommissionPage} />
+      <Route path="/ges-competences/observations" component={ObservationsPage} />
+      <Route path="/ges-competences/surveillance" component={SurveillanceQualPage} />
       
       {/* RQ Routes */}
       <Route path="/rq" component={RQComplaintsDashboard} />

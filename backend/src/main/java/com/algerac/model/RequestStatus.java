@@ -4,6 +4,10 @@ public enum RequestStatus {
     // Phase initiale
     DRAFT,                              // Brouillon
     SUBMITTED,                          // Soumise par OEC
+    PENDING_DT_REVIEW,                  // En attente de vérification des documents par DT
+    DT_APPROVED,                        // Documents validés par DT, en attente d'assignation CD
+    DT_REJECTED,                        // Documents rejetés par DT, OEC doit corriger
+    PENDING_CD_ASSIGNMENT,              // DT a validé, en attente que le CD choisisse un RA
     AWAITING_REGISTRATION_FEE,          // En attente que le DAG fixe les frais d'enregistrement
     PENDING_PAYMENT,                    // En attente de paiement par OEC (frais fixés par DAG)
     PAYMENT_PROOF_SUBMITTED,            // OEC a soumis preuve de paiement, en attente validation DAG

@@ -39,6 +39,8 @@ import {
   Video,
   ArrowRightLeft,
   ShieldAlert as ShieldAlertIcon,
+  ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -87,6 +89,7 @@ export function Sidebar() {
     ],
     dt: [
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/dt/demandes-accreditation", label: "Demandes d'Accréditation", icon: FileCheck },
       { href: "/dt/entretiens-candidats", label: "Entretiens Candidats", icon: Users },
       { href: "/dt/candidatures-oec", label: "Candidatures OEC", icon: Building2 },
       { href: "/dt/certificats", label: "Certificats", icon: Award },
@@ -192,6 +195,10 @@ export function Sidebar() {
       { href: "/ges-competences/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/ges-competences/candidatures", label: "Candidatures", icon: UserPlus },
       { href: "/ges-competences/entretiens", label: "Planning Entretiens", icon: CalendarDays },
+      { href: "/ges-competences/qualifications", label: "Qualifications", icon: Award },
+      { href: "/ges-competences/commission", label: "Commission CQ", icon: Users },
+      { href: "/ges-competences/observations", label: "Observations FOR 71", icon: ClipboardCheck },
+      { href: "/ges-competences/surveillance", label: "Surveillance & KPI", icon: BarChart3 },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],
     rq: [

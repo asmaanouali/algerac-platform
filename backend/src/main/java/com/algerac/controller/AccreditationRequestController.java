@@ -184,11 +184,8 @@ public class AccreditationRequestController {
             
             AccreditationRequest request = requestService.submitRequest(id, currentUser);
             
-            // Créer le paiement en attente de fixation des frais par le DAG
-            paymentService.createRegistrationFeePayment(request.getId());
-            
             return ResponseEntity.ok(ApiResponse.success(
-                    "Demande soumise avec succès. Le DAG va fixer les frais d'enregistrement de votre dossier.",
+                    "Demande soumise avec succès. La Direction Technique va vérifier vos documents.",
                     request
             ));
         } catch (Exception e) {
@@ -254,6 +251,79 @@ public class AccreditationRequestController {
         }
     }
     
+    // ========== DT: DOCUMENT REVIEW ==========
+    
+    /**
+     * DT: Récupérer les demandes en attente de vérification
+     */
+    @GetMapping("/pending-dt-review")
+    public ResponseEntity<?> getPendingDTReview(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return unauthorized();
+        
+        List<AccreditationRequest> requests = requestService.getRequestsByStatus(RequestStatus.PENDING_DT_REVIEW);
+        return ResponseEntity.ok(requests);
+    }
+    
+    /**
+     * DT: Vérifier les documents d'une demande (approuver ou rejeter)
+     */
+    @PostMapping("/{id}/dt-review")
+    public ResponseEntity<ApiResponse> dtReviewRequest(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            
+            if (currentUser.getRole() != UserRole.DT) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Seul le DT peut vérifier les documents"));
+            }
+            
+            boolean approved = Boolean.TRUE.equals(body.get("approved"));
+            String comments = (String) body.getOrDefault("comments", "");
+            
+            AccreditationRequest request = requestService.dtReviewRequest(id, approved, comments, currentUser);
+            
+            String message = approved 
+                    ? "Documents validés. La demande a été transmise au Chef de Département."
+                    : "Documents rejetés. L'OEC a été notifié des corrections à apporter.";
+            
+            return ResponseEntity.ok(ApiResponse.success(message, request));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * OEC: Resoumettre après rejet DT
+     */
+    @PostMapping("/{id}/resubmit-after-dt")
+    public ResponseEntity<ApiResponse> resubmitAfterDTRejection(
+            @PathVariable Long id,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            
+            AccreditationRequest request = requestService.resubmitAfterDTRejection(id, currentUser);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Demande resoumise avec succès. La Direction Technique va vérifier vos documents corrigés.",
+                    request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     /**
      * CD: Assigner à un RA
      */
@@ -273,8 +343,16 @@ public class AccreditationRequestController {
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             
             AccreditationRequest request = requestService.assignRequestToRA(id, dto, currentUser);
+            
+            // Créer le paiement en attente de fixation des frais par le DAG
+            try {
+                paymentService.createRegistrationFeePayment(request.getId());
+            } catch (Exception paymentEx) {
+                log.warn("Paiement déjà existant ou erreur: {}", paymentEx.getMessage());
+            }
+            
             return ResponseEntity.ok(ApiResponse.success(
-                    "Demande assignée avec succès au RA",
+                    "Demande assignée au RA. Le DAG a été notifié pour fixer les frais d'enregistrement.",
                     request
             ));
         } catch (Exception e) {

@@ -248,6 +248,80 @@ public class NotificationService {
         
         log.info("Notification envoyée aux DAG pour la nouvelle demande {}", request.getId());
     }
+    
+    /**
+     * Notifier le DT qu'une nouvelle demande nécessite la vérification des documents
+     */
+    @Transactional
+    public void notifyDTNewRequest(AccreditationRequest request) {
+        List<User> dts = userRepository.findByRole(UserRole.DT);
+        
+        for (User dt : dts) {
+            Notification notification = Notification.builder()
+                    .user(dt)
+                    .title("Nouvelle demande - Documents à vérifier")
+                    .message(String.format("La demande %s de %s nécessite la vérification des documents.",
+                            request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId(),
+                            request.getOec() != null ? request.getOec().getOrganizationName() : "OEC"))
+                    .type("action_required")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            notificationRepository.save(notification);
+        }
+        
+        log.info("Notification envoyée aux DT pour la demande {}", request.getReferenceNumber());
+    }
+    
+    /**
+     * Notifier le CD après validation DT — la demande nécessite le choix d'un RA
+     */
+    @Transactional
+    public void notifyCDAfterDTApproval(AccreditationRequest request) {
+        List<User> cds = userRepository.findByRole(UserRole.CD);
+        
+        for (User cd : cds) {
+            Notification notification = Notification.builder()
+                    .user(cd)
+                    .title("Demande validée par DT - RA à assigner")
+                    .message(String.format("La demande %s de %s a été validée par la Direction Technique. Veuillez choisir un Responsable d'Accréditation.",
+                            request.getReferenceNumber(),
+                            request.getOec() != null ? request.getOec().getOrganizationName() : "OEC"))
+                    .type("action_required")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            notificationRepository.save(notification);
+        }
+        
+        log.info("Notification envoyée aux CD après validation DT de la demande {}", request.getReferenceNumber());
+    }
+    
+    /**
+     * Notifier l'OEC que ses documents ont été rejetés par le DT
+     */
+    @Transactional
+    public void notifyOECDTRejection(AccreditationRequest request, String comments) {
+        User oec = request.getOec();
+        if (oec == null) return;
+        
+        Notification notification = Notification.builder()
+                .user(oec)
+                .title("Documents à corriger")
+                .message(String.format("Votre demande %s a été examinée par la Direction Technique. Des corrections sont nécessaires : %s",
+                        request.getReferenceNumber(),
+                        comments != null && !comments.isEmpty() ? comments : "Veuillez contacter ALGERAC pour plus de détails."))
+                .type("action_required")
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        notificationRepository.save(notification);
+        log.info("Notification de rejet DT envoyée à l'OEC {} pour la demande {}", 
+                oec.getOrganizationName(), request.getReferenceNumber());
+    }
 
     @Transactional
     public void notifyDAGNewQuotation(com.algerac.model.Quotation quotation) {

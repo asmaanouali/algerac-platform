@@ -101,7 +101,7 @@ export default function CDManageRequestsPage() {
     try {
       setLoading(true);
       const [pendingRes, allRes, raRes, recevRes, cdValRes] = await Promise.all([
-        apiRequest("GET", "/api/requests/status/PAYMENT_COMPLETED"),
+        apiRequest("GET", "/api/requests/status/PENDING_CD_ASSIGNMENT"),
         apiRequest("GET", "/api/requests"),
         apiRequest("GET", "/api/workflow/ra-workload"),
         apiRequest("GET", "/api/requests/status/RECEIVABILITY_PENDING_CD_REVIEW"),
@@ -287,7 +287,7 @@ export default function CDManageRequestsPage() {
     } finally { setRecusProcessing(false); }
   };
 
-  const assignedCount = allRequests.filter(r => !["DRAFT","PENDING_PAYMENT","PAYMENT_COMPLETED","CLOSED","REJECTED"].includes(r.status)).length;
+  const assignedCount = allRequests.filter(r => !["DRAFT","PENDING_DT_REVIEW","DT_REJECTED","PENDING_CD_ASSIGNMENT","PENDING_PAYMENT","PAYMENT_COMPLETED","CLOSED","REJECTED"].includes(r.status)).length;
   const closedCount = allRequests.filter(r => r.status === "CLOSED").length;
   const nonReceivableRequests = allRequests.filter(r => r.status === "NOT_RECEIVABLE");
 

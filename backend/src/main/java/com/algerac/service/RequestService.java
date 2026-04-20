@@ -87,23 +87,114 @@ public class RequestService {
             throw new RuntimeException("Cette demande a déjà été soumise");
         }
         
-        request.setStatus(RequestStatus.AWAITING_REGISTRATION_FEE);
+        request.setStatus(RequestStatus.PENDING_DT_REVIEW);
         request.setSubmissionDate(LocalDateTime.now());
-        request.setProgress(10);
-        request.setNextAction("DAG doit fixer les frais d'enregistrement du dossier");
-        request.setPendingWith("DAG");
+        request.setProgress(5);
+        request.setNextAction("DT doit vérifier les documents de la demande");
+        request.setPendingWith("DT");
+        
+        // Générer le numéro de référence automatiquement à la soumission
+        if (request.getReferenceNumber() == null || request.getReferenceNumber().isEmpty()) {
+            String referenceNumber = generateReferenceNumber(request.getDomain());
+            request.setReferenceNumber(referenceNumber);
+            log.info("Numéro de dossier {} attribué automatiquement", referenceNumber);
+        }
         
         request = requestRepository.save(request);
-        log.info("Demande {} soumise par l'OEC {}", request.getId(), currentUser.getOrganizationName());
+        log.info("Demande {} soumise par l'OEC {}", request.getReferenceNumber(), currentUser.getOrganizationName());
         
-        // Notifier le DAG qu'une nouvelle demande nécessite la fixation des frais
-        notificationService.notifyDAGNewRequest(request);
+        // Notifier le DT qu'une nouvelle demande nécessite la vérification des documents
+        notificationService.notifyDTNewRequest(request);
         
         return request;
     }
     
     /**
-     * Assignation d'une demande à un RA par le CD (sans numéro de référence)
+     * DT: Vérification des documents de la demande
+     * Si validés → PENDING_CD_ASSIGNMENT (envoi au CD selon le domaine)
+     * Si rejetés → DT_REJECTED (retour à l'OEC)
+     */
+    @Transactional
+    public AccreditationRequest dtReviewRequest(Long requestId, boolean approved, String comments, User currentUser) {
+        if (currentUser.getRole() != UserRole.DT) {
+            throw new RuntimeException("Seul le DT peut vérifier les documents des demandes");
+        }
+        
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (request.getStatus() != RequestStatus.PENDING_DT_REVIEW) {
+            throw new RuntimeException("Cette demande n'est pas en attente de vérification DT");
+        }
+        
+        request.setDtReviewComments(comments);
+        request.setDtReviewDate(LocalDateTime.now());
+        
+        if (approved) {
+            request.setStatus(RequestStatus.PENDING_CD_ASSIGNMENT);
+            request.setProgress(10);
+            request.setCurrentPhase("INITIAL");
+            request.setCurrentStep("Documents validés par DT");
+            request.setNextAction("CD doit choisir un RA pour traiter cette demande");
+            request.setPendingWith("CD");
+            
+            request = requestRepository.save(request);
+            log.info("DT a validé les documents de la demande {}", request.getReferenceNumber());
+            
+            // Notifier le(s) CD concerné(s) par le domaine
+            notificationService.notifyCDAfterDTApproval(request);
+        } else {
+            request.setStatus(RequestStatus.DT_REJECTED);
+            request.setProgress(3);
+            request.setCurrentPhase("INITIAL");
+            request.setCurrentStep("Documents rejetés par DT");
+            request.setNextAction("OEC doit corriger et resoumettre les documents");
+            request.setPendingWith("OEC");
+            
+            request = requestRepository.save(request);
+            log.info("DT a rejeté les documents de la demande {}", request.getReferenceNumber());
+            
+            // Notifier l'OEC du rejet
+            notificationService.notifyOECDTRejection(request, comments);
+        }
+        
+        return request;
+    }
+    
+    /**
+     * OEC: Resoumettre après rejet DT
+     */
+    @Transactional
+    public AccreditationRequest resubmitAfterDTRejection(Long requestId, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        
+        if (!request.getOec().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à modifier cette demande");
+        }
+        
+        if (request.getStatus() != RequestStatus.DT_REJECTED) {
+            throw new RuntimeException("Cette demande n'est pas en attente de correction");
+        }
+        
+        request.setStatus(RequestStatus.PENDING_DT_REVIEW);
+        request.setProgress(5);
+        request.setCurrentPhase("INITIAL");
+        request.setCurrentStep("Documents corrigés - nouvelle vérification");
+        request.setNextAction("DT doit vérifier les documents corrigés");
+        request.setPendingWith("DT");
+        
+        request = requestRepository.save(request);
+        log.info("OEC a resoumis la demande {} après rejet DT", request.getReferenceNumber());
+        
+        notificationService.notifyDTNewRequest(request);
+        
+        return request;
+    }
+    
+    /**
+     * Assignation d'une demande à un RA par le CD
+     * Également envoi au DAG pour fixer les frais d'enregistrement
      */
     @Transactional
     public AccreditationRequest assignRequestToRA(Long requestId, AssignRequestDTO dto, User currentUser) {
@@ -114,8 +205,8 @@ public class RequestService {
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (request.getStatus() != RequestStatus.PAYMENT_COMPLETED) {
-            throw new RuntimeException("Le paiement doit être complété avant l'assignation");
+        if (request.getStatus() != RequestStatus.PENDING_CD_ASSIGNMENT && request.getStatus() != RequestStatus.PAYMENT_COMPLETED) {
+            throw new RuntimeException("Cette demande n'est pas en attente d'assignation");
         }
         
         User ra = userRepository.findById(dto.getRaId())
@@ -126,23 +217,24 @@ public class RequestService {
         }
         
         request.setAssignedToRa(ra);
+        request.setAssignedToCd(currentUser);
         request.setAssignmentDate(LocalDateTime.now());
         request.setStatus(RequestStatus.ASSIGNED_TO_RA);
-        request.setProgress(25);
-        
-        // Le CD attribue automatiquement un numéro de dossier séquentiel et unique
-        if (request.getReferenceNumber() == null || request.getReferenceNumber().isEmpty()) {
-            String referenceNumber = generateReferenceNumber();
-            request.setReferenceNumber(referenceNumber);
-            log.info("Numéro de dossier {} attribué automatiquement par le CD", referenceNumber);
-        }
+        request.setProgress(15);
+        request.setCurrentPhase("INITIAL");
+        request.setCurrentStep("Assignée au RA");
+        request.setNextAction("RA doit commencer l'étude de recevabilité");
+        request.setPendingWith("RA");
         
         request = requestRepository.save(request);
-        log.info("Demande ID {} assignée au RA {} par {}", 
-                request.getId(), ra.getFullName(), currentUser.getFullName());
+        log.info("Demande {} assignée au RA {} par CD {}", 
+                request.getReferenceNumber(), ra.getFullName(), currentUser.getFullName());
         
         // Notifier le RA
         notificationService.notifyRAAssignment(request);
+        
+        // Aussi envoyer au DAG pour fixer les frais d'enregistrement (en parallèle)
+        notificationService.notifyDAGNewRequest(request);
         
         return request;
     }
@@ -406,18 +498,49 @@ public class RequestService {
         return request;
     }
     
-    private synchronized String generateReferenceNumber() {
-        String year = String.valueOf(Year.now().getValue());
-        long count = requestRepository.countByReferenceNumberStartingWith("D-" + year + "-");
-        String refNumber = String.format("D-%s-%03d", year, count + 1);
+    /**
+     * Génère un numéro de référence au format AC/DOMAINE/NUMSEQUENTIEL/ANNEE
+     * Ex: AC/ES/001/26 (première demande d'essais en 2026)
+     */
+    private synchronized String generateReferenceNumber(String domain) {
+        String domainCode = mapDomainToCode(domain);
+        String yearSuffix = String.valueOf(Year.now().getValue()).substring(2); // "26" for 2026
+        String prefix = "AC/" + domainCode + "/";
+        
+        // Count existing references with same domain code and year
+        long count = requestRepository.countByReferenceNumberStartingWith(prefix);
+        // Filter by year suffix too (in case old years exist)
+        // We use a simple approach: count all with this prefix, then check uniqueness
+        String refNumber = String.format("AC/%s/%03d/%s", domainCode, count + 1, yearSuffix);
         
         // Fallback: ensure uniqueness
         while (requestRepository.existsByReferenceNumber(refNumber)) {
             count++;
-            refNumber = String.format("D-%s-%03d", year, count + 1);
+            refNumber = String.format("AC/%s/%03d/%s", domainCode, count + 1, yearSuffix);
         }
         
         return refNumber;
+    }
+    
+    /**
+     * Mappe le domaine (libellé ou code d'activité) vers un code court pour la référence
+     */
+    private String mapDomainToCode(String domain) {
+        if (domain == null || domain.isEmpty()) return "GN"; // Général
+        
+        String d = domain.toLowerCase().trim();
+        
+        // Match labels or codes
+        if (d.contains("inspection")) return "IN";
+        if (d.contains("essais") && d.contains("aptitude")) return "EA";
+        if (d.contains("essais") || d.equals("essais")) return "ES";
+        if (d.contains("étalonnage") || d.contains("etalonnage")) return "ET";
+        if (d.contains("examens") || d.contains("médicaux") || d.contains("medicaux") || d.contains("biomédical") || d.contains("biomedical")) return "EM";
+        if (d.contains("cert") && (d.contains("sm") || d.contains("système") || d.contains("management"))) return "SM";
+        if (d.contains("cert") && (d.contains("produit") || d.contains("procédé") || d.contains("service"))) return "CP";
+        if (d.contains("cert") && d.contains("personne")) return "CE";
+        
+        return "GN"; // Domaine général
     }
     
     @Transactional

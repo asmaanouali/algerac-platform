@@ -17,12 +17,16 @@ public class WorkflowProgressService {
     private static final Map<RequestStatus, WorkflowState> STATUS_MAP = Map.ofEntries(
             // Phase initiale (0-10%)
             Map.entry(RequestStatus.DRAFT, new WorkflowState(0, "INITIAL", "Phase Initiale", "Brouillon")),
-            Map.entry(RequestStatus.SUBMITTED, new WorkflowState(3, "INITIAL", "Phase Initiale", "Soumise")),
-            Map.entry(RequestStatus.AWAITING_REGISTRATION_FEE, new WorkflowState(4, "INITIAL", "Phase Initiale", "En attente frais d'inscription")),
-            Map.entry(RequestStatus.PENDING_PAYMENT, new WorkflowState(5, "INITIAL", "Phase Initiale", "Paiement en cours")),
-            Map.entry(RequestStatus.PAYMENT_PROOF_SUBMITTED, new WorkflowState(6, "INITIAL", "Phase Initiale", "Preuve de paiement soumise")),
-            Map.entry(RequestStatus.PAYMENT_COMPLETED, new WorkflowState(7, "INITIAL", "Phase Initiale", "Paiement validé")),
-            Map.entry(RequestStatus.ASSIGNED_TO_RA, new WorkflowState(8, "INITIAL", "Phase Initiale", "Assignée au RA")),
+            Map.entry(RequestStatus.SUBMITTED, new WorkflowState(2, "INITIAL", "Phase Initiale", "Soumise")),
+            Map.entry(RequestStatus.PENDING_DT_REVIEW, new WorkflowState(3, "INITIAL", "Phase Initiale", "Vérification DT en cours")),
+            Map.entry(RequestStatus.DT_APPROVED, new WorkflowState(5, "INITIAL", "Phase Initiale", "Validée par DT")),
+            Map.entry(RequestStatus.DT_REJECTED, new WorkflowState(3, "INITIAL", "Phase Initiale", "Rejetée par DT - correction requise")),
+            Map.entry(RequestStatus.PENDING_CD_ASSIGNMENT, new WorkflowState(6, "INITIAL", "Phase Initiale", "En attente d'assignation CD")),
+            Map.entry(RequestStatus.AWAITING_REGISTRATION_FEE, new WorkflowState(7, "INITIAL", "Phase Initiale", "En attente frais d'inscription")),
+            Map.entry(RequestStatus.PENDING_PAYMENT, new WorkflowState(7, "INITIAL", "Phase Initiale", "Paiement en cours")),
+            Map.entry(RequestStatus.PAYMENT_PROOF_SUBMITTED, new WorkflowState(8, "INITIAL", "Phase Initiale", "Preuve de paiement soumise")),
+            Map.entry(RequestStatus.PAYMENT_COMPLETED, new WorkflowState(8, "INITIAL", "Phase Initiale", "Paiement validé")),
+            Map.entry(RequestStatus.ASSIGNED_TO_RA, new WorkflowState(9, "INITIAL", "Phase Initiale", "Assignée au RA")),
 
             // Phase I - Recevabilité (10-20%)
             Map.entry(RequestStatus.RECEIVABILITY_STUDY, new WorkflowState(10, "RECEVABILITE", "Phase I - Recevabilité", "Étude de recevabilité")),

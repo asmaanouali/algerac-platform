@@ -30,13 +30,19 @@ interface AccreditationRequest {
   receivabilityCorrectionNeeded?: string;
   correctionDeadline?: string;
   receivabilityAttempts?: number;
+  dtReviewComments?: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; phase: string }> = {
   DRAFT: { label: "Brouillon", variant: "secondary", phase: "initial" },
   SUBMITTED: { label: "Soumise", variant: "default", phase: "initial" },
+  PENDING_DT_REVIEW: { label: "Vérification DT en cours", variant: "outline", phase: "initial" },
+  DT_APPROVED: { label: "Validée par DT", variant: "default", phase: "initial" },
+  DT_REJECTED: { label: "Rejetée par DT - Correction requise", variant: "destructive", phase: "initial" },
+  PENDING_CD_ASSIGNMENT: { label: "En attente d'assignation CD", variant: "outline", phase: "initial" },
+  AWAITING_REGISTRATION_FEE: { label: "En attente frais d'enregistrement", variant: "outline", phase: "initial" },
   PENDING_PAYMENT: { label: "En attente de paiement", variant: "outline", phase: "initial" },
-  PAYMENT_COMPLETED: { label: "Paiement effectue", variant: "default", phase: "initial" },
+  PAYMENT_COMPLETED: { label: "Paiement effectué", variant: "default", phase: "initial" },
   ASSIGNED_TO_RA: { label: "Assignee a un RA", variant: "default", phase: "study" },
   RECEIVABILITY_STUDY: { label: "Etude de recevabilite", variant: "default", phase: "study" },
   RESOURCE_CHECK: { label: "Verification des ressources", variant: "default", phase: "study" },
@@ -97,7 +103,8 @@ const getPhaseLabel = (status: string): string => {
 
 const getProgress = (status: string): number => {
   const progressMap: Record<string, number> = {
-    DRAFT: 0, SUBMITTED: 5, PENDING_PAYMENT: 8, PAYMENT_COMPLETED: 10,
+    DRAFT: 0, SUBMITTED: 5, PENDING_DT_REVIEW: 3, DT_APPROVED: 5, DT_REJECTED: 3, PENDING_CD_ASSIGNMENT: 6,
+    AWAITING_REGISTRATION_FEE: 8, PENDING_PAYMENT: 8, PAYMENT_COMPLETED: 10,
     ASSIGNED_TO_RA: 15, RECEIVABILITY_STUDY: 20, RESOURCE_CHECK: 25,
     FOREIGN_EXPERT_PROPOSED: 25, PRELIMINARY_VISIT_PROPOSED: 28,
     PRELIMINARY_VISIT_ACCEPTED: 30, PRELIMINARY_VISIT_SCHEDULED: 32,
@@ -158,14 +165,22 @@ export default function MyRequestsPage() {
     } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
   };
 
+  const handleResubmitAfterDT = async (requestId: number) => {
+    try {
+      await apiRequest("POST", `/api/requests/${requestId}/resubmit-after-dt`);
+      toast({ title: "Demande resoumise", description: "Votre demande a été renvoyée à la Direction Technique pour vérification." });
+      loadRequests();
+    } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
+  };
+
   // Filter requests by action needed
   const actionNeeded = requests.filter((r) => [
-    "PENDING_PAYMENT", "NOT_RECEIVABLE", "PRELIMINARY_VISIT_PROPOSED",
+    "DT_REJECTED", "PENDING_PAYMENT", "NOT_RECEIVABLE", "PRELIMINARY_VISIT_PROPOSED",
     "FOREIGN_EXPERT_PROPOSED", "QUOTATION_SENT_TO_OEC", "TEAM_SENT_TO_OEC",
     "AWAITING_OEC_DOC_RESPONSE", "PROCESS_SUSPENDED_OBSTACLES",
     "AWAITING_ACTION_PLANS", "OBSTACLES_IDENTIFIED",
   ].includes(r.status));
-  const inProgress = requests.filter((r) => !["DRAFT","CLOSED","WITHDRAWN","SUSPENDED","CAS_DECISION_GRANT","CAS_DECISION_REFUSAL","CERTIFICATE_ISSUED","ACTIVE","NOT_RECEIVABLE","PENDING_PAYMENT","PRELIMINARY_VISIT_PROPOSED","FOREIGN_EXPERT_PROPOSED","QUOTATION_SENT_TO_OEC","TEAM_SENT_TO_OEC","AWAITING_OEC_DOC_RESPONSE","PROCESS_SUSPENDED_OBSTACLES","AWAITING_ACTION_PLANS","OBSTACLES_IDENTIFIED"].includes(r.status));
+  const inProgress = requests.filter((r) => !["DRAFT","CLOSED","WITHDRAWN","SUSPENDED","CAS_DECISION_GRANT","CAS_DECISION_REFUSAL","CERTIFICATE_ISSUED","ACTIVE","DT_REJECTED","NOT_RECEIVABLE","PENDING_PAYMENT","PRELIMINARY_VISIT_PROPOSED","FOREIGN_EXPERT_PROPOSED","QUOTATION_SENT_TO_OEC","TEAM_SENT_TO_OEC","AWAITING_OEC_DOC_RESPONSE","PROCESS_SUSPENDED_OBSTACLES","AWAITING_ACTION_PLANS","OBSTACLES_IDENTIFIED"].includes(r.status));
   const completed = requests.filter((r) => ["CAS_DECISION_GRANT","CERTIFICATE_ISSUED","ACTIVE","CAS_DECISION_REFUSAL","CLOSED","WITHDRAWN","SUSPENDED"].includes(r.status));
 
   const renderActions = (request: AccreditationRequest) => {
@@ -178,6 +193,9 @@ export default function MyRequestsPage() {
     switch (request.status) {
       case "PENDING_PAYMENT":
         actions.push(<Button key="pay" size="sm" onClick={() => setLocation(`/oec/paiement/${request.id}`)}>Effectuer le paiement</Button>);
+        break;
+      case "DT_REJECTED":
+        actions.push(<Button key="resubmit-dt" size="sm" variant="destructive" onClick={() => handleResubmitAfterDT(request.id)}>Corriger et resoumettre</Button>);
         break;
       case "NOT_RECEIVABLE":
         actions.push(<Button key="correct" size="sm" variant="destructive" onClick={() => setLocation(`/oec/demandes/${request.id}/corriger`)}>Corriger et resoumettre</Button>);
@@ -242,6 +260,9 @@ export default function MyRequestsPage() {
             {request.assignedToRaName && <div><p className="text-muted-foreground">RA assigne</p><p className="font-medium">{request.assignedToRaName}</p></div>}
           </div>
           {/* Status-specific alerts */}
+          {request.status === "DT_REJECTED" && (
+            <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Documents rejetés par la Direction Technique.</strong>{request.dtReviewComments && <span className="block mt-1">{request.dtReviewComments}</span>}<span className="block mt-1">Veuillez corriger les documents et resoumettre votre demande.</span></AlertDescription></Alert>
+          )}
           {request.status === "NOT_RECEIVABLE" && (
             <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Demande non recevable.</strong>{request.receivabilityComments && <span className="block mt-1">{request.receivabilityComments}</span>}{request.correctionDeadline && <span className="block mt-1">Date limite : {new Date(request.correctionDeadline).toLocaleDateString("fr-FR")}</span>}</AlertDescription></Alert>
           )}

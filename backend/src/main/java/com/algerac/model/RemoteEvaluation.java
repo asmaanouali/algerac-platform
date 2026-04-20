@@ -27,7 +27,9 @@ public class RemoteEvaluation {
     @Column(nullable = false, unique = true)
     private String evaluationCode;
 
-    // Justification de l'évaluation à distance
+    // ═══════════════════════════════════════════════════════════
+    // §5.2 — Justification
+    // ═══════════════════════════════════════════════════════════
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RemoteEvalJustification justification;
@@ -35,37 +37,87 @@ public class RemoteEvaluation {
     @Column(columnDefinition = "TEXT")
     private String justificationDetails;
 
-    // Configuration technique
+    // ═══════════════════════════════════════════════════════════
+    // §5.3 — Analyse des risques (FOR 77-1)
+    // ═══════════════════════════════════════════════════════════
+    @ManyToOne
+    @JoinColumn(name = "risk_analyzed_by_id")
+    private User riskAnalyzedBy;
+
+    private LocalDateTime riskAnalysisDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String riskAnalysisComments;
+
+    // 11 critères d'analyse des risques (§5.3)
+    private Integer monthsSinceLastOnsiteAssessment;
+    private Boolean ictEquipmentAvailable;             // Disponibilité TIC
+    @Column(columnDefinition = "TEXT")
+    private String ictEquipmentDetails;
+    private Boolean requirementsNatureSuitable;        // Nature des exigences compatible
+    private Boolean findingsNatureFollowable;          // Nature des constatations évaluable
+    @Column(columnDefinition = "TEXT")
+    private String findingsDetails;
+    private Boolean complaintsToInvestigate;           // Réclamations à enquêter
+    @Column(columnDefinition = "TEXT")
+    private String complaintsDetails;
+    private Boolean safetyConstraintsAcceptable;       // Sûreté/sécurité OEC OK
+    private Boolean cabResourcesStable;                // Stabilité ressources OEC
+    private Boolean digitizationLevelAdequate;         // Numérisation suffisante
+    private Boolean cabPerformanceSatisfactory;        // Performance/transparence OEC
+    private Boolean teamSizeAdequate;                  // Taille équipe & durée adéquates
+    private Boolean assessorRemoteExperience;          // Expérience évaluateurs distance
+
+    @Enumerated(EnumType.STRING)
+    private RiskAnalysisResult riskAnalysisResult;     // ACCEPTABLE / NOT_ACCEPTABLE
+
+    // ═══════════════════════════════════════════════════════════
+    // §5.3 — Configuration technique
+    // ═══════════════════════════════════════════════════════════
     @Column(nullable = false)
-    private String technologyPlatform;       // Plateforme utilisée (Zoom, Teams, etc.)
+    private String technologyPlatform;
 
-    private Boolean videoCapabilityVerified;  // Capacité vidéo vérifiée ?
-    private Boolean audioCapabilityVerified;  // Capacité audio vérifiée ?
-    private Boolean documentSharingVerified;  // Partage de documents vérifié ?
-    private Boolean connectionStabilityTest; // Test de stabilité de connexion effectué ?
+    private Boolean videoCapabilityVerified;
+    private Boolean audioCapabilityVerified;
+    private Boolean documentSharingVerified;
+    private Boolean connectionStabilityTest;
 
     @Column(columnDefinition = "TEXT")
-    private String technicalPrerequisites;    // Prérequis techniques détaillés
+    private String technicalPrerequisites;
 
-    // Portée de l'évaluation à distance
+    // ═══════════════════════════════════════════════════════════
+    // §5.3 — Portée
+    // ═══════════════════════════════════════════════════════════
     @Column(columnDefinition = "TEXT")
-    private String remoteScope;              // Ce qui peut être évalué à distance
+    private String remoteScope;
     @Column(columnDefinition = "TEXT")
-    private String onsiteScope;              // Ce qui nécessite une évaluation sur site
+    private String onsiteScope;
+    private Boolean partialRemote;
 
-    private Boolean partialRemote;           // Évaluation partiellement à distance ?
-
-    // Planning
+    // ═══════════════════════════════════════════════════════════
+    // §5.4 — Planification
+    // ═══════════════════════════════════════════════════════════
     private LocalDateTime scheduledStartDate;
     private LocalDateTime scheduledEndDate;
     private Integer estimatedDurationHours;
+    private Integer evaluationPhases;                  // 1 ou 2 (§5.6 : 2 x ½ journée)
 
-    // Équipe d'évaluation
     @ManyToOne
     @JoinColumn(name = "team_id")
     private EvaluationTeam team;
 
-    // Résultats
+    // ═══════════════════════════════════════════════════════════
+    // §5.3 — Confidentialité (FOR 01-1)
+    // ═══════════════════════════════════════════════════════════
+    private Boolean confidentialityConfirmed;
+    private LocalDateTime confidentialityConfirmationDate;
+
+    // ═══════════════════════════════════════════════════════════
+    // §5.6 — Déroulement de l'évaluation
+    // ═══════════════════════════════════════════════════════════
+    private LocalDateTime openingMeetingDate;
+    private LocalDateTime closingMeetingDate;
+
     @Column(columnDefinition = "TEXT")
     private String evaluationFindings;
 
@@ -73,16 +125,41 @@ public class RemoteEvaluation {
     @Column(columnDefinition = "TEXT")
     private String technicalDifficultiesDetails;
 
+    // §5.6-C — Fiches d'écarts (24h max après clôture)
+    private LocalDateTime deviationSheetsSentDate;
+    private LocalDateTime deviationSheetsDeadline;
+    // Documents validés par l'OEC (24h max après réception)
+    private LocalDateTime oecDocumentsReceivedDate;
+    private LocalDateTime oecDocumentsDeadline;
+
+    // §5.6-D — Traçabilité documentaire
+    @Column(columnDefinition = "TEXT")
+    private String ictUsageDescription;
+    @Column(columnDefinition = "TEXT")
+    private String ictEffectivenessAssessment;
+
+    // §5.6 — Suivi sur site
     private Boolean onsiteFollowUpNeeded;
     @Column(columnDefinition = "TEXT")
     private String onsiteFollowUpReason;
 
-    // Statut
+    // ═══════════════════════════════════════════════════════════
+    // §5.7 — Non réalisable : revue documentaire + conférence
+    // ═══════════════════════════════════════════════════════════
+    private Boolean remoteNotFeasible;
+    @Column(columnDefinition = "TEXT")
+    private String notFeasibleReason;
+    private Boolean deskReviewConducted;
+    private Boolean conferenceCallConducted;
+    private LocalDateTime onsitePlannedDate;
+
+    // ═══════════════════════════════════════════════════════════
+    // Statut & Approbations
+    // ═══════════════════════════════════════════════════════════
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RemoteEvalStatus status;
 
-    // Approbations
     @ManyToOne
     @JoinColumn(name = "approved_by_cd_id")
     private User approvedByCd;
@@ -100,7 +177,7 @@ public class RemoteEvaluation {
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
-        if (status == null) status = RemoteEvalStatus.PROPOSED;
+        if (status == null) status = RemoteEvalStatus.RISK_ANALYSIS_PENDING;
     }
 
     @PreUpdate

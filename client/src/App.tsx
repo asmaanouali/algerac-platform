@@ -86,6 +86,8 @@ import AccreditationDecisionPage from "@/pages/ra/AccreditationDecisionPage";
 
 // Phase IV - Surveillance périodique
 import SurveillanceManagementPage from "@/pages/ra/SurveillanceManagementPage";
+import OECSurveillancePage from "@/pages/oec/SurveillancePage";
+import CDSurveillancePage from "@/pages/cd/SurveillancePage";
 import ExpertDirectoryPage from "@/pages/ra/ExpertDirectoryPage";
 import NotificationsPage from "@/pages/notifications-page";
 
@@ -168,6 +170,7 @@ function Router() {
       <Route path="/oec/documents" component={OECDocumentsPage} />
       <Route path="/oec/certificates" component={OECCertificatesPage} />
       <Route path="/oec/transfert" component={OECTransferRequestPage} />
+      <Route path="/oec/surveillance" component={OECSurveillancePage} />
       <Route path="/oec/profile" component={OECProfilePage} />
       
       {/* RA Routes */}
@@ -206,6 +209,7 @@ function Router() {
       <Route path="/cd/multi-sites" component={MultiSitePage} />
       <Route path="/cd/evaluation-distance" component={RemoteEvaluationPage} />
       <Route path="/cd/transferts" component={AccreditationTransferPage} />
+      <Route path="/cd/surveillance" component={CDSurveillancePage} />
       <Route path="/cd/entretiens-candidats" component={InterviewPanelPage} />
       
       {/* DAG Routes */}

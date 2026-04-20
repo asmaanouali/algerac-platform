@@ -97,9 +97,22 @@ public class SurveillanceEvaluation {
     private String casRecommendation; // Recommandation pour le CAS
 
     // Documents requis FOR 68
-    private Boolean documentsRequestSent; // FOR 68 envoyé (1 mois avant)
+    private Boolean documentsRequestSent; // FOR 68 envoyé (2 mois avant per PRO 25)
     private Boolean documentsReceivedFromOEC;
     private LocalDateTime documentsReceivedDate;
+
+    // Type d'évaluation (PRO 25 §5.2): SURVEILLANCE, EXTENSION, RENOUVELLEMENT, EXTRAORDINAIRE
+    @Column(length = 30)
+    private String evaluationType;
+
+    // Extension (§5.2.2)
+    @Column(length = 50)
+    private String extensionType; // SAME_TYPE, OTHER_TYPE, OTHER_SITE
+    private Integer findingDeadlineMonths; // 6 mois pour extension, 3 pour surveillance
+
+    // Surveillance extraordinaire (§5.2.1)
+    @Column(columnDefinition = "TEXT")
+    private String extraordinaryReason; // COMPLAINT, REORGANIZATION, TRANSFER
 
     private LocalDateTime createdAt;
 

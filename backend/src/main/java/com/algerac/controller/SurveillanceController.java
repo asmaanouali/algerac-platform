@@ -344,6 +344,142 @@ public class SurveillanceController {
         return ResponseEntity.ok(ApiResponse.success("Surveillances", evals));
     }
 
+    // ========== EXTENSION D'ACCRÉDITATION (PRO 25 §5.2.2) ==========
+
+    @PostMapping("/extension")
+    public ResponseEntity<?> programmeExtension(@RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            SurveillanceEvaluation result = surveillanceService.programmeExtension(
+                ((Number) body.get("certificateId")).longValue(),
+                ((Number) body.get("requestId")).longValue(),
+                body.get("plannedDate") != null ? LocalDateTime.parse((String) body.get("plannedDate")) : null,
+                (String) body.get("extensionScope"),
+                (String) body.get("extensionType"),
+                user
+            );
+            return ResponseEntity.ok(ApiResponse.success("Extension programmée", result));
+        } catch (Exception e) {
+            log.error("Erreur programmation extension: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== RENOUVELLEMENT D'ACCRÉDITATION (PRO 25 §5.2.3) ==========
+
+    @PostMapping("/renewal")
+    public ResponseEntity<?> programmeRenewal(@RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            SurveillanceEvaluation result = surveillanceService.programmeRenewal(
+                ((Number) body.get("certificateId")).longValue(),
+                ((Number) body.get("requestId")).longValue(),
+                body.get("plannedDate") != null ? LocalDateTime.parse((String) body.get("plannedDate")) : null,
+                user
+            );
+            return ResponseEntity.ok(ApiResponse.success("Renouvellement programmé", result));
+        } catch (Exception e) {
+            log.error("Erreur programmation renouvellement: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/renewal-dates/{certificateId}")
+    public ResponseEntity<?> calculateRenewalDates(@PathVariable Long certificateId,
+            @RequestParam(required = false) String decisionDate) {
+        try {
+            LocalDateTime date = decisionDate != null ? LocalDateTime.parse(decisionDate) : LocalDateTime.now();
+            Map<String, Object> result = surveillanceService.calculateRenewalDates(certificateId, date);
+            return ResponseEntity.ok(ApiResponse.success("Dates de renouvellement (Annexe 2)", result));
+        } catch (Exception e) {
+            log.error("Erreur calcul dates renouvellement: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{survEvalId}/renewal-decision")
+    public ResponseEntity<?> applyRenewalDecision(@PathVariable Long survEvalId,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            AccreditationCertificate result = surveillanceService.applyRenewalDecision(
+                survEvalId,
+                CASDecisionType.valueOf((String) body.get("decisionType")),
+                (String) body.get("justification"),
+                user
+            );
+            return ResponseEntity.ok(ApiResponse.success("Décision de renouvellement appliquée", result));
+        } catch (Exception e) {
+            log.error("Erreur décision renouvellement: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== SURVEILLANCE EXTRAORDINAIRE (PRO 25 §5.2.1) ==========
+
+    @PostMapping("/extraordinary")
+    public ResponseEntity<?> programmeExtraordinarySurveillance(@RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            SurveillanceEvaluation result = surveillanceService.programmeExtraordinarySurveillance(
+                ((Number) body.get("certificateId")).longValue(),
+                ((Number) body.get("requestId")).longValue(),
+                (String) body.get("reason"),
+                (String) body.get("triggerType"),
+                user
+            );
+            return ResponseEntity.ok(ApiResponse.success("Surveillance extraordinaire programmée", result));
+        } catch (Exception e) {
+            log.error("Erreur surveillance extraordinaire: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== CYCLE & DÉLAIS (PRO 25 §5.1 + Annexe 2) ==========
+
+    @GetMapping("/cycle/{certificateId}")
+    public ResponseEntity<?> getAccreditationCycleInfo(@PathVariable Long certificateId) {
+        try {
+            Map<String, Object> info = surveillanceService.getAccreditationCycleInfo(certificateId);
+            return ResponseEntity.ok(ApiResponse.success("Cycle d'accréditation", info));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/check-deadlines")
+    public ResponseEntity<?> checkSurveillanceDeadlines() {
+        List<Map<String, Object>> violations = surveillanceService.checkSurveillanceDeadlines();
+        return ResponseEntity.ok(ApiResponse.success("Vérification des délais", violations));
+    }
+
+    @GetMapping("/check-finding-deadlines")
+    public ResponseEntity<?> checkFindingDeadlines() {
+        List<Map<String, Object>> overdue = surveillanceService.checkFindingDeadlines();
+        return ResponseEntity.ok(ApiResponse.success("Vérification des délais d'écarts", overdue));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllEvaluations() {
+        List<SurveillanceEvaluation> all = surveillanceService.getAllSurveillanceEvaluations();
+        return ResponseEntity.ok(ApiResponse.success("Toutes les évaluations", all));
+    }
+
+    @GetMapping("/in-progress")
+    public ResponseEntity<?> getInProgressEvaluations() {
+        List<SurveillanceEvaluation> inProgress = surveillanceService.getInProgressEvaluations();
+        return ResponseEntity.ok(ApiResponse.success("Évaluations en cours", inProgress));
+    }
+
+    @GetMapping("/completed")
+    public ResponseEntity<?> getCompletedEvaluations() {
+        List<SurveillanceEvaluation> completed = surveillanceService.getCompletedEvaluations();
+        return ResponseEntity.ok(ApiResponse.success("Évaluations terminées", completed));
+    }
+
     // ========== HELPERS ==========
 
     private User getSessionUser(HttpSession session) {

@@ -7,14 +7,32 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.security.SecureRandom;
 
 /**
- * Service gérant la Phase IV : Surveillance Périodique
+ * Service gérant la Phase IV : Surveillance Périodique (PRO 25)
  * Couvre les étapes 13, 14 et 15 du processus d'accréditation PRO 12
+ *
+ * Cycle d'accréditation (§5.1):
+ *   - 1er cycle: 3 ans, 2 surveillances annuelles
+ *   - 2ème cycle+: 4 ans, 3 surveillances annuelles
+ *
+ * Délais max surveillance:
+ *   - S1: 14 mois après octroi
+ *   - S2: 24 mois (1er cycle) / 26 mois (2ème+)
+ *   - S3 (2ème+ uniquement): 36 mois
+ *
+ * Écarts (§5.2.1.1):
+ *   - Non critique: 3 mois max
+ *   - Critique: 2,5 mois max
+ *
+ * Extension (§5.2.2): traitée comme initiale, écarts 6 mois
+ * Renouvellement (§5.2.3): annexe 2 - 3 cas de gestion des délais
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +50,20 @@ public class SurveillanceService {
     private final CASMeetingRepository casMeetingRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+
+    // PRO 25 §5.2.1.1 - Délais de traitement des écarts
+    private static final int NON_CRITICAL_FINDING_DEADLINE_MONTHS = 3;
+    private static final double CRITICAL_FINDING_DEADLINE_MONTHS = 2.5;
+    private static final int EXTENSION_FINDING_DEADLINE_MONTHS = 6;
+
+    // PRO 25 §5.1 - Délais max de surveillance
+    private static final int FIRST_SURVEILLANCE_MAX_MONTHS = 14;
+    private static final int SECOND_SURVEILLANCE_CYCLE1_MAX_MONTHS = 24;
+    private static final int SECOND_SURVEILLANCE_CYCLE2_MAX_MONTHS = 26;
+    private static final int THIRD_SURVEILLANCE_MAX_MONTHS = 36;
+
+    // PRO 25 Annex 2 - Prolongation max pour renouvellement
+    private static final int RENEWAL_EXTENSION_MAX_MONTHS = 3;
 
     // ========== ÉTAPE 13 : PROGRAMMATION SURVEILLANCE ==========
 
@@ -564,11 +596,441 @@ public class SurveillanceService {
         return request;
     }
 
+    // ========== ÉVALUATION D'EXTENSION (§5.2.2) ==========
+
     /**
-     * Obtenir toutes les évaluations de surveillance pour un certificat
+     * Programmer une évaluation d'extension (§5.2.2)
+     * L'extension est traitée comme une évaluation initiale (PRO 12)
+     * Durée min: 1 jour. Délai écarts: 6 mois.
+     */
+    @Transactional
+    public SurveillanceEvaluation programmeExtension(Long certificateId, Long requestId,
+            LocalDateTime plannedDate, String extensionScope, String extensionType, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls RA/CD peuvent programmer une extension");
+        }
+
+        AccreditationCertificate certificate = certificateRepository.findById(certificateId)
+            .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
+        AccreditationRequest request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        String evalCode = "EXT-" + Year.now().getValue() + "-" +
+            String.format("%04d", new SecureRandom().nextInt(9999));
+
+        SurveillanceEvaluation survEval = SurveillanceEvaluation.builder()
+            .certificate(certificate)
+            .request(request)
+            .evaluationCode(evalCode)
+            .evaluationDate(plannedDate)
+            .focusScope(extensionScope)
+            .evaluationType("EXTENSION")
+            .extensionType(extensionType)
+            .findingDeadlineMonths(EXTENSION_FINDING_DEADLINE_MONTHS)
+            .status(SurveillanceEvaluationStatus.PLANNED)
+            .build();
+
+        survEval = survEvalRepository.save(survEval);
+
+        request.setStatus(RequestStatus.EXTENSION_REQUESTED);
+        request.setCurrentPhase("Phase IV : Extension d'accréditation");
+        request.setCurrentStep("Évaluation d'extension programmée");
+        request.setNextAction("Procéder comme évaluation initiale (PRO 12)");
+        request.setPendingWith("RA");
+        requestRepository.save(request);
+
+        log.info("Extension {} programmée - type: {}, portée: {}", evalCode, extensionType, extensionScope);
+        return survEval;
+    }
+
+    // ========== ÉVALUATION DE RENOUVELLEMENT (§5.2.3) ==========
+
+    /**
+     * Programmer une évaluation de renouvellement (§5.2.3)
+     * Identique à l'évaluation initiale (PRO 12)
+     * Gestion des délais selon Annexe 2
+     */
+    @Transactional
+    public SurveillanceEvaluation programmeRenewal(Long certificateId, Long requestId,
+            LocalDateTime plannedDate, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA && currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seuls RA/CD peuvent programmer un renouvellement");
+        }
+
+        AccreditationCertificate certificate = certificateRepository.findById(certificateId)
+            .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
+        AccreditationRequest request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        String evalCode = "REN-" + Year.now().getValue() + "-" +
+            String.format("%04d", new SecureRandom().nextInt(9999));
+
+        SurveillanceEvaluation survEval = SurveillanceEvaluation.builder()
+            .certificate(certificate)
+            .request(request)
+            .evaluationCode(evalCode)
+            .evaluationDate(plannedDate)
+            .evaluationType("RENOUVELLEMENT")
+            .status(SurveillanceEvaluationStatus.PLANNED)
+            .build();
+
+        survEval = survEvalRepository.save(survEval);
+
+        request.setStatus(RequestStatus.RENEWAL_INITIATED);
+        request.setCurrentPhase("Phase IV : Renouvellement d'accréditation");
+        request.setCurrentStep("Évaluation de renouvellement programmée");
+        request.setNextAction("Procéder comme évaluation initiale (PRO 12)");
+        request.setPendingWith("RA");
+        requestRepository.save(request);
+
+        log.info("Renouvellement {} programmé pour certificat {}", evalCode, certificate.getCertificateNumber());
+        return survEval;
+    }
+
+    /**
+     * Calculer les dates de renouvellement selon Annexe 2 (§5.2.3)
+     *
+     * Cas 1 (A < T < B): date effet = T, expiration = T + 4 ans
+     * Cas 1 (T = B): date effet = B, expiration = B + 4 ans
+     * Cas 2 (B < T ≤ D): prolongation 3 mois, date effet = C, expiration = B + 4 ans
+     * Cas 2 (T = D): date effet = D, expiration = D + 3 ans
+     * Cas 3 (T > D): bascule en initiale, nouveau numéro, date effet = E, expiration = E + 3 ans
+     */
+    public Map<String, Object> calculateRenewalDates(Long certificateId, LocalDateTime decisionDate) {
+        AccreditationCertificate certificate = certificateRepository.findById(certificateId)
+            .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
+
+        LocalDateTime expiryDate = certificate.getExpiryDate(); // B
+        LocalDateTime extensionLimit = expiryDate.plusMonths(RENEWAL_EXTENSION_MAX_MONTHS); // D = B + 3 mois
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("certificateId", certificateId);
+        result.put("expiryDate", expiryDate);
+        result.put("extensionLimit", extensionLimit);
+        result.put("decisionDate", decisionDate);
+
+        if (decisionDate.isBefore(expiryDate) || decisionDate.isEqual(expiryDate)) {
+            // Cas 1: terminé avant ou à l'expiration
+            result.put("case", "CASE_1");
+            result.put("effectiveDate", decisionDate);
+            result.put("newExpiryDate", expiryDate.plusYears(4));
+            result.put("sameAccreditationNumber", true);
+            result.put("cycleDuration", 4);
+        } else if (decisionDate.isBefore(extensionLimit) || decisionDate.isEqual(extensionLimit)) {
+            // Cas 2: prolongation accordée (max 3 mois après B)
+            if (decisionDate.isEqual(extensionLimit)) {
+                result.put("case", "CASE_2_LIMIT");
+                result.put("effectiveDate", extensionLimit);
+                result.put("newExpiryDate", extensionLimit.plusYears(3));
+                result.put("sameAccreditationNumber", true);
+                result.put("cycleDuration", 3);
+            } else {
+                result.put("case", "CASE_2");
+                result.put("effectiveDate", decisionDate);
+                result.put("newExpiryDate", expiryDate.plusYears(4));
+                result.put("sameAccreditationNumber", true);
+                result.put("cycleDuration", 4);
+            }
+            result.put("extensionGranted", true);
+        } else {
+            // Cas 3: au-delà de D → bascule en initiale
+            result.put("case", "CASE_3");
+            result.put("effectiveDate", decisionDate);
+            result.put("newExpiryDate", decisionDate.plusYears(3));
+            result.put("sameAccreditationNumber", false);
+            result.put("newAccreditationRequired", true);
+            result.put("cycleDuration", 3);
+        }
+
+        return result;
+    }
+
+    /**
+     * Appliquer la décision de renouvellement avec gestion des délais (Annexe 2)
+     */
+    @Transactional
+    public AccreditationCertificate applyRenewalDecision(Long survEvalId,
+            CASDecisionType decisionType, String justification, User currentUser) {
+        SurveillanceEvaluation survEval = getSurvEvalOrThrow(survEvalId);
+        AccreditationRequest request = survEval.getRequest();
+        AccreditationCertificate certificate = survEval.getCertificate();
+
+        Map<String, Object> renewalDates = calculateRenewalDates(certificate.getId(), LocalDateTime.now());
+        String renewalCase = (String) renewalDates.get("case");
+        boolean sameNumber = (boolean) renewalDates.get("sameAccreditationNumber");
+
+        if (decisionType == CASDecisionType.GRANT || decisionType == CASDecisionType.MAINTAIN) {
+            LocalDateTime effectiveDate = (LocalDateTime) renewalDates.get("effectiveDate");
+            LocalDateTime newExpiry = (LocalDateTime) renewalDates.get("newExpiryDate");
+
+            if (sameNumber) {
+                // Mettre à jour le certificat existant
+                certificate.setEffectiveDate(effectiveDate);
+                certificate.setExpiryDate(newExpiry);
+                certificateRepository.save(certificate);
+            } else {
+                // Cas 3: nouveau numéro d'accréditation, même numéro d'enregistrement
+                certificate.setPublished(false);
+                certificateRepository.save(certificate);
+
+                // Le nouveau certificat sera créé via le processus initial normal
+                request.setStatus(RequestStatus.INITIAL_EVALUATION);
+                request.setCurrentStep("Renouvellement hors délai - Basculé en accréditation initiale");
+                request.setNextAction("Traiter comme nouvelle accréditation avec nouveau numéro");
+                requestRepository.save(request);
+                log.warn("Renouvellement {} hors délai (cas {}), basculé en initiale", survEval.getEvaluationCode(), renewalCase);
+                return certificate;
+            }
+
+            survEval.setStatus(SurveillanceEvaluationStatus.COMPLETED);
+            survEvalRepository.save(survEval);
+
+            request.setStatus(RequestStatus.RENEWAL_COMPLETED);
+            request.setCurrentStep("Renouvellement accordé (cas " + renewalCase + ")");
+            request.setNextAction("Envoyer notification, certificat et plan de surveillance à l'OEC");
+            request.setPendingWith("RA");
+            requestRepository.save(request);
+
+            // Créer plan de surveillance pour le nouveau cycle
+            createSurveillancePlanForCycle(certificate, 2); // 2ème cycle
+
+            notificationService.createNotification(
+                request.getOec().getId(),
+                "Renouvellement d'accréditation accordé",
+                String.format("Votre accréditation %s est renouvelée. Nouveau cycle: %s → %s",
+                    certificate.getCertificateNumber(), effectiveDate.toLocalDate(), newExpiry.toLocalDate()),
+                "success"
+            );
+
+            log.info("Renouvellement {} accordé (cas {}) - certificat {} renouvelé",
+                survEval.getEvaluationCode(), renewalCase, certificate.getCertificateNumber());
+        }
+
+        return certificate;
+    }
+
+    // ========== SURVEILLANCE EXTRAORDINAIRE (§5.2.1) ==========
+
+    /**
+     * Initier une surveillance extraordinaire (§5.2.1 dernier paragraphe)
+     * Motifs: réclamations tiers, réorganisation importante, transfert d'accréditation
+     */
+    @Transactional
+    public SurveillanceEvaluation programmeExtraordinarySurveillance(Long certificateId,
+            Long requestId, String reason, String triggerType, User currentUser) {
+        if (currentUser.getRole() != UserRole.CD) {
+            throw new RuntimeException("Seul le CD peut initier une surveillance extraordinaire");
+        }
+
+        AccreditationCertificate certificate = certificateRepository.findById(certificateId)
+            .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
+        AccreditationRequest request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        String evalCode = "SURV-EXTRA-" + Year.now().getValue() + "-" +
+            String.format("%04d", new SecureRandom().nextInt(9999));
+
+        SurveillanceEvaluation survEval = SurveillanceEvaluation.builder()
+            .certificate(certificate)
+            .request(request)
+            .evaluationCode(evalCode)
+            .evaluationType("EXTRAORDINAIRE")
+            .focusScope(reason)
+            .extraordinaryReason(triggerType)
+            .status(SurveillanceEvaluationStatus.PLANNED)
+            .build();
+
+        survEval = survEvalRepository.save(survEval);
+
+        request.setCurrentStep("Surveillance extraordinaire déclenchée");
+        request.setNextAction("CD justifie et programme l'évaluation extraordinaire");
+        request.setPendingWith("CD");
+        requestRepository.save(request);
+
+        notifyRoleUsers(UserRole.RA, "Surveillance extraordinaire initiée",
+            String.format("Le CD a initié une surveillance extraordinaire pour %s. Motif: %s (%s)",
+                request.getReferenceNumber(), reason, triggerType), "warning");
+
+        log.info("Surveillance extraordinaire {} initiée - motif: {} ({})", evalCode, reason, triggerType);
+        return survEval;
+    }
+
+    // ========== VÉRIFICATION DES DÉLAIS (§5.1 + §5.2.1.1) ==========
+
+    /**
+     * Vérifier les délais de surveillance et déclencher suspension si nécessaire (§5.1)
+     */
+    @Transactional
+    public List<Map<String, Object>> checkSurveillanceDeadlines() {
+        List<Map<String, Object>> violations = new ArrayList<>();
+
+        List<SurveillanceEvaluation> planned = survEvalRepository.findByStatus(SurveillanceEvaluationStatus.PLANNED);
+        for (SurveillanceEvaluation eval : planned) {
+            if (eval.getEvaluationDate() == null || eval.getCertificate() == null) continue;
+
+            AccreditationCertificate cert = eval.getCertificate();
+            LocalDateTime grantDate = cert.getEffectiveDate();
+            if (grantDate == null) continue;
+
+            long monthsSinceGrant = ChronoUnit.MONTHS.between(grantDate, eval.getEvaluationDate());
+            int cycleNumber = determineCycleNumber(cert);
+            int surveillanceNumber = determineSurveillanceNumber(eval);
+
+            int maxMonths = getMaxMonthsForSurveillance(cycleNumber, surveillanceNumber);
+
+            if (monthsSinceGrant > maxMonths) {
+                Map<String, Object> violation = new HashMap<>();
+                violation.put("evaluationId", eval.getId());
+                violation.put("evaluationCode", eval.getEvaluationCode());
+                violation.put("certificateNumber", cert.getCertificateNumber());
+                violation.put("monthsSinceGrant", monthsSinceGrant);
+                violation.put("maxMonths", maxMonths);
+                violation.put("cycleNumber", cycleNumber);
+                violation.put("surveillanceNumber", surveillanceNumber);
+                violation.put("overdueDays", ChronoUnit.DAYS.between(
+                    grantDate.plusMonths(maxMonths), eval.getEvaluationDate()));
+                violations.add(violation);
+            }
+        }
+
+        return violations;
+    }
+
+    /**
+     * Vérifier les délais des écarts (§5.2.1.1)
+     * Non critique: 3 mois max
+     * Critique: 2,5 mois max
+     */
+    @Transactional
+    public List<Map<String, Object>> checkFindingDeadlines() {
+        List<Map<String, Object>> overdueFindings = new ArrayList<>();
+
+        List<SurveillanceEvaluation> withFindings = survEvalRepository.findByStatusIn(Arrays.asList(
+            SurveillanceEvaluationStatus.EVALUATION_COMPLETED,
+            SurveillanceEvaluationStatus.REPORT_DRAFTING,
+            SurveillanceEvaluationStatus.REPORT_VALIDATED
+        ));
+
+        for (SurveillanceEvaluation eval : withFindings) {
+            if (eval.getEvaluationDate() == null || !Boolean.TRUE.equals(eval.getHasNewGaps())) continue;
+
+            long daysSinceEval = ChronoUnit.DAYS.between(eval.getEvaluationDate(), LocalDateTime.now());
+            int deadlineMonths = eval.getFindingDeadlineMonths() != null
+                ? eval.getFindingDeadlineMonths()
+                : NON_CRITICAL_FINDING_DEADLINE_MONTHS;
+
+            long deadlineDays = (long)(deadlineMonths * 30.44); // Avg days per month
+
+            if (daysSinceEval > deadlineDays) {
+                Map<String, Object> overdue = new HashMap<>();
+                overdue.put("evaluationId", eval.getId());
+                overdue.put("evaluationCode", eval.getEvaluationCode());
+                overdue.put("daysSinceEvaluation", daysSinceEval);
+                overdue.put("deadlineDays", deadlineDays);
+                overdue.put("overdueDays", daysSinceEval - deadlineDays);
+                overdue.put("evaluationType", eval.getEvaluationType());
+                overdueFindings.add(overdue);
+            }
+        }
+
+        return overdueFindings;
+    }
+
+    // ========== CYCLE D'ACCRÉDITATION (§5.1) ==========
+
+    /**
+     * Créer un plan de surveillance pour un cycle d'accréditation (§5.1 + FOR 66)
+     */
+    @Transactional
+    public SurveillancePlan createSurveillancePlanForCycle(AccreditationCertificate certificate, int cycleNumber) {
+        String planCode = "FOR66-" + Year.now().getValue() + "-" +
+            String.format("%04d", new SecureRandom().nextInt(9999));
+
+        int surveillanceCount = (cycleNumber == 1) ? 2 : 3;
+        int cycleDurationYears = (cycleNumber == 1) ? 3 : 4;
+
+        LocalDateTime grantDate = certificate.getEffectiveDate();
+        StringBuilder calendar = new StringBuilder();
+        calendar.append("Cycle ").append(cycleNumber).append(" (").append(cycleDurationYears).append(" ans)\n");
+        for (int i = 1; i <= surveillanceCount; i++) {
+            LocalDateTime survDate = grantDate.plusMonths(12L * i);
+            calendar.append("  Surveillance S").append(i).append(": ").append(survDate.toLocalDate()).append("\n");
+        }
+        calendar.append("  Renouvellement: ").append(grantDate.plusYears(cycleDurationYears).toLocalDate());
+
+        SurveillancePlan plan = SurveillancePlan.builder()
+            .certificate(certificate)
+            .planCode(planCode)
+            .surveillanceCalendar(calendar.toString())
+            .frequency("ANNUELLE")
+            .cycleNumber(cycleNumber)
+            .cycleDurationYears(cycleDurationYears)
+            .surveillanceCount(surveillanceCount)
+            .nextSurveillanceDate(grantDate.plusMonths(12))
+            .estimatedDurationPerEvaluation(2)
+            .build();
+
+        plan = surveillancePlanRepository.save(plan);
+        log.info("Plan de surveillance {} créé pour cycle {} - certificat {}",
+            planCode, cycleNumber, certificate.getCertificateNumber());
+        return plan;
+    }
+
+    /**
+     * Obtenir les détails du cycle d'accréditation courant
+     */
+    public Map<String, Object> getAccreditationCycleInfo(Long certificateId) {
+        AccreditationCertificate certificate = certificateRepository.findById(certificateId)
+            .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
+
+        SurveillancePlan plan = surveillancePlanRepository.findByCertificate_Id(certificateId).orElse(null);
+        List<SurveillanceEvaluation> history = survEvalRepository.findByCertificate_Id(certificateId);
+
+        int cycleNumber = determineCycleNumber(certificate);
+        int cycleDuration = (cycleNumber == 1) ? 3 : 4;
+        int totalSurveillances = (cycleNumber == 1) ? 2 : 3;
+        long completedSurveillances = history.stream()
+            .filter(e -> e.getStatus() == SurveillanceEvaluationStatus.COMPLETED
+                && "SURVEILLANCE".equals(e.getEvaluationType()))
+            .count();
+
+        Map<String, Object> info = new HashMap<>();
+        info.put("certificateId", certificateId);
+        info.put("certificateNumber", certificate.getCertificateNumber());
+        info.put("cycleNumber", cycleNumber);
+        info.put("cycleDurationYears", cycleDuration);
+        info.put("effectiveDate", certificate.getEffectiveDate());
+        info.put("expiryDate", certificate.getExpiryDate());
+        info.put("totalSurveillancesRequired", totalSurveillances);
+        info.put("completedSurveillances", completedSurveillances);
+        info.put("remainingSurveillances", totalSurveillances - completedSurveillances);
+        info.put("surveillanceHistory", history);
+        info.put("plan", plan);
+
+        if (plan != null) {
+            info.put("nextSurveillanceDate", plan.getNextSurveillanceDate());
+        }
+
+        // Calculer la date de soumission du dossier de renouvellement (6 mois avant)
+        if (certificate.getExpiryDate() != null) {
+            info.put("renewalSubmissionDeadline", certificate.getExpiryDate().minusMonths(6));
+        }
+
+        return info;
+    }
+
+    /**
+     * Obtenir toutes les évaluations (surveillance, extension, renouvellement) d'un certificat
      */
     public List<SurveillanceEvaluation> getSurveillanceHistory(Long certificateId) {
         return survEvalRepository.findByCertificate_Id(certificateId);
+    }
+
+    /**
+     * Obtenir toutes les évaluations de surveillance (pas extensions ni renouvellements)
+     */
+    public List<SurveillanceEvaluation> getAllSurveillanceEvaluations() {
+        return survEvalRepository.findAll();
     }
 
     /**
@@ -577,8 +1039,20 @@ public class SurveillanceService {
     public List<SurveillanceEvaluation> getUpcomingSurveillances() {
         return survEvalRepository.findByStatusIn(Arrays.asList(
             SurveillanceEvaluationStatus.PLANNED,
+            SurveillanceEvaluationStatus.RISK_ANALYSIS_SENT,
             SurveillanceEvaluationStatus.RISK_ANALYSIS_COMPLETED,
-            SurveillanceEvaluationStatus.DOCUMENTS_REQUESTED
+            SurveillanceEvaluationStatus.RISK_ANALYZED,
+            SurveillanceEvaluationStatus.DOCUMENTS_REQUESTED,
+            SurveillanceEvaluationStatus.DOCUMENTS_RECEIVED,
+            SurveillanceEvaluationStatus.QUOTATION_SENT,
+            SurveillanceEvaluationStatus.QUOTATION_ACCEPTED,
+            SurveillanceEvaluationStatus.TEAM_DESIGNATED,
+            SurveillanceEvaluationStatus.TEAM_VALIDATED,
+            SurveillanceEvaluationStatus.PLAN_PREPARED,
+            SurveillanceEvaluationStatus.PLAN_VALIDATED,
+            SurveillanceEvaluationStatus.PLAN_SENT_TO_OEC,
+            SurveillanceEvaluationStatus.MISSION_ORDERS_APPROVED,
+            SurveillanceEvaluationStatus.MISSION_ORDERS_SENT
         ));
     }
 
@@ -590,20 +1064,71 @@ public class SurveillanceService {
             SurveillanceEvaluationStatus.PLANNED, LocalDateTime.now());
     }
 
+    /**
+     * Obtenir les évaluations en cours (toutes phases actives)
+     */
+    public List<SurveillanceEvaluation> getInProgressEvaluations() {
+        return survEvalRepository.findByStatusIn(Arrays.asList(
+            SurveillanceEvaluationStatus.IN_PROGRESS,
+            SurveillanceEvaluationStatus.EVALUATION_COMPLETED,
+            SurveillanceEvaluationStatus.REPORT_DRAFTING,
+            SurveillanceEvaluationStatus.REPORT_VALIDATION,
+            SurveillanceEvaluationStatus.REPORT_VALIDATED,
+            SurveillanceEvaluationStatus.CAS_PREPARATION,
+            SurveillanceEvaluationStatus.CAS_SUBMITTED
+        ));
+    }
+
+    /**
+     * Obtenir les évaluations terminées
+     */
+    public List<SurveillanceEvaluation> getCompletedEvaluations() {
+        return survEvalRepository.findByStatus(SurveillanceEvaluationStatus.COMPLETED);
+    }
+
     // ========== PRIVATE HELPERS ==========
+
+    private int determineCycleNumber(AccreditationCertificate certificate) {
+        List<SurveillanceEvaluation> renewals = survEvalRepository.findByCertificate_Id(certificate.getId())
+            .stream()
+            .filter(e -> "RENOUVELLEMENT".equals(e.getEvaluationType())
+                && e.getStatus() == SurveillanceEvaluationStatus.COMPLETED)
+            .toList();
+        return renewals.isEmpty() ? 1 : renewals.size() + 1;
+    }
+
+    private int determineSurveillanceNumber(SurveillanceEvaluation eval) {
+        List<SurveillanceEvaluation> allSurvs = survEvalRepository
+            .findByCertificate_Id(eval.getCertificate().getId())
+            .stream()
+            .filter(e -> !"EXTENSION".equals(e.getEvaluationType())
+                && !"RENOUVELLEMENT".equals(e.getEvaluationType())
+                && !"EXTRAORDINAIRE".equals(e.getEvaluationType()))
+            .sorted(Comparator.comparing(e -> e.getCreatedAt() != null ? e.getCreatedAt() : LocalDateTime.MIN))
+            .toList();
+
+        for (int i = 0; i < allSurvs.size(); i++) {
+            if (allSurvs.get(i).getId().equals(eval.getId())) return i + 1;
+        }
+        return 1;
+    }
+
+    private int getMaxMonthsForSurveillance(int cycleNumber, int surveillanceNumber) {
+        if (surveillanceNumber == 1) return FIRST_SURVEILLANCE_MAX_MONTHS;
+        if (surveillanceNumber == 2) {
+            return cycleNumber == 1 ? SECOND_SURVEILLANCE_CYCLE1_MAX_MONTHS : SECOND_SURVEILLANCE_CYCLE2_MAX_MONTHS;
+        }
+        if (surveillanceNumber == 3 && cycleNumber >= 2) return THIRD_SURVEILLANCE_MAX_MONTHS;
+        return 14; // default
+    }
 
     private void updateNextSurveillanceDate(SurveillanceEvaluation survEval) {
         SurveillancePlan plan = surveillancePlanRepository
             .findByCertificate_Id(survEval.getCertificate().getId())
             .orElse(null);
         if (plan != null) {
-            // Par défaut, prochaine surveillance dans 12 mois (annuelle)
+            // PRO 25 §5.1: surveillances annuelles espacées de 12 mois
             LocalDateTime nextDate = LocalDateTime.now().plusMonths(12);
-            if ("SEMESTRIELLE".equals(plan.getFrequency())) {
-                nextDate = LocalDateTime.now().plusMonths(6);
-            } else if ("TRIMESTRIELLE".equals(plan.getFrequency())) {
-                nextDate = LocalDateTime.now().plusMonths(3);
-            }
             plan.setNextSurveillanceDate(nextDate);
             surveillancePlanRepository.save(plan);
         }

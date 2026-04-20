@@ -33,6 +33,11 @@ public class SurveillancePlan {
     
     private Integer estimatedDurationPerEvaluation; // Durée estimée par évaluation
     
+    // Cycle d'accréditation (PRO 25 §5.1)
+    private Integer cycleNumber; // 1er cycle = 3 ans, 2ème+ = 4 ans
+    private Integer cycleDurationYears; // 3 ou 4 ans
+    private Integer surveillanceCount; // 2 (1er cycle) ou 3 (2ème+)
+    
     private LocalDateTime nextSurveillanceDate;
     
     private Boolean satisfactionFormFOR22Sent; // FOR 22 envoyée à l'OEC

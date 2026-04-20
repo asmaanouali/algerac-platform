@@ -41,6 +41,9 @@ import {
   ShieldAlert as ShieldAlertIcon,
   ClipboardCheck,
   BarChart3,
+  Eye,
+  RefreshCw,
+  Expand,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -66,6 +69,7 @@ export function Sidebar() {
       { href: "/oec/reponse-ecarts", label: "Plans d'Action", icon: AlertCircle },
       { href: "/oec/certificates", label: "Mes Certificats", icon: Award },
       { href: "/oec/transfert", label: "Transfert d'accréditation", icon: ArrowRightLeft },
+      { href: "/oec/surveillance", label: "Mes Surveillances", icon: Eye },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
       { href: "/oec/profile", label: "Profil OEC", icon: User },
     ],
@@ -83,6 +87,7 @@ export function Sidebar() {
       { href: "/ra/rapports", label: "Validation Rapports", icon: FileCheck },
       { href: "/ra/preparation-cas", label: "Préparation CAS", icon: Gavel },
       { href: "/ra/decision-accreditation", label: "Décision & Certificat", icon: Award },
+      { href: "/ra/surveillance", label: "Surveillance", icon: Eye },
       { href: "/ra/dossiers", label: "Dossiers", icon: Files },
       { href: "/ra/planning", label: "Planning", icon: CalendarDays },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
@@ -111,6 +116,7 @@ export function Sidebar() {
       { href: "/cd/multi-sites", label: "Multi-sites", icon: Network },
       { href: "/cd/evaluation-distance", label: "Éval. à Distance", icon: Video },
       { href: "/cd/transferts", label: "Transferts", icon: ArrowRightLeft },
+      { href: "/cd/surveillance", label: "Surveillance", icon: Eye },
       { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],

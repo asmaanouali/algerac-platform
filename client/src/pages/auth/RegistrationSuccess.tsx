@@ -2,9 +2,9 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AuthLayout from "@/components/layout/AuthLayout";
+import AuthLogo from "@/components/layout/AuthLogo";
 import { Link } from "wouter";
 import { CheckCircle2, Clock, CreditCard, Mail, UserCheck, FileSearch, CalendarDays } from "lucide-react";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function RegistrationSuccess() {
   const { t } = useTranslation();
@@ -13,13 +13,9 @@ export default function RegistrationSuccess() {
   const isExpert = type === "expert";
 
   return (
-    <AuthLayout topBar={<LanguageSwitcher variant="compact" />}>
+    <AuthLayout>
       <div className="w-full max-w-[500px] mx-auto">
-        <div className="text-center mb-8">
-          <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">ALGERAC</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Organisme Algérien d'Accréditation</p>
-        </div>
+        <AuthLogo />
 
         <div className="rounded-2xl bg-white dark:bg-white/[0.07] backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl dark:shadow-2xl overflow-hidden">
           <div className="h-0.5 bg-gradient-to-r from-[#00A63E] via-[#00A63E]/60 to-transparent" />

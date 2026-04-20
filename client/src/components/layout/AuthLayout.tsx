@@ -1,12 +1,14 @@
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
   topBar?: React.ReactNode;
+  hideFlagBar?: boolean;
 }
 
-export default function AuthLayout({ children, topBar }: AuthLayoutProps) {
+export default function AuthLayout({ children, topBar, hideFlagBar }: AuthLayoutProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -30,13 +32,15 @@ export default function AuthLayout({ children, topBar }: AuthLayoutProps) {
       />
 
       {/* Algerian flag accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 flex z-20">
-        <div className="flex-1 bg-[#006233]" />
-        <div className="flex-1 bg-slate-200 dark:bg-white/20" />
-        <div className="flex-1 bg-[#006233]" />
-      </div>
+      {!hideFlagBar && (
+        <div className="absolute top-0 left-0 right-0 h-1 flex z-20">
+          <div className="flex-1 bg-[#006233]" />
+          <div className="flex-1 bg-slate-200 dark:bg-white/20" />
+          <div className="flex-1 bg-[#006233]" />
+        </div>
+      )}
 
-      {/* Top bar: theme toggle left, topBar slot right */}
+      {/* Top bar: theme toggle left, lang + topBar slot right */}
       <div className="absolute top-1 left-0 right-0 z-20 flex items-center justify-between px-6 py-3">
         <button
           onClick={toggleTheme}
@@ -45,7 +49,10 @@ export default function AuthLayout({ children, topBar }: AuthLayoutProps) {
         >
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
-        {topBar && <div>{topBar}</div>}
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher variant="compact" />
+          {topBar}
+        </div>
       </div>
 
       {/* Content */}

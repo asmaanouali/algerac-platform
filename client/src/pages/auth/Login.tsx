@@ -5,24 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, LogIn, MessageSquareWarning, FileSearch } from "lucide-react";
+import { Eye, EyeOff, LogIn, Mail, Phone, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import RoleSelector from "@/components/RoleSelector";
-import { ComplaintTrackingDialog } from "@/components/ComplaintTrackingDialog";
 
 export default function Login() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => localStorage.getItem("algerac-remember-email") ?? "");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => !!localStorage.getItem("algerac-remember-email"));
   const [showPassword, setShowPassword] = useState(false);
-  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { loginMutation, user, needsRoleSelection, availableRoles, setActiveRole } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (remember) {
+      localStorage.setItem("algerac-remember-email", email);
+    } else {
+      localStorage.removeItem("algerac-remember-email");
+    }
     loginMutation.mutate({ email, password });
   };
 
@@ -66,32 +68,78 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout topBar={<LanguageSwitcher variant="compact" />}>
-      <div className="w-full max-w-md mx-auto">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">ALGERAC</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Organisme Algérien d'Accréditation</p>
-        </div>
+    <AuthLayout hideFlagBar>
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="rounded-2xl overflow-hidden shadow-2xl flex flex-col lg:flex-row">
 
-        {/* Card */}
-        <div className="rounded-2xl bg-white dark:bg-white/[0.07] backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl dark:shadow-2xl overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-[#00A63E] via-[#00A63E]/60 to-transparent" />
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('auth.welcome')}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t('auth.loginTitle')}</p>
+          {/* ── Left panel – Platform info ───────────────────────────── */}
+          <div className="lg:w-[44%] bg-gradient-to-br from-[#005a2b] via-[#006e35] to-[#004d28] p-8 lg:p-10 flex flex-col text-white relative overflow-hidden">
+            {/* Subtle dot overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.04] pointer-events-none"
+              style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+            />
+
+            <div className="relative flex flex-col h-full">
+              {/* Logo + name */}
+              <div className="flex items-center gap-3 mb-6">
+                <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto shrink-0 drop-shadow" />
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight leading-tight text-white">ALGERAC</h1>
+                  <p className="text-green-200 text-xs leading-snug">{t("auth.tagline")}</p>
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="w-10 h-0.5 bg-white/25 mb-5" />
+
+              {/* Intro text */}
+              <p className="text-green-50/85 text-sm leading-relaxed mb-8">
+                {t("auth.platformIntro")}
+              </p>
+
+              {/* Contacts */}
+              <div className="space-y-3 mb-auto">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <Mail className="w-3.5 h-3.5 text-green-200" />
+                  </div>
+                  <span className="text-sm text-green-100">contact@algerac.dz</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <Phone className="w-3.5 h-3.5 text-green-200" />
+                  </div>
+                  <span className="text-sm text-green-100">+213 (0)23 84 83 10</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <Globe className="w-3.5 h-3.5 text-green-200" />
+                  </div>
+                  <span className="text-sm text-green-100">www.algerac.dz</span>
+                </div>
+              </div>
+
+              {/* Copyright */}
+              <p className="text-green-300/50 text-xs mt-8">{t("common.copyright")}</p>
+            </div>
+          </div>
+
+          {/* ── Right panel – Login form ──────────────────────────────── */}
+          <div className="lg:w-[56%] bg-white dark:bg-slate-900 p-8 lg:p-10">
+            <div className="mb-7">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t("auth.welcome")}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.loginTitle")}</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleLogin}>
               <div className="space-y-0.5">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">
-                  {t('auth.email')}
+                  {t("auth.email")}
                 </label>
                 <Input
                   type="text"
-                  placeholder={t('auth.emailPlaceholder')}
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
@@ -101,12 +149,12 @@ export default function Login() {
 
               <div className="space-y-0.5">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">
-                  {t('auth.password')}
+                  {t("auth.password")}
                 </label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder={t('auth.passwordPlaceholder')}
+                    placeholder={t("auth.passwordPlaceholder")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pr-10 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
@@ -136,12 +184,12 @@ export default function Login() {
                     htmlFor="remember"
                     className="text-sm text-slate-500 dark:text-slate-400 cursor-pointer select-none"
                   >
-                    {t('auth.rememberMe')}
+                    {t("auth.rememberMe")}
                   </label>
                 </div>
                 <Link href="/auth/forgot-password">
                   <span className="text-sm text-[#00A63E] hover:text-[#00c44d] font-medium transition-colors">
-                    {t('auth.forgotPassword')}
+                    {t("auth.forgotPassword")}
                   </span>
                 </Link>
               </div>
@@ -152,55 +200,27 @@ export default function Login() {
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? (
-                  <span>{t('auth.loggingIn')}</span>
+                  <span>{t("auth.loggingIn")}</span>
                 ) : (
                   <>
-                    <LogIn className="w-4 h-4" /> {t('auth.login')}
+                    <LogIn className="w-4 h-4" /> {t("auth.login")}
                   </>
                 )}
               </Button>
             </form>
+
+            <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-500">
+              {t("auth.noAccount")}{" "}
+              <Link href="/auth/register">
+                <span className="text-[#00A63E] hover:text-[#00c44d] font-semibold transition-colors cursor-pointer">
+                  {t("auth.createAccount")}
+                </span>
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className="mt-5 text-center text-sm text-slate-600 dark:text-slate-500">
-          {t('auth.noAccount')}{" "}
-          <Link href="/auth/register">
-            <span className="text-[#00A63E] hover:text-[#00c44d] font-semibold transition-colors cursor-pointer">
-              {t('auth.createAccount')}
-            </span>
-          </Link>
         </div>
-
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant="ghost"
-            className="flex-1 h-9 text-slate-500 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 text-xs rounded-lg"
-            asChild
-          >
-            <Link href="/complaints/public">
-              <MessageSquareWarning className="w-3.5 h-3.5 mr-1.5" />
-              <span>{t('auth.publicComplaint')}</span>
-            </Link>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="flex-1 h-9 text-slate-500 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 text-xs rounded-lg"
-            onClick={() => setTrackingDialogOpen(true)}
-          >
-            <FileSearch className="w-3.5 h-3.5 mr-1.5" />
-            <span>{t('auth.trackComplaint')}</span>
-          </Button>
-        </div>
-
-        <p className="text-center text-slate-400 dark:text-slate-700 text-xs mt-5">{t('common.copyright')}</p>
       </div>
-
-      <ComplaintTrackingDialog
-        open={trackingDialogOpen}
-        onOpenChange={setTrackingDialogOpen}
-      />
     </AuthLayout>
   );
 }

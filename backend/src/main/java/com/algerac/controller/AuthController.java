@@ -36,10 +36,26 @@ public class AuthController {
     public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         log.info("[CONTROLLER] Forgot password: {}", request.getEmail());
         try {
-            String token = authService.forgotPassword(request.getEmail());
+            String result = authService.forgotPassword(request.getEmail());
+            // result format: "token|otp"
+            String[] parts = result.split("\\|", 2);
+            String token = parts[0];
+            String otp = parts.length > 1 ? parts[1] : null;
+            log.info("[CONTROLLER][DEV] OTP for {}: {}", request.getEmail(), otp);
             return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email.", token));
         } catch (RuntimeException e) {
             log.error("[CONTROLLER] Erreur: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // === [DEV] GET OTP BY EMAIL ===
+    @GetMapping("/dev/otp")
+    public ResponseEntity<ApiResponse> getDevOtp(@RequestParam String email) {
+        try {
+            String otp = authService.getDevOtp(email);
+            return ResponseEntity.ok(ApiResponse.success("OTP actuel.", otp));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }

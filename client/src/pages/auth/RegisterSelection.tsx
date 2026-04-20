@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Link } from "wouter";
 import { Building2, UserRound, ArrowLeft } from "lucide-react";
 import AuthLayout from "@/components/layout/AuthLayout";
+import AuthLogo from "@/components/layout/AuthLogo";
 
 export default function RegisterSelection() {
   return (
@@ -15,11 +16,7 @@ export default function RegisterSelection() {
       </Button>
     }>
       <div className="w-full max-w-lg mx-auto">
-        <div className="text-center mb-8">
-          <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">ALGERAC</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Organisme Algérien d'Accréditation</p>
-        </div>
+        <AuthLogo />
 
         <div className="rounded-2xl bg-white dark:bg-white/[0.07] backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl dark:shadow-2xl p-8">
           <div className="text-center mb-8">

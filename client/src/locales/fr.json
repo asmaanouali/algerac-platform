@@ -45,6 +45,8 @@
   },
   "auth": {
     "welcome": "Bienvenue",
+    "tagline": "Organisme Algérien d'Accréditation",
+    "platformIntro": "Plateforme numérique de gestion des processus d'accréditation. ALGERAC évalue et accrédite les organismes d'évaluation de la conformité selon les exigences des référentiels nationaux et internationaux.",
     "loginTitle": "Connectez-vous à votre compte",
     "email": "Email",
     "emailPlaceholder": "nom@exemple.com",

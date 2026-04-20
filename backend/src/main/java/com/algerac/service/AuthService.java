@@ -299,11 +299,26 @@ public class AuthService {
             emailService.sendOtpResetPassword(user, otp);
             log.info("[AUTH SERVICE] Email OTP envoyé avec succès");
         } catch (Exception e) {
-            log.error("[AUTH SERVICE] Erreur envoi email: {}", e.getMessage());
-            throw new RuntimeException("Erreur lors de l'envoi de l'email.");
+            log.warn("[AUTH SERVICE] Erreur envoi email (token toujours valide): {}", e.getMessage());
+            log.warn("[AUTH SERVICE] [DEV] OTP pour {} : {}", email, otp);
         }
         
-        return token;
+        // Return token:otp so controller can expose OTP in dev
+        return token + "|" + otp;
+    }
+
+    /**
+     * [DEV] Récupère l'OTP actuel pour un email (pour les tests)
+     */
+    @Transactional(readOnly = true)
+    public String getDevOtp(String email) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) throw new RuntimeException("Utilisateur introuvable.");
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByUser(userOpt.get());
+        if (tokenOpt.isEmpty()) throw new RuntimeException("Aucun OTP actif pour cet email.");
+        String[] parts = tokenOpt.get().getToken().split(":");
+        if (parts.length != 2) throw new RuntimeException("Format invalide.");
+        return parts[1];
     }
 
     /**

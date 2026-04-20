@@ -45,6 +45,8 @@
   },
   "auth": {
     "welcome": "Welcome",
+    "tagline": "Algerian Accreditation Body",
+    "platformIntro": "Digital platform for managing accreditation processes. ALGERAC evaluates and accredits conformity assessment bodies according to national and international standards.",
     "loginTitle": "Sign in to your account",
     "email": "Email",
     "emailPlaceholder": "name@example.com",

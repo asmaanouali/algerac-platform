@@ -191,22 +191,22 @@ public class ComplaintController {
         // Deadline info
         Map<String, List<Complaint>> deadlineAlerts = complaintService.getDeadlineAlerts();
 
-        return ResponseEntity.ok(ApiResponse.success("Statistiques", Map.of(
-                "total", total,
-                "received", received,
-                "underReview", underReview,
-                "assigned", assigned,
-                "investigation", investigation,
-                "founded", founded,
-                "unfounded", unfounded,
-                "correctiveActions", correctiveActions,
-                "resolved", resolved,
-                "closed", closed,
-                "public", publicCount,
-                "internal", internalCount,
-                "overdueCount", deadlineAlerts.get("overdue").size(),
-                "approachingDeadlineCount", deadlineAlerts.get("approaching").size()
-        )));
+        Map<String, Object> stats = new java.util.LinkedHashMap<>();
+        stats.put("total", total);
+        stats.put("received", received);
+        stats.put("underReview", underReview);
+        stats.put("assigned", assigned);
+        stats.put("investigation", investigation);
+        stats.put("founded", founded);
+        stats.put("unfounded", unfounded);
+        stats.put("correctiveActions", correctiveActions);
+        stats.put("resolved", resolved);
+        stats.put("closed", closed);
+        stats.put("public", publicCount);
+        stats.put("internal", internalCount);
+        stats.put("overdueCount", deadlineAlerts.get("overdue").size());
+        stats.put("approachingDeadlineCount", deadlineAlerts.get("approaching").size());
+        return ResponseEntity.ok(ApiResponse.success("Statistiques", stats));
     }
 
     /**

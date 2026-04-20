@@ -1,0 +1,232 @@
+Total pages: 6
+
+
+===== PAGE 1 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 1 / 6
+1) Objet
+2) Vocabulaire et Abréviations
+3) Modalités de réexamen
+4) Documents en amont
+5) Description de la procédure
+6) Enregistrements
+Domaine d’application :
+La présente procédure s’applique à l’accréditation des organismes d’évaluation de
+la conformité possédant plusieurs sites, ils sont regit par le meme SM, ces OEC sont
+considérés comme des organismes multisites
+Responsable de l’application :
+Les CD sont responsables de l’application de cette procédure.
+Modifications:
+les modifications de la procédure d’accréditation des OEC multisites Rév 02 portent
+sur :
+- le retrait du document IAF/ILAC A5 :11/2013 IAF/ILAC multi-latéralmutual
+Recognition Arrangements, Voir chapitre « 4. Documents en amont ».
+- L’introduction de la difinition du « siège central » voir chapitre « 2.
+Vocabulaire et abréviations ».
+- L’introduction de la PRO 31 voir chapitre 4. Documents en amont.
+- Suppression de deux paragraphe « Les réunions de clôture intermédiaires par
+site, … les résultats de l’évaluation.» et «Si non là où,selon le plan
+d’évaluation, …, sinon un remplaçant est mandaté par la direction.» voir
+Chapitre 5.4.
+- le retrait du sous chapitre « 5.6.1 L'échantillonnage».
+Établie le : 24/01/2023 Vérifiée le : 24 /01/2023 Approuvée le : 25/01/2023
+Par : Chefs de Par : Responsable qualité Par : Directeur Général
+Départements techniques
+Visa: Visa : Visa :
+
+===== PAGE 2 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 2 / 6
+1. Objet :
+Cette procédure a pour objet de définir les aspects spécifiques du processus
+d’accréditation des OEC possédant plusieurs sites.
+Les étapes du processus d’accréditation sont réalisées conformément à la procédure
+d’accréditation (PRO 12).
+2. Vocabulaire et abréviations :
+Site : infrastructure ou installation permanente dans laquelle un OEC réalise des
+activités du processus d’évaluation de la conformité.
+Site supplémentaire : site ou groupe des sites à rajouter à la portée d’une
+accréditation multisites octroyée.
+OEC multisites:Un organisme ayant une fonction centrale identifiée (siège central),
+où certaines activités d’évaluation de la conformité sont planifiées, contrôlées ou
+gérées ainsi qu’un réseau de sites locaux ou internationaux, succursales (sites) ,
+dans lesquels ces activités sont entièrement ou partiellement effectuées.
+Le réseau doit avoir le même SM (le même manuel qualité, le même audit interne
+du SM, la meme revue de direction).
+siège central : Site de l’organisme multisite auquel la direction de l’organisme
+d’évaluation de la conformité est localisée. Ce site correspond le siège social
+OEC : Organisme d’Evaluation de la Conformité
+SM : Système de Management
+DG : Directeur Général
+RQ : Respensable Qualité
+CD : Chef Département
+RA : Responsable d’Accréditation
+REE : Responsable de l’Equipe d’Evaluation
+3. Modalité de réexamen :
+Le RQ procède au réexamen de cette procédure à chaque fois que cela se révèle
+utile à l’amélioration du SM d’ALGERAC.
+4. Documents en amont :
+ ISO/CEI 17011 "Evaluation de la conformité –Exigences générales pour les
+organismes d’accréditation procédant à l’accréditation d’organismes
+d’évaluation de la conformité"
+ GEN 01 : Manuel qualité
+ PRO 12 : Procédure Accréditation
+ PRO 16 : Procédure Décision sur l’accréditation
+ PRO 23 : Procédure Suspension, réduction ou retrait de l’accréditation
+PRO 25 : ProcédureSurveillance et renouvellement
+ PRO 13-1 : Procedure d'échantillonnage dans les domains des laboratoires et
+d’inspection
+ PRO 31 : Procédure transfert de l’accréditation
+
+===== PAGE 3 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 3 / 6
+5. Description de la procédure :
+5.1 Les critères de qualification pour un OEC multisites sont :
+ les sites doivent avoir un lien légal;
+ Le siège social de l'organisme a instauré un SM conforme à la norme de
+référence pertinente et que l'organisme dans sa totalité répond aux exigences
+de la norme et il doit tenir compte des réglementations applicables;
+ Tous les sites sont soumis au SM commun, défini, mis en place et surveillé en
+permanence par le siège social. Cela signifie que celui-ci a le droit de mettre
+en œuvre des actions correctives dans n'importe quel site, si cela s'avère
+nécessaire;
+ Tous les sites en question (y compris la fonction administrative centrale) sont
+soumis au programme d'audit interne de l'organisme;
+ Le SM de l'organisme est géré de façon centralisée selon un plan d’audit
+contrôlé de la même manière et ils seront soumis à une revue de direction
+initiée à partir du siège social ;
+ L'organisme peut démontrer sa capacité à collecter et analyser les données
+(liste non exhaustive ci-dessous) de tous les sites, y compris le siège social,
+ainsi que son autorité et sa capacité à initier des changements
+organisationnels, si cela s'impose :
+a) documentation et changements relatifs au SM;
+b) revue de direction;
+c) plaintes;
+d) évaluation des actions correctives;
+e) planification d'un audit interne et évaluation des résultats.
+5.2 Demande d’accréditation :
+L'OEC doit :
+1. Identifier la personne morale qui demande l’accréditation;
+2. Identifier tous les sites et ceux qui font l’objet de la demande d’accréditation;
+3. fournir des renseignements prouvant la satisfaction des critères de
+qualification déterminés ci-dessus (5.1).
+4. Décrire le domaine de compétence de chaque site.
+5. Documenter les modalités d’échanges (informations, documents, moyens,…)
+entre les différents sites.
+5.2.1 Revue de la demande (recevabilité) :
+Avant d’accepter la demande d’accréditation multisites, le CD/RA concerné doit
+s’assurer,que tous les documents requis pour prouver la satisfaction des critères sont
+présentés.
+Et d’éxaminer si tous les sites, proposés pour être inclus dans l’accréditation de
+l’organisme multisites, répondent bien aux critères.
+Dans le cas ou l’OEC ne répond pas à l'un des critères de qualification définis dans
+ce document (5.1) la demande d’accréditationmultisites ne sera pas acceptée ou elle
+sera acceptée avec une réduction de sites.
+La convention d’accréditation (DOC 02) est signée avec le siège social.
+
+===== PAGE 4 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 4 / 6
+5.3 Préparation de l’évaluation:
+5.3.1 L’équipe d’évaluation:
+Le CD/RA désigne un REE qui aura la responsabilité de l’évaluation et plusieurs
+évaluateurs et experts techniques pour couvrir tous les domaines techniques à
+évaluer.
+Si plus d'une équipe est associée à l'évaluation/surveillance du réseau, un seul REE
+est désigné pour coordonner l’évaluation et pour réunir tous les résultats obtenus
+par les différentes équipes et les intégrer dans le rapport d’évaluation.
+L’equipe d’evaluation est maintenue pour tout le cycle d’accréditation.
+5.3.2 Revue des documents/ enregistrements :
+L’équipe doit :
+1. identifier les fonctions du siège social de l'organisme qui demande
+l’accréditation;
+2. évaluer les dispositions prises pour satisfaire les exigences de la norme de
+référence;
+3. évaluer les enregistrements du fonctionnement du SM.
+a) Plan d’évaluation :
+A l’accréditation initiale tous les sites sont évalués pour s’assurer que le réseau
+travaille sous le même SM et qu’il est fonctionnel
+Le plan d’évaluation doit considérer le temps nécessaire pour se déplacer d’un site
+à un autre.
+Toutes les activités d’évaluation de la conformité soumises à l’accréditation doivent
+être évaluées.
+Le plan d’évaluation doit identifier les activités à évaluer pour chaque site ainsi que
+le siège social.
+b) Durée de l'évaluation :
+Le temps consacré à l'évaluation au siège social dépend du nombre des sites.
+5.4 Evaluation :
+La réunion d’ouverture devrait avoir lieu au siège social, si possible avec la
+participation des responsables des sites soumis à l’évaluation.
+Des réunions d’ouverture peuvent avoir lieu dans chaque site à condition d’éviter
+toute référence aux constats déjà faits lors de l’évaluation du siège social et/ou des
+autres sites.
+Des réunions de clôture peuvent avoir lieu dans chaque site à la fin de l’évaluation,
+et au besoin, elle peuvent se tenir au siege social.
+
+===== PAGE 5 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 5 / 6
+Le REE analyse les constats identifiés par l’équipe lors de l’évaluation et en résume
+les résultats lors de la discussion finale. L’équipe formule les exigences éventuelles
+pour l’accréditation.
+Les actions correctives pour les écarts doivent être exécutées dans les délais selon
+la procédure d’accréditation (PRO 12) et la procedure de surveillance, de
+renouvellement et d'extension (PRO 25) ou en commun accord avec l’équipe.
+Le CD/RA doit suivre le traitement des écarts pour assurer le respect des délais.
+a) Ecarts:
+1. Lorsque des écarts critiques sont constatés au siège social ou dans un site
+individuel, lors de l'évaluation, ou de la surveillance, l’équipe doit vérifier si les
+autres sites concernés par l’échantillonnage sont touchés ;
+2. L’équipe va analyser les écarts afin de déterminer si l’OEC est confronté ou non à
+une déficience généralisée du SM concernant tous les sites;
+3. Si c'est le cas, aussi bien le siège social que les sites individuels doivent procéder
+à des actions correctives;
+4. Des preuves des actions entreprises doivent être présentées pour les écarts
+critiques;
+5. En cas des écarts systémiques le CD peut décider de faire une évaluation
+complémentaire couvrant tous les sites, pour s’assurer que l’écart a été soldé.
+b) Rapport :
+Après exécution de l’évaluation, l’OEC reçoit une liste des écarts.
+Les détails sur le traitement des écarts doivent être fournis dans le rapport
+d’évaluation.
+5.5 Décision sur l’accréditation :
+Le processus décisionnel suit la procédure en vigueur (PRO 16).
+Certificats d’accréditation
+1. Un seul certificat (FOR 16-1, FOR 16-3) est délivré, reprenant le nom et
+l'adresse du siège social de l'organisme, le domaine d'activités, ainsi que la
+liste de tous les sites accrédités celles-ci seront détaillés dans l’annexe
+technique;
+2. L’accréditation doit être retirée dans sa totalité si le siège central ne répond
+pas aux critères pour le maintien de l’accréditation;
+3. La liste des sites sous accréditation est tenue à jour par ALGERAC;
+4. L'OEC est obligée d'informer de la fermeture d'un site.Si l'OEC omet de le faire,
+ALGERAC considérera ceci comme un usage abusif de l’accréditation et agira
+en conséquence, dans le respect de ses procédures.
+5.6 Surveillance :
+Les surveillances sont realisées suivant les regles de la PRO13-1 (Procédure
+d’échantillonnage dans les domaines inspection et laboratoires).
+
+===== PAGE 6 =====
+Procédure d’accréditation des OEC multisites
+PRO 26 Rév 03/24- 01- 2023 Page: 6 / 6
+6. Enregistrements:
+ Demande d’accréditation (DOC 01)
+ Demande d'accréditation laboratoire biologie médicale (DOC 01-1)
+ Plan d’évaluation ((FOR 32)
+ Fiche composition de l’équipe d’évaluation(FOR 26)
+ Rapport d’évaluation pour les organismes d’inspection(FOR 08)
+ Rapport d’évaluation pour les laboratoires d’Essai (FOR 09)
+ Rapport d’évaluation pour les laboratoires biomédical (FOR 09-1)
+ Rapport d’évaluation pour les organismes de certification(FOR 10)
+ Fiche d’écart (FOR 02)
+ Convocation (FOR 58)
+ Procès-verbal de réunion du comité d’accréditation spécialisé(FOR 42)
+ Avis des membres du comité d’accréditation spécialisé (FOR 14)
+ Avis du comité d’accréditation spécialisé (FOR 15)
+ Certificat d’accréditation(FOR 16)
+ Plan de surveillance (FOR 66)
+ Certificat d'accréditation multisites pour les portées reconnues par l'EA
+(FOR 16-1)
+ Certificat d'accréditation multisites pour les portées non reconnues par l'EA
+(FOR 16-3)

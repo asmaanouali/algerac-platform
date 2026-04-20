@@ -472,6 +472,7 @@ public class WorkflowController {
 
             EvaluationTeam team = teamRepository.findById(teamId)
                     .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+            log.debug("Finding replacements for team: {}", team.getId());
 
             // IDs of current non-recused members to exclude
             Set<Long> currentMemberExpertIds = memberRepository.findByTeam_Id(teamId)
@@ -609,7 +610,6 @@ public class WorkflowController {
             String dateRefusalReason = (String) body.get("dateRefusalReason");
 
             // Proof documents for recusation (PRO 22)
-            @SuppressWarnings("unchecked")
             Object proofDocsRaw = body.get("proofDocuments");
             String proofDocumentsJson = null;
             if (proofDocsRaw != null) {

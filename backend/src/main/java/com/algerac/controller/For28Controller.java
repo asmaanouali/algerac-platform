@@ -75,7 +75,7 @@ public class For28Controller {
             }
 
             log.info("POST /api/for28/submit - Soumission documents FOR28");
-            User user = candidatureService.submitFor28Documents(token, code, documentsJson);
+            candidatureService.submitFor28Documents(token, code, documentsJson);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

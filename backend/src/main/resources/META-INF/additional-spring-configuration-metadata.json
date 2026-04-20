@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "app.notification.email",
+      "type": "java.lang.String",
+      "description": "Default notification recipient email"
+    },
+    {
+      "name": "app.dt.email",
+      "type": "java.lang.String",
+      "description": "Direction Technique email"
+    },
+    {
+      "name": "app.ges.competences.email",
+      "type": "java.lang.String",
+      "description": "Gestion des compétences email"
+    },
+    {
+      "name": "app.dag.email",
+      "type": "java.lang.String",
+      "description": "Direction Administrative et Générale email"
+    }
+  ]
+}

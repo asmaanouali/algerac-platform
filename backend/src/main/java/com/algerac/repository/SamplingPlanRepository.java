@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface SamplingPlanRepository extends JpaRepository<SamplingPlan, Long> {
     Optional<SamplingPlan> findByPlanCode(String planCode);
     List<SamplingPlan> findByRequest_Id(Long requestId);
+    List<SamplingPlan> findByRequest_IdAndStatus(Long requestId, SamplingPlanStatus status);
     List<SamplingPlan> findByStatus(SamplingPlanStatus status);
     List<SamplingPlan> findByCreatedBy_Id(Long userId);
+    List<SamplingPlan> findAllByOrderByCreatedAtDesc();
 }

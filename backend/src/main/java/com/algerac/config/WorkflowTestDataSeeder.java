@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 @Order(20)
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("unused")
 public class WorkflowTestDataSeeder implements ApplicationRunner {
 
     private final UserRepository userRepository;

@@ -14,6 +14,7 @@ import java.util.Map;
 
 /**
  * PRO_13-1 : Contrôleur pour la gestion des plans d'échantillonnage.
+ * Gère les opérations CRUD et le workflow de validation.
  */
 @RestController
 @RequestMapping("/api/sampling")
@@ -25,26 +26,54 @@ public class SamplingController {
     private final SamplingService samplingService;
     private final UserRepository userRepository;
 
+    @GetMapping
+    public ResponseEntity<?> getAllPlans() {
+        return ResponseEntity.ok(ApiResponse.success("Plans", samplingService.getAllPlans()));
+    }
+
+    @GetMapping("/{planId}")
+    public ResponseEntity<?> getPlanById(@PathVariable Long planId) {
+        try {
+            return ResponseEntity.ok(ApiResponse.success("Plan", samplingService.getPlanById(planId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/request/{requestId}")
+    public ResponseEntity<?> getByRequest(@PathVariable Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success("Plans", samplingService.getPlansByRequest(requestId)));
+    }
+
+    @GetMapping("/pending")
+    public ResponseEntity<?> getPendingReview() {
+        return ResponseEntity.ok(ApiResponse.success("Plans en attente", samplingService.getPendingReview()));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<?> getByStatus(@PathVariable SamplingPlanStatus status) {
+        return ResponseEntity.ok(ApiResponse.success("Plans", samplingService.getPlansByStatus(status)));
+    }
+
     @PostMapping
     public ResponseEntity<?> createPlan(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
             User user = getSessionUser(session);
-            SamplingPlan plan = samplingService.createSamplingPlan(
-                ((Number) body.get("requestId")).longValue(),
-                SamplingPlanType.valueOf((String) body.get("planType")),
-                (String) body.get("methodology"),
-                body.get("totalMethods") != null ? ((Number) body.get("totalMethods")).intValue() : null,
-                body.get("selectedMethods") != null ? ((Number) body.get("selectedMethods")).intValue() : null,
-                (String) body.get("selectedMethodsDetail"),
-                body.get("totalSites") != null ? ((Number) body.get("totalSites")).intValue() : null,
-                body.get("selectedSites") != null ? ((Number) body.get("selectedSites")).intValue() : null,
-                (String) body.get("selectedSitesDetail"),
-                (String) body.get("selectionCriteria"),
-                (String) body.get("riskFactors"),
-                (String) body.get("justification"),
-                user
-            );
+            Long requestId = ((Number) body.get("requestId")).longValue();
+            SamplingPlan plan = samplingService.createSamplingPlan(requestId, body, user);
             return ResponseEntity.ok(ApiResponse.success("Plan d'échantillonnage créé", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{planId}")
+    public ResponseEntity<?> updatePlan(@PathVariable Long planId,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            SamplingPlan plan = samplingService.updatePlan(planId, body, user);
+            return ResponseEntity.ok(ApiResponse.success("Plan mis à jour", plan));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -86,9 +115,26 @@ public class SamplingController {
         }
     }
 
-    @GetMapping("/request/{requestId}")
-    public ResponseEntity<?> getByRequest(@PathVariable Long requestId) {
-        return ResponseEntity.ok(ApiResponse.success("Plans", samplingService.getPlansByRequest(requestId)));
+    @PutMapping("/{planId}/archive")
+    public ResponseEntity<?> archivePlan(@PathVariable Long planId, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            SamplingPlan plan = samplingService.archivePlan(planId, user);
+            return ResponseEntity.ok(ApiResponse.success("Plan archivé", plan));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/calculate-scope-sample")
+    public ResponseEntity<?> calculateScopeSample(
+            @RequestParam int totalMethods, @RequestParam int assessmentsInCycle) {
+        int recommended = samplingService.calculateRecommendedScopeSampleSize(totalMethods, assessmentsInCycle);
+        return ResponseEntity.ok(ApiResponse.success("Taille recommandée", Map.of(
+            "totalMethods", totalMethods,
+            "assessmentsInCycle", assessmentsInCycle,
+            "recommendedSampleSize", recommended
+        )));
     }
 
     private User getSessionUser(HttpSession session) {

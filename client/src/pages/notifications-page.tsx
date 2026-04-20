@@ -1,4 +1,5 @@
 import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,29 +28,29 @@ function typeIcon(type: Notification["type"]) {
   }
 }
 
-function typeBadge(type: Notification["type"]) {
+function typeBadge(type: Notification["type"], t: (key: string) => string) {
   switch (type) {
     case "success":
-      return <Badge className="bg-green-100 text-green-700 border-0 text-xs">Succès</Badge>;
+      return <Badge className="bg-green-100 text-green-700 border-0 text-xs">{t('notifications_page.typeSuccess')}</Badge>;
     case "warning":
-      return <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">Avertissement</Badge>;
+      return <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">{t('notifications_page.typeWarning')}</Badge>;
     case "error":
-      return <Badge className="bg-red-100 text-red-700 border-0 text-xs">Erreur</Badge>;
+      return <Badge className="bg-red-100 text-red-700 border-0 text-xs">{t('notifications_page.typeError')}</Badge>;
     default:
-      return <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">Info</Badge>;
+      return <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">{t('notifications_page.typeInfo')}</Badge>;
   }
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string, t: (key: string, opts?: any) => string) {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return "À l'instant";
-  if (diffMins < 60) return `Il y a ${diffMins} min`;
+  if (diffMins < 1) return t('notifications_page.justNow');
+  if (diffMins < 60) return t('notifications_page.minutesAgo', { count: diffMins });
   const diffH = Math.floor(diffMins / 60);
-  if (diffH < 24) return `Il y a ${diffH} h`;
-  return d.toLocaleDateString("fr-FR", {
+  if (diffH < 24) return t('notifications_page.hoursAgo', { count: diffH });
+  return d.toLocaleDateString(undefined, {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -61,6 +62,7 @@ function formatDate(iso: string) {
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const { data: notifications = [], isLoading } = useNotifications();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -69,7 +71,7 @@ export default function NotificationsPage() {
   const unreadCount = unread.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="md:ml-64 flex flex-col min-h-screen">
         <Navbar />
@@ -77,17 +79,13 @@ export default function NotificationsPage() {
           {/* Page header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+              <h1 className="text-2xl font-bold">{t('notifications_page.title')}</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {isLoading
-                  ? "Chargement…"
+                  ? t('common.loading')
                   : notifications.length === 0
-                  ? "Aucune notification"
-                  : `${notifications.length} notification${notifications.length > 1 ? "s" : ""}${
-                      unreadCount > 0
-                        ? ` · ${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`
-                        : ""
-                    }`}
+                  ? t('notifications_page.noNotifications')
+                  : `${notifications.length} notification${notifications.length > 1 ? "s" : ""}`}
               </p>
             </div>
             {unreadCount > 0 && (
@@ -102,7 +100,7 @@ export default function NotificationsPage() {
                 ) : (
                   <CheckCheck className="h-4 w-4 mr-2" />
                 )}
-                Tout marquer comme lu
+                {t('notifications_page.markAllRead')}
               </Button>
             )}
           </div>
@@ -117,10 +115,10 @@ export default function NotificationsPage() {
               <CardContent className="flex flex-col items-center justify-center py-20">
                 <Bell className="h-12 w-12 text-muted-foreground/30 mb-3" />
                 <p className="text-base font-medium text-muted-foreground">
-                  Aucune notification
+                  {t('notifications_page.noNotifications')}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Vous serez notifié ici des événements importants.
+                  {t('notifications_page.noNotificationsDesc')}
                 </p>
               </CardContent>
             </Card>
@@ -149,20 +147,20 @@ export default function NotificationsPage() {
                         <div className="flex flex-wrap items-center gap-2 mb-0.5">
                           <p
                             className={cn(
-                              "text-sm text-slate-900",
+                              "text-sm",
                               !n.read ? "font-semibold" : "font-medium"
                             )}
                           >
                             {n.title}
                           </p>
-                          {typeBadge(n.type)}
+                          {typeBadge(n.type, t)}
                           {!n.read && (
                             <span className="inline-block h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                           )}
                         </div>
                         <p className="text-sm text-slate-600 leading-relaxed">{n.message}</p>
                         <p className="text-xs text-muted-foreground mt-1.5">
-                          {formatDate(n.createdAt)}
+                          {formatDate(n.createdAt, t)}
                         </p>
                       </div>
 
@@ -173,12 +171,12 @@ export default function NotificationsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-slate-800"
-                            title="Marquer comme lu"
+                            title={t('notifications.markRead')}
                             onClick={() => markAsRead.mutate(n.id)}
                             disabled={markAsRead.isPending}
                           >
                             <Check className="h-4 w-4 mr-1" />
-                            <span className="text-xs">Marquer lu</span>
+                            <span className="text-xs">{t('notifications.markRead')}</span>
                           </Button>
                         </div>
                       )}

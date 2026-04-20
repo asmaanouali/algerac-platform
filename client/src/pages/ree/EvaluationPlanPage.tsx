@@ -166,7 +166,7 @@ export default function EvaluationPlanPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Plan d'Évaluation — FOR 32</h1>
+            <h1 className="text-2xl font-bold">Plan d'Évaluation — FOR 32</h1>
             <p className="text-muted-foreground mt-1">Élaborez et soumettez le plan d'évaluation au RA (Étape 6.4)</p>
           </div>
 

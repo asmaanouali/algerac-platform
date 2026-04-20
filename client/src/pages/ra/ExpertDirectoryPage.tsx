@@ -136,7 +136,7 @@ export default function ExpertDirectoryPage() {
             <div className="flex items-center gap-3">
               <Users className="w-7 h-7 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Répertoire des Experts</h1>
+                <h1 className="text-2xl font-bold">Répertoire des Experts</h1>
                 <p className="text-muted-foreground mt-1">
                   Tous les experts, évaluateurs et leurs plannings
                 </p>

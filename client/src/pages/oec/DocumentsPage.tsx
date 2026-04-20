@@ -108,7 +108,7 @@ export default function OECDocumentsPage() {
         <main className="p-6 md:p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Mes Documents</h1>
+              <h1 className="text-2xl font-bold">Mes Documents</h1>
               <p className="text-muted-foreground mt-1">Gérez tous vos documents liés aux demandes d'accréditation.</p>
             </div>
             <div>

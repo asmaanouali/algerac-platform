@@ -123,7 +123,7 @@ export default function OECCertificatesPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Mes Certificats</h1>
+            <h1 className="text-2xl font-bold">Mes Certificats</h1>
             <p className="text-muted-foreground mt-1">Consultez vos certificats d'accréditation délivrés par ALGERAC.</p>
           </div>
 

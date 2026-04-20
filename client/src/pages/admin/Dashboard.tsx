@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { StatCard } from "@/components/stat-card";
@@ -33,6 +34,7 @@ interface RecentRequest {
 }
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats>({ totalUsers: 0, oecCount: 0, expertCount: 0, raCount: 0, pendingOecAccounts: 0, totalRequests: 0, activeRequests: 0 });
@@ -69,30 +71,23 @@ export default function AdminDashboard() {
       });
       setRecentRequests(allRequests.slice(0, 5));
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de charger les données" });
+      toast({ variant: "destructive", title: t('admin.loadError'), description: t('admin.loadError') });
     } finally {
       setLoading(false);
     }
   };
 
-  const statusLabel = (status: string) => {
-    const map: Record<string, string> = {
-      DRAFT: "Brouillon", SUBMITTED: "Soumise", PAYMENT_COMPLETED: "Paiement effectué",
-      ASSIGNED_TO_RA: "Assignée au RA", RECEIVABILITY_STUDY: "Étude recevabilité",
-      RECEIVABLE: "Recevable", ACTIVE: "Active", CLOSED: "Classée",
-    };
-    return map[status] || status.replace(/_/g, " ");
-  };
+  const statusLabel = (status: string) => t(`workflowStatus.${status}`, { defaultValue: status.replace(/_/g, " ") });
 
   return (
-    <div className="flex h-screen w-full bg-slate-50">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="mb-2">
-            <h1 className="text-2xl font-bold text-slate-900">Tableau de Bord Administrateur</h1>
-            <p className="text-muted-foreground mt-1">Vue d'ensemble du système et des activités récentes.</p>
+            <h1 className="text-2xl font-bold">{t('admin.dashboardTitle')}</h1>
+            <p className="text-muted-foreground mt-1">{t('admin.dashboardSubtitle')}</p>
           </div>
 
           {loading ? (
@@ -101,10 +96,10 @@ export default function AdminDashboard() {
             <>
               {/* Stats */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Utilisateurs" value={stats.totalUsers} icon={Users} description={`${stats.oecCount} OEC · ${stats.expertCount} experts · ${stats.raCount} RA`} />
-                <StatCard title="Demandes Actives" value={stats.activeRequests} icon={FileText} description={`${stats.totalRequests} total`} />
-                <StatCard title="Comptes OEC en attente" value={stats.pendingOecAccounts} icon={UserPlus} description="Paiement vérifié, à créer" className={stats.pendingOecAccounts > 0 ? "border-l-amber-500" : ""} />
-                <StatCard title="OEC Accrédités" value={stats.oecCount} icon={ShieldCheck} description="Comptes OEC actifs" />
+                <StatCard title={t('admin.totalUsers')} value={stats.totalUsers} icon={Users} description={`${stats.oecCount} OEC · ${stats.expertCount} ${t('admin.experts')} · ${stats.raCount} RA`} />
+                <StatCard title={t('admin.activeRequests')} value={stats.activeRequests} icon={FileText} description={`${stats.totalRequests} ${t('admin.allRequests')}`} />
+                <StatCard title={t('admin.pendingOEC')} value={stats.pendingOecAccounts} icon={UserPlus} description={t('admin.awaitingCreation')} className={stats.pendingOecAccounts > 0 ? "border-l-amber-500" : ""} />
+                <StatCard title={t('admin.oecOrgs')} value={stats.oecCount} icon={ShieldCheck} description={t('admin.accreditedOrgs')} />
               </div>
 
               {/* Alerts */}
@@ -114,13 +109,13 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-3">
                       <AlertCircle className="h-5 w-5 text-amber-600" />
                       <div>
-                        <p className="font-medium text-amber-800">{stats.pendingOecAccounts} compte(s) OEC en attente de création</p>
-                        <p className="text-sm text-amber-600">Le paiement a été vérifié par le DAG</p>
+                        <p className="font-medium text-amber-800">{stats.pendingOecAccounts} {t('admin.pendingOECAccounts')}</p>
+                        <p className="text-sm text-amber-600">{t('admin.pendingOECDesc')}</p>
                       </div>
                     </div>
                     <Link href="/users">
                       <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
-                        Gérer <ArrowRight className="ml-1 h-4 w-4" />
+                        {t('admin.manageUsers')} <ArrowRight className="ml-1 h-4 w-4" />
                       </Button>
                     </Link>
                   </CardContent>
@@ -131,12 +126,12 @@ export default function AdminDashboard() {
                 {/* Recent Requests */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Demandes Récentes</CardTitle>
-                    <CardDescription>Les 5 dernières demandes d'accréditation</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> {t('admin.recentRequests')}</CardTitle>
+                    <CardDescription>{t('admin.recentActivity')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {recentRequests.length === 0 ? (
-                      <p className="text-center py-6 text-muted-foreground">Aucune demande pour le moment</p>
+                      <p className="text-center py-6 text-muted-foreground">{t('admin.noRecentRequests')}</p>
                     ) : (
                       <div className="space-y-3">
                         {recentRequests.map((req) => (
@@ -161,15 +156,15 @@ export default function AdminDashboard() {
                 {/* Quick Actions */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Actions Rapides</CardTitle>
+                    <CardTitle>{t('admin.quickActions')}</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3">
                     <Link href="/users">
                       <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
                         <Users className="h-5 w-5 text-blue-600" />
                         <div className="text-left">
-                          <p className="font-medium">Gestion des Utilisateurs</p>
-                          <p className="text-xs text-muted-foreground">Créer, modifier ou désactiver des comptes</p>
+                          <p className="font-medium">{t('admin.manageUsers')}</p>
+                          <p className="text-xs text-muted-foreground">{t('admin.manageUsersDesc')}</p>
                         </div>
                       </Button>
                     </Link>
@@ -177,8 +172,8 @@ export default function AdminDashboard() {
                       <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
                         <Building2 className="h-5 w-5 text-purple-600" />
                         <div className="text-left">
-                          <p className="font-medium">Comptes OEC</p>
-                          <p className="text-xs text-muted-foreground">Créer les comptes OEC vérifiés par le DAG</p>
+                          <p className="font-medium">{t('admin.pendingOECAccounts')}</p>
+                          <p className="text-xs text-muted-foreground">{t('admin.pendingOECDesc')}</p>
                         </div>
                       </Button>
                     </Link>
@@ -186,8 +181,8 @@ export default function AdminDashboard() {
                       <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
                         <ClipboardList className="h-5 w-5 text-red-600" />
                         <div className="text-left">
-                          <p className="font-medium">Plaintes</p>
-                          <p className="text-xs text-muted-foreground">Consulter les plaintes internes</p>
+                          <p className="font-medium">{t('complaints.title')}</p>
+                          <p className="text-xs text-muted-foreground">{t('complaints.internal.subtitle')}</p>
                         </div>
                       </Button>
                     </Link>

@@ -72,7 +72,7 @@ export default function OECProfilePage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Profil OEC</h1>
+            <h1 className="text-2xl font-bold">Profil OEC</h1>
             <p className="text-muted-foreground mt-1">Gérez les informations de votre organisme.</p>
           </div>
 

@@ -13,10 +13,10 @@ import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, Send, Eye, Shie
 import { apiRequest } from "@/lib/queryClient";
 
 const GAP_STATUS_LABELS: Record<string, string> = {
-  IDENTIFIED: "Identifié", AWAITING_ACTION_PLAN: "Att. plan d'action", PLAN_SUBMITTED: "Plan soumis",
-  PLAN_ACCEPTED: "Plan accepté", PLAN_REJECTED: "Plan rejeté", IMPLEMENTATION: "Mise en oeuvre",
-  EVIDENCE_PROVIDED: "Preuves fournies", PENDING_VERIFICATION: "Vérification en cours", RESOLVED: "Résolu",
-  NEEDS_COMPLEMENTARY_EVAL: "Éval. complémentaire requise",
+  IDENTIFIED: "Identifiï¿½", AWAITING_ACTION_PLAN: "Att. plan d'action", PLAN_SUBMITTED: "Plan soumis",
+  PLAN_ACCEPTED: "Plan acceptï¿½", PLAN_REJECTED: "Plan rejetï¿½", IMPLEMENTATION: "Mise en oeuvre",
+  EVIDENCE_PROVIDED: "Preuves fournies", PENDING_VERIFICATION: "Vï¿½rification en cours", RESOLVED: "Rï¿½solu",
+  NEEDS_COMPLEMENTARY_EVAL: "ï¿½val. complï¿½mentaire requise",
 };
 
 const GAP_STATUS_COLORS: Record<string, string> = {
@@ -74,15 +74,15 @@ export default function GapsManagementPage() {
     setSubmitting(true);
     try {
       const res = await apiRequest("POST", `/api/workflow/site-evaluation/${selectedRequest.id}/request-action-plans`, {
-        deadline: 10, message: "Veuillez soumettre vos plans d'action pour chaque écart identifié."
+        deadline: 10, message: "Veuillez soumettre vos plans d'action pour chaque ï¿½cart identifiï¿½."
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Demande de plans d'action envoyée à l'OEC" });
+        toast({ title: "Succï¿½s", description: "Demande de plans d'action envoyï¿½e ï¿½ l'OEC" });
         selectRequest(selectedRequest);
         loadData();
       } else {
-        toast({ title: "Erreur", description: data.error || "Échec", variant: "destructive" });
+        toast({ title: "Erreur", description: data.error || "ï¿½chec", variant: "destructive" });
       }
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -100,12 +100,12 @@ export default function GapsManagementPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: evaluateForm.accepted ? "Plan d'action accepté" : "Plan d'action rejeté  renvoyé à l'OEC" });
+        toast({ title: "Succï¿½s", description: evaluateForm.accepted ? "Plan d'action acceptï¿½" : "Plan d'action rejetï¿½  renvoyï¿½ ï¿½ l'OEC" });
         setShowEvaluate(false);
         setEvaluateForm({ accepted: true, feedback: "", rejectionReason: "" });
         selectRequest(selectedRequest);
       } else {
-        toast({ title: "Erreur", description: data.error || "Échec", variant: "destructive" });
+        toast({ title: "Erreur", description: data.error || "ï¿½chec", variant: "destructive" });
       }
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -121,12 +121,12 @@ export default function GapsManagementPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: verifyForm.verified ? "Preuves vérifiées  écart soldé" : "Preuves insuffisantes" });
+        toast({ title: "Succï¿½s", description: verifyForm.verified ? "Preuves vï¿½rifiï¿½es  ï¿½cart soldï¿½" : "Preuves insuffisantes" });
         setShowVerify(false);
         setVerifyForm({ verified: true, comments: "" });
         selectRequest(selectedRequest);
       } else {
-        toast({ title: "Erreur", description: data.error || "Échec", variant: "destructive" });
+        toast({ title: "Erreur", description: data.error || "ï¿½chec", variant: "destructive" });
       }
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -151,8 +151,8 @@ export default function GapsManagementPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Gestion des Écarts</h1>
-            <p className="text-muted-foreground mt-1">Suivi des non-conformités, plans d'action et vérification des preuves (Étape 8)</p>
+            <h1 className="text-2xl font-bold">Gestion des ï¿½carts</h1>
+            <p className="text-muted-foreground mt-1">Suivi des non-conformitï¿½s, plans d'action et vï¿½rification des preuves (ï¿½tape 8)</p>
           </div>
 
           {loading ? (
@@ -171,7 +171,7 @@ export default function GapsManagementPage() {
                       <Badge variant="outline" className="text-xs mt-1">{r.status?.replace(/_/g, " ")}</Badge>
                     </div>
                   ))}
-                  {requests.length === 0 && <p className="text-sm text-muted-foreground">Aucun dossier avec écarts</p>}
+                  {requests.length === 0 && <p className="text-sm text-muted-foreground">Aucun dossier avec ï¿½carts</p>}
                 </CardContent>
               </Card>
 
@@ -179,7 +179,7 @@ export default function GapsManagementPage() {
               <div className="lg:col-span-3 space-y-4">
                 {!selectedRequest ? (
                   <Card><CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">Sélectionnez un dossier pour gérer les écarts</p>
+                    <p className="text-center text-muted-foreground py-8">Sï¿½lectionnez un dossier pour gï¿½rer les ï¿½carts</p>
                   </CardContent></Card>
                 ) : (
                   <>
@@ -199,11 +199,11 @@ export default function GapsManagementPage() {
                       </CardContent></Card>
                       <Card><CardContent className="pt-4 text-center">
                         <p className="text-2xl font-bold text-blue-600">{pendingPlans.length}</p>
-                        <p className="text-xs text-muted-foreground">Plans à évaluer</p>
+                        <p className="text-xs text-muted-foreground">Plans ï¿½ ï¿½valuer</p>
                       </CardContent></Card>
                       <Card><CardContent className="pt-4 text-center">
                         <p className="text-2xl font-bold text-green-600">{resolved.length}</p>
-                        <p className="text-xs text-muted-foreground">Résolus</p>
+                        <p className="text-xs text-muted-foreground">Rï¿½solus</p>
                       </CardContent></Card>
                     </div>
 
@@ -212,13 +212,13 @@ export default function GapsManagementPage() {
                       {canRequestPlans && (
                         <Button onClick={requestActionPlans} disabled={submitting}>
                           {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                          Demander les plans d'action à l'OEC
+                          Demander les plans d'action ï¿½ l'OEC
                         </Button>
                       )}
                       {allResolved && (
                         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
                           <CheckCircle className="w-5 h-5 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">Tous les écarts sont soldés  prêt pour le rapport</span>
+                          <span className="text-sm font-medium text-green-800">Tous les ï¿½carts sont soldï¿½s  prï¿½t pour le rapport</span>
                         </div>
                       )}
                     </div>
@@ -227,13 +227,13 @@ export default function GapsManagementPage() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <AlertTriangle className="w-5 h-5" />Écarts & Plans d'Action
+                          <AlertTriangle className="w-5 h-5" />ï¿½carts & Plans d'Action
                         </CardTitle>
                         <CardDescription>Dossier: {selectedRequest.referenceNumber || selectedRequest.id}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {gaps.length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">Aucun écart identifié</p>
+                          <p className="text-center text-muted-foreground py-8">Aucun ï¿½cart identifiï¿½</p>
                         ) : (
                           <Table>
                             <TableHeader>
@@ -270,12 +270,12 @@ export default function GapsManagementPage() {
                                       </Button>
                                       {gap.status === "PLAN_SUBMITTED" && (
                                         <Button size="sm" variant="outline" onClick={() => { setSelectedGap(gap); setEvaluateForm({ accepted: true, feedback: "", rejectionReason: "" }); setShowEvaluate(true); }}>
-                                          <FileText className="w-3 h-3 mr-1" />Évaluer
+                                          <FileText className="w-3 h-3 mr-1" />ï¿½valuer
                                         </Button>
                                       )}
                                       {["EVIDENCE_PROVIDED", "PENDING_VERIFICATION"].includes(gap.status) && (
                                         <Button size="sm" variant="outline" className="text-cyan-700" onClick={() => { setSelectedGap(gap); setVerifyForm({ verified: true, comments: "" }); setShowVerify(true); }}>
-                                          <ShieldCheck className="w-3 h-3 mr-1" />Vérifier
+                                          <ShieldCheck className="w-3 h-3 mr-1" />Vï¿½rifier
                                         </Button>
                                       )}
                                     </div>
@@ -297,8 +297,8 @@ export default function GapsManagementPage() {
           <Dialog open={showEvaluate} onOpenChange={setShowEvaluate}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Évaluer le Plan d'Action</DialogTitle>
-                <DialogDescription>Écart: {selectedGap?.gapCode}  {selectedGap?.requirement}</DialogDescription>
+                <DialogTitle>ï¿½valuer le Plan d'Action</DialogTitle>
+                <DialogDescription>ï¿½cart: {selectedGap?.gapCode}  {selectedGap?.requirement}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -334,8 +334,8 @@ export default function GapsManagementPage() {
           <Dialog open={showVerify} onOpenChange={setShowVerify}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Vérifier les Preuves de Mise en Oeuvre</DialogTitle>
-                <DialogDescription>Écart: {selectedGap?.gapCode}  {selectedGap?.requirement}</DialogDescription>
+                <DialogTitle>Vï¿½rifier les Preuves de Mise en Oeuvre</DialogTitle>
+                <DialogDescription>ï¿½cart: {selectedGap?.gapCode}  {selectedGap?.requirement}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -353,7 +353,7 @@ export default function GapsManagementPage() {
                     placeholder="Observations sur les preuves de mise en oeuvre..." rows={3} /></div>
                 {selectedGap?.type === "CRITIQUE" && verifyForm.verified && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    <strong>Note :</strong> Pour un écart critique, la vérification validée déclenchera une évaluation complémentaire sur site.
+                    <strong>Note :</strong> Pour un ï¿½cart critique, la vï¿½rification validï¿½e dï¿½clenchera une ï¿½valuation complï¿½mentaire sur site.
                   </div>
                 )}
               </div>
@@ -371,7 +371,7 @@ export default function GapsManagementPage() {
           <Dialog open={showDetail} onOpenChange={setShowDetail}>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Détail de l'Écart {selectedGap?.gapCode}</DialogTitle>
+                <DialogTitle>Dï¿½tail de l'ï¿½cart {selectedGap?.gapCode}</DialogTitle>
               </DialogHeader>
               {selectedGap && (
                 <div className="space-y-3 text-sm">
@@ -387,7 +387,7 @@ export default function GapsManagementPage() {
                   {selectedGap.fOR02Content && <div><strong>Contenu FOR 02 :</strong> {selectedGap.fOR02Content}</div>}
                   {selectedGap.reclassifiedToCritical && (
                     <div className="p-2 bg-red-50 border border-red-200 rounded">
-                      <strong className="text-red-800"> Requalifié en Critique</strong>
+                      <strong className="text-red-800"> Requalifiï¿½ en Critique</strong>
                       <p className="text-red-700">{selectedGap.reclassificationReason}</p>
                     </div>
                   )}

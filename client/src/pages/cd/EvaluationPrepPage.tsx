@@ -177,7 +177,7 @@ export default function CDEvaluationPrepPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Préparation Évaluation — CD</h1>
+            <h1 className="text-2xl font-bold">Préparation Évaluation — CD</h1>
             <p className="text-muted-foreground mt-1">Validation mandatements, réunion de préparation, validation plan FOR 32</p>
           </div>
 

@@ -102,7 +102,7 @@ export default function OECGapReviewPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Revue des Écarts — Étape 7</h1>
+            <h1 className="text-2xl font-bold">Revue des Écarts — Étape 7</h1>
             <p className="text-muted-foreground mt-1">Acceptez ou refusez les écarts envoyés par l'équipe d'évaluation</p>
           </div>
 

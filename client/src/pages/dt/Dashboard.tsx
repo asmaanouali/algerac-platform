@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function DTDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [pending, setPending] = useState<OECApplication[]>([]);
   const [allApps, setAllApps] = useState<OECApplication[]>([]);
@@ -66,13 +68,13 @@ export default function DTDashboard() {
   const getStatus = (status: string) => statusConfig[status] || { label: status.replace(/_/g, " "), color: "bg-slate-100 text-slate-700" };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64">
         <Navbar />
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Tableau de Bord Technique</h1>
+            <h1 className="text-2xl font-bold">{t('dt_page.dashboardTitle')}</h1>
             <p className="text-muted-foreground mt-1">Vue d'ensemble des candidatures OEC et de l'activité technique.</p>
           </div>
 

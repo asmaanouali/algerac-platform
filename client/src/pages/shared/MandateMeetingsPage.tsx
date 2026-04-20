@@ -77,7 +77,7 @@ export default function MandateMeetingsPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Mandatements & Réunions</h1>
+            <h1 className="text-2xl font-bold">Mandatements & Réunions</h1>
             <p className="text-muted-foreground mt-1">Vos mandatements reçus et les réunions de préparation planifiées (Étape 6)</p>
           </div>
 

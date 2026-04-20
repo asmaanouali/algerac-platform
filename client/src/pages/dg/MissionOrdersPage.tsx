@@ -65,7 +65,7 @@ export default function DGMissionOrdersPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Approbation DG — Ordres de Mission</h1>
+            <h1 className="text-2xl font-bold">Approbation DG — Ordres de Mission</h1>
             <p className="text-muted-foreground mt-1">Donnez la validation finale des ordres de mission (Étape 6.3)</p>
           </div>
 

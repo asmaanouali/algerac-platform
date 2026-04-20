@@ -206,7 +206,7 @@ export default function SiteEvaluationPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Évaluation sur Site — REE (Étape 7)</h1>
+            <h1 className="text-2xl font-bold">Évaluation sur Site — REE (Étape 7)</h1>
             <p className="text-muted-foreground mt-1">Gestion de l'évaluation, consensus, envoi des écarts à l'OEC</p>
           </div>
 

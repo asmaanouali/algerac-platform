@@ -79,7 +79,7 @@ export default function RAQuotesPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Conventions & Devis</h1>
+            <h1 className="text-2xl font-bold">Conventions & Devis</h1>
             <p className="text-muted-foreground mt-1">Gestion des devis et conventions d'évaluation.</p>
           </div>
 

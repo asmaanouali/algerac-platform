@@ -122,7 +122,7 @@ export default function CASPreparationPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Comité d'Accréditation Spécialisé (CAS)</h1>
+            <h1 className="text-2xl font-bold">Comité d'Accréditation Spécialisé (CAS)</h1>
             <p className="text-muted-foreground mt-1">Préparez et gérez les réunions du CAS (Étape 11)</p>
           </div>
 

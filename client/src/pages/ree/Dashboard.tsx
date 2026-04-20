@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,6 +10,7 @@ import { Loader2, Users, FileText, CalendarCheck, ClipboardList, AlertTriangle, 
 import { Link } from "wouter";
 
 export default function REEDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [teams, setTeams] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
@@ -35,13 +37,13 @@ export default function REEDashboard() {
   const reeTeams = teams.filter((t: any) => t.role === "REE");
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord REE</h1>
+            <h1 className="text-2xl font-bold">{t('ree.dashboardTitle')}</h1>
             <p className="text-muted-foreground mt-1">
               Responsable d'Équipe d'Évaluation — {user.fullName}
             </p>

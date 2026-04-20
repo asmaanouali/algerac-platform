@@ -151,7 +151,7 @@ export default function DocumentaryAnalysisPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Revue Documentaire</h1>
+            <h1 className="text-2xl font-bold">Revue Documentaire</h1>
             <p className="text-muted-foreground mt-1">Analysez les documents soumis par l'OEC (Étape 5)</p>
           </div>
 

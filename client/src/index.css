@@ -251,3 +251,63 @@
 
 /* ── Emerald accent text (trend indicators) ─────────────────────────── */
 .dark .text-emerald-600 { color: hsl(152 65% 52%); }
+
+/* ── Hover states ────────────────────────────────────────────────────── */
+.dark .hover\:bg-slate-50:hover  { background-color: hsl(220 18% 17%); }
+.dark .hover\:bg-gray-50:hover   { background-color: hsl(220 18% 17%); }
+.dark .hover\:bg-white:hover     { background-color: hsl(222 20% 16%); }
+
+/* ── Inner bg-white items inside colored alert cards ───────────────── */
+/* These are list items inside amber/blue/red alert containers */
+.dark .bg-amber-50  .bg-white,
+.dark .bg-amber-100 .bg-white,
+.dark .bg-blue-50   .bg-white,
+.dark .bg-red-50    .bg-white { background-color: hsl(var(--card)); }
+
+/* ── White backgrounds inside page-level wrappers ───────────────────── */
+/* bg-white inside gray/slate page wrappers (not auth layouts) */
+.dark .bg-gray-50\/50 .bg-white,
+.dark .bg-gray-50    .bg-white,
+.dark .bg-slate-50   .bg-white { background-color: hsl(var(--card)); }
+
+/* ── White backgrounds used as neutral containers in pages ──────────── */
+/* Target bg-white only when it's NOT inside an auth layout */
+/* (auth pages already have explicit dark: variants; dashboard pages don't) */
+.dark .bg-background .bg-white,
+.dark .bg-background .hover\:bg-white:hover { background-color: hsl(var(--card)); }
+
+/* ── bg-white in table rows / list items ───────────────────────────── */
+.dark table .bg-white { background-color: hsl(var(--card)); }
+
+/* ── Amber / alert text overrides ───────────────────────────────────── */
+.dark .text-amber-600 { color: hsl(38 90% 58%); }
+.dark .text-amber-800 { color: hsl(38 90% 65%); }
+.dark .bg-amber-50    { background-color: hsl(38 45% 12%); }
+.dark .border-amber-100 { border-color: hsl(38 40% 22%); }
+.dark .border-amber-200 { border-color: hsl(38 45% 25%); }
+.dark .border-amber-300 { border-color: hsl(38 50% 28%); }
+.dark .hover\:bg-amber-100:hover { background-color: hsl(38 45% 18%); }
+
+/* ── Green / Emerald borders ────────────────────────────────────────── */
+.dark .border-emerald-200 { border-color: hsl(152 40% 22%); }
+.dark .bg-emerald-50 { background-color: hsl(152 40% 11%); }
+
+/* ── Cyan / teal ────────────────────────────────────────────────────── */
+.dark .bg-cyan-100   { background-color: hsl(187 45% 14%); }
+.dark .text-cyan-700 { color: hsl(187 75% 55%); }
+.dark .bg-violet-100  { background-color: hsl(258 45% 16%); }
+.dark .text-violet-700 { color: hsl(258 75% 70%); }
+
+/* ── Gray utility text ──────────────────────────────────────────────── */
+.dark .text-gray-700 { color: hsl(215 15% 68%); }
+.dark .text-gray-600 { color: hsl(215 12% 60%); }
+.dark .text-gray-500 { color: hsl(215 10% 52%); }
+.dark .text-gray-400 { color: hsl(215 10% 45%); }
+
+/* ── Slate overrides ────────────────────────────────────────────────── */
+.dark .text-slate-800 { color: hsl(215 18% 82%); }
+.dark .text-slate-600 { color: hsl(215 12% 60%); }
+.dark .text-slate-500 { color: hsl(215 10% 52%); }
+
+/* ── Progress bars ───────────────────────────────────────────────────── */
+.dark .bg-slate-100.rounded-full { background-color: hsl(220 18% 20%); }

@@ -154,7 +154,7 @@ export default function InterviewPanelPage() {
 
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Entretiens de Candidats</h1>
+            <h1 className="text-2xl font-bold">Entretiens de Candidats</h1>
             <p className="text-muted-foreground mt-1">
               Vous faites partie du panel d'entretien pour les candidats ci-dessous. Consultez les dossiers avant l'entretien.
             </p>

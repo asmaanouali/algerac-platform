@@ -183,7 +183,7 @@ export default function GapTreatmentPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">
+            <h1 className="text-2xl font-bold">
               Traitement des Écarts — Étape 8 {isCD && "(CD)"}
             </h1>
             <p className="text-muted-foreground mt-1">

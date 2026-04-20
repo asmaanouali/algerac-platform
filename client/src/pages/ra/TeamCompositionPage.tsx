@@ -285,7 +285,7 @@ export default function TeamCompositionPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Constitution de l'Equipe d'Evaluation</h1>
+            <h1 className="text-2xl font-bold">Constitution de l'Equipe d'Evaluation</h1>
             <p className="text-muted-foreground mt-1">Designez les membres de l'equipe d'evaluation (Etape 4)</p>
           </div>
 

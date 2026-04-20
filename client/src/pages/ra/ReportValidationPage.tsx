@@ -15,10 +15,10 @@ import { apiRequest } from "@/lib/queryClient";
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Brouillon", color: "bg-gray-100 text-gray-800" },
   SUBMITTED_TO_CD: { label: "Soumis au CD", color: "bg-blue-100 text-blue-800" },
-  CORRECTIONS_NEEDED: { label: "Corrections demandées", color: "bg-amber-100 text-amber-800" },
-  VALIDATED: { label: "Validé par CD", color: "bg-green-100 text-green-800" },
-  DT_VALIDATED: { label: "Validé par DT", color: "bg-emerald-100 text-emerald-800" },
-  CONSOLIDATED: { label: "Consolidé", color: "bg-purple-100 text-purple-800" },
+  CORRECTIONS_NEEDED: { label: "Corrections demandï¿½es", color: "bg-amber-100 text-amber-800" },
+  VALIDATED: { label: "Validï¿½ par CD", color: "bg-green-100 text-green-800" },
+  DT_VALIDATED: { label: "Validï¿½ par DT", color: "bg-emerald-100 text-emerald-800" },
+  CONSOLIDATED: { label: "Consolidï¿½", color: "bg-purple-100 text-purple-800" },
 };
 
 export default function ReportValidationPage() {
@@ -78,12 +78,12 @@ export default function ReportValidationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: validated ? "Rapport validé  FOR 23 enregistrée" : "Corrections demandées au REE" });
+        toast({ title: "Succï¿½s", description: validated ? "Rapport validï¿½  FOR 23 enregistrï¿½e" : "Corrections demandï¿½es au REE" });
         setShowValidate(false);
         loadData();
         selectRequest(selectedRequest);
       } else {
-        toast({ title: "Erreur", description: data.error || "Échec", variant: "destructive" });
+        toast({ title: "Erreur", description: data.error || "ï¿½chec", variant: "destructive" });
       }
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -100,8 +100,8 @@ export default function ReportValidationPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Validation du Rapport d'Évaluation</h1>
-            <p className="text-muted-foreground mt-1">Vérifiez les rapports, remplissez le FOR 23 et validez (Étape 9)</p>
+            <h1 className="text-2xl font-bold">Validation du Rapport d'ï¿½valuation</h1>
+            <p className="text-muted-foreground mt-1">Vï¿½rifiez les rapports, remplissez le FOR 23 et validez (ï¿½tape 9)</p>
           </div>
 
           {loading ? (
@@ -119,14 +119,14 @@ export default function ReportValidationPage() {
                       <Badge variant="outline" className="text-xs mt-1">{r.status?.replace(/_/g, " ")}</Badge>
                     </div>
                   ))}
-                  {requests.length === 0 && <p className="text-sm text-muted-foreground">Aucun rapport à valider</p>}
+                  {requests.length === 0 && <p className="text-sm text-muted-foreground">Aucun rapport ï¿½ valider</p>}
                 </CardContent>
               </Card>
 
               <div className="lg:col-span-3 space-y-4">
                 {!selectedRequest ? (
                   <Card><CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground py-8">Sélectionnez un dossier pour examiner le rapport</p>
+                    <p className="text-center text-muted-foreground py-8">Sï¿½lectionnez un dossier pour examiner le rapport</p>
                   </CardContent></Card>
                 ) : reports.length === 0 ? (
                   <Card><CardContent className="pt-6">
@@ -142,7 +142,7 @@ export default function ReportValidationPage() {
                               <BookOpen className="w-5 h-5" />{report.reportNumber}
                             </CardTitle>
                             <CardDescription className="mt-1">
-                              {report.type?.replace(/_/g, " ")}  Créé le {report.createdAt && new Date(report.createdAt).toLocaleDateString("fr-FR")}
+                              {report.type?.replace(/_/g, " ")}  Crï¿½ï¿½ le {report.createdAt && new Date(report.createdAt).toLocaleDateString("fr-FR")}
                             </CardDescription>
                           </div>
                           <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function ReportValidationPage() {
                             <div className={`flex items-center gap-2 p-3 rounded-lg ${daysLeft <= 3 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"} border`}>
                               <Clock className={`w-4 h-4 ${daysLeft <= 3 ? "text-red-600" : "text-amber-600"}`} />
                               <span className={`text-sm ${daysLeft <= 3 ? "text-red-800" : "text-amber-800"}`}>
-                                {daysLeft > 0 ? `${daysLeft} jour(s) restant(s) pour valider (délai 15 jours)` : "Délai de validation dépassé"}
+                                {daysLeft > 0 ? `${daysLeft} jour(s) restant(s) pour valider (dï¿½lai 15 jours)` : "Dï¿½lai de validation dï¿½passï¿½"}
                               </span>
                             </div>
                           );
@@ -183,7 +183,7 @@ export default function ReportValidationPage() {
                           )}
                           {report.teamComposition && (
                             <div className="p-3 bg-gray-50 rounded-lg">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Équipe d'évaluation</p>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">ï¿½quipe d'ï¿½valuation</p>
                               <p className="text-sm">{report.teamComposition}</p>
                             </div>
                           )}
@@ -198,14 +198,14 @@ export default function ReportValidationPage() {
 
                         {report.gapsSummary && (
                           <div className="p-3 bg-amber-50/50 rounded-lg border border-amber-100">
-                            <p className="text-xs font-semibold text-amber-800 uppercase mb-1">Synthèse des écarts</p>
+                            <p className="text-xs font-semibold text-amber-800 uppercase mb-1">Synthï¿½se des ï¿½carts</p>
                             <p className="text-sm">{report.gapsSummary}</p>
                           </div>
                         )}
 
                         {report.gapsStatus && (
                           <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Traitement des écarts</p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Traitement des ï¿½carts</p>
                             <p className="text-sm">{report.gapsStatus}</p>
                           </div>
                         )}
@@ -219,7 +219,7 @@ export default function ReportValidationPage() {
                           )}
                           {report.improvementAreas && (
                             <div className="p-3 bg-purple-50/50 rounded-lg border border-purple-100">
-                              <p className="text-xs font-semibold text-purple-800 uppercase mb-1">Axes d'amélioration</p>
+                              <p className="text-xs font-semibold text-purple-800 uppercase mb-1">Axes d'amï¿½lioration</p>
                               <p className="text-sm">{report.improvementAreas}</p>
                             </div>
                           )}
@@ -235,7 +235,7 @@ export default function ReportValidationPage() {
                         {/* FOR 23 if filled */}
                         {(report.fOR23AppreciationSheet || report.FOR23AppreciationSheet) && (
                           <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <p className="text-xs font-semibold text-indigo-800 uppercase mb-1">FOR 23  Fiche d'appréciation (CD)</p>
+                            <p className="text-xs font-semibold text-indigo-800 uppercase mb-1">FOR 23  Fiche d'apprï¿½ciation (CD)</p>
                             <p className="text-sm">{report.fOR23AppreciationSheet || report.FOR23AppreciationSheet}</p>
                           </div>
                         )}
@@ -243,7 +243,7 @@ export default function ReportValidationPage() {
                         {/* Corrections feedback */}
                         {report.correctionRequests && (
                           <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                            <p className="text-sm font-medium text-amber-800"><Edit className="inline w-4 h-4 mr-1" />Corrections demandées</p>
+                            <p className="text-sm font-medium text-amber-800"><Edit className="inline w-4 h-4 mr-1" />Corrections demandï¿½es</p>
                             <p className="text-sm text-amber-700 mt-1">{report.correctionRequests}</p>
                           </div>
                         )}
@@ -275,19 +275,19 @@ export default function ReportValidationPage() {
                 {validated ? (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">
-                      FOR 23  Fiche d'appréciation du CD *
+                      FOR 23  Fiche d'apprï¿½ciation du CD *
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Renseignez vos observations et votre appréciation globale. Ce document sera transmis au CAS avec le dossier.
+                      Renseignez vos observations et votre apprï¿½ciation globale. Ce document sera transmis au CAS avec le dossier.
                     </p>
                     <Textarea value={for23Content} onChange={(e) => setFor23Content(e.target.value)}
-                      placeholder="Appréciation du CD : synthèse de l'évaluation, recommandation pour le CAS..." rows={6} />
+                      placeholder="Apprï¿½ciation du CD : synthï¿½se de l'ï¿½valuation, recommandation pour le CAS..." rows={6} />
                   </div>
                 ) : (
                   <div>
-                    <Label className="text-sm font-medium text-red-600">Corrections demandées</Label>
+                    <Label className="text-sm font-medium text-red-600">Corrections demandï¿½es</Label>
                     <Textarea value={correctionRequests} onChange={(e) => setCorrectionRequests(e.target.value)}
-                      placeholder="Précisez les ajustements que le REE doit apporter au rapport..." rows={4} />
+                      placeholder="Prï¿½cisez les ajustements que le REE doit apporter au rapport..." rows={4} />
                   </div>
                 )}
               </div>

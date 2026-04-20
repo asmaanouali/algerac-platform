@@ -116,7 +116,7 @@ export default function GapEvaluationPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Évaluation des Plans d'Action</h1>
+            <h1 className="text-2xl font-bold">Évaluation des Plans d'Action</h1>
             <p className="text-muted-foreground mt-1">Évaluez les plans d'action soumis par l'OEC et vérifiez les preuves de mise en œuvre</p>
           </div>
 

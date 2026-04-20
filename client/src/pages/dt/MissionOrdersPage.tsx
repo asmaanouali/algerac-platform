@@ -95,7 +95,7 @@ export default function MissionOrdersPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Ordres de Mission</h1>
+            <h1 className="text-2xl font-bold">Ordres de Mission</h1>
             <p className="text-muted-foreground mt-1">Approuvez les ordres de mission pour les évaluateurs (Étape 6)</p>
           </div>
 

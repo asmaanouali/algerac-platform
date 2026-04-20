@@ -89,7 +89,7 @@ export default function RADossiersPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Dossiers d'Accréditation</h1>
+            <h1 className="text-2xl font-bold">Dossiers d'Accréditation</h1>
             <p className="text-muted-foreground mt-1">Vue d'ensemble de tous les dossiers en cours et archivés.</p>
           </div>
 

@@ -151,7 +151,7 @@ export default function GapResponsePage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Traitement des Écarts — Étape 8</h1>
+            <h1 className="text-2xl font-bold">Traitement des Écarts — Étape 8</h1>
             <p className="text-muted-foreground mt-1">Soumettez vos plans d'action et preuves de mise en œuvre</p>
           </div>
 

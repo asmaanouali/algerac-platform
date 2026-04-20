@@ -157,7 +157,7 @@ export default function DocumentaryDecisionPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Revue Documentaire — Décision CD</h1>
+            <h1 className="text-2xl font-bold">Revue Documentaire — Décision CD</h1>
             <p className="text-muted-foreground mt-1">Validez les résultats, rédigez une synthèse et prenez la décision de poursuivre ou arrêter</p>
           </div>
 

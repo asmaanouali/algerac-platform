@@ -172,7 +172,7 @@ export default function CandidaturesPage() {
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Candidatures Experts</h1>
+              <h1 className="text-2xl md:text-3xl font-bold">Candidatures Experts</h1>
               <p className="text-muted-foreground mt-1 text-sm md:text-base">Gérer les demandes d'inscription</p>
             </div>
             <Button className="shrink-0">

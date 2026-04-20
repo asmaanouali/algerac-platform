@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -34,6 +35,7 @@ import { apiRequest } from "@/lib/queryClient";
  * - Decision results viewing
  */
 export default function CASMemberDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -181,7 +183,7 @@ export default function CASMemberDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
@@ -191,7 +193,7 @@ export default function CASMemberDashboard() {
             <div className="flex items-center gap-3">
               <Scale className="w-7 h-7 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Comité d'Accréditation Spécialisé</h1>
+                <h1 className="text-2xl font-bold">{t('cas_page.dashboardTitle')}</h1>
                 <p className="text-muted-foreground mt-1">
                   Membre CAS — {user.fullName} | PRO 07 & PRO 16
                 </p>

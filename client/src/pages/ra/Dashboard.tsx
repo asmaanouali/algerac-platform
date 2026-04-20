@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function RADashboard() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -372,7 +374,7 @@ export default function RADashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
@@ -382,26 +384,26 @@ export default function RADashboard() {
           ) : (
             <>
               <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Responsable d'Accréditation</h1>
-                <p className="text-muted-foreground">Gérez l'ensemble du processus d'accréditation pour vos dossiers</p>
+                <h1 className="text-3xl font-bold mb-2">{t('ra.dashboardTitle')}</h1>
+                <p className="text-muted-foreground">{t('ra.dashboardSubtitle')}</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-5 mb-6">
-                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-600">{newAssignments.length}</div><p className="text-xs text-muted-foreground">Nouvelles assignations</p></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-600">{inStudy.length}</div><p className="text-xs text-muted-foreground">Étude recevabilité</p></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-600">{validated.length}</div><p className="text-xs text-muted-foreground">Validés / Recevables</p></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="text-2xl font-bold">{inProgress.length}</div><p className="text-xs text-muted-foreground">En progression</p></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-purple-600">{inEvaluation.length}</div><p className="text-xs text-muted-foreground">Évaluation / Décision</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-600">{newAssignments.length}</div><p className="text-xs text-muted-foreground">{t('ra.newAssignments')}</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-600">{inStudy.length}</div><p className="text-xs text-muted-foreground">{t('ra.receivabilityStudy')}</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-600">{validated.length}</div><p className="text-xs text-muted-foreground">{t('ra.validatedFiles')}</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold">{inProgress.length}</div><p className="text-xs text-muted-foreground">{t('ra.inProgressFiles')}</p></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-purple-600">{inEvaluation.length}</div><p className="text-xs text-muted-foreground">{t('ra.evaluationDecision')}</p></CardContent></Card>
               </div>
 
               <Tabs defaultValue="new" className="space-y-4">
                 <TabsList>
-                  <TabsTrigger value="new">Assignations ({newAssignments.length})</TabsTrigger>
-                  <TabsTrigger value="study">Recevabilité ({inStudy.length})</TabsTrigger>
-                  <TabsTrigger value="validated">Validés ({validated.length})</TabsTrigger>
-                  <TabsTrigger value="progress">En cours ({inProgress.length})</TabsTrigger>
-                  <TabsTrigger value="evaluation">Évaluation ({inEvaluation.length})</TabsTrigger>
-                  <TabsTrigger value="all">Tous ({allRequests.length})</TabsTrigger>
+                  <TabsTrigger value="new">{t('ra.tabs.new')} ({newAssignments.length})</TabsTrigger>
+                  <TabsTrigger value="study">{t('ra.tabs.study')} ({inStudy.length})</TabsTrigger>
+                  <TabsTrigger value="validated">{t('ra.tabs.validated')} ({validated.length})</TabsTrigger>
+                  <TabsTrigger value="progress">{t('ra.tabs.inProgress')} ({inProgress.length})</TabsTrigger>
+                  <TabsTrigger value="evaluation">{t('ra.tabs.evaluation')} ({inEvaluation.length})</TabsTrigger>
+                  <TabsTrigger value="all">{t('ra.tabs.all')} ({allRequests.length})</TabsTrigger>
                 </TabsList>
 
                 {/* Each tab renders the request table with appropriate actions */}
@@ -418,7 +420,7 @@ export default function RADashboard() {
                       <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{desc}</CardDescription></CardHeader>
                       <CardContent>
                         {data.length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">Aucun dossier</p>
+                          <p className="text-center text-muted-foreground py-8">{t('ra.noFiles')}</p>
                         ) : (
                           <Table>
                             <TableHeader>
@@ -434,10 +436,10 @@ export default function RADashboard() {
                             <TableBody>
                               {data.map((request: any) => (
                                 <TableRow key={request.id}>
-                                  <TableCell className="font-mono font-medium">{request.referenceNumber || <Badge variant="secondary">En attente</Badge>}</TableCell>
+                                  <TableCell className="font-mono font-medium">{request.referenceNumber || <Badge variant="secondary">{t('common.pending')}</Badge>}</TableCell>
                                   <TableCell>{request.oec?.organizationName || request.oec?.fullName}</TableCell>
                                   <TableCell>{request.domain}</TableCell>
-                                  <TableCell><Badge variant="outline">{STATUS_LABELS[request.status] || request.status.replace(/_/g, " ")}</Badge></TableCell>
+                                  <TableCell><Badge variant="outline">{t(`workflowStatus.${request.status}`, { defaultValue: STATUS_LABELS[request.status] || request.status.replace(/_/g, " ") })}</Badge></TableCell>
                                   <TableCell><Progress value={getProgress(request.status)} className="w-20" /></TableCell>
                                   <TableCell>{getStepActions(request)}</TableCell>
                                 </TableRow>

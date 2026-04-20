@@ -1479,7 +1479,7 @@ export default function NewRequestPage() {
           <div className="container mx-auto max-w-4xl space-y-6">
 
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Nouvelle Demande d'Accréditation</h1>
+              <h1 className="text-2xl font-bold">Nouvelle Demande d'Accréditation</h1>
               <p className="text-muted-foreground mt-1">Remplissez le formulaire DOC 1 ci-dessous pour soumettre votre dossier</p>
             </div>
 

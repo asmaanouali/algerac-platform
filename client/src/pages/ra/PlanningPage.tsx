@@ -84,7 +84,7 @@ export default function RAPlanningPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Planning des Évaluations</h1>
+            <h1 className="text-2xl font-bold">Planning des Évaluations</h1>
             <p className="text-muted-foreground mt-1">Vue d'ensemble des évaluations planifiées et en cours.</p>
           </div>
 

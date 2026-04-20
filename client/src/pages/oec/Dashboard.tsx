@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,28 +26,32 @@ interface MyRequest {
   createdAt: string;
 }
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "Brouillon", color: "bg-slate-100 text-slate-700" },
-  SUBMITTED: { label: "Soumise", color: "bg-blue-100 text-blue-700" },
-  AWAITING_REGISTRATION_FEE: { label: "En attente frais", color: "bg-amber-100 text-amber-700" },
-  PENDING_PAYMENT: { label: "Paiement requis", color: "bg-amber-100 text-amber-700" },
-  PAYMENT_COMPLETED: { label: "Paiement validé", color: "bg-green-100 text-green-700" },
-  ASSIGNED_TO_RA: { label: "Assignée", color: "bg-blue-100 text-blue-700" },
-  RECEIVABILITY_STUDY: { label: "Étude recevabilité", color: "bg-indigo-100 text-indigo-700" },
-  RECEIVABLE: { label: "Recevable", color: "bg-emerald-100 text-emerald-700" },
-  NOT_RECEIVABLE: { label: "Non recevable", color: "bg-red-100 text-red-700" },
-  QUOTATION_SENT_TO_OEC: { label: "Devis à valider", color: "bg-amber-100 text-amber-700" },
-  TEAM_SENT_TO_OEC: { label: "Équipe à valider", color: "bg-amber-100 text-amber-700" },
-  EVALUATION_IN_PROGRESS: { label: "Évaluation en cours", color: "bg-purple-100 text-purple-700" },
-  CAS_DECISION_GRANT: { label: "Accréditation accordée", color: "bg-emerald-100 text-emerald-700" },
-  CERTIFICATE_ISSUED: { label: "Certificat délivré", color: "bg-emerald-100 text-emerald-700" },
-  ACTIVE: { label: "Active", color: "bg-green-100 text-green-800 font-semibold" },
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-slate-100 text-slate-700",
+  SUBMITTED: "bg-blue-100 text-blue-700",
+  AWAITING_REGISTRATION_FEE: "bg-amber-100 text-amber-700",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-700",
+  PAYMENT_COMPLETED: "bg-green-100 text-green-700",
+  ASSIGNED_TO_RA: "bg-blue-100 text-blue-700",
+  RECEIVABILITY_STUDY: "bg-indigo-100 text-indigo-700",
+  RECEIVABLE: "bg-emerald-100 text-emerald-700",
+  NOT_RECEIVABLE: "bg-red-100 text-red-700",
+  QUOTATION_SENT_TO_OEC: "bg-amber-100 text-amber-700",
+  TEAM_SENT_TO_OEC: "bg-amber-100 text-amber-700",
+  EVALUATION_IN_PROGRESS: "bg-purple-100 text-purple-700",
+  CAS_DECISION_GRANT: "bg-emerald-100 text-emerald-700",
+  CERTIFICATE_ISSUED: "bg-emerald-100 text-emerald-700",
+  ACTIVE: "bg-green-100 text-green-800 font-semibold",
 };
 
 export default function OECDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [requests, setRequests] = useState<MyRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const getStatusColor = (status: string) => STATUS_COLORS[status] || "bg-slate-100 text-slate-700";
+  const getStatusLabel = (status: string) => t(`workflowStatus.${status}`, { defaultValue: status.replace(/_/g, " ") });
 
   useEffect(() => {
     loadRequests();
@@ -64,21 +69,21 @@ export default function OECDashboard() {
     }
   };
 
-  const getStatus = (status: string) => statusConfig[status] || { label: status.replace(/_/g, " "), color: "bg-slate-100 text-slate-700" };
+  const getStatus = (status: string) => ({ label: getStatusLabel(status), color: getStatusColor(status) });
 
   const activeRequests = requests.filter(r => r.status !== "DRAFT" && r.status !== "CLOSED" && r.status !== "WITHDRAWN");
   const pendingAction = requests.filter(r => r.pendingWith === "OEC");
   const certifiedCount = requests.filter(r => r.status === "ACTIVE" || r.status === "CERTIFICATE_ISSUED").length;
 
   return (
-    <div className="flex h-screen w-full bg-slate-50">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="mb-2">
-            <h1 className="text-2xl font-bold text-slate-900">Bienvenue, {user?.nomOrganisme || user?.fullName}</h1>
-            <p className="text-muted-foreground mt-1">Tableau de bord de votre organisme d'évaluation de la conformité.</p>
+            <h1 className="text-2xl font-bold">{t('dashboard.welcome', { name: user?.nomOrganisme || user?.fullName })}</h1>
+            <p className="text-muted-foreground mt-1">{t('oec.dashboardSubtitle')}</p>
           </div>
 
           {loading ? (
@@ -87,10 +92,10 @@ export default function OECDashboard() {
             <>
               {/* Stats */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Mes Demandes" value={requests.length} icon={Files} description={`${activeRequests.length} en cours`} />
-                <StatCard title="Actions Requises" value={pendingAction.length} icon={AlertCircle} description="En attente de votre part" className={pendingAction.length > 0 ? "border-l-amber-500" : ""} />
-                <StatCard title="Accréditations" value={certifiedCount} icon={ShieldCheck} description="Certificats actifs" className={certifiedCount > 0 ? "border-l-emerald-500" : ""} />
-                <StatCard title="Progression Moyenne" value={activeRequests.length > 0 ? `${Math.round(activeRequests.reduce((s, r) => s + r.progress, 0) / activeRequests.length)}%` : "—"} icon={Clock} description="Sur les demandes actives" />
+                <StatCard title={t('oec.myRequests')} value={requests.length} icon={Files} description={t('oec.activeRequests', { count: activeRequests.length })} />
+                <StatCard title={t('oec.actionsRequired')} value={pendingAction.length} icon={AlertCircle} description={t('oec.awaitingAction')} className={pendingAction.length > 0 ? "border-l-amber-500" : ""} />
+                <StatCard title={t('oec.accreditations')} value={certifiedCount} icon={ShieldCheck} description={t('oec.activeCertificates')} className={certifiedCount > 0 ? "border-l-emerald-500" : ""} />
+                <StatCard title={t('oec.avgProgress')} value={activeRequests.length > 0 ? `${Math.round(activeRequests.reduce((s, r) => s + r.progress, 0) / activeRequests.length)}%` : "—"} icon={Clock} description={t('oec.onActiveRequests')} />
               </div>
 
               {/* Alerts */}
@@ -98,7 +103,7 @@ export default function OECDashboard() {
                 <Card className="border-amber-200 bg-amber-50">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base text-amber-800 flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5" /> Actions Requises
+                      <AlertCircle className="h-5 w-5" /> {t('oec.actionsRequired')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -110,7 +115,7 @@ export default function OECDashboard() {
                         </div>
                         <Link href={`/oec/demandes/${req.id}`}>
                           <Button size="sm" variant="outline" className="text-amber-700 border-amber-300">
-                            Voir <ArrowRight className="ml-1 h-3 w-3" />
+                            {t('common.view')} <ArrowRight className="ml-1 h-3 w-3" />
                           </Button>
                         </Link>
                       </div>
@@ -123,11 +128,11 @@ export default function OECDashboard() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Mes Demandes</CardTitle>
-                    <CardDescription>Suivi de vos dossiers d'accréditation</CardDescription>
+                    <CardTitle>{t('oec.myRequests')}</CardTitle>
+                    <CardDescription>{t('oec.trackRequests')}</CardDescription>
                   </div>
                   <Link href="/requests/new">
-                    <Button size="sm"><FilePlus className="h-4 w-4 mr-1" /> Nouvelle Demande</Button>
+                    <Button size="sm"><FilePlus className="h-4 w-4 mr-1" /> {t('oec.newRequest')}</Button>
                   </Link>
                 </CardHeader>
                 <CardContent>
@@ -135,11 +140,11 @@ export default function OECDashboard() {
                     <div className="text-center py-10 space-y-3">
                       <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
                       <div>
-                        <p className="font-medium">Aucune demande</p>
-                        <p className="text-sm text-muted-foreground">Commencez par créer votre première demande d'accréditation</p>
+                        <p className="font-medium">{t('oec.noRequests')}</p>
+                        <p className="text-sm text-muted-foreground">{t('oec.noRequestsDesc')}</p>
                       </div>
                       <Link href="/requests/new">
-                        <Button className="mt-2"><FilePlus className="h-4 w-4 mr-1" /> Créer une demande</Button>
+                        <Button className="mt-2"><FilePlus className="h-4 w-4 mr-1" /> {t('oec.createRequest')}</Button>
                       </Link>
                     </div>
                   ) : (
@@ -151,10 +156,10 @@ export default function OECDashboard() {
                             <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 hover:shadow-sm transition-all cursor-pointer">
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <p className="font-semibold">{req.referenceNumber || `Demande #${req.id}`}</p>
+                                  <p className="font-semibold">{req.referenceNumber || t('oec.requestRef', { id: req.id })}</p>
                                   <Badge className={`${st.color} text-xs`}>{st.label}</Badge>
                                 </div>
-                                <p className="text-sm text-muted-foreground">{req.domain} · {req.type === "INITIAL" ? "Initiale" : req.type === "EXTENSION" ? "Extension" : req.type === "RENOUVELLEMENT" ? "Renouvellement" : req.type}</p>
+                                <p className="text-sm text-muted-foreground">{req.domain} · {req.type === "INITIAL" ? t('oec.initial') : req.type === "EXTENSION" ? t('oec.extension') : req.type === "RENOUVELLEMENT" ? t('oec.renewal') : req.type}</p>
                                 {req.currentStep && <p className="text-xs text-blue-600">{req.currentStep}</p>}
                               </div>
                               <div className="flex items-center gap-4">
@@ -181,8 +186,8 @@ export default function OECDashboard() {
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <FilePlus className="w-10 h-10 mx-auto mb-3 text-primary" />
-                      <h3 className="font-semibold">Nouvelle Demande</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Initier une demande d'accréditation</p>
+                      <h3 className="font-semibold">{t('oec.newRequest')}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t('auth.oecRegister.title')}</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -190,8 +195,8 @@ export default function OECDashboard() {
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <CreditCard className="w-10 h-10 mx-auto mb-3 text-emerald-600" />
-                      <h3 className="font-semibold">Paiements</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Gérer vos paiements en cours</p>
+                      <h3 className="font-semibold">{t('payment.title')}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t('oec.managePayments')}</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -199,8 +204,8 @@ export default function OECDashboard() {
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-blue-600" />
-                      <h3 className="font-semibold">Suivi des Demandes</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Voir toutes vos demandes en détail</p>
+                      <h3 className="font-semibold">{t('oec.viewRequests')}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t('oec.trackRequests')}</p>
                     </CardContent>
                   </Card>
                 </Link>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -37,6 +38,7 @@ import { apiRequest } from "@/lib/queryClient";
  * - Decision follow-up and notification management
  */
 export default function CASPresidentDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -299,7 +301,7 @@ export default function CASPresidentDashboard() {
   const currentStepIndex = selectedMeeting ? statusOrder.indexOf(selectedMeeting.status) : -1;
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="md:ml-64">
         <Navbar />
@@ -309,7 +311,7 @@ export default function CASPresidentDashboard() {
             <div className="flex items-center gap-3">
               <Crown className="w-7 h-7 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Président du CAS — Prise de Décision</h1>
+                <h1 className="text-2xl font-bold">{t('cas_page.presidentDashboardTitle')}</h1>
                 <p className="text-muted-foreground mt-1">
                   PRO 07 (Gestion CAS) & PRO 16 (Prise de Décision) | {user.fullName}
                 </p>

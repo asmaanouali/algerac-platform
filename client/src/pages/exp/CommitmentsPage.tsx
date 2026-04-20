@@ -56,7 +56,7 @@ export default function CommitmentsPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Engagements</h1>
+            <h1 className="text-2xl font-bold">Engagements</h1>
             <p className="text-muted-foreground mt-1">
               Signez vos engagements de confidentialité et d'impartialité pour chaque mission
             </p>

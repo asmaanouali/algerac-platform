@@ -449,7 +449,7 @@ export default function GesCompetencesCandidaturesPage() {
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-2xl font-bold text-slate-900">Candidatures</h1>
+              <h1 className="text-2xl md:text-2xl font-bold">Candidatures</h1>
               <p className="text-muted-foreground mt-1 text-sm md:text-base">
                 Gérer les demandes d'inscription des Experts, Évaluateurs et Formateurs
               </p>

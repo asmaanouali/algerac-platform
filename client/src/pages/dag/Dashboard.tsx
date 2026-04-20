@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ interface Quotation {
 }
 
 export default function DAGDashboard() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
@@ -127,14 +129,14 @@ export default function DAGDashboard() {
   const getTotalMembers = (q: Quotation) => (q.reeCount || 0) + (q.etCount || 0) + (q.eqCount || 0) + (q.obsCount || 0) + (q.supCount || 0) + (q.expCount || 0);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col w-full md:ml-64">
         <Navbar />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold">Dashboard - DAG</h1>
+              <h1 className="text-3xl font-bold">{t('dag_page.dashboardTitle')}</h1>
               <p className="text-muted-foreground mt-2">
                 {"\u00C9"}tablissez les devis sur la base des demandes soumises par les Responsables d'Accr\u00E9ditation
               </p>

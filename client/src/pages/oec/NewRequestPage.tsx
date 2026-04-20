@@ -530,7 +530,7 @@ export default function NewRequestPage() {
 
       if (!createRes.ok) {
         const err = await createRes.json();
-        throw new Error(err.message || "Erreur lors de la création");
+        throw new Error(err.error || err.message || "Erreur lors de la création");
       }
 
       const createData = await createRes.json();
@@ -544,7 +544,7 @@ export default function NewRequestPage() {
 
       if (!submitRes.ok) {
         const err = await submitRes.json();
-        throw new Error(err.message || "Erreur lors de la soumission");
+        throw new Error(err.error || err.message || "Erreur lors de la soumission");
       }
 
       setCreatedRequestId(requestId);

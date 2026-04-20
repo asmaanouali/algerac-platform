@@ -90,29 +90,6 @@ export function WorkflowTimeline({ requestId, compact = false }: WorkflowTimelin
       <CardContent className="space-y-4">
         <Progress value={progress.progress} className="h-3" />
 
-        {/* Phase steps */}
-        <div className="flex flex-wrap gap-1.5">
-          {PHASE_ORDER.slice(0, 12).map((phase, idx) => {
-            const isCompleted = idx < currentPhaseIndex;
-            const isCurrent = idx === currentPhaseIndex;
-            const label = PHASE_RANGES[phase] ? phase.replace(/_/g, " ") : phase;
-
-            return (
-              <Badge
-                key={phase}
-                variant={isCurrent ? "default" : isCompleted ? "secondary" : "outline"}
-                className={`text-[10px] ${isCurrent ? "ring-2 ring-primary ring-offset-1" : ""} ${
-                  isCompleted ? "opacity-70" : ""
-                }`}
-              >
-                {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />}
-                {isCurrent && <Clock className="h-2.5 w-2.5 mr-0.5 animate-pulse" />}
-                {label.charAt(0) + label.slice(1).toLowerCase()}
-              </Badge>
-            );
-          })}
-        </div>
-
         {/* Current status */}
         <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
           <div className="flex items-center gap-2">

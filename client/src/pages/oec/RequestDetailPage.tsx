@@ -208,7 +208,7 @@ export default function RequestDetailPage() {
                 <InfoRow label="Référence" value={req.referenceNumber || "Non attribuée"} />
                 <InfoRow label="Type" value={TYPE_LABELS[req.type] || req.type} />
                 <InfoRow label="Domaine / Portée" value={req.domain} />
-                <InfoRow label="Description" value={req.description || "—"} />
+                <DescriptionDisplay raw={req.description} />
                 <Separator />
                 <InfoRow label="Date de soumission" value={formatDate(req.submissionDate)} />
                 <InfoRow label="Date de création" value={formatDate(req.createdAt)} />
@@ -323,6 +323,86 @@ function TimelineItem({ date, label, done }: { date?: string | null; label: stri
       <div className="flex-1 flex items-center justify-between">
         <span className={`text-sm ${done ? "font-medium" : "text-muted-foreground"}`}>{label}</span>
         <span className="text-xs text-muted-foreground">{date ? formatDate(date) : "—"}</span>
+      </div>
+    </div>
+  );
+}
+
+const TYPE_DEMANDE_LABELS: Record<string, string> = {
+  initiale: "Accréditation initiale",
+  extension: "Extension de portée",
+  renouvellement: "Renouvellement",
+  transfert: "Transfert",
+};
+
+const SITE_TYPE_LABELS: Record<string, string> = {
+  monosite: "Mono-site",
+  multisite: "Multi-sites",
+};
+
+function DescriptionDisplay({ raw }: { raw?: string | null }) {
+  if (!raw) return null;
+
+  let parsed: Record<string, any> | null = null;
+  try { parsed = JSON.parse(raw); } catch { /* plain text */ }
+
+  if (!parsed || typeof parsed !== "object") {
+    return (
+      <div>
+        <p className="text-xs text-muted-foreground">Description</p>
+        <p className="text-sm font-medium whitespace-pre-wrap">{raw}</p>
+      </div>
+    );
+  }
+
+  const activites: string[] = Array.isArray(parsed.activites) ? parsed.activites : [];
+  const sites: any[] = Array.isArray(parsed.sites) ? parsed.sites : [];
+  const personnelSites: any[] = Array.isArray(parsed.personnelSites) ? parsed.personnelSites : [];
+
+  const rows: { label: string; value: string }[] = [];
+
+  if (parsed.typeDemande) rows.push({ label: "Type de demande", value: TYPE_DEMANDE_LABELS[parsed.typeDemande] || parsed.typeDemande });
+  if (activites.length) rows.push({ label: "Activités", value: activites.join(", ") });
+  if (parsed.siteType) rows.push({ label: "Type de site", value: SITE_TYPE_LABELS[parsed.siteType] || parsed.siteType });
+  if (parsed.nomLegal) rows.push({ label: "Nom légal", value: parsed.nomLegal });
+  if (parsed.abreviation) rows.push({ label: "Abréviation", value: parsed.abreviation });
+  if (parsed.sigle) rows.push({ label: "Sigle", value: parsed.sigle });
+  if (parsed.statutJuridique) rows.push({ label: "Statut juridique", value: parsed.statutJuridique });
+  if (parsed.registreCommerce) rows.push({ label: "Registre de commerce", value: parsed.registreCommerce });
+  if (parsed.adresseSiege) rows.push({ label: "Adresse du siège", value: parsed.adresseSiege });
+  if (parsed.emailOrg) rows.push({ label: "Email organisme", value: parsed.emailOrg });
+  if (parsed.siteWeb) rows.push({ label: "Site web", value: parsed.siteWeb });
+  if (parsed.contactNom) rows.push({ label: "Contact", value: parsed.contactNom });
+  if (parsed.contactFonction) rows.push({ label: "Fonction du contact", value: parsed.contactFonction });
+  if (parsed.contactTelephone) rows.push({ label: "Téléphone contact", value: parsed.contactTelephone });
+  if (parsed.contactEmail) rows.push({ label: "Email contact", value: parsed.contactEmail });
+  if (parsed.dateEvaluation) rows.push({ label: "Date évaluation souhaitée", value: parsed.dateEvaluation });
+  if (parsed.motifTransfert) rows.push({ label: "Motif de transfert", value: parsed.motifTransfert });
+  if (parsed.responsableQualiteNom) rows.push({ label: "Responsable qualité", value: parsed.responsableQualiteNom });
+  if (parsed.demandeurNom) rows.push({ label: "Demandeur", value: parsed.demandeurNom });
+  if (parsed.demandeurFonction) rows.push({ label: "Fonction demandeur", value: parsed.demandeurFonction });
+  if (parsed.demandeurDate) rows.push({ label: "Date de la demande", value: parsed.demandeurDate });
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">Détails du formulaire</p>
+      <div className="rounded-lg border bg-muted/20 divide-y">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex items-start gap-2 px-3 py-2">
+            <span className="text-xs text-muted-foreground w-44 shrink-0 pt-0.5">{label}</span>
+            <span className="text-sm font-medium break-words">{value}</span>
+          </div>
+        ))}
+        {sites.length > 0 && sites.some(s => s.localisation || s.adresse) && (
+          <div className="px-3 py-2">
+            <p className="text-xs text-muted-foreground mb-1">Sites</p>
+            {sites.filter(s => s.localisation || s.adresse).map((s, i) => (
+              <p key={i} className="text-sm font-medium">{s.localisation || s.adresse}</p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

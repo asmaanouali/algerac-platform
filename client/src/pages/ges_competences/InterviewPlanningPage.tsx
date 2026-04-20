@@ -99,7 +99,6 @@ export default function InterviewPlanningPage() {
         );
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Impossible de charger les entretiens", variant: "destructive" });
     } finally {
       setLoading(false);

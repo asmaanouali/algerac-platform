@@ -121,7 +121,6 @@ export default function GesCompetencesCandidaturesPage() {
         toast({ title: "Erreur", description: "Impossible de charger les candidatures", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -137,7 +136,6 @@ export default function GesCompetencesCandidaturesPage() {
         setAvailableRAs(data.responsablesAccreditation || []);
       }
     } catch (error) {
-      console.error("Erreur chargement panel:", error);
     }
   };
 
@@ -238,7 +236,6 @@ export default function GesCompetencesCandidaturesPage() {
         toast({ title: "Erreur", description: error.message || "Impossible de planifier l'entretien", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };
@@ -272,7 +269,6 @@ export default function GesCompetencesCandidaturesPage() {
         toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };
@@ -297,7 +293,6 @@ export default function GesCompetencesCandidaturesPage() {
         toast({ title: "Erreur", description: "Impossible de télécharger le FOR20", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };
@@ -319,7 +314,6 @@ export default function GesCompetencesCandidaturesPage() {
         toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     }
   };

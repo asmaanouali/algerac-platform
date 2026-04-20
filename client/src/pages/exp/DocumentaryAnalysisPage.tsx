@@ -38,7 +38,7 @@ export default function DocumentaryAnalysisPage() {
         const data = await res.json();
         setTeams(data.filter((t: any) => t.commitmentSigned));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -75,7 +75,7 @@ export default function DocumentaryAnalysisPage() {
           } catch (_) {}
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const submitNote = async () => {

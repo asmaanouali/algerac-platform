@@ -54,7 +54,6 @@ export default function RADossiersPage() {
         })));
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

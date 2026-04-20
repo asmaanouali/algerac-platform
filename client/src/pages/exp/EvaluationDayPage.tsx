@@ -39,7 +39,7 @@ export default function EvaluationDayPage() {
         const data = await res.json();
         setTeams(data.filter((t: any) => t.commitmentSigned));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -53,7 +53,7 @@ export default function EvaluationDayPage() {
       ]);
       if (notesRes.ok) setNotes(await notesRes.json());
       if (gapsRes.ok) setGaps(await gapsRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const submitGap = async () => {

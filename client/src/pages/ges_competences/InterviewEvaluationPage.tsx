@@ -133,7 +133,6 @@ export default function InterviewEvaluationPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur chargement panel:", error);
     }
   };
 
@@ -161,9 +160,6 @@ export default function InterviewEvaluationPage() {
         });
       }
       
-      console.log("Looking for candidateId:", candidateId, "Type:", typeof candidateId);
-      console.log("Available IDs:", allData.map(c => ({ id: c.id, type: typeof c.id, status: c.status })));
-      
       // Compare both as strings to handle type mismatch
       const found = allData.find((c) => String(c.id) === String(candidateId));
       if (found) {
@@ -182,7 +178,6 @@ export default function InterviewEvaluationPage() {
         toast({ title: "Erreur", description: "Candidature introuvable", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Impossible de charger la candidature", variant: "destructive" });
     } finally {
       setLoading(false);

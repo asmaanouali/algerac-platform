@@ -121,7 +121,6 @@ export default function QualificationsPage() {
         setQualifications(await res.json());
       }
     } catch (err) {
-      console.error("Erreur:", err);
     } finally {
       setLoading(false);
     }

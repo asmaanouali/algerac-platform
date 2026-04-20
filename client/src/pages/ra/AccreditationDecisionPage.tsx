@@ -70,7 +70,7 @@ export default function AccreditationDecisionPage() {
          "ACTIVE", "SUSPENDED", "SURVEILLANCE_SCHEDULED"].includes(r.status)
       );
       setRequests(relevant);
-    } catch (err) { console.error(err); }
+    } catch (err) { }
     setLoading(false);
   };
 
@@ -91,7 +91,7 @@ export default function AccreditationDecisionPage() {
       if (casData.success) setCasDecisions(casData.data || []);
       if (certData.success) setCertificate(certData.data);
       if (infoData.success) setFullInfo(infoData.data);
-    } catch (err) { console.error(err); }
+    } catch (err) { }
   };
 
   // Report validation chain

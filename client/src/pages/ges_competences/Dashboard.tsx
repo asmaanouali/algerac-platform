@@ -57,7 +57,6 @@ export default function GesCompetencesDashboard() {
         setInterviews(data);
       }
     } catch (error) {
-      console.error("Erreur:", error);
     } finally {
       setLoading(false);
     }

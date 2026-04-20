@@ -48,7 +48,6 @@ export default function RAQuotesPage() {
         setQuotations(await res.json());
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

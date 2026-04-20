@@ -75,7 +75,6 @@ export default function InterviewPanelPage() {
         toast({ title: "Erreur", description: "Impossible de charger les entretiens", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);

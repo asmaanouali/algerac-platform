@@ -96,7 +96,6 @@ export default function PaymentsListPage() {
               }));
             }
           } catch (error) {
-            console.error("Erreur chargement paiement:", error);
           }
           return [];
         });
@@ -106,7 +105,6 @@ export default function PaymentsListPage() {
         setPayments(flatPayments);
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les paiements",

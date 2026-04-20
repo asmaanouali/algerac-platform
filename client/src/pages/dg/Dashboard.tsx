@@ -44,7 +44,7 @@ export default function DGDashboard() {
       if (ordersRes.ok) setOrders(await ordersRes.json());
       if (reqRes.ok) { const d = await reqRes.json(); setRequests(Array.isArray(d) ? d : []); }
       if (pendingRes.ok) { const d = await pendingRes.json(); setPendingValidation(Array.isArray(d) ? d : []); }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

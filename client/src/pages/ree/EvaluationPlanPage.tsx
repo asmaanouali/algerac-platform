@@ -51,7 +51,7 @@ export default function EvaluationPlanPage() {
         setTeams(data);
         if (data.length === 1) selectTeam(data[0]);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -79,7 +79,7 @@ export default function EvaluationPlanPage() {
           setMode("edit");
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const savePlan = async () => {

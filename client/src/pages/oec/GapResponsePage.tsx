@@ -53,7 +53,7 @@ export default function GapResponsePage() {
          "ACTION_PLANS_IMPLEMENTATION", "GAPS_RESOLVED", "EVALUATION_COMPLETED"].includes(r.status)
       );
       setRequests(relevant);
-    } catch (err) { console.error(err); }
+    } catch (err) { }
     setLoading(false);
   };
 
@@ -72,7 +72,7 @@ export default function GapResponsePage() {
         const ovData = await overviewRes.json();
         if (ovData.success) setOverview(ovData.data);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { }
   };
 
   const handleSubmitPlan = async () => {

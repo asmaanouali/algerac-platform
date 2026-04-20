@@ -99,7 +99,6 @@ export default function OECCertificatesPage() {
       }
       setCertificates(certs);
     } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

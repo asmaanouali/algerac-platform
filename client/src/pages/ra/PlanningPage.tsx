@@ -56,7 +56,6 @@ export default function RAPlanningPage() {
         setEvents(planned);
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

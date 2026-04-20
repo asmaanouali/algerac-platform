@@ -81,7 +81,7 @@ export default function OECSurveillancePage() {
       const res = await fetch("/api/workflow/surveillance/all", { credentials: "include" });
       const data = await res.json();
       if (data.success) setEvaluations(data.data || []);
-    } catch (err) { console.error("Failed to load surveillance evaluations:", err); }
+    } catch (err) { }
     setLoading(false);
   };
 

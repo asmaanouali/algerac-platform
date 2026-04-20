@@ -1,6 +1,7 @@
 package com.algerac.model;
 
 public enum CASDecisionType {
+    GRANT,                  // Octroi accréditation (générique)
     GRANT_FULL,             // Octroi accréditation - Portée complète
     GRANT_REDUCED,          // Octroi accréditation - Portée réduite
     GRANT_WITH_RESERVES,    // Octroi avec réserves à lever

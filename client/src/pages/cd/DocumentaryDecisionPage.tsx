@@ -54,7 +54,7 @@ export default function DocumentaryDecisionPage() {
         const all = await res.json();
         setRequests(all.filter((r: any) => CD_REVIEW_STATUSES.includes(r.status)));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -63,7 +63,7 @@ export default function DocumentaryDecisionPage() {
     try {
       const res = await fetch(`/api/workflow/documentary-review/by-request/${req.id}`, { credentials: "include" });
       if (res.ok) setReviews(await res.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const validateNoDeficiency = async () => {

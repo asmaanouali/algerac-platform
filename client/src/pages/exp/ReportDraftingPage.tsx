@@ -39,7 +39,7 @@ export default function ReportDraftingPage() {
         // REE (Responsable d'Équipe d'Évaluation) is the one who drafts reports
         setTeams(data.filter((t: any) => t.commitmentSigned));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -55,7 +55,7 @@ export default function ReportDraftingPage() {
       if (notesRes.ok) setNotes(await notesRes.json());
       if (gapsRes.ok) setGaps(await gapsRes.json());
       if (reportsRes.ok) setReports(await reportsRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const createDraft = async () => {

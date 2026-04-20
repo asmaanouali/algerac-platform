@@ -142,7 +142,7 @@ export default function SurveillanceManagementPage() {
       if (responses[3]?.success) setCompleted(responses[3].data || []);
       if (responses[4]?.success) setDeadlineViolations(responses[4].data || []);
       if (responses[5]?.success) setFindingDeadlines(responses[5].data || []);
-    } catch (err) { console.error("Failed to load surveillance data:", err); }
+    } catch (err) { }
     setLoading(false);
   };
 

@@ -102,7 +102,6 @@ export default function CandidaturesOECPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -139,7 +138,6 @@ export default function CandidaturesOECPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -190,7 +188,6 @@ export default function CandidaturesOECPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",

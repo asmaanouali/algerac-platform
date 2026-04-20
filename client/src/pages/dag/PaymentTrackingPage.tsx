@@ -92,7 +92,6 @@ export default function DAGPaymentTracking() {
       const data = await res.json();
       setPayments(data);
     } catch (err: any) {
-      console.error("Erreur chargement paiements:", err);
       setPayments([]);
     } finally { setLoading(false); }
   };

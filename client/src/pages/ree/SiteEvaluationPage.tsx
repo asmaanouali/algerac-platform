@@ -47,7 +47,7 @@ export default function SiteEvaluationPage() {
         const data = await res.json();
         setTeams(data.filter((t: any) => t.commitmentSigned && t.role === "REE"));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -63,7 +63,7 @@ export default function SiteEvaluationPage() {
       if (notesRes.ok) setNotes(await notesRes.json());
       if (gapsRes.ok) setGaps(await gapsRes.json());
       if (subsRes.ok) setTeamSubmissions(await subsRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const submitGap = async () => {

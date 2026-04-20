@@ -369,15 +369,15 @@ export default function NewRequestPage() {
   // ── Pre-fill from user profile ──
   useEffect(() => {
     if (user) {
-      setNomLegal(user.organizationName || user.fullName || "");
+      setNomLegal((user as any).organizationName || user.fullName || "");
       setAdresseSiege((user as any).adresseSiege || "");
       setEmailOrg(user.email || "");
       setContactNom((user as any).nomRepresentant || user.fullName || "");
       setContactFonction((user as any).fonction || "");
-      setContactTelephone(user.phone || (user as any).telephoneDirect || "");
+      setContactTelephone((user as any).phone || (user as any).telephoneDirect || "");
       setContactEmail((user as any).emailProfessionnel || user.email || "");
       setStatutJuridique((user as any).typeOrganisme || "");
-      setOrganismeSoumission(user.organizationName || user.fullName || "");
+      setOrganismeSoumission((user as any).organizationName || user.fullName || "");
       setDemandeurNom((user as any).nomRepresentant || user.fullName || "");
       setDemandeurFonction((user as any).fonction || "");
     }

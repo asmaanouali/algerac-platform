@@ -57,7 +57,7 @@ export default function EvaluationOversightPage() {
         );
         setRequests(relevant);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { }
     setLoading(false);
   };
 
@@ -72,7 +72,7 @@ export default function EvaluationOversightPage() {
       const contestData = await contestRes.json();
       if (gapsData.success) setGaps(gapsData.data || []);
       if (contestData.success) setContestations(contestData.data || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { }
   };
 
   const handleSendMandate = async () => {

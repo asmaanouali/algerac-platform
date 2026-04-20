@@ -98,17 +98,6 @@ export default function RecusationAnalysisPage() {
 
   const handleAcceptRecusation = async () => {
     if (!selectedRecusation) return;
-    // Check that all recused members have replacements
-    const allReplaced = selectedRecusation.recusedMembers.every(m => replacementMap[m.id]);
-    if (!allReplaced) {
-      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un remplaçant pour chaque membre récusé." });
-      return;
-    }
-    setProcessing(true);
-    try {
-      await apiRequest("POST", `/api/workflow/recusations/${selectedRecusation.id}/accept`, {
-  const handleAcceptRecusation = async () => {
-    if (!selectedRecusation) return;
     const allReplaced = selectedRecusation.recusedMembers.every(m => replacementMap[m.id]);
     if (!allReplaced) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un remplaçant pour chaque membre récusé." });

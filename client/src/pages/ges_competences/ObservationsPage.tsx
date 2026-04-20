@@ -111,7 +111,6 @@ export default function ObservationsPage() {
       const res = await fetch("/api/qualifications/observations", { credentials: "include" });
       if (res.ok) setObservations(await res.json());
     } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }

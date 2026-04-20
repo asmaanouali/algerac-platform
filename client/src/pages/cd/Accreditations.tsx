@@ -61,7 +61,6 @@ export default function CDAccreditations() {
         setRaList(await usersRes.json());
       }
     } catch (error) {
-      console.error("Erreur:", error);
     } finally {
       setLoading(false);
     }

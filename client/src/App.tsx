@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";  // Add this import
 import { SidebarProvider } from "@/components/sidebar-context";
+import { ThemeProvider } from "@/hooks/use-theme";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/auth/Login";
 import RegisterSelection from "@/pages/auth/RegisterSelection";
@@ -150,175 +152,175 @@ function Router() {
       <Route path="/for28/:token" component={For28SubmissionPage} />
       
       {/* OEC Routes */}
-      <Route path="/oec" component={OECDashboard} />
-      <Route path="/oec/dashboard" component={OECDashboard} />
-      <Route path="/oec/new-request" component={NewRequestPage} />
-      <Route path="/oec/nouvelle-demande" component={NewRequestPage} />
-      <Route path="/oec/mes-demandes" component={MyRequestsPage} />
-      <Route path="/oec/payments" component={PaymentsListPage} />
-      <Route path="/oec/payment/:requestId" component={PaymentPage} />
-      <Route path="/oec/paiement/:requestId" component={PaymentPage} />
-      <Route path="/oec/demandes/:requestId/validation" component={ValidateQuotationPage} />
-      <Route path="/oec/demandes/:requestId/corriger" component={CorrectRequestPage} />
-      <Route path="/oec/demandes/:requestId/equipe" component={ValidateTeamPage} />
-      <Route path="/oec/demandes/:requestId/reponse-documentaire" component={DocumentaryResponsePage} />
-      <Route path="/oec/demandes/:requestId/plans-actions" component={ActionPlansPage} />
-      <Route path="/oec/demandes/:requestId/lever-obstacles" component={LiftObstaclesPage} />
-      <Route path="/oec/demandes/:requestId" component={RequestDetailPage} />
-      <Route path="/oec/reponse-ecarts" component={GapResponsePage} />
-      <Route path="/oec/revue-ecarts" component={OECGapReviewPage} />
-      <Route path="/oec/documents" component={OECDocumentsPage} />
-      <Route path="/oec/certificates" component={OECCertificatesPage} />
-      <Route path="/oec/transfert" component={OECTransferRequestPage} />
-      <Route path="/oec/surveillance" component={OECSurveillancePage} />
-      <Route path="/oec/profile" component={OECProfilePage} />
+      <Route path="/oec">{() => <ProtectedRoute component={OECDashboard} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/dashboard">{() => <ProtectedRoute component={OECDashboard} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/new-request">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/nouvelle-demande">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/mes-demandes">{() => <ProtectedRoute component={MyRequestsPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/payments">{() => <ProtectedRoute component={PaymentsListPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/payment/:requestId">{() => <ProtectedRoute component={PaymentPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/paiement/:requestId">{() => <ProtectedRoute component={PaymentPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/validation">{() => <ProtectedRoute component={ValidateQuotationPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/corriger">{() => <ProtectedRoute component={CorrectRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/equipe">{() => <ProtectedRoute component={ValidateTeamPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/reponse-documentaire">{() => <ProtectedRoute component={DocumentaryResponsePage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/plans-actions">{() => <ProtectedRoute component={ActionPlansPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/lever-obstacles">{() => <ProtectedRoute component={LiftObstaclesPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId">{() => <ProtectedRoute component={RequestDetailPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/reponse-ecarts">{() => <ProtectedRoute component={GapResponsePage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/revue-ecarts">{() => <ProtectedRoute component={OECGapReviewPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/documents">{() => <ProtectedRoute component={OECDocumentsPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/certificates">{() => <ProtectedRoute component={OECCertificatesPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/transfert">{() => <ProtectedRoute component={OECTransferRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/surveillance">{() => <ProtectedRoute component={OECSurveillancePage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/profile">{() => <ProtectedRoute component={OECProfilePage} allowedRoles={["oec"]} />}</Route>
       
       {/* RA Routes */}
-      <Route path="/ra" component={RADashboard} />
-      <Route path="/ra/dashboard" component={RADashboard} />
-      <Route path="/ra/faisabilite" component={RAFeasibilityPage} />
-      <Route path="/ra/demandes/:requestId/devis" component={QuotationConventionPage} />
-      <Route path="/ra/equipes" component={TeamCompositionPage} />
-      <Route path="/ra/recusations" component={RecusationAnalysisPage} />
-      <Route path="/ra/revue-documentaire" component={DocumentaryReviewPage} />
-      <Route path="/ra/preparation-evaluation" component={EvaluationPrepPage} />
-      <Route path="/ra/gestion-ecarts" component={GapsManagementPage} />
-      <Route path="/ra/rapports" component={ReportValidationPage} />
-      <Route path="/ra/preparation-cas" component={CASPreparationPage} />
-      <Route path="/ra/decision-accreditation" component={AccreditationDecisionPage} />
-      <Route path="/ra/surveillance" component={SurveillanceManagementPage} />
-      <Route path="/ra/experts" component={ExpertDirectoryPage} />
-      <Route path="/ra/quotes" component={RAQuotesPage} />
-      <Route path="/ra/dossiers" component={RADossiersPage} />
-      <Route path="/ra/planning" component={RAPlanningPage} />
-      <Route path="/ra/entretiens-candidats" component={InterviewPanelPage} />
+      <Route path="/ra">{() => <ProtectedRoute component={RADashboard} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/dashboard">{() => <ProtectedRoute component={RADashboard} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/faisabilite">{() => <ProtectedRoute component={RAFeasibilityPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/demandes/:requestId/devis">{() => <ProtectedRoute component={QuotationConventionPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/equipes">{() => <ProtectedRoute component={TeamCompositionPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/recusations">{() => <ProtectedRoute component={RecusationAnalysisPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/revue-documentaire">{() => <ProtectedRoute component={DocumentaryReviewPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/preparation-evaluation">{() => <ProtectedRoute component={EvaluationPrepPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/gestion-ecarts">{() => <ProtectedRoute component={GapsManagementPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/rapports">{() => <ProtectedRoute component={ReportValidationPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/preparation-cas">{() => <ProtectedRoute component={CASPreparationPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/decision-accreditation">{() => <ProtectedRoute component={AccreditationDecisionPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/surveillance">{() => <ProtectedRoute component={SurveillanceManagementPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/experts">{() => <ProtectedRoute component={ExpertDirectoryPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/quotes">{() => <ProtectedRoute component={RAQuotesPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/dossiers">{() => <ProtectedRoute component={RADossiersPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/planning">{() => <ProtectedRoute component={RAPlanningPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["ra"]} />}</Route>
       
       {/* CD Routes */}
-      <Route path="/cd" component={CDDashboard} />
-      <Route path="/cd/dashboard" component={CDDashboard} />
-      <Route path="/cd/manage-requests" component={CDManageRequestsPage} />
-      <Route path="/cd/gerer-demandes" component={CDManageRequestsPage} />
-      <Route path="/cd/accreditations" component={CDAccreditations} />
-      <Route path="/cd/pilotage-evaluation" component={EvaluationOversightPage} />
-      <Route path="/cd/revue-documentaire" component={CDDocumentaryDecisionPage} />
-      <Route path="/cd/preparation-evaluation" component={CDEvaluationPrepPage} />
-      <Route path="/cd/traitement-ecarts" component={GapTreatmentPage} />
-      <Route path="/cd/echantillonnage" component={SamplingPage} />
-      <Route path="/cd/developpement-domaines" component={DomainDevelopmentPage} />
-      <Route path="/cd/regles-reference" component={ReferenceRulesPage} />
-      <Route path="/cd/multi-sites" component={MultiSitePage} />
-      <Route path="/cd/evaluation-distance" component={RemoteEvaluationPage} />
-      <Route path="/cd/transferts" component={AccreditationTransferPage} />
-      <Route path="/cd/surveillance" component={CDSurveillancePage} />
-      <Route path="/cd/entretiens-candidats" component={InterviewPanelPage} />
+      <Route path="/cd">{() => <ProtectedRoute component={CDDashboard} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/dashboard">{() => <ProtectedRoute component={CDDashboard} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/manage-requests">{() => <ProtectedRoute component={CDManageRequestsPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/gerer-demandes">{() => <ProtectedRoute component={CDManageRequestsPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/accreditations">{() => <ProtectedRoute component={CDAccreditations} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/pilotage-evaluation">{() => <ProtectedRoute component={EvaluationOversightPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/revue-documentaire">{() => <ProtectedRoute component={CDDocumentaryDecisionPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/preparation-evaluation">{() => <ProtectedRoute component={CDEvaluationPrepPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/traitement-ecarts">{() => <ProtectedRoute component={GapTreatmentPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/echantillonnage">{() => <ProtectedRoute component={SamplingPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/developpement-domaines">{() => <ProtectedRoute component={DomainDevelopmentPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/regles-reference">{() => <ProtectedRoute component={ReferenceRulesPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/multi-sites">{() => <ProtectedRoute component={MultiSitePage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/evaluation-distance">{() => <ProtectedRoute component={RemoteEvaluationPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/transferts">{() => <ProtectedRoute component={AccreditationTransferPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/surveillance">{() => <ProtectedRoute component={CDSurveillancePage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["cd"]} />}</Route>
       
       {/* DAG Routes */}
-      <Route path="/dag" component={DAGDashboard} />
-      <Route path="/dag/dashboard" component={DAGDashboard} />
-      <Route path="/dag/paiements" component={DAGPaymentTracking} />
-      <Route path="/dag/candidatures-oec" component={DAGOECApplicationsPage} />
-      <Route path="/dag/tarifs" component={TariffPage} />
+      <Route path="/dag">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/dashboard">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/paiements">{() => <ProtectedRoute component={DAGPaymentTracking} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/candidatures-oec">{() => <ProtectedRoute component={DAGOECApplicationsPage} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/tarifs">{() => <ProtectedRoute component={TariffPage} allowedRoles={["dag"]} />}</Route>
       
       {/* Admin & Other Routes */}
-      <Route path="/notifications" component={NotificationsPage} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/users" component={UsersManagementPage} />
-      <Route path="/admin/utilisateurs" component={UsersManagementPage} />
-      <Route path="/admin/utilisateurs-pending" component={UtilisateursPendingPage} />
-      <Route path="/risques-opportunites" component={RiskOpportunityPage} />
-      <Route path="/dt" component={DTDashboard} />
-      <Route path="/dt/dashboard" component={DTDashboard} />
-      <Route path="/dt/demandes-accreditation" component={DTRequestReviewPage} />
-      <Route path="/dt/candidatures-oec" component={CandidaturesOECPage} />
-      <Route path="/dt/candidatures" component={CandidaturesPage} />
-      <Route path="/dt/ordres-mission" component={DTMissionOrdersPage} />
-      <Route path="/dt/certificats" component={CertificateSigningPage} />
-      <Route path="/dt/entretiens-candidats" component={InterviewPanelPage} />
+      <Route path="/notifications">{() => <ProtectedRoute component={NotificationsPage} />}</Route>
+      <Route path="/admin">{() => <ProtectedRoute component={AdminDashboard} allowedRoles={["admin"]} />}</Route>
+      <Route path="/dashboard">{() => <ProtectedRoute component={DashboardPage} />}</Route>
+      <Route path="/users">{() => <ProtectedRoute component={UsersManagementPage} allowedRoles={["admin"]} />}</Route>
+      <Route path="/admin/utilisateurs">{() => <ProtectedRoute component={UsersManagementPage} allowedRoles={["admin"]} />}</Route>
+      <Route path="/admin/utilisateurs-pending">{() => <ProtectedRoute component={UtilisateursPendingPage} allowedRoles={["admin"]} />}</Route>
+      <Route path="/risques-opportunites">{() => <ProtectedRoute component={RiskOpportunityPage} allowedRoles={["admin"]} />}</Route>
+      <Route path="/dt">{() => <ProtectedRoute component={DTDashboard} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/dashboard">{() => <ProtectedRoute component={DTDashboard} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/demandes-accreditation">{() => <ProtectedRoute component={DTRequestReviewPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/candidatures-oec">{() => <ProtectedRoute component={CandidaturesOECPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/candidatures">{() => <ProtectedRoute component={CandidaturesPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/ordres-mission">{() => <ProtectedRoute component={DTMissionOrdersPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/certificats">{() => <ProtectedRoute component={CertificateSigningPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["dt"]} />}</Route>
       
       {/* Expert Routes */}
-      <Route path="/expert" component={ExpertDashboard} />
-      <Route path="/expert/dashboard" component={ExpertDashboard} />
-      <Route path="/expert/planning" component={ExpertPlanningPage} />
-      <Route path="/expert/engagements" component={ExpertCommitmentsPage} />
-      <Route path="/expert/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
-      <Route path="/expert/evaluation" component={ExpertEvaluationDayPage} />
-      <Route path="/expert/rapports" component={ExpertReportDraftingPage} />
-      <Route path="/expert/mandatements" component={MandateMeetingsPage} />
+      <Route path="/expert">{() => <ProtectedRoute component={ExpertDashboard} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/dashboard">{() => <ProtectedRoute component={ExpertDashboard} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/planning">{() => <ProtectedRoute component={ExpertPlanningPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/engagements">{() => <ProtectedRoute component={ExpertCommitmentsPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/revue-documentaire">{() => <ProtectedRoute component={ExpertDocumentaryAnalysisPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/evaluation">{() => <ProtectedRoute component={ExpertEvaluationDayPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/rapports">{() => <ProtectedRoute component={ExpertReportDraftingPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/expert/mandatements">{() => <ProtectedRoute component={MandateMeetingsPage} allowedRoles={["expert"]} />}</Route>
       
       {/* REE Routes */}
-      <Route path="/ree" component={REEDashboard} />
-      <Route path="/ree/dashboard" component={REEDashboard} />
-      <Route path="/ree/planning" component={ExpertPlanningPage} />
-      <Route path="/ree/engagements" component={ExpertCommitmentsPage} />
-      <Route path="/ree/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
-      <Route path="/ree/mandatements" component={MandateMeetingsPage} />
-      <Route path="/ree/plan-evaluation" component={REEEvaluationPlanPage} />
-      <Route path="/ree/rapports" component={ExpertReportDraftingPage} />
-      <Route path="/ree/evaluation-site" component={SiteEvaluationPage} />
-      <Route path="/ree/traitement-ecarts" component={GapTreatmentPage} />
-      <Route path="/ree/redaction-rapport" component={ReportDraftingPage} />
+      <Route path="/ree">{() => <ProtectedRoute component={REEDashboard} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/dashboard">{() => <ProtectedRoute component={REEDashboard} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/planning">{() => <ProtectedRoute component={ExpertPlanningPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/engagements">{() => <ProtectedRoute component={ExpertCommitmentsPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/revue-documentaire">{() => <ProtectedRoute component={ExpertDocumentaryAnalysisPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/mandatements">{() => <ProtectedRoute component={MandateMeetingsPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/plan-evaluation">{() => <ProtectedRoute component={REEEvaluationPlanPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/rapports">{() => <ProtectedRoute component={ExpertReportDraftingPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/evaluation-site">{() => <ProtectedRoute component={SiteEvaluationPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/traitement-ecarts">{() => <ProtectedRoute component={GapTreatmentPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/ree/redaction-rapport">{() => <ProtectedRoute component={ReportDraftingPage} allowedRoles={["ree"]} />}</Route>
       
       {/* ET Routes */}
-      <Route path="/et" component={ETDashboard} />
-      <Route path="/et/dashboard" component={ETDashboard} />
-      <Route path="/et/planning" component={ExpertPlanningPage} />
-      <Route path="/et/engagements" component={ExpertCommitmentsPage} />
-      <Route path="/et/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
-      <Route path="/et/mandatements" component={MandateMeetingsPage} />
-      <Route path="/et/evaluation" component={ExpertEvaluationDayPage} />
-      <Route path="/et/traitement-ecarts" component={GapTreatmentPage} />
-      <Route path="/et/evaluation-plans" component={ETGapEvaluationPage} />
+      <Route path="/et">{() => <ProtectedRoute component={ETDashboard} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/dashboard">{() => <ProtectedRoute component={ETDashboard} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/planning">{() => <ProtectedRoute component={ExpertPlanningPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/engagements">{() => <ProtectedRoute component={ExpertCommitmentsPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/revue-documentaire">{() => <ProtectedRoute component={ExpertDocumentaryAnalysisPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/mandatements">{() => <ProtectedRoute component={MandateMeetingsPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/evaluation">{() => <ProtectedRoute component={ExpertEvaluationDayPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/traitement-ecarts">{() => <ProtectedRoute component={GapTreatmentPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/et/evaluation-plans">{() => <ProtectedRoute component={ETGapEvaluationPage} allowedRoles={["et"]} />}</Route>
       
       {/* EQ Routes */}
-      <Route path="/eq" component={EQDashboard} />
-      <Route path="/eq/dashboard" component={EQDashboard} />
-      <Route path="/eq/planning" component={ExpertPlanningPage} />
-      <Route path="/eq/engagements" component={ExpertCommitmentsPage} />
-      <Route path="/eq/revue-documentaire" component={ExpertDocumentaryAnalysisPage} />
-      <Route path="/eq/mandatements" component={MandateMeetingsPage} />
-      <Route path="/eq/evaluation" component={ExpertEvaluationDayPage} />
-      <Route path="/eq/traitement-ecarts" component={GapTreatmentPage} />
+      <Route path="/eq">{() => <ProtectedRoute component={EQDashboard} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/dashboard">{() => <ProtectedRoute component={EQDashboard} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/planning">{() => <ProtectedRoute component={ExpertPlanningPage} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/engagements">{() => <ProtectedRoute component={ExpertCommitmentsPage} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/revue-documentaire">{() => <ProtectedRoute component={ExpertDocumentaryAnalysisPage} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/mandatements">{() => <ProtectedRoute component={MandateMeetingsPage} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/evaluation">{() => <ProtectedRoute component={ExpertEvaluationDayPage} allowedRoles={["eq"]} />}</Route>
+      <Route path="/eq/traitement-ecarts">{() => <ProtectedRoute component={GapTreatmentPage} allowedRoles={["eq"]} />}</Route>
       
       {/* CAS Member Routes */}
-      <Route path="/cas" component={CASMemberDashboard} />
-      <Route path="/cas/dashboard" component={CASMemberDashboard} />
-      <Route path="/cas/reunions" component={CASMemberDashboard} />
-      <Route path="/cas/transferts" component={TransferDecisionPage} />
+      <Route path="/cas">{() => <ProtectedRoute component={CASMemberDashboard} allowedRoles={["cas_member"]} />}</Route>
+      <Route path="/cas/dashboard">{() => <ProtectedRoute component={CASMemberDashboard} allowedRoles={["cas_member"]} />}</Route>
+      <Route path="/cas/reunions">{() => <ProtectedRoute component={CASMemberDashboard} allowedRoles={["cas_member"]} />}</Route>
+      <Route path="/cas/transferts">{() => <ProtectedRoute component={TransferDecisionPage} allowedRoles={["cas_member", "cas_president"]} />}</Route>
       
       {/* CAS President Routes */}
-      <Route path="/cas-president" component={CASPresidentDashboard} />
-      <Route path="/cas-president/dashboard" component={CASPresidentDashboard} />
-      <Route path="/cas-president/reunions" component={CASPresidentDashboard} />
-      <Route path="/cas-president/decisions" component={CASPresidentDashboard} />
-      <Route path="/cas-president/transferts" component={TransferDecisionPage} />
+      <Route path="/cas-president">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
+      <Route path="/cas-president/dashboard">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
+      <Route path="/cas-president/reunions">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
+      <Route path="/cas-president/decisions">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
+      <Route path="/cas-president/transferts">{() => <ProtectedRoute component={TransferDecisionPage} allowedRoles={["cas_president"]} />}</Route>
       
       {/* DG Routes */}
-      <Route path="/dg" component={DGDashboard} />
-      <Route path="/dg/dashboard" component={DGDashboard} />
-      <Route path="/dg/ordres-mission" component={DGMissionOrdersPage} />
-      <Route path="/dg/certificats" component={CertificateSigningPage} />
-      <Route path="/dg/transferts" component={DGTransferOverviewPage} />
+      <Route path="/dg">{() => <ProtectedRoute component={DGDashboard} allowedRoles={["dg"]} />}</Route>
+      <Route path="/dg/dashboard">{() => <ProtectedRoute component={DGDashboard} allowedRoles={["dg"]} />}</Route>
+      <Route path="/dg/ordres-mission">{() => <ProtectedRoute component={DGMissionOrdersPage} allowedRoles={["dg"]} />}</Route>
+      <Route path="/dg/certificats">{() => <ProtectedRoute component={CertificateSigningPage} allowedRoles={["dg"]} />}</Route>
+      <Route path="/dg/transferts">{() => <ProtectedRoute component={DGTransferOverviewPage} allowedRoles={["dg"]} />}</Route>
       
       {/* GES_COMPETENCES Routes */}
-      <Route path="/ges-competences" component={GesCompetencesDashboard} />
-      <Route path="/ges-competences/dashboard" component={GesCompetencesDashboard} />
-      <Route path="/ges-competences/candidatures" component={GCCandidaturesPage} />
-      <Route path="/ges-competences/entretiens" component={InterviewPlanningPage} />
-      <Route path="/ges-competences/entretien/:id" component={InterviewEvaluationPage} />
-      <Route path="/ges-competences/qualifications" component={QualificationsPage} />
-      <Route path="/ges-competences/commission" component={CommissionPage} />
-      <Route path="/ges-competences/observations" component={ObservationsPage} />
-      <Route path="/ges-competences/surveillance" component={SurveillanceQualPage} />
+      <Route path="/ges-competences">{() => <ProtectedRoute component={GesCompetencesDashboard} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/dashboard">{() => <ProtectedRoute component={GesCompetencesDashboard} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/candidatures">{() => <ProtectedRoute component={GCCandidaturesPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/entretiens">{() => <ProtectedRoute component={InterviewPlanningPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/entretien/:id">{() => <ProtectedRoute component={InterviewEvaluationPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/qualifications">{() => <ProtectedRoute component={QualificationsPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/commission">{() => <ProtectedRoute component={CommissionPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/observations">{() => <ProtectedRoute component={ObservationsPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/surveillance">{() => <ProtectedRoute component={SurveillanceQualPage} allowedRoles={["ges_competences"]} />}</Route>
       
       {/* RQ Routes */}
-      <Route path="/rq" component={RQComplaintsDashboard} />
-      <Route path="/rq/dashboard" component={RQComplaintsDashboard} />
-      <Route path="/rq/plaintes" component={RQComplaintsDashboard} />
-      <Route path="/rq/entretiens-candidats" component={InterviewPanelPage} />
+      <Route path="/rq">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
+      <Route path="/rq/dashboard">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
+      <Route path="/rq/plaintes">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
+      <Route path="/rq/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["rq"]} />}</Route>
       
       {/* Complaints (internal - for authenticated roles) */}
-      <Route path="/complaints/internal" component={InternalComplaintsPage} />
+      <Route path="/complaints/internal">{() => <ProtectedRoute component={InternalComplaintsPage} />}</Route>
       
       <Route component={NotFound} />
     </Switch>
@@ -327,16 +329,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>  {/* Add this wrapper */}
-          <SidebarProvider>
-            <Toaster />
-            <Router />
-          </SidebarProvider>
-        </AuthProvider>  {/* Close it here */}
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>  {/* Add this wrapper */}
+            <SidebarProvider>
+              <Toaster />
+              <Router />
+            </SidebarProvider>
+          </AuthProvider>  {/* Close it here */}
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

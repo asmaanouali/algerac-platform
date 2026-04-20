@@ -116,7 +116,6 @@ export default function RADashboard() {
       const data = await res.json();
       setAllRequests(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Erreur:", error);
     } finally {
       setLoading(false);
     }

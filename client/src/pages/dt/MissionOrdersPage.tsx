@@ -29,7 +29,7 @@ export default function MissionOrdersPage() {
     try {
       const res = await fetch("/api/workflow/mission-orders/pending-approval", { credentials: "include" });
       if (res.ok) setOrders(await res.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

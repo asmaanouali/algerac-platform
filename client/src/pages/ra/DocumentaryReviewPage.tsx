@@ -51,7 +51,7 @@ export default function DocumentaryReviewPage() {
         const all = await res.json();
         setRequests(all.filter((r: any) => DOC_REVIEW_STATUSES.includes(r.status)));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -71,7 +71,7 @@ export default function DocumentaryReviewPage() {
           } catch (_) {}
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const launchReview = async () => {

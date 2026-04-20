@@ -85,7 +85,6 @@ export default function CommissionPage() {
       const res = await fetch("/api/qualifications/commissions", { credentials: "include" });
       if (res.ok) setCommissions(await res.json());
     } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }

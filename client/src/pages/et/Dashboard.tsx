@@ -23,7 +23,7 @@ export default function ETDashboard() {
       ]);
       if (teamsRes.ok) setTeams(await teamsRes.json());
       if (missionsRes.ok) setMissions(await missionsRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

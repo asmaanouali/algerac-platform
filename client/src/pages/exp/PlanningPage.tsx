@@ -24,7 +24,7 @@ export default function PlanningPage() {
     try {
       const res = await fetch(`/api/workflow/availability/user/${user?.id}`, { credentials: "include" });
       if (res.ok) setUnavailableDates(await res.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

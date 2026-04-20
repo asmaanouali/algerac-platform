@@ -42,7 +42,6 @@ export default function OECDocumentsPage() {
         setDocuments(await res.json());
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

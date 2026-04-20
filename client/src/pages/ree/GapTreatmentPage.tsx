@@ -57,7 +57,7 @@ export default function GapTreatmentPage() {
         const data = await res.json();
         setTeams(data.filter((t: any) => t.commitmentSigned));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -72,7 +72,7 @@ export default function GapTreatmentPage() {
         );
         setTeams(relevant.map((r: any) => ({ id: r.id, requestId: r.id, requestReferenceNumber: r.referenceNumber, role: "CD" })));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -92,7 +92,7 @@ export default function GapTreatmentPage() {
         const ovData = await overviewRes.json();
         if (ovData.success) setOverview(ovData.data);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const sendReminder = async () => {

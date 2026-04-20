@@ -22,7 +22,7 @@ export default function CommitmentsPage() {
     try {
       const res = await fetch("/api/workflow/teams/my-teams", { credentials: "include" });
       if (res.ok) setMemberships(await res.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

@@ -41,7 +41,7 @@ export default function OECGapReviewPage() {
          "EVALUATION_CLOSING_MEETING", "EVALUATION_COMPLETED"].includes(r.status)
       );
       setRequests(relevant);
-    } catch (err) { console.error(err); }
+    } catch (err) { }
     setLoading(false);
   };
 
@@ -51,7 +51,7 @@ export default function OECGapReviewPage() {
       const res = await fetch(`/api/workflow/evaluation/oec-gaps/${request.id}`, { credentials: "include" });
       const data = await res.json();
       setOecGaps(Array.isArray(data) ? data : (data.data || []));
-    } catch (err) { console.error(err); }
+    } catch (err) { }
   };
 
   const handleAccept = async (gap: any) => {

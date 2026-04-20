@@ -60,7 +60,7 @@ export default function CDEvaluationPrepPage() {
         const all = await res.json();
         setRequests(all.filter((r: any) => CD_EVAL_STATUSES.includes(r.status)));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -77,7 +77,7 @@ export default function CDEvaluationPrepPage() {
       if (meetingsRes.ok) setMeetings(await meetingsRes.json());
       if (plansRes.ok) setPlans(await plansRes.json());
       if (availRes.ok) setTeamAvailability(await availRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const approveMandates = async () => {

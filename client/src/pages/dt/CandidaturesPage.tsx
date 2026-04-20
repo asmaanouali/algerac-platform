@@ -55,7 +55,6 @@ export default function CandidaturesPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des candidatures:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -126,7 +125,6 @@ export default function CandidaturesPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -157,7 +155,6 @@ export default function CandidaturesPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",

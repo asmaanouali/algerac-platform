@@ -90,7 +90,6 @@ export default function UtilisateursPendingPage() {
       const expertData = expertRes.ok ? await expertRes.json() : [];
       setApplications([...oecData, ...expertData]);
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -119,7 +118,10 @@ export default function UtilisateursPendingPage() {
           description: `Le compte ${getAppType(selectedApplication)} a été créé avec succès. Les identifiants ont été envoyés par email.`,
         });
         if (result.generatedPassword) {
-          console.log("Mot de passe généré :", result.generatedPassword);
+          toast({
+            title: "Mot de passe généré",
+            description: "Les identifiants ont été envoyés par email à l'utilisateur.",
+          });
         }
         fetchPendingApplications();
         setShowCreateAccountDialog(false);
@@ -133,7 +135,6 @@ export default function UtilisateursPendingPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",

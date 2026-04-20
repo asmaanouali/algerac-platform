@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import AuthLeft from "@/components/layout/AuthLeft";
+import AuthLayout from "@/components/layout/AuthLayout";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, KeyRound, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -153,78 +153,63 @@ export default function OTPVerification() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f5f6f8]">
-      <AuthLeft />
-
-      {/* Right Section */}
-      <div className="w-full lg:w-1/2 lg:ml-[50%] flex flex-col min-h-screen">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2 lg:hidden">
-            <img src="/logoalgerac.png" alt="ALGERAC" className="h-8 w-auto" />
-            <span className="text-lg font-bold text-[#00A63E]">ALGERAC</span>
-          </div>
-          <div className="ml-auto">
-            <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
-              <Link href="/auth/forgot-password" className="flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" /> Retour</Link>
-            </Button>
-          </div>
+    <AuthLayout topBar={
+      <Button variant="ghost" size="sm" asChild className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10">
+        <Link href="/auth/forgot-password" className="flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" /> Retour</Link>
+      </Button>
+    }>
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto mx-auto mb-3" />
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">ALGERAC</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Organisme Algérien d'Accréditation</p>
         </div>
 
-        {/* Centered form */}
-        <div className="flex-1 flex items-center justify-center px-6 py-8">
-          <div className="w-full max-w-[420px]">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-[#00A63E] to-[#00A63E]/60" />
-              
-              <div className="p-8">
-                {/* Icon */}
-                <div className="flex justify-center mb-6">
-                  <div className="w-14 h-14 rounded-full bg-[#00A63E]/10 flex items-center justify-center">
-                    <KeyRound className="w-7 h-7 text-[#00A63E]" />
-                  </div>
-                </div>
-
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-1">Vérification</h2>
-                  <p className="text-sm text-gray-500">Code envoyé à <span className="font-medium text-gray-700">{email}</span></p>
-                </div>
-
-                <form className="space-y-6" onSubmit={handleSubmit}>
-                  <div className="flex justify-between gap-2">
-                    {otp.map((val, i) => (
-                      <Input
-                        key={i}
-                        className="w-12 h-13 text-center text-xl font-bold p-0 bg-gray-50 border-gray-200 focus:bg-white focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-colors rounded-lg"
-                        maxLength={1}
-                        value={val}
-                        onChange={e => handleChange(i, e.target.value)}
-                        onKeyDown={e => handleKeyDown(i, e)}
-                        ref={el => (inputRefs.current[i] = el)}
-                        disabled={loading}
-                        inputMode="numeric"
-                        autoFocus={i === 0}
-                      />
-                    ))}
-                  </div>
-                  <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm transition-all" type="submit" disabled={loading}>
-                    {loading ? "Vérification..." : "Vérifier le code"}
-                  </Button>
-                  <div className="text-center">
-                    <Button variant="link" className="text-xs text-[#00A63E] hover:text-[#008a35]" type="button" onClick={handleResend} disabled={resending}>
-                      {resending ? "Renvoi en cours..." : "Renvoyer le code"}
-                    </Button>
-                  </div>
-                </form>
+        <div className="rounded-2xl bg-white dark:bg-white/[0.07] backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl dark:shadow-2xl overflow-hidden">
+          <div className="h-0.5 bg-gradient-to-r from-[#00A63E] via-[#00A63E]/60 to-transparent" />
+          <div className="p-8">
+            <div className="flex justify-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-[#00A63E]/20 border border-[#00A63E]/30 flex items-center justify-center">
+                <KeyRound className="w-7 h-7 text-[#00A63E]" />
               </div>
             </div>
 
-            <div className="text-center mt-6">
-              <p className="text-xs text-gray-400">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Vérification</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Code envoyé à <span className="font-medium text-slate-700 dark:text-slate-200">{email}</span></p>
             </div>
+
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div className="flex justify-between gap-2">
+                {otp.map((val, i) => (
+                  <Input
+                    key={i}
+                    className="w-12 h-13 text-center text-xl font-bold p-0 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all rounded-lg"
+                    maxLength={1}
+                    value={val}
+                    onChange={e => handleChange(i, e.target.value)}
+                    onKeyDown={e => handleKeyDown(i, e)}
+                    ref={el => (inputRefs.current[i] = el)}
+                    disabled={loading}
+                    inputMode="numeric"
+                    autoFocus={i === 0}
+                  />
+                ))}
+              </div>
+              <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm shadow-green-900/30 transition-all" type="submit" disabled={loading}>
+                {loading ? "Vérification..." : "Vérifier le code"}
+              </Button>
+              <div className="text-center">
+                <Button variant="link" className="text-xs text-[#00A63E] hover:text-[#00c44d]" type="button" onClick={handleResend} disabled={resending}>
+                  {resending ? "Renvoi en cours..." : "Renvoyer le code"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
+
+        <p className="text-center text-slate-400 dark:text-slate-700 text-xs mt-6">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

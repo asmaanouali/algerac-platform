@@ -86,7 +86,6 @@ export default function SurveillancePage() {
       if (expiringRes.ok) setExpiring(await expiringRes.json());
       if (satRes.ok) setSatisfaction(await satRes.json());
     } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }

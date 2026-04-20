@@ -66,7 +66,6 @@ export default function PaymentPage() {
         }
       }
     } catch (error) {
-      console.error("Erreur:", error);
     } finally {
       setLoading(false);
     }

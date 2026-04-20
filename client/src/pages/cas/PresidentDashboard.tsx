@@ -74,7 +74,7 @@ export default function CASPresidentDashboard() {
         const data = await res.json();
         setMeetings(Array.isArray(data) ? data : []);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -97,7 +97,7 @@ export default function CASPresidentDashboard() {
       if (vrRes.ok) {
         setVoteResults(await vrRes.json());
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   // PRO 07 - Send formal summons

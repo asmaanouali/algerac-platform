@@ -95,7 +95,7 @@ export default function CDSurveillancePage() {
       if (allRes?.success) setEvaluations(allRes.data || []);
       if (dlRes?.success) setDeadlineViolations(dlRes.data || []);
       if (fdRes?.success) setFindingDeadlines(fdRes.data || []);
-    } catch (err) { console.error("Failed to load:", err); }
+    } catch (err) { }
     setLoading(false);
   };
 

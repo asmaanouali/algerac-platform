@@ -114,7 +114,7 @@ export default function TransferRequestPage() {
       await apiRequest("POST", "/api/transfers", {
         requestId: parseInt(form.requestId),
         reason: form.reason,
-        sourceOrgName: user?.organizationName || user?.fullName,
+        sourceOrgName: (user as any)?.organizationName || user?.fullName,
         sourceOrgDetails: "",
         targetOrgName: form.targetOrgName,
         targetOrgDetails: form.targetOrgDetails,

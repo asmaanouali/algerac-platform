@@ -50,7 +50,6 @@ export default function CertificateSigningPage() {
       }));
       setItems(results);
     } catch (err) {
-      console.error("Erreur chargement certificats:", err);
     }
     setLoading(false);
   };

@@ -50,7 +50,7 @@ export default function GapEvaluationPage() {
         const data = await res.json();
         setTeams(data.filter((t: any) => t.commitmentSigned));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -61,7 +61,7 @@ export default function GapEvaluationPage() {
       const data = await res.json();
       if (data.success) setGaps(data.data || []);
       else if (Array.isArray(data)) setGaps(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const evaluatePlan = async () => {

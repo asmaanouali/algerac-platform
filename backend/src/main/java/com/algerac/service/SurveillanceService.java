@@ -700,7 +700,7 @@ public class SurveillanceService {
         AccreditationCertificate certificate = certificateRepository.findById(certificateId)
             .orElseThrow(() -> new RuntimeException("Certificat non trouvé"));
 
-        LocalDateTime expiryDate = certificate.getExpiryDate(); // B
+        LocalDateTime expiryDate = certificate.getExpirationDate(); // B
         LocalDateTime extensionLimit = expiryDate.plusMonths(RENEWAL_EXTENSION_MAX_MONTHS); // D = B + 3 mois
 
         Map<String, Object> result = new HashMap<>();
@@ -765,8 +765,8 @@ public class SurveillanceService {
 
             if (sameNumber) {
                 // Mettre à jour le certificat existant
-                certificate.setEffectiveDate(effectiveDate);
-                certificate.setExpiryDate(newExpiry);
+                certificate.setIssueDate(effectiveDate);
+                certificate.setExpirationDate(newExpiry);
                 certificateRepository.save(certificate);
             } else {
                 // Cas 3: nouveau numéro d'accréditation, même numéro d'enregistrement
@@ -869,7 +869,7 @@ public class SurveillanceService {
             if (eval.getEvaluationDate() == null || eval.getCertificate() == null) continue;
 
             AccreditationCertificate cert = eval.getCertificate();
-            LocalDateTime grantDate = cert.getEffectiveDate();
+            LocalDateTime grantDate = cert.getIssueDate();
             if (grantDate == null) continue;
 
             long monthsSinceGrant = ChronoUnit.MONTHS.between(grantDate, eval.getEvaluationDate());
@@ -949,7 +949,7 @@ public class SurveillanceService {
         int surveillanceCount = (cycleNumber == 1) ? 2 : 3;
         int cycleDurationYears = (cycleNumber == 1) ? 3 : 4;
 
-        LocalDateTime grantDate = certificate.getEffectiveDate();
+        LocalDateTime grantDate = certificate.getIssueDate();
         StringBuilder calendar = new StringBuilder();
         calendar.append("Cycle ").append(cycleNumber).append(" (").append(cycleDurationYears).append(" ans)\n");
         for (int i = 1; i <= surveillanceCount; i++) {
@@ -999,8 +999,8 @@ public class SurveillanceService {
         info.put("certificateNumber", certificate.getCertificateNumber());
         info.put("cycleNumber", cycleNumber);
         info.put("cycleDurationYears", cycleDuration);
-        info.put("effectiveDate", certificate.getEffectiveDate());
-        info.put("expiryDate", certificate.getExpiryDate());
+        info.put("effectiveDate", certificate.getIssueDate());
+        info.put("expiryDate", certificate.getExpirationDate());
         info.put("totalSurveillancesRequired", totalSurveillances);
         info.put("completedSurveillances", completedSurveillances);
         info.put("remainingSurveillances", totalSurveillances - completedSurveillances);
@@ -1012,8 +1012,8 @@ public class SurveillanceService {
         }
 
         // Calculer la date de soumission du dossier de renouvellement (6 mois avant)
-        if (certificate.getExpiryDate() != null) {
-            info.put("renewalSubmissionDeadline", certificate.getExpiryDate().minusMonths(6));
+        if (certificate.getExpirationDate() != null) {
+            info.put("renewalSubmissionDeadline", certificate.getExpirationDate().minusMonths(6));
         }
 
         return info;

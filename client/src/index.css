@@ -65,17 +65,20 @@
   
   --popover: 222 47% 11%;
   --popover-foreground: 210 40% 98%;
+
+  --card: 217 32% 20%;
+  --card-foreground: 210 40% 98%;
 }
 
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased transition-colors;
     font-family: var(--font-body);
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply font-bold tracking-tight text-slate-900;
+    @apply font-bold tracking-tight text-slate-900 dark:text-slate-100;
   }
 }
 
@@ -110,3 +113,52 @@
     justify-content: flex-start;
   }
 }
+
+/* ── Registration wizard dark mode overrides ────────────────────────────── */
+.dark .registration-wizard .bg-slate-50 {
+  background-color: rgb(30 41 59);
+}
+.dark .registration-wizard .hover\:bg-slate-50:hover {
+  background-color: rgb(51 65 85 / 0.5);
+}
+.dark .registration-wizard .bg-gray-50,
+.dark .registration-wizard .bg-gray-100 {
+  background-color: rgb(51 65 85);
+}
+.dark .registration-wizard .hover\:bg-gray-50:hover {
+  background-color: rgb(51 65 85 / 0.5);
+}
+.dark .registration-wizard .text-gray-900 {
+  color: rgb(241 245 249);
+}
+.dark .registration-wizard .text-gray-700,
+.dark .registration-wizard .text-gray-600 {
+  color: rgb(148 163 184);
+}
+.dark .registration-wizard .text-gray-500,
+.dark .registration-wizard .text-gray-400 {
+  color: rgb(100 116 139);
+}
+.dark .registration-wizard .text-slate-700,
+.dark .registration-wizard .text-slate-600 {
+  color: rgb(148 163 184);
+}
+.dark .registration-wizard .text-slate-500 {
+  color: rgb(100 116 139);
+}
+.dark .registration-wizard .border-gray-100,
+.dark .registration-wizard .border-gray-200 {
+  border-color: rgb(51 65 85);
+}
+/* FOR form section titles */
+.dark .registration-wizard .text-blue-800   { color: rgb(147 197 253); }
+.dark .registration-wizard .text-green-800  { color: rgb(134 239 172); }
+.dark .registration-wizard .text-purple-800 { color: rgb(216 180 254); }
+.dark .registration-wizard .text-orange-800 { color: rgb(253 186 116); }
+.dark .registration-wizard .text-rose-800   { color: rgb(253 164 175); }
+.dark .registration-wizard .text-teal-800   { color: rgb(94 234 212); }
+.dark .registration-wizard .text-amber-800  { color: rgb(252 211 77); }
+.dark .registration-wizard .text-indigo-800 { color: rgb(165 180 252); }
+/* Error alert */
+.dark .registration-wizard .bg-red-50   { background-color: rgb(69 10 10 / 0.5); }
+.dark .registration-wizard .text-red-700 { color: rgb(248 113 113); }

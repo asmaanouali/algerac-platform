@@ -76,7 +76,6 @@ export default function OECApplicationsPage() {
       const data = await res.json();
       setApplications(data);
     } catch (err: any) {
-      console.error("Erreur chargement candidatures OEC:", err);
       setApplications([]);
     } finally { setLoading(false); }
   };

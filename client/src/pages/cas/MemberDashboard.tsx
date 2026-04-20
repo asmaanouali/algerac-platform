@@ -75,7 +75,7 @@ export default function CASMemberDashboard() {
         const data = await res.json();
         setMeetings(Array.isArray(data) ? data : []);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -89,7 +89,7 @@ export default function CASMemberDashboard() {
         setVotes(votesList);
         setMyVotes(votesList.filter((v: any) => v.voterId === user?.id));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const confirmAttendance = async () => {

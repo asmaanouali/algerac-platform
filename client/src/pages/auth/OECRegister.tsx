@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, ChevronLeft, Plus, Trash2, FileText, AlertCircle } from "lucide-react";
+import { ArrowRight, ChevronLeft, Plus, Trash2, FileText, AlertCircle, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { StringDatePicker } from "@/components/ui/date-time-picker";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useTheme } from "@/hooks/use-theme";
 
 // Types de demande
 const TYPES_DEMANDE = [
@@ -473,6 +475,16 @@ const STEPS = [
 export default function OECRegister() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
+  const ThemeToggle = () => (
+    <button
+      onClick={toggleTheme}
+      className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+      aria-label="Changer de thème"
+    >
+      {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </button>
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -2146,9 +2158,9 @@ export default function OECRegister() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8]">
+    <div className="min-h-screen bg-[#f5f6f8] dark:bg-slate-950 transition-colors registration-wizard">
       {/* Fixed top header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/60 sticky top-0 z-20 transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
@@ -2158,24 +2170,28 @@ export default function OECRegister() {
             />
             <div>
               <h1 className="text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
-              <p className="text-xs text-gray-500">Demande d'Accréditation OEC</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">Demande d'Accréditation OEC</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" asChild className="text-gray-500 hover:text-gray-700">
-            <Link href="/auth/register">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Retour
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher variant="compact" />
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" asChild className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
+              <Link href="/auth/register">
+                <ChevronLeft className="w-4 h-4 mr-1" /> Retour
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {/* Progress section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-5">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60 p-5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Étape {currentStep} sur {STEPS.length}</h2>
-              <p className="text-sm text-gray-500">{STEPS[currentStep - 1].title}</p>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Étape {currentStep} sur {STEPS.length}</h2>
+              <p className="text-sm text-gray-500 dark:text-slate-400">{STEPS[currentStep - 1].title}</p>
             </div>
             <span className="text-sm font-medium text-[#00A63E] bg-[#00A63E]/8 px-3 py-1 rounded-full">
               {Math.round((currentStep / STEPS.length) * 100)}%
@@ -2183,7 +2199,7 @@ export default function OECRegister() {
           </div>
           
           {/* Progress bar */}
-          <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="relative h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
             <div 
               className="absolute top-0 left-0 h-full bg-[#00A63E] rounded-full transition-all duration-500"
               style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
@@ -2206,13 +2222,13 @@ export default function OECRegister() {
                     ? "bg-[#00A63E] text-white" 
                     : step.id === currentStep
                     ? "bg-[#00A63E] text-white ring-2 ring-[#00A63E]/20 ring-offset-2"
-                    : "bg-gray-100 text-gray-400 border border-gray-200"
+                    : "bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600"
                 )}>
                   {step.id < currentStep ? (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                   ) : step.id}
                 </div>
-                <span className="text-[10px] mt-1.5 text-center hidden md:block max-w-[80px] text-gray-600">
+                <span className="text-[10px] mt-1.5 text-center hidden md:block max-w-[80px] text-gray-600 dark:text-slate-400">
                   {step.title}
                 </span>
               </div>
@@ -2221,18 +2237,18 @@ export default function OECRegister() {
         </div>
 
         {/* Form Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200/60">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60">
           <div className="p-6 md:p-10">
             {renderStep()}
 
             {/* Navigation */}
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100 dark:border-slate-700">
               {currentStep > 1 && (
                 <Button 
                   type="button"
                   variant="outline" 
                   onClick={prevStep}
-                  className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
+                  className="gap-2 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                 >
                   <ChevronLeft className="w-4 h-4" /> Précédent
                 </Button>

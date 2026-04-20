@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -103,7 +103,7 @@ export default function TeamCompositionPage() {
         ));
       }
       if (expRes.ok) setExperts(await expRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -122,7 +122,7 @@ export default function TeamCompositionPage() {
           setMembers([]);
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const createTeam = async () => {

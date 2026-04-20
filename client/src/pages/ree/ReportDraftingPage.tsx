@@ -1,4 +1,4 @@
-ï»¿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { FileText, Send, BookOpen, Clock, AlertTriangle, Loader2 } from "lucide-react";
 
 const REPORT_TYPES = [
-  { value: "FOR_09_LABORATORY", label: "FOR 09  Laboratoire d'essais/Ã©talonnage" },
-  { value: "FOR_09_1_BIOMEDICAL", label: "FOR 09.1  Laboratoire biomÃ©dical" },
+  { value: "FOR_09_LABORATORY", label: "FOR 09  Laboratoire d'essais/étalonnage" },
+  { value: "FOR_09_1_BIOMEDICAL", label: "FOR 09.1  Laboratoire biomédical" },
   { value: "FOR_08_INSPECTION", label: "FOR 08  Organisme d'inspection" },
   { value: "FOR_10_CERTIFICATION", label: "FOR 10  Organisme de certification" },
 ];
@@ -22,10 +22,10 @@ const REPORT_TYPES = [
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Brouillon",
   SUBMITTED_TO_CD: "Soumis au CD",
-  CORRECTIONS_NEEDED: "Corrections demandÃ©es",
-  VALIDATED: "ValidÃ© par CD",
-  DT_VALIDATED: "ValidÃ© par DT",
-  CONSOLIDATED: "ConsolidÃ©",
+  CORRECTIONS_NEEDED: "Corrections demandées",
+  VALIDATED: "Validé par CD",
+  DT_VALIDATED: "Validé par DT",
+  CONSOLIDATED: "Consolidé",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -74,7 +74,7 @@ export default function ReportDraftingPage() {
         );
         setRequests(relevant);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { }
     setLoading(false);
   };
 
@@ -84,14 +84,14 @@ export default function ReportDraftingPage() {
       const res = await fetch(`/api/workflow/accreditation/${r.id}/reports`, { credentials: "include" });
       const data = await res.json();
       if (data.success) setReports(data.data || []);
-    } catch (err) { console.error(err); setReports([]); }
+    } catch (err) { setReports([]); }
   };
 
   const handleCreateReport = async () => {
     setSubmitting(true);
     try {
       await apiRequest("POST", `/api/workflow/accreditation/${selectedRequest.id}/report`, reportForm);
-      toast({ title: "Rapport d'Ã©valuation crÃ©Ã© avec succÃ¨s" });
+      toast({ title: "Rapport d'évaluation créé avec succès" });
       setShowCreateReport(false);
       setReportForm({
         type: "FOR_09_LABORATORY", contextAndObjectives: "", teamComposition: "",
@@ -128,9 +128,9 @@ export default function ReportDraftingPage() {
         <Navbar />
         <main className="p-6 md:p-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">RÃ©daction du Rapport d'Ã‰valuation</h1>
+            <h1 className="text-2xl font-bold">Rédaction du Rapport d'Évaluation</h1>
             <p className="text-muted-foreground">
-              RÃ©digez et soumettez le rapport au CD/RA pour validation (Ã‰tape 9)
+              Rédigez et soumettez le rapport au CD/RA pour validation (Étape 9)
             </p>
           </div>
 
@@ -153,7 +153,7 @@ export default function ReportDraftingPage() {
             <div className="lg:col-span-3">
               {!selectedRequest ? (
                 <Card className="flex items-center justify-center h-64">
-                  <p className="text-muted-foreground">SÃ©lectionnez un dossier</p>
+                  <p className="text-muted-foreground">Sélectionnez un dossier</p>
                 </Card>
               ) : (
                 <div className="space-y-4">
@@ -167,9 +167,9 @@ export default function ReportDraftingPage() {
                         {overdue ? <AlertTriangle className="w-5 h-5 text-red-600" /> : <Clock className="w-5 h-5 text-amber-600" />}
                         <div>
                           <p className={`text-sm font-medium ${overdue ? "text-red-800" : "text-amber-800"}`}>
-                            {overdue ? `DÃ©lai de 30 jours dÃ©passÃ© de ${Math.abs(days)} jour(s)` : `${days} jour(s) restant(s) pour rÃ©diger le rapport`}
+                            {overdue ? `Délai de 30 jours dépassé de ${Math.abs(days)} jour(s)` : `${days} jour(s) restant(s) pour rédiger le rapport`}
                           </p>
-                          <p className="text-xs text-muted-foreground">DÃ©lai rÃ©glementaire : 30 jours Ã  compter de la rÃ©union de clÃ´ture</p>
+                          <p className="text-xs text-muted-foreground">Délai réglementaire : 30 jours à compter de la réunion de clôture</p>
                         </div>
                       </div>
                     );
@@ -184,7 +184,7 @@ export default function ReportDraftingPage() {
                         </div>
                         {["GAPS_RESOLVED", "EVALUATION_COMPLETED", "REPORT_DRAFTING"].includes(selectedRequest.status) && (
                           <Button onClick={() => setShowCreateReport(true)}>
-                            <FileText className="w-4 h-4 mr-2" />RÃ©diger le rapport
+                            <FileText className="w-4 h-4 mr-2" />Rédiger le rapport
                           </Button>
                         )}
                       </div>
@@ -195,7 +195,7 @@ export default function ReportDraftingPage() {
                     <CardHeader><CardTitle className="text-lg">Rapports</CardTitle></CardHeader>
                     <CardContent>
                       {reports.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Aucun rapport rÃ©digÃ©</p>
+                        <p className="text-sm text-muted-foreground text-center py-4">Aucun rapport rédigé</p>
                       ) : (
                         <div className="space-y-3">
                           {reports.map((rpt: any) => (
@@ -220,7 +220,7 @@ export default function ReportDraftingPage() {
 
                               {rpt.correctionRequests && rpt.status === "CORRECTIONS_NEEDED" && (
                                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-2">
-                                  <p className="text-xs font-semibold text-orange-800">Corrections demandÃ©es par le CD :</p>
+                                  <p className="text-xs font-semibold text-orange-800">Corrections demandées par le CD :</p>
                                   <p className="text-xs text-orange-700">{rpt.correctionRequests}</p>
                                 </div>
                               )}
@@ -245,7 +245,7 @@ export default function ReportDraftingPage() {
           <Dialog open={showCreateReport} onOpenChange={setShowCreateReport}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>RÃ©diger le Rapport d'Ã‰valuation</DialogTitle>
+                <DialogTitle>Rédiger le Rapport d'Évaluation</DialogTitle>
                 <DialogDescription>
                   Structurez votre rapport selon le formulaire applicable. Tous les champs contribuent au dossier soumis au CAS.
                 </DialogDescription>
@@ -259,58 +259,58 @@ export default function ReportDraftingPage() {
                   </select>
                 </div>
                 <div>
-                  <Label>Contexte et objectifs de l'Ã©valuation *</Label>
+                  <Label>Contexte et objectifs de l'évaluation *</Label>
                   <Textarea value={reportForm.contextAndObjectives}
                     onChange={(e) => setReportForm({ ...reportForm, contextAndObjectives: e.target.value })}
-                    placeholder="PÃ©rimÃ¨tre de l'Ã©valuation, objectifs, normes applicables..." className="min-h-[80px]" />
+                    placeholder="Périmètre de l'évaluation, objectifs, normes applicables..." className="min-h-[80px]" />
                 </div>
                 <div>
-                  <Label>Composition de l'Ã©quipe d'Ã©valuation</Label>
+                  <Label>Composition de l'équipe d'évaluation</Label>
                   <Textarea value={reportForm.teamComposition}
                     onChange={(e) => setReportForm({ ...reportForm, teamComposition: e.target.value })}
-                    placeholder="REE, Ã©valuateurs techniques, experts..." className="min-h-[60px]" />
+                    placeholder="REE, évaluateurs techniques, experts..." className="min-h-[60px]" />
                 </div>
                 <div>
-                  <Label>Programme rÃ©alisÃ©</Label>
+                  <Label>Programme réalisé</Label>
                   <Textarea value={reportForm.programRealized}
                     onChange={(e) => setReportForm({ ...reportForm, programRealized: e.target.value })}
-                    placeholder="DÃ©roulement chronologique de l'Ã©valuation sur site..." className="min-h-[60px]" />
+                    placeholder="Déroulement chronologique de l'évaluation sur site..." className="min-h-[60px]" />
                 </div>
                 <div>
                   <Label>Constats par exigence *</Label>
                   <Textarea value={reportForm.findingsByRequirement}
                     onChange={(e) => setReportForm({ ...reportForm, findingsByRequirement: e.target.value })}
-                    placeholder="Constats dÃ©taillÃ©s par exigence du rÃ©fÃ©rentiel..." className="min-h-[100px]" />
+                    placeholder="Constats détaillés par exigence du référentiel..." className="min-h-[100px]" />
                 </div>
                 <div>
-                  <Label>SynthÃ¨se des Ã©carts *</Label>
+                  <Label>Synthèse des écarts *</Label>
                   <Textarea value={reportForm.gapsSummary}
                     onChange={(e) => setReportForm({ ...reportForm, gapsSummary: e.target.value })}
-                    placeholder="RÃ©sumÃ© des Ã©carts critiques et non-critiques (FOR 02)..." className="min-h-[80px]" />
+                    placeholder="Résumé des écarts critiques et non-critiques (FOR 02)..." className="min-h-[80px]" />
                 </div>
                 <div>
-                  <Label>Ã‰tat du traitement des Ã©carts</Label>
+                  <Label>État du traitement des écarts</Label>
                   <Textarea value={reportForm.gapsStatus}
                     onChange={(e) => setReportForm({ ...reportForm, gapsStatus: e.target.value })}
-                    placeholder="Plans d'action soumis, preuves vÃ©rifiÃ©es, Ã©carts soldÃ©s..." className="min-h-[60px]" />
+                    placeholder="Plans d'action soumis, preuves vérifiées, écarts soldés..." className="min-h-[60px]" />
                 </div>
                 <div>
-                  <Label>Points forts identifiÃ©s</Label>
+                  <Label>Points forts identifiés</Label>
                   <Textarea value={reportForm.strengths}
                     onChange={(e) => setReportForm({ ...reportForm, strengths: e.target.value })}
-                    placeholder="Points forts et bonnes pratiques observÃ©es..." />
+                    placeholder="Points forts et bonnes pratiques observées..." />
                 </div>
                 <div>
-                  <Label>Axes d'amÃ©lioration</Label>
+                  <Label>Axes d'amélioration</Label>
                   <Textarea value={reportForm.improvementAreas}
                     onChange={(e) => setReportForm({ ...reportForm, improvementAreas: e.target.value })}
-                    placeholder="OpportunitÃ©s d'amÃ©lioration identifiÃ©es..." />
+                    placeholder="Opportunités d'amélioration identifiées..." />
                 </div>
                 <div>
                   <Label>Conclusion et recommandation *</Label>
                   <Textarea value={reportForm.conclusion}
                     onChange={(e) => setReportForm({ ...reportForm, conclusion: e.target.value })}
-                    placeholder="Conclusion gÃ©nÃ©rale et recommandation pour la dÃ©cision d'accrÃ©ditation..." className="min-h-[80px]" />
+                    placeholder="Conclusion générale et recommandation pour la décision d'accréditation..." className="min-h-[80px]" />
                 </div>
               </div>
               <DialogFooter>
@@ -318,7 +318,7 @@ export default function ReportDraftingPage() {
                 <Button onClick={handleCreateReport}
                   disabled={submitting || !reportForm.contextAndObjectives || !reportForm.findingsByRequirement || !reportForm.conclusion}>
                   {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
-                  CrÃ©er le rapport
+                  Créer le rapport
                 </Button>
               </DialogFooter>
             </DialogContent>

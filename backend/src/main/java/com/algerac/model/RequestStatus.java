@@ -140,6 +140,7 @@ public enum RequestStatus {
     SURVEILLANCE_COMPLETED,             // Surveillance terminée
     
     // Renouvellement (PRO_25)
+    INITIAL_EVALUATION,                 // Basculé en accréditation initiale (renouvellement hors délai)
     RENEWAL_INITIATED,                  // Renouvellement initié
     RENEWAL_EVALUATION,                 // Évaluation de renouvellement en cours
     RENEWAL_COMPLETED,                  // Renouvellement terminé

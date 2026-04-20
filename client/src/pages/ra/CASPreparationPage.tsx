@@ -45,7 +45,7 @@ export default function CASPreparationPage() {
         ));
       }
       if (expRes.ok) setExperts(await expRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -66,7 +66,7 @@ export default function CASPreparationPage() {
           if (aRes.ok) setAttendees(await aRes.json());
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const scheduleMeeting = async () => {

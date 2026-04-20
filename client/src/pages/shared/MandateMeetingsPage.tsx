@@ -60,7 +60,7 @@ export default function MandateMeetingsPage() {
         }
         setMeetings(allMeetings);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { }
     setLoading(false);
   };
 

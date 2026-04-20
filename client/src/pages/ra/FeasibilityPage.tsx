@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,6 @@ export default function RAFeasibilityPage() {
       }
     } catch (err) {
       // If API fails, leave as manual verification
-      console.log("Could not fetch payment status for request", r.id);
     }
   };
 
@@ -85,7 +84,7 @@ export default function RAFeasibilityPage() {
     if (!selectedRequest) return;
     try {
       await apiRequest("POST", `/api/requests/${selectedRequest.id}/start-study`);
-      toast({ title: "Ã‰tude dÃ©marrÃ©e" });
+      toast({ title: "Étude démarrée" });
       loadRequests();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
@@ -101,11 +100,11 @@ export default function RAFeasibilityPage() {
       setSubmitting(true);
       await apiRequest("POST", `/api/requests/${selectedRequest.id}/receivability-decision`, {
         isReceivable: decision === "RECEIVABLE",
-        comments: `${technicalAnalysis}\n\nConformitÃ©: ${complianceCheck}\n\nCommentaires: ${comments}${rejectionReason ? "\n\nRaison du rejet: " + rejectionReason : ""}`,
+        comments: `${technicalAnalysis}\n\nConformité: ${complianceCheck}\n\nCommentaires: ${comments}${rejectionReason ? "\n\nRaison du rejet: " + rejectionReason : ""}`,
       });
       toast({ 
-        title: "Ã‰tude envoyÃ©e au CD", 
-        description: "Votre Ã©tude de recevabilitÃ© a Ã©tÃ© soumise au Chef de DÃ©partement pour validation." 
+        title: "Étude envoyée au CD", 
+        description: "Votre étude de recevabilité a été soumise au Chef de Département pour validation." 
       });
       loadRequests();
       setSelectedRequest(null);
@@ -124,16 +123,16 @@ export default function RAFeasibilityPage() {
         <main className="p-4 md:p-8">
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold">Ã‰tude de RecevabilitÃ©</h1>
-              <p className="text-muted-foreground mt-2">Analysez les dossiers selon les critÃ¨res de recevabilitÃ© (Ã‰tape 2)</p>
+              <h1 className="text-3xl font-bold">Étude de Recevabilité</h1>
+              <p className="text-muted-foreground mt-2">Analysez les dossiers selon les critères de recevabilité (Étape 2)</p>
             </div>
 
-            <Alert><AlertDescription><strong>DÃ©lai :</strong> L'Ã©tude de recevabilitÃ© doit Ãªtre complÃ©tÃ©e dans un dÃ©lai de <strong>6 mois</strong> Ã  compter de la rÃ©ception du dossier.</AlertDescription></Alert>
+            <Alert><AlertDescription><strong>Délai :</strong> L'étude de recevabilité doit être complétée dans un délai de <strong>6 mois</strong> à compter de la réception du dossier.</AlertDescription></Alert>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Request list */}
               <Card className="lg:col-span-1">
-                <CardHeader><CardTitle className="text-lg">Dossiers Ã  Ã©tudier</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Dossiers à étudier</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   {requests.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Aucun dossier en attente</p>
@@ -153,31 +152,31 @@ export default function RAFeasibilityPage() {
 
               {/* Study form */}
               <Card className="lg:col-span-2">
-                <CardHeader><CardTitle>Ã‰tude de RecevabilitÃ©</CardTitle><CardDescription>{selectedRequest ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}` : "SÃ©lectionnez un dossier"}</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Étude de Recevabilité</CardTitle><CardDescription>{selectedRequest ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}` : "Sélectionnez un dossier"}</CardDescription></CardHeader>
                 <CardContent>
                   {!selectedRequest ? (
-                    <p className="text-center text-muted-foreground py-8">SÃ©lectionnez un dossier</p>
+                    <p className="text-center text-muted-foreground py-8">Sélectionnez un dossier</p>
                   ) : selectedRequest.status === "ASSIGNED_TO_RA" ? (
                     <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">DÃ©marrez l'Ã©tude de recevabilitÃ© pour ce dossier</p>
-                      <Button onClick={startStudy}><FileText className="mr-2 h-4 w-4" />DÃ©marrer l'Ã©tude</Button>
+                      <p className="text-muted-foreground mb-4">Démarrez l'étude de recevabilité pour ce dossier</p>
+                      <Button onClick={startStudy}><FileText className="mr-2 h-4 w-4" />Démarrer l'étude</Button>
                     </div>
                   ) : selectedRequest.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? (
                     <div className="text-center py-8 space-y-4">
                       <CheckCircle className="h-12 w-12 mx-auto text-blue-500" />
                       <div>
                         <h3 className="font-semibold text-lg">En attente de validation du CD</h3>
-                        <p className="text-muted-foreground mt-2">Votre Ã©tude de recevabilitÃ© a Ã©tÃ© envoyÃ©e au Chef de DÃ©partement pour vÃ©rification.</p>
-                        <p className="text-muted-foreground">Vous serez notifiÃ© dÃ¨s qu'il aura validÃ© ou demandÃ© des modifications.</p>
+                        <p className="text-muted-foreground mt-2">Votre étude de recevabilité a été envoyée au Chef de Département pour vérification.</p>
+                        <p className="text-muted-foreground">Vous serez notifié dès qu'il aura validé ou demandé des modifications.</p>
                       </div>
                     </div>
                   ) : (
                     <Tabs value={step} onValueChange={(v) => setStep(v as any)} className="space-y-4">
-                      {selectedRequest.currentStep?.includes("Modifications demandÃ©es") && (
+                      {selectedRequest.currentStep?.includes("Modifications demandées") && (
                         <Alert className="border-amber-300 bg-amber-50">
                           <AlertTriangle className="h-4 w-4 text-amber-600" />
                           <AlertDescription className="text-amber-800">
-                            <strong>Le CD a demandÃ© des modifications.</strong> Veuillez revoir votre Ã©tude et resoumettre.
+                            <strong>Le CD a demandé des modifications.</strong> Veuillez revoir votre étude et resoumettre.
                             {selectedRequest.receivabilityComments?.includes("[Remarques CD]") && (
                               <div className="mt-2 text-sm">
                                 {selectedRequest.receivabilityComments.split("[Remarques CD]").pop()}
@@ -189,19 +188,19 @@ export default function RAFeasibilityPage() {
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="documents">1. Documents & Paiement</TabsTrigger>
                         <TabsTrigger value="resources">2. Ressources</TabsTrigger>
-                        <TabsTrigger value="decision">3. DÃ©cision</TabsTrigger>
+                        <TabsTrigger value="decision">3. Décision</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="documents" className="space-y-4">
-                        <div className="space-y-2"><Label>Analyse technique des documents *</Label><Textarea value={technicalAnalysis} onChange={(e) => setTechnicalAnalysis(e.target.value)} placeholder="VÃ©rifiez la complÃ©tude et la conformitÃ© des documents soumis..." rows={5} /></div>
-                        <div className="space-y-2"><Label>VÃ©rification de conformitÃ© *</Label><Textarea value={complianceCheck} onChange={(e) => setComplianceCheck(e.target.value)} placeholder="VÃ©rifiez la conformitÃ© aux normes applicables..." rows={5} /></div>
+                        <div className="space-y-2"><Label>Analyse technique des documents *</Label><Textarea value={technicalAnalysis} onChange={(e) => setTechnicalAnalysis(e.target.value)} placeholder="Vérifiez la complétude et la conformité des documents soumis..." rows={5} /></div>
+                        <div className="space-y-2"><Label>Vérification de conformité *</Label><Textarea value={complianceCheck} onChange={(e) => setComplianceCheck(e.target.value)} placeholder="Vérifiez la conformité aux normes applicables..." rows={5} /></div>
                         <div className={`flex items-center gap-3 p-4 border rounded-lg ${paymentAutoVerified ? "border-green-300 bg-green-50" : "border-amber-200 bg-amber-50"}`}>
                           <input type="checkbox" id="payment-check" checked={paymentVerified} disabled className="h-5 w-5" />
                           <label htmlFor="payment-check">
                             {paymentAutoVerified ? (
-                              <><p className="font-medium text-green-700 flex items-center gap-2"><CheckCircle className="h-4 w-4" />Paiement validÃ© par le DAG</p><p className="text-sm text-green-600">{paymentValidationDate ? `ValidÃ© le ${new Date(paymentValidationDate).toLocaleDateString("fr-FR")}` : "Les frais d'enregistrement ont Ã©tÃ© vÃ©rifiÃ©s et validÃ©s par le DAG"}</p></>
+                              <><p className="font-medium text-green-700 flex items-center gap-2"><CheckCircle className="h-4 w-4" />Paiement validé par le DAG</p><p className="text-sm text-green-600">{paymentValidationDate ? `Validé le ${new Date(paymentValidationDate).toLocaleDateString("fr-FR")}` : "Les frais d'enregistrement ont été vérifiés et validés par le DAG"}</p></>
                             ) : (
-                              <><p className="font-medium text-amber-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />En attente de validation du paiement par le DAG</p><p className="text-sm text-amber-600">Ce champ sera automatiquement rempli lorsque le DAG aura confirmÃ© la validitÃ© du paiement</p></>
+                              <><p className="font-medium text-amber-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />En attente de validation du paiement par le DAG</p><p className="text-sm text-amber-600">Ce champ sera automatiquement rempli lorsque le DAG aura confirmé la validité du paiement</p></>
                             )}
                           </label>
                         </div>
@@ -210,28 +209,28 @@ export default function RAFeasibilityPage() {
 
                       <TabsContent value="resources" className="space-y-4">
                         <div className="space-y-3">
-                          <Label>DisponibilitÃ© des ressources d'Ã©valuation *</Label>
+                          <Label>Disponibilité des ressources d'évaluation *</Label>
                           <RadioGroup value={resourcesAvailable} onValueChange={setResourcesAvailable}>
-                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="yes" id="ra-y" /><Label htmlFor="ra-y" className="cursor-pointer flex-1"><p className="font-medium">Ressources disponibles</p><p className="text-sm text-muted-foreground">Ã‰valuateurs compÃ©tents disponibles en interne</p></Label></div>
-                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="foreign" id="ra-f" /><Label htmlFor="ra-f" className="cursor-pointer flex-1"><div className="flex items-center gap-2"><Globe className="h-4 w-4" /><div><p className="font-medium">Experts Ã©trangers nÃ©cessaires</p><p className="text-sm text-muted-foreground">L'OEC sera consultÃ© pour les frais supplÃ©mentaires</p></div></div></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="yes" id="ra-y" /><Label htmlFor="ra-y" className="cursor-pointer flex-1"><p className="font-medium">Ressources disponibles</p><p className="text-sm text-muted-foreground">Évaluateurs compétents disponibles en interne</p></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-primary/50 transition-colors cursor-pointer"><RadioGroupItem value="foreign" id="ra-f" /><Label htmlFor="ra-f" className="cursor-pointer flex-1"><div className="flex items-center gap-2"><Globe className="h-4 w-4" /><div><p className="font-medium">Experts étrangers nécessaires</p><p className="text-sm text-muted-foreground">L'OEC sera consulté pour les frais supplémentaires</p></div></div></Label></div>
                           </RadioGroup>
                         </div>
-                        {resourcesAvailable === "foreign" && <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>L'OEC sera contactÃ© pour accepter les frais supplÃ©mentaires. S'il refuse, le dossier sera classÃ©.</AlertDescription></Alert>}
-                        <Button onClick={() => setStep("decision")} disabled={!resourcesAvailable}>Suivant : DÃ©cision</Button>
+                        {resourcesAvailable === "foreign" && <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription>L'OEC sera contacté pour accepter les frais supplémentaires. S'il refuse, le dossier sera classé.</AlertDescription></Alert>}
+                        <Button onClick={() => setStep("decision")} disabled={!resourcesAvailable}>Suivant : Décision</Button>
                       </TabsContent>
 
                       <TabsContent value="decision" className="space-y-4">
                         <div className="space-y-3">
-                          <Label>DÃ©cision de recevabilitÃ© *</Label>
+                          <Label>Décision de recevabilité *</Label>
                           <RadioGroup value={decision} onValueChange={setDecision}>
-                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-green-300 transition-colors cursor-pointer"><RadioGroupItem value="RECEIVABLE" id="dec-r" /><Label htmlFor="dec-r" className="flex items-center gap-2 cursor-pointer flex-1"><CheckCircle className="h-5 w-5 text-green-500" /><div><p className="font-medium">Recevable</p><p className="text-sm text-muted-foreground">Le dossier passera Ã  la validation DG puis Ã  la contractualisation</p></div></Label></div>
-                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-red-300 transition-colors cursor-pointer"><RadioGroupItem value="NOT_RECEIVABLE" id="dec-nr" /><Label htmlFor="dec-nr" className="flex items-center gap-2 cursor-pointer flex-1"><XCircle className="h-5 w-5 text-red-500" /><div><p className="font-medium">Non recevable</p><p className="text-sm text-muted-foreground">L'OEC devra corriger et soumettre Ã  nouveau</p></div></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-green-300 transition-colors cursor-pointer"><RadioGroupItem value="RECEIVABLE" id="dec-r" /><Label htmlFor="dec-r" className="flex items-center gap-2 cursor-pointer flex-1"><CheckCircle className="h-5 w-5 text-green-500" /><div><p className="font-medium">Recevable</p><p className="text-sm text-muted-foreground">Le dossier passera à la validation DG puis à la contractualisation</p></div></Label></div>
+                            <div className="flex items-center space-x-2 border border-gray-200 rounded-lg p-3 hover:border-red-300 transition-colors cursor-pointer"><RadioGroupItem value="NOT_RECEIVABLE" id="dec-nr" /><Label htmlFor="dec-nr" className="flex items-center gap-2 cursor-pointer flex-1"><XCircle className="h-5 w-5 text-red-500" /><div><p className="font-medium">Non recevable</p><p className="text-sm text-muted-foreground">L'OEC devra corriger et soumettre à nouveau</p></div></Label></div>
                           </RadioGroup>
                         </div>
-                        <div className="space-y-2"><Label>Commentaires</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Observations gÃ©nÃ©rales..." rows={3} /></div>
-                        {decision === "NOT_RECEIVABLE" && <div className="space-y-2"><Label>Raison du rejet *</Label><Textarea value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="DÃ©taillez les raisons..." rows={4} /></div>}
+                        <div className="space-y-2"><Label>Commentaires</Label><Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Observations générales..." rows={3} /></div>
+                        {decision === "NOT_RECEIVABLE" && <div className="space-y-2"><Label>Raison du rejet *</Label><Textarea value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Détaillez les raisons..." rows={4} /></div>}
                         <Button onClick={handleSubmitDecision} disabled={submitting || !decision}>
-                          {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enregistrement...</> : <><Send className="mr-2 h-4 w-4" />Soumettre la dÃ©cision</>}
+                          {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enregistrement...</> : <><Send className="mr-2 h-4 w-4" />Soumettre la décision</>}
                         </Button>
                       </TabsContent>
                     </Tabs>

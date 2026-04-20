@@ -162,7 +162,6 @@ export default function UsersManagementPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -185,7 +184,6 @@ export default function UsersManagementPage() {
       const expertData = expertRes.ok ? await expertRes.json() : [];
       setPendingApplications([...oecData, ...expertData]);
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",
@@ -204,7 +202,6 @@ export default function UsersManagementPage() {
       const data = await res.json();
       setOecAccountApps(data);
     } catch (err) {
-      console.error("Erreur chargement candidatures OEC:", err);
       setOecAccountApps([]);
     } finally { setOecAccountsLoading(false); }
   };
@@ -268,7 +265,6 @@ export default function UsersManagementPage() {
         });
       }
     } catch (error) {
-      console.error("Erreur:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue",

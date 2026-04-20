@@ -409,9 +409,9 @@ export default function RiskOpportunityPage() {
                   <TableCell className="font-medium max-w-[200px] truncate">
                     <div className="flex items-center gap-1">
                       {e.title}
-                      {isOverdue(e) && <AlertCircle className="w-3 h-3 text-red-500 shrink-0" title="Revue en retard" />}
-                      {isActionOverdue(e) && <Clock className="w-3 h-3 text-orange-500 shrink-0" title="Action en retard" />}
-                      {e.reviewNotes && e.status === "ANALYZED" && <RotateCcw className="w-3 h-3 text-amber-500 shrink-0" title="Rejeté par DG" />}
+                      {isOverdue(e) && <span title="Revue en retard"><AlertCircle className="w-3 h-3 text-red-500 shrink-0" /></span>}
+                      {isActionOverdue(e) && <span title="Action en retard"><Clock className="w-3 h-3 text-orange-500 shrink-0" /></span>}
+                      {e.reviewNotes && e.status === "ANALYZED" && <span title="Rejeté par DG"><RotateCcw className="w-3 h-3 text-amber-500 shrink-0" /></span>}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{CATEGORIES[e.category] || e.category}</TableCell>

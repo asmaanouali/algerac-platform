@@ -172,12 +172,40 @@ public class RiskOpportunityController {
         }
     }
 
+    /**
+     * §5.4 — DG rejette et renvoie pour révision
+     */
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<?> rejectByDG(@PathVariable Long id,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            checkRole(user, VALIDATE_ROLES, "rejeter un risque");
+
+            return ResponseEntity.ok(ApiResponse.success("Rejeté par la DG",
+                riskService.rejectByDG(id, (String) body.get("rejectionNotes"), user)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> getAll(HttpSession session) {
         try {
             User user = getSessionUser(session);
             checkRole(user, VIEW_ROLES, "consulter les risques");
             return ResponseEntity.ok(ApiResponse.success("Registre", riskService.getAll()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            checkRole(user, VIEW_ROLES, "consulter un risque");
+            return ResponseEntity.ok(ApiResponse.success("Détail", riskService.getById(id)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -201,6 +229,20 @@ public class RiskOpportunityController {
             User user = getSessionUser(session);
             checkRole(user, VIEW_ROLES, "voir les revues en retard");
             return ResponseEntity.ok(ApiResponse.success("Revues en retard", riskService.getOverdueReviews()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Statistiques pour synthèse avant revue de direction (§5.5)
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<?> getStatistics(HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            checkRole(user, VIEW_ROLES, "consulter les statistiques");
+            return ResponseEntity.ok(ApiResponse.success("Statistiques", riskService.getStatistics()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

@@ -63,6 +63,7 @@ import CASMemberDashboard from "@/pages/cas/MemberDashboard";
 import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
 import DGMissionOrdersPage from "@/pages/dg/MissionOrdersPage";
+import DGTransferOverviewPage from "@/pages/dg/TransferOverviewPage";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import GCCandidaturesPage from "@/pages/ges_competences/CandidaturesPage";
 import InterviewPlanningPage from "@/pages/ges_competences/InterviewPlanningPage";
@@ -291,6 +292,7 @@ function Router() {
       <Route path="/dg/dashboard" component={DGDashboard} />
       <Route path="/dg/ordres-mission" component={DGMissionOrdersPage} />
       <Route path="/dg/certificats" component={CertificateSigningPage} />
+      <Route path="/dg/transferts" component={DGTransferOverviewPage} />
       
       {/* GES_COMPETENCES Routes */}
       <Route path="/ges-competences" component={GesCompetencesDashboard} />

@@ -10,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * PRO_30 : Service de gestion des risques et opportunités.
@@ -32,8 +32,9 @@ public class RiskOpportunityService {
             RiskCategory category, String source, String ownerDepartment, User creator) {
 
         String prefix = (type == RiskType.RISK ? "RSK" : "OPP");
+        long count = riskRepository.countByType(type) + 1;
         String registerCode = prefix + "-" + Year.now().getValue() + "-" +
-                String.format("%04d", new Random().nextInt(9999));
+                String.format("%04d", count);
 
         RiskOpportunityRegister register = RiskOpportunityRegister.builder()
                 .registerCode(registerCode)
@@ -61,8 +62,9 @@ public class RiskOpportunityService {
             String residualDocControl, String residualCompetence, String residualControlLevel,
             RiskMastery residualMastery, User analyst) {
         RiskOpportunityRegister register = getOrThrow(registerId);
-        if (register.getStatus() != RiskRegisterStatus.IDENTIFIED) {
-            throw new RuntimeException("Le risque doit être au statut IDENTIFIED pour être analysé");
+        if (register.getStatus() != RiskRegisterStatus.IDENTIFIED &&
+            register.getStatus() != RiskRegisterStatus.ANALYZED) {
+            throw new RuntimeException("Le risque doit être au statut IDENTIFIED ou ANALYZED pour être analysé");
         }
 
         RiskLevel level = calculateRiskLevel(likelihood, impact);
@@ -176,11 +178,86 @@ public class RiskOpportunityService {
         return register;
     }
 
+    /**
+     * §5.4 — La DG rejette et renvoie pour révision avec notes
+     */
+    @Transactional
+    public RiskOpportunityRegister rejectByDG(Long registerId, String rejectionNotes, User dg) {
+        RiskOpportunityRegister register = getOrThrow(registerId);
+        if (register.getStatus() != RiskRegisterStatus.PENDING_VALIDATION) {
+            throw new RuntimeException("Le risque doit être en attente de validation pour être rejeté");
+        }
+
+        register.setStatus(RiskRegisterStatus.ANALYZED);
+        register.setReviewNotes(rejectionNotes);
+
+        register = riskRepository.save(register);
+        log.info("PRO30 §5.4 — {} rejeté par la DG {}: {}", register.getRegisterCode(), dg.getFullName(), rejectionNotes);
+        return register;
+    }
+
     // Queries
+    public RiskOpportunityRegister getById(Long id) { return getOrThrow(id); }
     public List<RiskOpportunityRegister> getAll() { return riskRepository.findAllByOrderByCreatedAtDesc(); }
     public List<RiskOpportunityRegister> getByStatus(RiskRegisterStatus status) { return riskRepository.findByStatus(status); }
     public List<RiskOpportunityRegister> getOverdueReviews() {
         return riskRepository.findByNextReviewDateBefore(LocalDate.now());
+    }
+
+    /**
+     * §5.5 — Synthèse statistique pour revue de direction
+     */
+    public Map<String, Object> getStatistics() {
+        List<RiskOpportunityRegister> all = riskRepository.findAll();
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("total", all.size());
+        stats.put("risks", all.stream().filter(r -> r.getType() == RiskType.RISK).count());
+        stats.put("opportunities", all.stream().filter(r -> r.getType() == RiskType.OPPORTUNITY).count());
+
+        // Par statut
+        Map<String, Long> byStatus = all.stream()
+                .collect(Collectors.groupingBy(r -> r.getStatus().name(), Collectors.counting()));
+        stats.put("byStatus", byStatus);
+
+        // Par niveau
+        Map<String, Long> byLevel = all.stream()
+                .filter(r -> r.getLevel() != null)
+                .collect(Collectors.groupingBy(r -> r.getLevel().name(), Collectors.counting()));
+        stats.put("byLevel", byLevel);
+
+        // Par catégorie
+        Map<String, Long> byCategory = all.stream()
+                .filter(r -> r.getCategory() != null)
+                .collect(Collectors.groupingBy(r -> r.getCategory().name(), Collectors.counting()));
+        stats.put("byCategory", byCategory);
+
+        // Matrice 3×3 counts (likelihood × impact)
+        Map<String, Long> matrixCounts = new LinkedHashMap<>();
+        for (RiskLikelihood l : RiskLikelihood.values()) {
+            for (RiskImpact i : RiskImpact.values()) {
+                long count = all.stream()
+                        .filter(r -> r.getLikelihood() == l && r.getImpact() == i)
+                        .count();
+                matrixCounts.put(l.name() + "_" + i.name(), count);
+            }
+        }
+        stats.put("matrixCounts", matrixCounts);
+
+        // Overdue
+        long overdue = all.stream()
+                .filter(r -> r.getNextReviewDate() != null && r.getNextReviewDate().isBefore(LocalDate.now()))
+                .count();
+        stats.put("overdueReviews", overdue);
+
+        // Action plans en retard
+        long overdueActions = all.stream()
+                .filter(r -> r.getActionDeadline() != null && r.getActionDeadline().isBefore(LocalDate.now())
+                        && r.getStatus() == RiskRegisterStatus.IN_TREATMENT)
+                .count();
+        stats.put("overdueActions", overdueActions);
+
+        return stats;
     }
 
     /**

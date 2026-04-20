@@ -29,7 +29,6 @@ public class AccreditationTransferController {
     public ResponseEntity<?> initiate(@RequestBody Map<String, Object> body, HttpSession session) {
         try {
             User user = getSessionUser(session);
-            // Si sourceOecId n'est pas fourni, utiliser l'utilisateur connecté (cas OEC)
             Long sourceOecId = body.get("sourceOecId") != null
                 ? ((Number) body.get("sourceOecId")).longValue()
                 : user.getId();
@@ -38,11 +37,18 @@ public class AccreditationTransferController {
                 sourceOecId,
                 (String) body.get("sourceOrgName"), (String) body.get("sourceOrgDetails"),
                 (String) body.get("targetOrgName"), (String) body.get("targetOrgDetails"),
+                body.get("targetIsNewEntity") != null ? (Boolean) body.get("targetIsNewEntity") : false,
                 TransferReason.valueOf((String) body.get("reason")),
                 (String) body.get("reasonDetails"),
                 (String) body.get("transferredScope"),
                 (Boolean) body.get("fullScope"),
-                (String) body.get("scopeModifications"), user);
+                (String) body.get("scopeModifications"),
+                (String) body.get("riskAnalysis"),
+                body.get("impartialityCompliance") != null ? (Boolean) body.get("impartialityCompliance") : null,
+                body.get("assessmentMethodsContinuity") != null ? (Boolean) body.get("assessmentMethodsContinuity") : null,
+                (String) body.get("lastEvaluationStatus"),
+                body.get("financialRegularized") != null ? (Boolean) body.get("financialRegularized") : null,
+                user);
             return ResponseEntity.ok(ApiResponse.success("Transfert initié", transfer));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -54,7 +60,6 @@ public class AccreditationTransferController {
             @RequestBody Map<String, Object> body, HttpSession session) {
         try {
             getSessionUser(session);
-            // Convertir la liste de documents joints en JSON string
             String attachedDocs = null;
             if (body.get("attachedDocuments") != null) {
                 attachedDocs = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -67,6 +72,25 @@ public class AccreditationTransferController {
                     (Boolean) body.get("personnelContinuity"),
                     (Boolean) body.get("equipmentContinuity"),
                     attachedDocs)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * PRO 31 §5.2 : Étude de faisabilité (FOR 86) par le CD
+     */
+    @PutMapping("/{id}/feasibility")
+    public ResponseEntity<?> feasibilityStudy(@PathVariable Long id,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            User user = getSessionUser(session);
+            return ResponseEntity.ok(ApiResponse.success("Étude de faisabilité enregistrée",
+                transferService.conductFeasibilityStudy(id,
+                    (String) body.get("feasibilityStudy"),
+                    (String) body.get("feasibilityStudyRef"),
+                    body.get("evaluationRequired") != null ? (Boolean) body.get("evaluationRequired") : false,
+                    (String) body.get("findings"), user)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -133,9 +157,30 @@ public class AccreditationTransferController {
         }
     }
 
+    @PutMapping("/{id}/surveillance-plan")
+    public ResponseEntity<?> updateSurveillancePlan(@PathVariable Long id,
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            getSessionUser(session);
+            return ResponseEntity.ok(ApiResponse.success("Plan de surveillance mis à jour",
+                transferService.updateSurveillancePlan(id, (String) body.get("surveillancePlanRef"))));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> getAll() {
         return ResponseEntity.ok(ApiResponse.success("Transferts", transferService.getAll()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(ApiResponse.success("Transfert", transferService.getById(id)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @GetMapping("/mine")

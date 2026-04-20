@@ -22,4 +22,5 @@ public interface RiskOpportunityRepository extends JpaRepository<RiskOpportunity
     List<RiskOpportunityRegister> findByOwner_Id(Long ownerId);
     List<RiskOpportunityRegister> findByNextReviewDateBefore(LocalDate date);
     List<RiskOpportunityRegister> findAllByOrderByCreatedAtDesc();
+    long countByType(RiskType type);
 }

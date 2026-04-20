@@ -188,6 +188,7 @@ export function Sidebar() {
       { href: "/dg/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/dg/certificats", label: "Certificats", icon: Award },
       { href: "/dg/ordres-mission", label: "Ordres de Mission", icon: Stamp },
+      { href: "/dg/transferts", label: "Transferts", icon: ArrowRightLeft },
       { href: "/risques-opportunites", label: "Risques & Opportunités", icon: ShieldAlertIcon },
       { href: "/complaints/internal", label: "Plaintes", icon: MessageSquareWarning },
     ],

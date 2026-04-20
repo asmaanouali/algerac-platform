@@ -1,20 +1,16 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowRightLeft, CheckCircle, XCircle, Eye, Gavel,
-  ShieldCheck, ShieldAlert, DollarSign, AlertTriangle, Users
+  ShieldCheck, ShieldAlert, DollarSign, AlertTriangle, Users, Clock, BarChart3
 } from "lucide-react";
 
 interface Transfer {
@@ -31,14 +27,11 @@ interface Transfer {
   decisionByUser: { id: number; fullName: string } | null;
 }
 
-export default function TransferDecisionPage() {
-  const { toast } = useToast();
+export default function TransferOverviewPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDecision, setShowDecision] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [selected, setSelected] = useState<Transfer | null>(null);
-  const [decForm, setDecForm] = useState({ approved: true, justification: "" });
 
   useEffect(() => { loadTransfers(); }, []);
 
@@ -51,24 +44,9 @@ export default function TransferDecisionPage() {
     setLoading(false);
   };
 
-  const handleDecision = async () => {
-    if (!selected) return;
-    try {
-      await apiRequest("PUT", `/api/transfers/${selected.id}/decide`, {
-        approved: decForm.approved,
-        justification: decForm.justification
-      });
-      toast({ title: decForm.approved ? "Transfert approuvé" : "Transfert rejeté" });
-      setShowDecision(false);
-      setDecForm({ approved: true, justification: "" });
-      loadTransfers();
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const pending = transfers.filter(t => ["PENDING_CAS_DECISION", "EVALUATION_COMPLETED"].includes(t.status));
-  const decided = transfers.filter(t => ["APPROVED", "REJECTED", "CERTIFICATE_ISSUED", "COMPLETED"].includes(t.status));
+  const inProgress = transfers.filter(t => !["APPROVED", "REJECTED", "CERTIFICATE_ISSUED", "COMPLETED", "CANCELLED"].includes(t.status));
+  const approved = transfers.filter(t => ["APPROVED", "CERTIFICATE_ISSUED", "COMPLETED"].includes(t.status));
+  const rejected = transfers.filter(t => t.status === "REJECTED");
 
   const getStatusBadge = (s: string) => {
     const m: Record<string, { c: string; l: string }> = {
@@ -76,8 +54,9 @@ export default function TransferDecisionPage() {
       DOCUMENTS_SUBMITTED: { c: "bg-indigo-100 text-indigo-800", l: "Documents soumis" },
       UNDER_REVIEW: { c: "bg-yellow-100 text-yellow-800", l: "En examen CD" },
       EVALUATION_REQUIRED: { c: "bg-purple-100 text-purple-800", l: "Évaluation requise" },
+      EVALUATION_IN_PROGRESS: { c: "bg-purple-100 text-purple-800", l: "Évaluation en cours" },
       EVALUATION_COMPLETED: { c: "bg-indigo-100 text-indigo-800", l: "Évaluation terminée" },
-      PENDING_CAS_DECISION: { c: "bg-orange-100 text-orange-800", l: "En attente décision" },
+      PENDING_CAS_DECISION: { c: "bg-orange-100 text-orange-800", l: "En attente CAS" },
       APPROVED: { c: "bg-green-100 text-green-800", l: "Approuvé" },
       CERTIFICATE_ISSUED: { c: "bg-teal-100 text-teal-800", l: "Certificat émis" },
       COMPLETED: { c: "bg-emerald-100 text-emerald-800", l: "Complété" },
@@ -103,16 +82,16 @@ export default function TransferDecisionPage() {
     </div>
   );
 
-  const TransferTable = ({ data, showActions }: { data: Transfer[]; showActions: boolean }) => (
+  const TransferTable = ({ data }: { data: Transfer[] }) => (
     <Table>
       <TableHeader><TableRow>
         <TableHead>Code</TableHead><TableHead>OEC source</TableHead><TableHead>OEC cible</TableHead>
         <TableHead>Motif</TableHead><TableHead>Périmètre</TableHead><TableHead>Statut</TableHead>
-        <TableHead className="text-right">Actions</TableHead>
+        <TableHead>Date</TableHead><TableHead className="text-right">Actions</TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {data.length === 0 ? (
-          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune demande</TableCell></TableRow>
+          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucun transfert</TableCell></TableRow>
         ) : data.map(t => (
           <TableRow key={t.id}>
             <TableCell className="font-mono text-sm">{t.transferCode}</TableCell>
@@ -121,17 +100,11 @@ export default function TransferDecisionPage() {
             <TableCell>{reasonLabel[t.reason] || t.reason?.replace(/_/g, " ")}</TableCell>
             <TableCell className="max-w-[150px] truncate">{t.transferredScope}</TableCell>
             <TableCell>{getStatusBadge(t.status)}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">{t.createdAt ? new Date(t.createdAt).toLocaleDateString("fr-FR") : "—"}</TableCell>
             <TableCell className="text-right">
-              <div className="flex gap-1 justify-end">
-                <Button size="sm" variant="ghost" onClick={() => { setSelected(t); setShowDetail(true); }}>
-                  <Eye className="w-3 h-3 mr-1" />Détails
-                </Button>
-                {showActions && ["PENDING_CAS_DECISION", "EVALUATION_COMPLETED"].includes(t.status) && (
-                  <Button size="sm" onClick={() => { setSelected(t); setDecForm({ approved: true, justification: "" }); setShowDecision(true); }}>
-                    <Gavel className="w-3 h-3 mr-1" />Décider
-                  </Button>
-                )}
-              </div>
+              <Button size="sm" variant="ghost" onClick={() => { setSelected(t); setShowDetail(true); }}>
+                <Eye className="w-3 h-3 mr-1" />Détails
+              </Button>
             </TableCell>
           </TableRow>
         ))}
@@ -145,57 +118,69 @@ export default function TransferDecisionPage() {
         <main className="p-6 md:p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <ArrowRightLeft className="w-6 h-6 text-primary" />Transferts d'accréditation — CAS
+              <ArrowRightLeft className="w-6 h-6 text-primary" />Vue d'ensemble des transferts — DG
             </h1>
-            <p className="text-muted-foreground">Statuer sur les demandes de transfert d'accréditation (PRO 31, conformément à PRO 16)</p>
+            <p className="text-muted-foreground">Suivi global des transferts d'accréditation (PRO 31)</p>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardContent className="pt-6 flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg"><Gavel className="w-5 h-5 text-orange-600" /></div>
-                <div><p className="text-2xl font-bold">{pending.length}</p><p className="text-sm text-muted-foreground">En attente de décision</p></div>
+                <div className="p-2 bg-blue-100 rounded-lg"><BarChart3 className="w-5 h-5 text-blue-600" /></div>
+                <div><p className="text-2xl font-bold">{transfers.length}</p><p className="text-sm text-muted-foreground">Total transferts</p></div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg"><Clock className="w-5 h-5 text-orange-600" /></div>
+                <div><p className="text-2xl font-bold">{inProgress.length}</p><p className="text-sm text-muted-foreground">En cours</p></div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6 flex items-center gap-3">
                 <div className="p-2 bg-green-100 rounded-lg"><CheckCircle className="w-5 h-5 text-green-600" /></div>
-                <div><p className="text-2xl font-bold">{decided.filter(t => ["APPROVED", "CERTIFICATE_ISSUED", "COMPLETED"].includes(t.status)).length}</p><p className="text-sm text-muted-foreground">Approuvés</p></div>
+                <div><p className="text-2xl font-bold">{approved.length}</p><p className="text-sm text-muted-foreground">Approuvés</p></div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6 flex items-center gap-3">
                 <div className="p-2 bg-red-100 rounded-lg"><XCircle className="w-5 h-5 text-red-600" /></div>
-                <div><p className="text-2xl font-bold">{decided.filter(t => t.status === "REJECTED").length}</p><p className="text-sm text-muted-foreground">Rejetés</p></div>
+                <div><p className="text-2xl font-bold">{rejected.length}</p><p className="text-sm text-muted-foreground">Rejetés</p></div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="pending">
+          <Tabs defaultValue="in-progress">
             <TabsList>
-              <TabsTrigger value="pending">En attente ({pending.length})</TabsTrigger>
-              <TabsTrigger value="decided">Décidés ({decided.length})</TabsTrigger>
+              <TabsTrigger value="in-progress">En cours ({inProgress.length})</TabsTrigger>
+              <TabsTrigger value="approved">Approuvés ({approved.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejetés ({rejected.length})</TabsTrigger>
               <TabsTrigger value="all">Tous ({transfers.length})</TabsTrigger>
             </TabsList>
-            <TabsContent value="pending">
-              <Card><CardHeader><CardTitle>Demandes en attente de décision CAS</CardTitle></CardHeader>
-                <CardContent>{loading ? <p className="text-center py-8 text-muted-foreground">Chargement...</p> : <TransferTable data={pending} showActions={true} />}</CardContent>
+            <TabsContent value="in-progress">
+              <Card><CardHeader><CardTitle>Transferts en cours de traitement</CardTitle></CardHeader>
+                <CardContent>{loading ? <p className="text-center py-8 text-muted-foreground">Chargement...</p> : <TransferTable data={inProgress} />}</CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="decided">
-              <Card><CardHeader><CardTitle>Transferts décidés</CardTitle></CardHeader>
-                <CardContent><TransferTable data={decided} showActions={false} /></CardContent>
+            <TabsContent value="approved">
+              <Card><CardHeader><CardTitle>Transferts approuvés</CardTitle></CardHeader>
+                <CardContent><TransferTable data={approved} /></CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="rejected">
+              <Card><CardHeader><CardTitle>Transferts rejetés</CardTitle></CardHeader>
+                <CardContent><TransferTable data={rejected} /></CardContent>
               </Card>
             </TabsContent>
             <TabsContent value="all">
               <Card><CardHeader><CardTitle>Tous les transferts</CardTitle></CardHeader>
-                <CardContent><TransferTable data={transfers} showActions={true} /></CardContent>
+                <CardContent><TransferTable data={transfers} /></CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
-          {/* Dialog: Détails du transfert */}
+          {/* Detail Dialog */}
           <Dialog open={showDetail} onOpenChange={setShowDetail}>
             <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Transfert {selected?.transferCode}</DialogTitle></DialogHeader>
@@ -226,7 +211,7 @@ export default function TransferDecisionPage() {
                     </div>
                   )}
 
-                  {/* Continuity assessment */}
+                  {/* Continuity */}
                   {selected.continuityAssessment && (
                     <div className="border-t pt-3">
                       <h4 className="font-medium flex items-center gap-2 mb-2"><Users className="w-4 h-4" />Évaluation de continuité</h4>
@@ -256,7 +241,7 @@ export default function TransferDecisionPage() {
                     </div>
                   )}
 
-                  {/* Evaluation findings */}
+                  {/* Evaluation */}
                   {selected.evaluationFindings && (
                     <div className="border-t pt-3">
                       <h4 className="font-medium flex items-center gap-2 mb-2"><ShieldCheck className="w-4 h-4" />Résultat de l'évaluation</h4>
@@ -273,7 +258,7 @@ export default function TransferDecisionPage() {
                     </div>
                   )}
 
-                  {/* Certificate info */}
+                  {/* Certificate */}
                   {selected.effectiveDate && (
                     <div className="border-t pt-3 space-y-1">
                       <h4 className="font-medium">Certificat de transfert</h4>
@@ -295,96 +280,6 @@ export default function TransferDecisionPage() {
                 </div>
               )}
               <DialogFooter><Button variant="outline" onClick={() => setShowDetail(false)}>Fermer</Button></DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Dialog: Décision CAS */}
-          <Dialog open={showDecision} onOpenChange={setShowDecision}>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Décision CAS — {selected?.transferCode}</DialogTitle>
-                <DialogDescription>Statuer sur la demande de transfert d'accréditation (PRO 31 §5.3, conformément à PRO 16)</DialogDescription>
-              </DialogHeader>
-
-              {selected && (
-                <div className="space-y-4">
-                  {/* Summary */}
-                  <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-                    <div className="flex justify-between"><span className="text-muted-foreground">De</span><span className="font-medium">{selected.sourceOrganizationName}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Vers</span><span className="font-medium">{selected.targetOrganizationName}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Motif</span><span>{reasonLabel[selected.reason] || selected.reason}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Évaluation</span>
-                      <span>{selected.evaluationRequired ? "Réalisée" : "Non requise"}</span>
-                    </div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Finances</span>
-                      <span className={selected.financialRegularized ? "text-green-700" : "text-red-600"}>
-                        {selected.financialRegularized ? "Régularisées" : "Non régularisées"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Risk & Continuity summary */}
-                  <div className="space-y-2 text-sm">
-                    <Indicator value={selected.impartialityCompliance} label="Impartialité" />
-                    <Indicator value={selected.assessmentMethodsContinuity} label="Méthodes d'évaluation" />
-                    <Indicator value={selected.managementSystemContinuity} label="Système de management" />
-                    <Indicator value={selected.personnelContinuity} label="Personnel" />
-                    <Indicator value={selected.equipmentContinuity} label="Équipements" />
-                    <Indicator value={selected.financialRegularized} label="Situation financière" />
-                  </div>
-
-                  {/* Feasibility study */}
-                  {selected.feasibilityStudy && (
-                    <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                      <h4 className="font-medium text-blue-800 mb-1">Étude de faisabilité (FOR 86)</h4>
-                      <p className="text-blue-700">{selected.feasibilityStudy}</p>
-                    </div>
-                  )}
-
-                  {/* Decision buttons */}
-                  <div className="flex gap-3">
-                    <Button variant={decForm.approved ? "default" : "outline"} onClick={() => setDecForm({ ...decForm, approved: true })} className="flex-1">
-                      <CheckCircle className="w-4 h-4 mr-2" />Approuver le transfert
-                    </Button>
-                    <Button variant={!decForm.approved ? "destructive" : "outline"} onClick={() => setDecForm({ ...decForm, approved: false })} className="flex-1">
-                      <XCircle className="w-4 h-4 mr-2" />Rejeter
-                    </Button>
-                  </div>
-
-                  {!decForm.approved && (
-                    <Alert variant="destructive" className="border-amber-200 bg-amber-50 text-amber-800">
-                      <AlertTriangle className="w-4 h-4 !text-amber-600" />
-                      <AlertDescription>
-                        En cas de rejet, le demandeur sera traité comme un nouveau client (PRO 31 §5.3).
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {decForm.approved && (
-                    <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800">
-                      <p>En cas d'approbation : certificat mis à jour au nom du bénéficiaire, même numéro d'accréditation, même date de fin de validité. Date de prise d'effet = aujourd'hui.</p>
-                    </div>
-                  )}
-
-                  <div>
-                    <Label>Justification de la décision *</Label>
-                    <Textarea value={decForm.justification}
-                      onChange={(e) => setDecForm({ ...decForm, justification: e.target.value })}
-                      placeholder={decForm.approved
-                        ? "Motifs d'approbation : continuité assurée, conditions remplies..."
-                        : "Motifs de rejet : insuffisances constatées, facteurs empêchant l'achèvement..."
-                      } rows={4} />
-                  </div>
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowDecision(false)}>Annuler</Button>
-                <Button onClick={handleDecision} disabled={!decForm.justification}
-                  variant={decForm.approved ? "default" : "destructive"}>
-                  {decForm.approved ? "Approuver" : "Rejeter"}
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         </main>

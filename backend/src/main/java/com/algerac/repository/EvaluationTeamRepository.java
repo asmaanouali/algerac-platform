@@ -13,4 +13,6 @@ public interface EvaluationTeamRepository extends JpaRepository<EvaluationTeam, 
     List<EvaluationTeam> findByRequest_Id(Long requestId);
     Optional<EvaluationTeam> findByTeamCode(String teamCode);
     List<EvaluationTeam> findByStatus(TeamStatus status);
+    List<EvaluationTeam> findByHasRecusationTrue();
+    List<EvaluationTeam> findByStatusIn(List<TeamStatus> statuses);
 }

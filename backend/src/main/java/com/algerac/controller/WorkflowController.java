@@ -296,13 +296,220 @@ public class WorkflowController {
             String decisionReason = (String) body.get("decisionReason");
             if (accepted == null) throw new RuntimeException("Décision requise (accepted)");
             if (decisionReason == null || decisionReason.trim().isEmpty()) throw new RuntimeException("Raison de la décision requise");
-            EvaluationTeam team = teamService.examineRecusation(teamId, accepted, decisionReason, user);
-            String msg = accepted ? "Récusation acceptée - le RA doit remplacer le membre" : "Récusation rejetée - l'équipe est maintenue";
+
+            // Build replacements map
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> replacementsList = (List<Map<String, Object>>) body.get("replacements");
+            Map<Long, Long> replacements = null;
+            if (replacementsList != null && !replacementsList.isEmpty()) {
+                replacements = new LinkedHashMap<>();
+                for (Map<String, Object> r : replacementsList) {
+                    Long recusedId = ((Number) r.get("recusedMemberId")).longValue();
+                    Long replacementId = ((Number) r.get("replacementExpertId")).longValue();
+                    replacements.put(recusedId, replacementId);
+                }
+            }
+
+            EvaluationTeam team = teamService.examineRecusation(teamId, accepted, decisionReason, replacements, user);
+            String msg = accepted ? "Récusation acceptée — membres remplacés, nouveaux membres doivent signer (PRO 22)" : "Récusation rejetée — l'équipe est maintenue (PRO 22)";
             return ResponseEntity.ok(ApiResponse.success(msg, team));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    // ========== RECUSATIONS PRO 22 — dedicated endpoints ==========
+
+    /**
+     * GET /api/workflow/recusations
+     * Returns all teams that have a recusation (hasRecusation=true), formatted for the RA recusation page.
+     */
+    @GetMapping("/recusations")
+    public ResponseEntity<?> getRecusations(HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            List<EvaluationTeam> teams = teamRepository.findByHasRecusationTrue();
+            // Also include teams whose recusation was decided (ACCEPTED/REJECTED) for history
+            List<EvaluationTeam> decided = teamRepository.findByStatusIn(
+                    List.of(TeamStatus.RECUSATION_INVALID, TeamStatus.DRAFT)
+            ).stream()
+                    .filter(t -> t.getRecusationDecision() != null)
+                    .toList();
+            // Merge, avoiding duplicates
+            Set<Long> seen = new java.util.HashSet<>();
+            List<Map<String, Object>> result = new java.util.ArrayList<>();
+            for (EvaluationTeam t : teams) {
+                if (seen.add(t.getId())) result.add(buildRecusationDto(t));
+            }
+            for (EvaluationTeam t : decided) {
+                if (seen.add(t.getId())) result.add(buildRecusationDto(t));
+            }
+            result.sort((a, b) -> {
+                String ca = (String) a.get("createdAt");
+                String cb = (String) b.get("createdAt");
+                if (ca == null && cb == null) return 0;
+                if (ca == null) return 1;
+                if (cb == null) return -1;
+                return cb.compareTo(ca); // newest first
+            });
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    private Map<String, Object> buildRecusationDto(EvaluationTeam team) {
+        AccreditationRequest req = team.getRequest();
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("id", team.getId());          // id == teamId for this endpoint
+        dto.put("teamId", team.getId());
+        dto.put("requestId", req != null ? req.getId() : null);
+        dto.put("requestRef", req != null ? req.getReferenceNumber() : null);
+        String oecName = null;
+        if (req != null && req.getOec() != null) {
+            oecName = req.getOec().getOrganizationName() != null
+                    ? req.getOec().getOrganizationName()
+                    : req.getOec().getFullName();
+        }
+        dto.put("oecName", oecName);
+        dto.put("recusationCount", team.getRecusationCount());
+        // Recused members
+        List<Map<String, Object>> recusedMembers = memberRepository.findByTeam_Id(team.getId())
+                .stream()
+                .filter(m -> Boolean.TRUE.equals(m.getRecusedByOEC()))
+                .map(m -> {
+                    Map<String, Object> mv = new LinkedHashMap<>();
+                    mv.put("id", m.getId());
+                    mv.put("name", m.getExpert() != null ? m.getExpert().getFullName() : "");
+                    mv.put("role", m.getRole() != null ? m.getRole().name() : "");
+                    mv.put("email", m.getExpert() != null ? m.getExpert().getEmail() : "");
+                    return mv;
+                }).toList();
+        // If no currently-recused members but team has hasRecusation history, list from history (already replaced members won't be marked)
+        dto.put("recusedMembers", recusedMembers);
+        dto.put("reason", team.getRecusationReason());
+        // Proof documents JSON
+        dto.put("proofDocuments", team.getProofDocuments() != null ? team.getProofDocuments() : "[]");
+        // Status
+        String status = "PENDING";
+        if (team.getRecusationDecision() == RecusationDecision.ACCEPTED) status = "ACCEPTED";
+        else if (team.getRecusationDecision() == RecusationDecision.REJECTED) status = "REJECTED";
+        dto.put("status", status);
+        dto.put("raDecision", team.getRecusationDecisionReason());
+        dto.put("createdAt", team.getRecusationDate() != null ? team.getRecusationDate().toString() : null);
+        dto.put("decidedAt", team.getRecusationDecisionDate() != null ? team.getRecusationDecisionDate().toString() : null);
+        return dto;
+    }
+
+    /**
+     * POST /api/workflow/recusations/{teamId}/accept
+     * Accept the recusation: replace recused members (PRO 22).
+     */
+    @PostMapping("/recusations/{teamId}/accept")
+    public ResponseEntity<ApiResponse> acceptRecusation(@PathVariable Long teamId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String decisionReason = (String) body.get("raDecision");
+            if (decisionReason == null || decisionReason.trim().isEmpty())
+                throw new RuntimeException("Justification requise");
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> replacementsList = (List<Map<String, Object>>) body.get("replacements");
+            Map<Long, Long> replacements = new LinkedHashMap<>();
+            if (replacementsList != null) {
+                for (Map<String, Object> r : replacementsList) {
+                    Long recusedId = ((Number) r.get("recusedMemberId")).longValue();
+                    Long replacementId = ((Number) r.get("replacementExpertId")).longValue();
+                    replacements.put(recusedId, replacementId);
+                }
+            }
+
+            EvaluationTeam team = teamService.examineRecusation(teamId, true, decisionReason, replacements, user);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Récusation acceptée (PRO 22) — membres remplacés, ils doivent signer les engagements.", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/workflow/recusations/{teamId}/reject
+     * Reject the recusation: team is maintained (PRO 22).
+     */
+    @PostMapping("/recusations/{teamId}/reject")
+    public ResponseEntity<ApiResponse> rejectRecusation(@PathVariable Long teamId, @RequestBody Map<String, Object> body, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String decisionReason = (String) body.get("raDecision");
+            if (decisionReason == null || decisionReason.trim().isEmpty())
+                throw new RuntimeException("Justification du rejet requise");
+
+            EvaluationTeam team = teamService.examineRecusation(teamId, false, decisionReason, null, user);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Récusation rejetée (PRO 22) — l'équipe d'évaluation est maintenue.", team));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /api/workflow/teams/{teamId}/available-replacements
+     * Returns experts available to replace a recused member (excludes current team members).
+     */
+    @GetMapping("/teams/{teamId}/available-replacements")
+    public ResponseEntity<?> getAvailableReplacements(@PathVariable Long teamId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            EvaluationTeam team = teamRepository.findById(teamId)
+                    .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
+
+            // IDs of current non-recused members to exclude
+            Set<Long> currentMemberExpertIds = memberRepository.findByTeam_Id(teamId)
+                    .stream()
+                    .filter(m -> !Boolean.TRUE.equals(m.getRecusedByOEC()))
+                    .map(m -> m.getExpert() != null ? m.getExpert().getId() : null)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            List<UserRole> eligibleRoles = List.of(
+                    UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR);
+
+            List<Map<String, Object>> result = userRepository.findAll().stream()
+                    .filter(u -> eligibleRoles.contains(u.getRole())
+                            && u.getStatus() == UserStatus.APPROVED
+                            && !currentMemberExpertIds.contains(u.getId()))
+                    .map(e -> {
+                        Map<String, Object> map = new LinkedHashMap<>();
+                        map.put("id", e.getId());
+                        map.put("fullName", e.getFullName());
+                        map.put("email", e.getEmail());
+                        map.put("role", e.getRole() != null ? e.getRole().name() : null);
+                        map.put("specialite", e.getSpecialite());
+                        map.put("experience", e.getExperience());
+                        long activeDossiers = memberRepository.findByExpert_Id(e.getId())
+                                .stream().filter(m -> !Boolean.TRUE.equals(m.getRecusedByOEC())).count();
+                        map.put("activeDossiers", activeDossiers);
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========== END RECUSATIONS ==========
 
     @PostMapping("/teams/{teamId}/send-to-oec")
     public ResponseEntity<ApiResponse> sendTeamToOEC(@PathVariable Long teamId, @RequestBody Map<String, String> body, HttpSession session) {
@@ -401,8 +608,21 @@ public class WorkflowController {
             java.time.LocalDate oecProposedDate = oecDateStr != null ? java.time.LocalDate.parse(oecDateStr) : null;
             String dateRefusalReason = (String) body.get("dateRefusalReason");
 
-            EvaluationTeam team = teamService.oecResponse(teamId, validated, recusedMemberIds, recusationReason, dateAccepted, oecProposedDate, dateRefusalReason, user);
-            return ResponseEntity.ok(ApiResponse.success(validated ? "Équipe validée" : "Récusation enregistrée", team));
+            // Proof documents for recusation (PRO 22)
+            @SuppressWarnings("unchecked")
+            Object proofDocsRaw = body.get("proofDocuments");
+            String proofDocumentsJson = null;
+            if (proofDocsRaw != null) {
+                try {
+                    proofDocumentsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(proofDocsRaw);
+                } catch (Exception ignore) {
+                    proofDocumentsJson = proofDocsRaw.toString();
+                }
+            }
+
+            EvaluationTeam team = teamService.oecResponse(teamId, validated, recusedMemberIds, recusationReason,
+                    dateAccepted, oecProposedDate, dateRefusalReason, proofDocumentsJson, user);
+            return ResponseEntity.ok(ApiResponse.success(validated ? "Équipe validée" : "Récusation enregistrée (PRO 22)", team));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

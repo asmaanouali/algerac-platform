@@ -64,6 +64,10 @@ export default function ValidateTeamPage() {
   const [oecProposedDate, setOecProposedDate] = useState("");
   const [dateRefusalReason, setDateRefusalReason] = useState("");
 
+  // PRO 22: track how many recusations this OEC has already used
+  const recusationCount: number = team?.recusationCount ?? 0;
+  const canRecuse = recusationCount < 2;
+
   useEffect(() => {
     if (user && !authLoading) loadData();
   }, [requestId, user, authLoading]);
@@ -288,13 +292,24 @@ export default function ValidateTeamPage() {
                     </Table>
 
                     <div className="mt-4 space-y-3">
-                      <Label className="font-medium">Votre decision sur les membres de l'equipe :</Label>
+                      <Label className="font-medium">Votre décision sur les membres de l'équipe :</Label>
+                      {!canRecuse && (
+                        <Alert className="border-red-200 bg-red-50">
+                          <AlertDescription className="text-red-800 text-sm">
+                            <strong>Limite atteinte :</strong> Vous avez utilisé vos 2 récusations autorisées (PRO 22). Vous ne pouvez plus récuser de membres.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       <div className="flex gap-3">
                         <Button variant={teamDecision === "accept" ? "default" : "outline"} size="sm" onClick={() => setTeamDecision("accept")}>
-                          <CheckCircle className="w-4 h-4 mr-1" /> Accepter l'equipe
+                          <CheckCircle className="w-4 h-4 mr-1" /> Accepter l'équipe
                         </Button>
-                        <Button variant={teamDecision === "recuse" ? "destructive" : "outline"} size="sm" onClick={() => setTeamDecision("recuse")}>
-                          <XCircle className="w-4 h-4 mr-1" /> Recuser un ou des membres (PRO 22)
+                        <Button variant={teamDecision === "recuse" ? "destructive" : "outline"} size="sm"
+                          disabled={!canRecuse}
+                          onClick={() => setTeamDecision("recuse")}
+                          title={!canRecuse ? "Limite de récusations atteinte (max 2 par PRO 22)" : undefined}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" /> Récuser un ou des membres (PRO 22)
                         </Button>
                       </div>
                     </div>
@@ -333,10 +348,15 @@ export default function ValidateTeamPage() {
 
           <Dialog open={recuseDialogOpen} onOpenChange={setRecuseDialogOpen}>
             <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Recusation de membres (PRO 22)</DialogTitle><DialogDescription>Selectionnez les membres a recuser et indiquez votre justification. Le CD examinera votre demande.</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle>Récusation de membres (PRO 22)</DialogTitle><DialogDescription>Sélectionnez les membres à récuser et indiquez votre justification. Le RA examinera votre demande. Récusation {recusationCount + 1} sur 2 autorisées.</DialogDescription></DialogHeader>
               <div className="space-y-4 py-4">
+                <Alert className="border-amber-200 bg-amber-50">
+                  <AlertDescription className="text-amber-800 text-sm">
+                    <strong>PRO 22 :</strong> La récusation n'est recevable que si elle repose sur un <strong>conflit d'intérêt</strong> (travail antérieur avec l'organisme, concurrent principal, différend passé, ou prestation de conseil). Vous disposez de <strong>{2 - recusationCount} récusation(s) restante(s)</strong>.
+                  </AlertDescription>
+                </Alert>
                 <div className="space-y-2">
-                  <Label>Membres a recuser :</Label>
+                  <Label>Membres à récuser :</Label>
                   {members.map((m) => (
                     <div key={m.id} className="flex items-center gap-3 p-3 border rounded-lg">
                       <input type="checkbox" checked={recusedMemberIds.includes(m.id)} onChange={() => toggleRecuseMember(m.id)} className="h-4 w-4" />
@@ -344,7 +364,7 @@ export default function ValidateTeamPage() {
                     </div>
                   ))}
                 </div>
-                <div className="space-y-2"><Label>Raison de la recusation *</Label><Textarea value={recuseReason} onChange={(e) => setRecuseReason(e.target.value)} placeholder="Justifiez votre recusation (conflit d'interets, manque d'impartialite, etc.)..." rows={4} /></div>
+                <div className="space-y-2"><Label>Raison de la récusation — précisez le conflit d'intérêt <span className="text-red-500">*</span></Label><Textarea value={recuseReason} onChange={(e) => setRecuseReason(e.target.value)} placeholder="Décrivez le conflit d'intérêt (ex: l'évaluateur a travaillé au sein de notre organisme de 2022 à 2023, est un concurrent direct, a eu un différend commercial, a fourni des services de conseil...)..." rows={4} /></div>
                 
                 {/* Proof documents upload */}
                 <div className="space-y-2">
@@ -372,12 +392,12 @@ export default function ValidateTeamPage() {
                   )}
                 </div>
 
-                <Alert><AlertDescription>Conformement a la procedure PRO 22, le CD examinera votre demande de recusation. S'il la juge valide, le RA proposera de nouveaux membres. Sinon, l'equipe sera maintenue.</AlertDescription></Alert>
+                <Alert><AlertDescription>Conformément à la procédure PRO 22, le RA examinera votre demande de récusation. S'il la juge valide (conflit d'intérêt avéré), un membre remplaçant sera désigné et une fiche de composition mise à jour (FOR 26) vous sera transmise. Sinon, l'équipe sera maintenue.</AlertDescription></Alert>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRecuseDialogOpen(false)} disabled={processing}>Annuler</Button>
                 <Button variant="destructive" onClick={handleRecuse} disabled={processing || recusedMemberIds.length === 0 || !recuseReason.trim()}>
-                  {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : "Confirmer la recusation"}
+                  {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Traitement...</> : "Confirmer la récusation"}
                 </Button>
               </DialogFooter>
             </DialogContent>

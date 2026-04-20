@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -293,21 +294,23 @@ public class EvaluationTeamService {
      * - membersAccepted: whether OEC accepts all team members
      * - Can refuse date + accept members → RA changes date → resend
      * - Can accept date + recuse member → CD examines recusation
+     * PRO 22: each OEC may recuse at most 2 times per team.
      */
     @Transactional
-    public EvaluationTeam oecResponse(Long teamId, Boolean validated, Long[] recusedMemberIds, 
+    public EvaluationTeam oecResponse(Long teamId, Boolean validated, Long[] recusedMemberIds,
                                      String recusationReason, Boolean dateAccepted,
                                      LocalDate oecProposedDate, String dateRefusalReason,
+                                     String proofDocumentsJson,
                                      User currentUser) {
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
-        
+
         AccreditationRequest request = team.getRequest();
-        
+
         if (!request.getOec().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Seul l'OEC concerné peut répondre");
         }
-        
+
         // Handle date acceptance
         if (dateAccepted != null) {
             team.setEvaluationDateAccepted(dateAccepted);
@@ -316,17 +319,17 @@ public class EvaluationTeamService {
                 team.setDateRefusalReason(dateRefusalReason);
             }
         }
-        
+
         boolean membersAccepted = validated != null && validated;
         boolean hasRecusedMembers = recusedMemberIds != null && recusedMemberIds.length > 0;
-        
+
         // Case 1: OEC accepts both date and members - fully validated
         if (membersAccepted && (dateAccepted == null || dateAccepted)) {
             team.setOecValidated(true);
             team.setHasRecusation(false);
             team.setFinalValidationDate(LocalDateTime.now());
             team.setStatus(TeamStatus.VALIDATED);
-            
+
             request.setStatus(RequestStatus.TEAM_VALIDATED);
             request.setCurrentStep("Équipe validée - revue documentaire");
             request.setPendingWith("CD/RA");
@@ -336,118 +339,196 @@ public class EvaluationTeamService {
             team.setOecValidated(false);
             team.setHasRecusation(false);
             team.setStatus(TeamStatus.DATE_REFUSED);
-            
+
             request.setStatus(RequestStatus.TEAM_DATE_REFUSED);
             request.setCurrentStep("OEC refuse la date - RA doit proposer nouvelle date");
             request.setPendingWith("RA");
         }
-        // Case 3: OEC recuses member(s) - regardless of date → CD examines recusation
+        // Case 3: OEC recuses member(s) — PRO 22: max 2 recusations per team
         else if (hasRecusedMembers) {
+            int currentCount = team.getRecusationCount() != null ? team.getRecusationCount() : 0;
+            if (currentCount >= 2) {
+                throw new RuntimeException("Limite de récusations atteinte (max 2 par PRO 22). Vous ne pouvez plus récuser de membres.");
+            }
             team.setHasRecusation(true);
             team.setRecusationReason(recusationReason);
             team.setRecusationDate(LocalDateTime.now());
             team.setRecusationDecision(RecusationDecision.PENDING);
+            team.setRecusationCount(currentCount + 1);
+            team.setProofDocuments(proofDocumentsJson);
             team.setStatus(TeamStatus.MEMBER_RECUSED);
-            
+
             // Mark recused members
             for (Long memberId : recusedMemberIds) {
                 TeamMember member = memberRepository.findById(memberId)
-                        .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
+                        .orElseThrow(() -> new RuntimeException("Membre non trouvé: " + memberId));
                 member.setRecusedByOEC(true);
                 member.setRecusationReason(recusationReason);
                 memberRepository.save(member);
             }
-            
+
             request.setStatus(RequestStatus.TEAM_MEMBER_RECUSED);
-            request.setCurrentStep("Membre(s) récusé(s) - CD doit examiner la récusation");
-            request.setPendingWith("CD");
+            request.setCurrentStep("Membre(s) récusé(s) - RA doit examiner la récusation (PRO 22)");
+            request.setPendingWith("RA");
         }
-        // Fallback: validated=false with no specific recused members (legacy support)  
+        // Fallback: validated=false with no specific recused members (legacy support)
         else {
+            int currentCount = team.getRecusationCount() != null ? team.getRecusationCount() : 0;
+            if (currentCount >= 2) {
+                throw new RuntimeException("Limite de récusations atteinte (max 2 par PRO 22).");
+            }
             team.setOecValidated(false);
             team.setHasRecusation(true);
             team.setRecusationReason(recusationReason);
             team.setRecusationDate(LocalDateTime.now());
             team.setRecusationDecision(RecusationDecision.PENDING);
+            team.setRecusationCount(currentCount + 1);
+            team.setProofDocuments(proofDocumentsJson);
             team.setStatus(TeamStatus.RECUSED);
-            
+
             request.setStatus(RequestStatus.TEAM_RECUSED);
             request.setCurrentStep("Membre(s) récusé(s) - examen nécessaire");
-            request.setPendingWith("CD");
+            request.setPendingWith("RA");
         }
-        
+
         team = teamRepository.save(team);
         requestRepository.save(request);
-        
-        // Notifier CD/RA
+
+        // Notifier RA/CD
         notificationService.notifyCDTeamResponse(request, membersAccepted, recusationReason);
-        
-        log.info("Réponse OEC équipe : dateAccepted={}, membersAccepted={} pour {}", 
-                dateAccepted, membersAccepted, team.getTeamCode());
+
+        log.info("Réponse OEC équipe : dateAccepted={}, membersAccepted={}, recusationCount={} pour {}",
+                dateAccepted, membersAccepted, team.getRecusationCount(), team.getTeamCode());
         return team;
     }
-    
+
     /**
-     * CD examine la récusation (PRO 22):
-     * - If accepted (valid recusation): RA must replace member, sign engagement, resend to CD
-     * - If rejected (invalid recusation): team maintained, OEC notified that recusation is invalid
+     * Backward-compatible overload without proofDocuments.
      */
     @Transactional
-    public EvaluationTeam examineRecusation(Long teamId, Boolean accepted, 
-                                           String decisionReason, User currentUser) {
+    public EvaluationTeam oecResponse(Long teamId, Boolean validated, Long[] recusedMemberIds,
+                                     String recusationReason, Boolean dateAccepted,
+                                     LocalDate oecProposedDate, String dateRefusalReason,
+                                     User currentUser) {
+        return oecResponse(teamId, validated, recusedMemberIds, recusationReason, dateAccepted,
+                oecProposedDate, dateRefusalReason, null, currentUser);
+    }
+
+    /**
+     * RA/CD examine la récusation (PRO 22):
+     * - If accepted (valid recusation + replacements provided): immediately replace members, reset
+     *   signing, and send back to CD for re-validation before re-sending FOR 26 to OEC.
+     * - If rejected (invalid recusation): team maintained, OEC notified.
+     *
+     * @param replacements map of recusedMemberId → replacementExpertId (required when accepted=true)
+     */
+    @Transactional
+    public EvaluationTeam examineRecusation(Long teamId, Boolean accepted,
+                                           String decisionReason,
+                                           Map<Long, Long> replacements,
+                                           User currentUser) {
         EvaluationTeam team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Équipe non trouvée"));
-        
-        if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.DT) {
-            throw new RuntimeException("Seuls CD/DT peuvent examiner la récusation");
+
+        if (currentUser.getRole() != UserRole.CD && currentUser.getRole() != UserRole.DT
+                && currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls RA/CD/DT peuvent examiner la récusation");
         }
-        
+
+        team.setRecusationDecisionDate(LocalDateTime.now());
+
         if (accepted) {
-            // Récusation valide → RA doit remplacer le membre récusé
+            if (replacements == null || replacements.isEmpty()) {
+                throw new RuntimeException("Des remplaçants doivent être désignés pour chaque membre récusé lors de l'acceptation de la récusation.");
+            }
+
             team.setRecusationDecision(RecusationDecision.ACCEPTED);
             team.setRecusationDecisionReason(decisionReason);
-            team.setStatus(TeamStatus.DRAFT); // Retour en constitution pour remplacer les membres
-            
+
+            // Replace each recused member with the designated expert
+            List<TeamMember> members = memberRepository.findByTeam_Id(teamId);
+            for (TeamMember m : members) {
+                if (Boolean.TRUE.equals(m.getRecusedByOEC())) {
+                    Long replacementExpertId = replacements.get(m.getId());
+                    if (replacementExpertId == null) {
+                        throw new RuntimeException("Aucun remplaçant désigné pour le membre récusé: " + m.getId());
+                    }
+                    User replacementExpert = userRepository.findById(replacementExpertId)
+                            .orElseThrow(() -> new RuntimeException("Expert remplaçant non trouvé: " + replacementExpertId));
+
+                    // Swap the expert on the existing member record and reset signing status
+                    m.setExpert(replacementExpert);
+                    m.setRecusedByOEC(false);
+                    m.setRecusationReason(null);
+                    m.setConfidentialityAgreementSigned(false);
+                    m.setImpartialityAgreementSigned(false);
+                    m.setConflictOfInterestDeclared(false);
+                    m.setConflictOfInterestDetails(null);
+                    m.setAvailable(true);
+                    m.setAddedAt(LocalDateTime.now());
+                    memberRepository.save(m);
+
+                    // Notify new expert to sign
+                    notificationService.notifyExpertTeamDesignation(replacementExpert, team.getRequest());
+                }
+            }
+
+            // Return team to RA for re-submission to CD after new members sign
+            team.setStatus(TeamStatus.DRAFT);
+            team.setHasRecusation(false);
+
             AccreditationRequest request = team.getRequest();
             request.setStatus(RequestStatus.TEAM_DESIGNATION);
-            request.setCurrentStep("Remplacement du membre récusé - RA doit remplacer, faire signer et renvoyer au CD");
+            request.setCurrentStep("Membres récusés remplacés — nouveaux membres doivent signer les engagements (FOR 01-1)");
             request.setPendingWith("RA");
             requestRepository.save(request);
+
         } else {
             // Récusation non valide → équipe maintenue, notifier OEC
             team.setRecusationDecision(RecusationDecision.REJECTED);
             team.setRecusationDecisionReason(decisionReason);
             team.setStatus(TeamStatus.RECUSATION_INVALID);
-            
+
             // Unmark recused members since recusation is invalid
             List<TeamMember> members = memberRepository.findByTeam_Id(teamId);
             for (TeamMember m : members) {
-                if (m.getRecusedByOEC() != null && m.getRecusedByOEC()) {
+                if (Boolean.TRUE.equals(m.getRecusedByOEC())) {
                     m.setRecusedByOEC(false);
                     m.setRecusationReason(null);
                     memberRepository.save(m);
                 }
             }
-            
-            // Move to validated - team maintained
+
+            // Team is maintained — mark as effectively validated
             team.setOecValidated(true);
+            team.setHasRecusation(false);
             team.setFinalValidationDate(LocalDateTime.now());
-            
+
             AccreditationRequest request = team.getRequest();
             request.setStatus(RequestStatus.TEAM_RECUSATION_INVALID);
-            request.setCurrentStep("Récusation jugée non valide - équipe maintenue");
+            request.setCurrentStep("Récusation jugée non valide — équipe maintenue (PRO 22)");
             request.setPendingWith("CD/RA");
             requestRepository.save(request);
         }
-        
+
         team = teamRepository.save(team);
-        
+
         // Notifier l'OEC de la décision
         notificationService.notifyOECRecusationDecision(team.getRequest(), accepted, decisionReason);
-        
-        log.info("Décision récusation : {} pour équipe {}", 
-                accepted ? "ACCEPTÉE (valide)" : "REJETÉE (non valide, équipe maintenue)", team.getTeamCode());
+
+        log.info("Décision récusation (PRO 22): {} pour équipe {} par {}",
+                accepted ? "ACCEPTÉE — membres remplacés" : "REJETÉE — équipe maintenue",
+                team.getTeamCode(), currentUser.getFullName());
         return team;
+    }
+
+    /**
+     * Backward-compatible overload without replacements map.
+     */
+    @Transactional
+    public EvaluationTeam examineRecusation(Long teamId, Boolean accepted,
+                                           String decisionReason, User currentUser) {
+        return examineRecusation(teamId, accepted, decisionReason, null, currentUser);
     }
     
     /**

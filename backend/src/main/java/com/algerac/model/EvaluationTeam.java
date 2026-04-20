@@ -49,18 +49,25 @@ public class EvaluationTeam {
     private Boolean oecValidated; // OEC a validé la composition
     
     private Boolean hasRecusation; // OEC a récusé un ou plusieurs membres
-    
+
+    private Integer recusationCount; // Nombre de récusations soumises par l'OEC (max 2 per PRO 22)
+
     @Column(columnDefinition = "TEXT")
     private String recusationReason; // Motif de récusation
-    
+
+    @Column(columnDefinition = "TEXT")
+    private String proofDocuments; // JSON — documents de preuve fournis par l'OEC
+
     private LocalDateTime recusationDate;
-    
+
     @Enumerated(EnumType.STRING)
     private RecusationDecision recusationDecision; // ACCEPTED, REJECTED
-    
+
     @Column(columnDefinition = "TEXT")
     private String recusationDecisionReason;
-    
+
+    private LocalDateTime recusationDecisionDate; // Date de la décision du RA/CD
+
     private LocalDateTime finalValidationDate;
     
     @Enumerated(EnumType.STRING)

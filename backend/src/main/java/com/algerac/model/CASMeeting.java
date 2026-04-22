@@ -20,6 +20,11 @@ public class CASMeeting {
     @JoinColumn(name = "request_id", nullable = false)
     private AccreditationRequest request;
 
+    /** PRO 07 §5.1 — The specialized committee assigned to examine this dossier. */
+    @ManyToOne
+    @JoinColumn(name = "committee_id")
+    private CASCommittee committee;
+
     @Column(nullable = false, unique = true)
     private String meetingCode;
 
@@ -68,7 +73,13 @@ public class CASMeeting {
     private String for15AppealRightsNotice;
 
     @Column(columnDefinition = "TEXT")
-    private String meetingMinutes; // PV de la réunion
+    private String meetingMinutes; // FOR 42 — PV de la réunion
+
+    /** FOR 42 — President signed the minutes. */
+    private LocalDateTime minutesSignedAt;
+
+    /** FOR 42 — Minutes distributed to all members present. */
+    private LocalDateTime minutesDistributedAt;
 
     private LocalDateTime votingOpenedAt;
     private LocalDateTime votingClosedAt;
@@ -83,4 +94,8 @@ public class CASMeeting {
     }
 
     public Long getRequestId() { return request != null ? request.getId() : null; }
+
+    public Long getCommitteeId() { return committee != null ? committee.getId() : null; }
+
+    public String getCommitteeName() { return committee != null ? committee.getName() : null; }
 }

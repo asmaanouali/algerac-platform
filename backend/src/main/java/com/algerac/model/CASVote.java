@@ -60,6 +60,15 @@ public class CASVote {
     @Column(columnDefinition = "TEXT")
     private String conflictDescription;
 
+    /**
+     * PRO 07 §5.10.a — Member who participated as evaluator/expert on this dossier
+     * is automatically excluded from deliberation. They may still attend but cannot vote.
+     */
+    private Boolean isExcludedEvaluator;
+
+    @Column(columnDefinition = "TEXT")
+    private String exclusionReason;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

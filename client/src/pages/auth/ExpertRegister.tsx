@@ -725,18 +725,18 @@ export default function ExpertRegisterWizard() {
       case 1:
         return (
           <div className="space-y-6">
-            <div className="space-y-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-              <Label className="text-sm font-semibold text-green-800">
+            <div className="space-y-4 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800/50 rounded-lg">
+              <Label className="text-sm font-semibold text-green-800 dark:text-green-400">
                 {t("er.labels.candidatureType")} <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.userType}
                 onValueChange={(value) => setFormData({ ...formData, userType: value })}
               >
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-white dark:bg-slate-900">
                   <SelectValue placeholder={t("er.placeholders.selectType")} />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent className="bg-white dark:bg-slate-900">
                   {userTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}

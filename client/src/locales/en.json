@@ -131,6 +131,37 @@
       "step9": "Administrative documents",
       "step10": "Declaration and signature"
     },
+    "registrationSuccess": {
+      "left": {
+        "title": "Submission completed",
+        "description": "Your request has been securely recorded. You can now follow the next steps until your account is activated."
+      },
+      "backToLogin": "Back to login",
+      "expert": {
+        "title": "Application submitted successfully!",
+        "message": "Your application has been registered. Our team will now review your profile.",
+        "nextStepsTitle": "Next steps for your application:",
+        "step1Title": "Step 1 - CV review",
+        "step1Description": "Competence Management will review your CV and assess your profile.",
+        "step2Title": "Step 2 - Supporting documents",
+        "step2Description": "If your profile is preselected, you will receive an email with a secure link to upload confidential documents.",
+        "step3Title": "Step 3 - Interview",
+        "step3Description": "After your documents are received, you will be invited to an interview.",
+        "step4Title": "Step 4 - Decision and activation",
+        "step4Description": "After the interview, if your application is accepted, your account will be created and activated."
+      },
+      "oec": {
+        "title": "Request submitted successfully!",
+        "message": "Your accreditation request has been successfully sent to ALGERAC.",
+        "nextStepsTitle": "Next steps for your request:",
+        "step1Title": "Step 1 - File review",
+        "step1Description": "The Technical Direction will review your request.",
+        "step2Title": "Step 2 - File deposit fees",
+        "step2Description": "If your request is accepted, you will receive the file deposit fees to be paid.",
+        "step3Title": "Step 3 - Payment proof",
+        "step3Description": "After payment validation, your account will be created and activated."
+      }
+    },
     "selectRole": {
       "title": "Select a role",
       "subtitle": "You have access to multiple spaces. Choose the role you wish to continue with.",

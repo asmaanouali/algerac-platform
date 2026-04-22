@@ -131,6 +131,37 @@
       "step9": "Documents administratifs",
       "step10": "Déclaration et signature"
     },
+    "registrationSuccess": {
+      "left": {
+        "title": "Soumission finalisée",
+        "description": "Votre demande a été enregistrée de manière sécurisée. Vous pouvez maintenant suivre les prochaines étapes jusqu'à l'activation de votre compte."
+      },
+      "backToLogin": "Retour à la connexion",
+      "expert": {
+        "title": "Candidature soumise avec succès !",
+        "message": "Votre candidature a bien été enregistrée. Nous allons étudier votre dossier.",
+        "nextStepsTitle": "Prochaines étapes de votre candidature :",
+        "step1Title": "Étape 1 - Étude du CV",
+        "step1Description": "La Gestion des Compétences va étudier votre CV et évaluer votre profil.",
+        "step2Title": "Étape 2 - Documents justificatifs",
+        "step2Description": "Si votre profil est présélectionné, vous recevrez un email avec un lien sécurisé pour joindre vos documents confidentiels.",
+        "step3Title": "Étape 3 - Entretien",
+        "step3Description": "Après réception de vos documents, vous serez convoqué(e) à un entretien.",
+        "step4Title": "Étape 4 - Décision et activation",
+        "step4Description": "Après l'entretien, si votre candidature est acceptée, votre compte sera créé et activé."
+      },
+      "oec": {
+        "title": "Demande soumise avec succès !",
+        "message": "Votre demande d'accréditation a été envoyée avec succès à ALGERAC.",
+        "nextStepsTitle": "Prochaines étapes de votre demande :",
+        "step1Title": "Étape 1 - Étude du dossier",
+        "step1Description": "La Direction Technique va examiner votre demande.",
+        "step2Title": "Étape 2 - Frais de dépôt",
+        "step2Description": "Si votre demande est retenue, vous recevrez les frais de dépôt de dossier à payer.",
+        "step3Title": "Étape 3 - Preuve de paiement",
+        "step3Description": "Après validation du paiement, votre compte sera créé et activé."
+      }
+    },
     "selectRole": {
       "title": "Sélectionner un rôle",
       "subtitle": "Vous avez accès à plusieurs espaces. Choisissez le rôle avec lequel vous souhaitez continuer.",

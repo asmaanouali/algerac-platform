@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import AuthLayout from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, LogIn, Mail, Phone, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,20 +10,14 @@ import RoleSelector from "@/components/RoleSelector";
 
 export default function Login() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState(() => localStorage.getItem("algerac-remember-email") ?? "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(() => !!localStorage.getItem("algerac-remember-email"));
   const [showPassword, setShowPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { loginMutation, user, needsRoleSelection, availableRoles, setActiveRole } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (remember) {
-      localStorage.setItem("algerac-remember-email", email);
-    } else {
-      localStorage.removeItem("algerac-remember-email");
-    }
     loginMutation.mutate({ email, password });
   };
 
@@ -171,22 +164,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  <Checkbox
-                    id="remember"
-                    checked={remember}
-                    onCheckedChange={(checked) => setRemember(checked === true)}
-                    className="border-slate-300 dark:border-white/20 data-[state=checked]:bg-[#00A63E] data-[state=checked]:border-[#00A63E]"
-                    disabled={loginMutation.isPending}
-                  />
-                  <label
-                    htmlFor="remember"
-                    className="text-sm text-slate-500 dark:text-slate-400 cursor-pointer select-none"
-                  >
-                    {t("auth.rememberMe")}
-                  </label>
-                </div>
+              <div className="flex justify-end">
                 <Link href="/auth/forgot-password">
                   <span className="text-sm text-[#00A63E] hover:text-[#00c44d] font-medium transition-colors">
                     {t("auth.forgotPassword")}

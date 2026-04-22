@@ -52,7 +52,6 @@
     "emailPlaceholder": "name@example.com",
     "password": "Password",
     "passwordPlaceholder": "••••••••",
-    "rememberMe": "Remember me",
     "forgotPassword": "Forgot password?",
     "login": "Sign in",
     "loggingIn": "Signing in...",

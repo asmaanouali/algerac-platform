@@ -61,6 +61,50 @@
     "welcomeUser": "مرحباً، {{name}}",
     "loginError": "خطأ في تسجيل الدخول",
     "logout": "تسجيل الخروج",
+    "passwordRecovery": {
+      "errorTitle": "خطأ",
+      "networkError": "خطأ في الشبكة أو الخادم.",
+      "sessionExpired": "انتهت الجلسة. يرجى إعادة المحاولة.",
+      "forgot": {
+        "title": "إعادة تعيين كلمة المرور",
+        "subtitle": "أدخل بريدك الإلكتروني لاستلام رمز التحقق",
+        "sendCode": "إرسال الرمز",
+        "sendingCode": "جارٍ الإرسال...",
+        "codeSentTitle": "تم إرسال الرمز",
+        "codeSentDescription": "تم إرسال رمز إلى {{email}}",
+        "noAccountError": "لا يوجد حساب بهذا البريد الإلكتروني",
+        "backToLogin": "العودة إلى تسجيل الدخول"
+      },
+      "otp": {
+        "title": "التحقق",
+        "subtitle": "تم إرسال الرمز إلى {{email}}",
+        "verifyCode": "التحقق من الرمز",
+        "verifying": "جارٍ التحقق...",
+        "resendCode": "إعادة إرسال الرمز",
+        "resending": "جارٍ إعادة الإرسال...",
+        "resendSuccessTitle": "تمت إعادة إرسال الرمز",
+        "resendSuccessDescription": "تم إرسال رمز جديد إلى {{email}}",
+        "verifySuccessTitle": "نجاح",
+        "verifySuccessDescription": "تم التحقق من الرمز بنجاح.",
+        "invalidCodeError": "رمز غير صحيح. يرجى المحاولة مرة أخرى.",
+        "resendError": "حدث خطأ أثناء إعادة إرسال الرمز.",
+        "back": "رجوع"
+      },
+      "newPassword": {
+        "title": "كلمة مرور جديدة",
+        "subtitle": "أنشئ كلمة مرور آمنة لحسابك",
+        "passwordLabel": "كلمة المرور الجديدة",
+        "confirmLabel": "تأكيد كلمة المرور",
+        "minHint": "8 أحرف على الأقل",
+        "changeButton": "تغيير كلمة المرور",
+        "changingButton": "جارٍ التغيير...",
+        "passwordChangedTitle": "تم تغيير كلمة المرور!",
+        "passwordChangedDescription": "تم تغيير كلمة المرور بنجاح.",
+        "passwordMinError": "يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل.",
+        "passwordMismatchError": "كلمتا المرور غير متطابقتين.",
+        "resetError": "حدث خطأ أثناء إعادة تعيين كلمة المرور."
+      }
+    },
     "register": {
       "title": "إنشاء حساب",
       "subtitle": "اختر نوع ملفك الشخصي للبدء",

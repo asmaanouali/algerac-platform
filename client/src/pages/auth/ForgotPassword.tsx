@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { ArrowLeft, Mail, Phone, Globe } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function ForgotPassword() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
@@ -34,22 +36,22 @@ export default function ForgotPassword() {
           localStorage.setItem("resetToken", token);
         }
         toast({
-          title: "Code envoyé",
-          description: `Un code a été envoyé à ${email}`,
+          title: t("auth.passwordRecovery.forgot.codeSentTitle"),
+          description: t("auth.passwordRecovery.forgot.codeSentDescription", { email }),
         });
         setTimeout(() => setLocation("/auth/verify-otp?email=" + encodeURIComponent(email)), 1200);
       } else {
         toast({
-          title: "Erreur",
-          description: data?.message || "Aucun compte avec cet email",
+          title: t("auth.passwordRecovery.errorTitle"),
+          description: data?.message || t("auth.passwordRecovery.forgot.noAccountError"),
           variant: "destructive"
         });
       }
-    } catch (err) {
+    } catch (_err) {
       setLoading(false);
       toast({
-        title: "Erreur",
-        description: "Erreur réseau ou serveur.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.networkError"),
       });
     }
   };
@@ -71,12 +73,12 @@ export default function ForgotPassword() {
                 <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto shrink-0 drop-shadow" />
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight leading-tight text-white">ALGERAC</h1>
-                  <p className="text-green-200 text-xs leading-snug">Organisme Algérien d'Accréditation</p>
+                  <p className="text-green-200 text-xs leading-snug">{t("auth.tagline")}</p>
                 </div>
               </div>
               <div className="w-10 h-0.5 bg-white/25 mb-5" />
               <p className="text-green-50/85 text-sm leading-relaxed mb-8">
-                Plateforme numérique de gestion des processus d'accréditation. ALGERAC évalue et accrédite les organismes d'évaluation de la conformité selon les exigences des référentiels nationaux et internationaux.
+                {t("auth.platformIntro")}
               </p>
               <div className="space-y-3 mb-auto">
                 <div className="flex items-center gap-3">
@@ -98,7 +100,7 @@ export default function ForgotPassword() {
                   <span className="text-sm text-green-100">www.algerac.dz</span>
                 </div>
               </div>
-              <p className="text-green-300/50 text-xs mt-8">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
+              <p className="text-green-300/50 text-xs mt-8">{t("common.copyright")}</p>
             </div>
           </div>
 
@@ -111,18 +113,18 @@ export default function ForgotPassword() {
             </div>
 
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Réinitialisation</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Entrez votre email pour recevoir le code de vérification</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t("auth.passwordRecovery.forgot.title")}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.passwordRecovery.forgot.subtitle")}</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">Adresse email</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">{t("auth.email")}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
                     type="email"
-                    placeholder="nom@exemple.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     className="pl-10 h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -132,14 +134,14 @@ export default function ForgotPassword() {
                 </div>
               </div>
               <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm shadow-green-900/30 transition-all" type="submit" disabled={loading}>
-                {loading ? "Envoi en cours..." : "Envoyer le code"}
+                {loading ? t("auth.passwordRecovery.forgot.sendingCode") : t("auth.passwordRecovery.forgot.sendCode")}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <Link href="/">
                 <span className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-[#00A63E] transition-colors cursor-pointer">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion
+                  <ArrowLeft className="w-3.5 h-3.5" /> {t("auth.passwordRecovery.forgot.backToLogin")}
                 </span>
               </Link>
             </div>

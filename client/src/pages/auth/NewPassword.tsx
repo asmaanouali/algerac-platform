@@ -1,13 +1,15 @@
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuthLayout from "@/components/layout/AuthLayout";
-import { Link, useLocation } from "wouter";
-import { Lock, CheckCircle2, XCircle, Mail, Phone, Globe } from "lucide-react";
+import { useLocation } from "wouter";
+import { Lock, Mail, Phone, Globe } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function NewPassword() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,16 +20,16 @@ export default function NewPassword() {
     
     if (!password || password.length < 8) {
       toast({
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.newPassword.passwordMinError"),
         variant: "destructive",
       });
       return;
     }
     if (password !== confirm) {
       toast({
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.newPassword.passwordMismatchError"),
         variant: "destructive",
       });
       return;
@@ -38,8 +40,8 @@ export default function NewPassword() {
     
     if (!token) {
       toast({
-        title: "Erreur",
-        description: "Session expirée. Veuillez recommencer.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.sessionExpired"),
         variant: "destructive",
       });
       setLoading(false);
@@ -67,27 +69,23 @@ export default function NewPassword() {
         // Supprimer le token du localStorage
         localStorage.removeItem("resetToken");
         toast({
-  title: "Mot de passe modifié !",
-  description: (
-    <span className="flex items-center gap-2">
-      Votre mot de passe a été changé avec succès.
-    </span>
-  ),
-  className: "bg-green-600 text-white border-green-600"
-});
+          title: t("auth.passwordRecovery.newPassword.passwordChangedTitle"),
+          description: t("auth.passwordRecovery.newPassword.passwordChangedDescription"),
+          className: "bg-green-600 text-white border-green-600"
+        });
         setTimeout(() => setLocation("/"), 1200);
       } else {
         toast({
-          title: "Erreur",
-          description: data?.message || "Erreur lors de la réinitialisation.",
+          title: t("auth.passwordRecovery.errorTitle"),
+          description: data?.message || t("auth.passwordRecovery.newPassword.resetError"),
           variant: "destructive",
         });
       }
-    } catch (err) {
+    } catch (_err) {
       setLoading(false);
       toast({
-        title: "Erreur",
-        description: "Erreur réseau ou serveur.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.networkError"),
         variant: "destructive",
       });
     }
@@ -109,12 +107,12 @@ export default function NewPassword() {
                 <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto shrink-0 drop-shadow" />
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight leading-tight text-white">ALGERAC</h1>
-                  <p className="text-green-200 text-xs leading-snug">Organisme Algérien d'Accréditation</p>
+                  <p className="text-green-200 text-xs leading-snug">{t("auth.tagline")}</p>
                 </div>
               </div>
               <div className="w-10 h-0.5 bg-white/25 mb-5" />
               <p className="text-green-50/85 text-sm leading-relaxed mb-8">
-                Plateforme numérique de gestion des processus d'accréditation. ALGERAC évalue et accrédite les organismes d'évaluation de la conformité selon les exigences des référentiels nationaux et internationaux.
+                {t("auth.platformIntro")}
               </p>
               <div className="space-y-3 mb-auto">
                 <div className="flex items-center gap-3">
@@ -136,7 +134,7 @@ export default function NewPassword() {
                   <span className="text-sm text-green-100">www.algerac.dz</span>
                 </div>
               </div>
-              <p className="text-green-300/50 text-xs mt-8">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
+              <p className="text-green-300/50 text-xs mt-8">{t("common.copyright")}</p>
             </div>
           </div>
 
@@ -149,18 +147,18 @@ export default function NewPassword() {
             </div>
 
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Nouveau mot de passe</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Créez un mot de passe sécurisé pour votre compte</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t("auth.passwordRecovery.newPassword.title")}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.passwordRecovery.newPassword.subtitle")}</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">Nouveau mot de passe</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">{t("auth.passwordRecovery.newPassword.passwordLabel")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="password"
-                    placeholder="••••••••"
+                    placeholder={t("auth.passwordPlaceholder")}
                     className="pl-10 h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -168,15 +166,15 @@ export default function NewPassword() {
                     disabled={loading}
                   />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-600">Minimum 8 caractères</p>
+                <p className="text-xs text-slate-400 dark:text-slate-600">{t("auth.passwordRecovery.newPassword.minHint")}</p>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">Confirmer le mot de passe</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">{t("auth.passwordRecovery.newPassword.confirmLabel")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     type="password"
-                    placeholder="••••••••"
+                    placeholder={t("auth.passwordPlaceholder")}
                     className="pl-10 h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
@@ -186,7 +184,7 @@ export default function NewPassword() {
                 </div>
               </div>
               <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm shadow-green-900/30 transition-all" type="submit" disabled={loading}>
-                {loading ? "Changement..." : "Changer le mot de passe"}
+                {loading ? t("auth.passwordRecovery.newPassword.changingButton") : t("auth.passwordRecovery.newPassword.changeButton")}
               </Button>
             </form>
           </div>

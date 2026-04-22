@@ -1,12 +1,14 @@
 
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import AuthLayout from "@/components/layout/AuthLayout";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, KeyRound, CheckCircle2, XCircle, Mail, Phone, Globe } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, Phone, Globe } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function OTPVerification() {
+  const { t } = useTranslation();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -15,7 +17,7 @@ export default function OTPVerification() {
   const [, setLocation] = useLocation();
   // Récupérer l'email depuis les paramètres de l'URL
   const urlParams = new URLSearchParams(window.location.search);
-  const email = urlParams.get("email") || "nom@exemple.dz";// Replace with actual email from context if available
+  const email = urlParams.get("email") || t("auth.emailPlaceholder");
 
   const fillOtpFromIndex = (startIndex: number, digits: string) => {
     const sanitized = digits.replace(/\D/g, "");
@@ -76,13 +78,8 @@ export default function OTPVerification() {
     
     if (!token) {
       toast({
-        title: "Erreur",
-        description: (
-          <span className="flex items-center gap-2">
-            <XCircle className="text-red-600 w-6 h-6" />
-            Session expirée. Veuillez recommencer.
-          </span>
-        )
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.sessionExpired"),
       });
       setLoading(false);
       setTimeout(() => setLocation("/auth/forgot-password"), 1500);
@@ -107,36 +104,21 @@ export default function OTPVerification() {
       
       if (response.ok) {
         toast({
-          title: "Succès",
-          description: (
-            <span className="flex items-center gap-2">
-              <CheckCircle2 className="text-green-600 w-6 h-6" />
-              Code vérifié avec succès.
-            </span>
-          )
+          title: t("auth.passwordRecovery.otp.verifySuccessTitle"),
+          description: t("auth.passwordRecovery.otp.verifySuccessDescription"),
         });
         setTimeout(() => setLocation("/auth/new-password"), 1000);
       } else {
         toast({
-          title: "Erreur",
-          description: (
-            <span className="flex items-center gap-2">
-              <XCircle className="text-red-600 w-6 h-6" />
-              {data?.message || "Code incorrect. Veuillez réessayer."}
-            </span>
-          )
+          title: t("auth.passwordRecovery.errorTitle"),
+          description: data?.message || t("auth.passwordRecovery.otp.invalidCodeError"),
         });
       }
-    } catch (err) {
+    } catch (_err) {
       setLoading(false);
       toast({
-        title: "Erreur",
-        description: (
-          <span className="flex items-center gap-2">
-            <XCircle className="text-red-600 w-6 h-6" />
-            Erreur réseau ou serveur.
-          </span>
-        )
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.networkError"),
       });
     }
   };
@@ -162,25 +144,20 @@ export default function OTPVerification() {
           localStorage.setItem("resetToken", token);
         }
         toast({
-          title: "Code renvoyé",
-          description: (
-            <span className="flex items-center gap-2">
-              <CheckCircle2 className="text-green-600 w-6 h-6" />
-              {`Un nouveau code a été envoyé à ${email}`}
-            </span>
-          )
+          title: t("auth.passwordRecovery.otp.resendSuccessTitle"),
+          description: t("auth.passwordRecovery.otp.resendSuccessDescription", { email }),
         });
       } else {
         toast({
-          title: "Erreur",
-          description: data?.message || "Erreur lors du renvoi du code.",
+          title: t("auth.passwordRecovery.errorTitle"),
+          description: data?.message || t("auth.passwordRecovery.otp.resendError"),
         });
       }
-    } catch (err) {
+    } catch (_err) {
       setResending(false);
       toast({
-        title: "Erreur",
-        description: "Erreur réseau ou serveur.",
+        title: t("auth.passwordRecovery.errorTitle"),
+        description: t("auth.passwordRecovery.networkError"),
       });
     }
   };
@@ -201,12 +178,12 @@ export default function OTPVerification() {
                 <img src="/logoalgerac.png" alt="ALGERAC" className="h-14 w-auto shrink-0 drop-shadow" />
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight leading-tight text-white">ALGERAC</h1>
-                  <p className="text-green-200 text-xs leading-snug">Organisme Algérien d'Accréditation</p>
+                  <p className="text-green-200 text-xs leading-snug">{t("auth.tagline")}</p>
                 </div>
               </div>
               <div className="w-10 h-0.5 bg-white/25 mb-5" />
               <p className="text-green-50/85 text-sm leading-relaxed mb-8">
-                Plateforme numérique de gestion des processus d'accréditation. ALGERAC évalue et accrédite les organismes d'évaluation de la conformité selon les exigences des référentiels nationaux et internationaux.
+                {t("auth.platformIntro")}
               </p>
               <div className="space-y-3 mb-auto">
                 <div className="flex items-center gap-3">
@@ -228,7 +205,7 @@ export default function OTPVerification() {
                   <span className="text-sm text-green-100">www.algerac.dz</span>
                 </div>
               </div>
-              <p className="text-green-300/50 text-xs mt-8">© {new Date().getFullYear()} ALGERAC. Tous droits réservés.</p>
+              <p className="text-green-300/50 text-xs mt-8">{t("common.copyright")}</p>
             </div>
           </div>
 
@@ -241,8 +218,8 @@ export default function OTPVerification() {
             </div>
 
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Vérification</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Code envoyé à <span className="font-medium text-slate-700 dark:text-slate-200">{email}</span></p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t("auth.passwordRecovery.otp.title")}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.passwordRecovery.otp.subtitle", { email })}</p>
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -274,11 +251,11 @@ export default function OTPVerification() {
                 ))}
               </div>
               <Button className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm shadow-sm shadow-green-900/30 transition-all" type="submit" disabled={loading}>
-                {loading ? "Vérification..." : "Vérifier le code"}
+                {loading ? t("auth.passwordRecovery.otp.verifying") : t("auth.passwordRecovery.otp.verifyCode")}
               </Button>
               <div className="text-center">
                 <Button variant="link" className="text-xs text-[#00A63E] hover:text-[#00c44d]" type="button" onClick={handleResend} disabled={resending}>
-                  {resending ? "Renvoi en cours..." : "Renvoyer le code"}
+                  {resending ? t("auth.passwordRecovery.otp.resending") : t("auth.passwordRecovery.otp.resendCode")}
                 </Button>
               </div>
             </form>
@@ -286,7 +263,7 @@ export default function OTPVerification() {
             <div className="mt-4 text-center">
               <Link href="/auth/forgot-password">
                 <span className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-[#00A63E] transition-colors cursor-pointer">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Retour
+                  <ArrowLeft className="w-3.5 h-3.5" /> {t("auth.passwordRecovery.otp.back")}
                 </span>
               </Link>
             </div>

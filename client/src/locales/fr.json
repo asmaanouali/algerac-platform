@@ -61,6 +61,50 @@
     "welcomeUser": "Bienvenue, {{name}}",
     "loginError": "Erreur de connexion",
     "logout": "Déconnexion",
+    "passwordRecovery": {
+      "errorTitle": "Erreur",
+      "networkError": "Erreur réseau ou serveur.",
+      "sessionExpired": "Session expirée. Veuillez recommencer.",
+      "forgot": {
+        "title": "Réinitialisation",
+        "subtitle": "Entrez votre email pour recevoir le code de vérification",
+        "sendCode": "Envoyer le code",
+        "sendingCode": "Envoi en cours...",
+        "codeSentTitle": "Code envoyé",
+        "codeSentDescription": "Un code a été envoyé à {{email}}",
+        "noAccountError": "Aucun compte avec cet email",
+        "backToLogin": "Retour à la connexion"
+      },
+      "otp": {
+        "title": "Vérification",
+        "subtitle": "Code envoyé à {{email}}",
+        "verifyCode": "Vérifier le code",
+        "verifying": "Vérification...",
+        "resendCode": "Renvoyer le code",
+        "resending": "Renvoi en cours...",
+        "resendSuccessTitle": "Code renvoyé",
+        "resendSuccessDescription": "Un nouveau code a été envoyé à {{email}}",
+        "verifySuccessTitle": "Succès",
+        "verifySuccessDescription": "Code vérifié avec succès.",
+        "invalidCodeError": "Code incorrect. Veuillez réessayer.",
+        "resendError": "Erreur lors du renvoi du code.",
+        "back": "Retour"
+      },
+      "newPassword": {
+        "title": "Nouveau mot de passe",
+        "subtitle": "Créez un mot de passe sécurisé pour votre compte",
+        "passwordLabel": "Nouveau mot de passe",
+        "confirmLabel": "Confirmer le mot de passe",
+        "minHint": "Minimum 8 caractères",
+        "changeButton": "Changer le mot de passe",
+        "changingButton": "Changement...",
+        "passwordChangedTitle": "Mot de passe modifié !",
+        "passwordChangedDescription": "Votre mot de passe a été changé avec succès.",
+        "passwordMinError": "Le mot de passe doit contenir au moins 8 caractères.",
+        "passwordMismatchError": "Les mots de passe ne correspondent pas.",
+        "resetError": "Erreur lors de la réinitialisation."
+      }
+    },
     "register": {
       "title": "Créer un compte",
       "subtitle": "Sélectionnez votre type de profil pour commencer",

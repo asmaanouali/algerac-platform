@@ -61,6 +61,50 @@
     "welcomeUser": "Welcome, {{name}}",
     "loginError": "Login error",
     "logout": "Sign out",
+    "passwordRecovery": {
+      "errorTitle": "Error",
+      "networkError": "Network or server error.",
+      "sessionExpired": "Session expired. Please start again.",
+      "forgot": {
+        "title": "Reset password",
+        "subtitle": "Enter your email to receive the verification code",
+        "sendCode": "Send code",
+        "sendingCode": "Sending...",
+        "codeSentTitle": "Code sent",
+        "codeSentDescription": "A code has been sent to {{email}}",
+        "noAccountError": "No account found with this email",
+        "backToLogin": "Back to sign in"
+      },
+      "otp": {
+        "title": "Verification",
+        "subtitle": "Code sent to {{email}}",
+        "verifyCode": "Verify code",
+        "verifying": "Verifying...",
+        "resendCode": "Resend code",
+        "resending": "Resending...",
+        "resendSuccessTitle": "Code resent",
+        "resendSuccessDescription": "A new code has been sent to {{email}}",
+        "verifySuccessTitle": "Success",
+        "verifySuccessDescription": "Code verified successfully.",
+        "invalidCodeError": "Invalid code. Please try again.",
+        "resendError": "Error while resending the code.",
+        "back": "Back"
+      },
+      "newPassword": {
+        "title": "New password",
+        "subtitle": "Create a secure password for your account",
+        "passwordLabel": "New password",
+        "confirmLabel": "Confirm password",
+        "minHint": "Minimum 8 characters",
+        "changeButton": "Change password",
+        "changingButton": "Changing...",
+        "passwordChangedTitle": "Password updated!",
+        "passwordChangedDescription": "Your password has been changed successfully.",
+        "passwordMinError": "Password must contain at least 8 characters.",
+        "passwordMismatchError": "Passwords do not match.",
+        "resetError": "Error while resetting password."
+      }
+    },
     "register": {
       "title": "Create an account",
       "subtitle": "Select your profile type to get started",

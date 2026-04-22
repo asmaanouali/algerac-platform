@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -f \"/c/Users/la_no/OneDrive/Desktop/algerac-platform/backend/seed-oec1-active-accreditation.sql\")",
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -c \"\\\\d accreditation_certificates\")",
+      "Bash(psql -h localhost -U postgres -d algerac_db -c ' *)",
+      "Bash(psql -h localhost -U postgres -d algerac_db --set=client_encoding=UTF8 -c ' *)",
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -c \"SELECT ar.id, ar.reference_number, ar.status FROM accreditation_requests ar JOIN users u ON ar.oec_id = u.id WHERE u.email = 'oec1@algeractestapp.dz';\")",
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -c \"SELECT pg_get_constraintdef\\(oid\\) FROM pg_constraint WHERE conname = 'accreditation_transfers_reason_check';\")",
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -c \"DELETE FROM accreditation_transfers WHERE source_oec_id = 8798;\")",
+      "Bash(PGPASSWORD=12345 psql -h localhost -U postgres -d algerac_db -c \"SELECT id, transfer_code, status FROM accreditation_transfers WHERE source_oec_id = 8798 OR original_request_id = 509;\")"
+    ]
+  }
+}

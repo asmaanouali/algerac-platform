@@ -1262,5 +1262,27 @@
       "approved": "موافق عليها",
       "applied": "مطبقة"
     }
+  },
+  "oec": {
+    "dashboardSubtitle": "لوحة تحكم هيئة تقييم المطابقة الخاصة بك.",
+    "myRequests": "طلباتي",
+    "activeRequests": "{{count}} نشط(ة)",
+    "actionsRequired": "إجراءات مطلوبة",
+    "awaitingAction": "في انتظار إجراءك",
+    "accreditations": "الاعتمادات",
+    "activeCertificates": "الشهادات النشطة",
+    "avgProgress": "متوسط التقدم",
+    "onActiveRequests": "على الطلبات النشطة",
+    "trackRequests": "تتبع حالة طلباتك",
+    "newRequest": "طلب جديد",
+    "noRequests": "لا توجد طلبات",
+    "noRequestsDesc": "لم تقم بتقديم أي طلب اعتماد بعد.",
+    "createRequest": "إنشاء طلب",
+    "requestRef": "طلب #{{id}}",
+    "initial": "أولي",
+    "extension": "تمديد",
+    "renewal": "تجديد",
+    "viewRequests": "عرض طلباتي",
+    "managePayments": "إدارة مدفوعاتك"
   }
 }

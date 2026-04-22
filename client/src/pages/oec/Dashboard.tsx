@@ -131,7 +131,7 @@ export default function OECDashboard() {
                     <CardTitle>{t('oec.myRequests')}</CardTitle>
                     <CardDescription>{t('oec.trackRequests')}</CardDescription>
                   </div>
-                  <Link href="/requests/new">
+                  <Link href="/oec/new-request">
                     <Button size="sm"><FilePlus className="h-4 w-4 mr-1" /> {t('oec.newRequest')}</Button>
                   </Link>
                 </CardHeader>
@@ -143,7 +143,7 @@ export default function OECDashboard() {
                         <p className="font-medium">{t('oec.noRequests')}</p>
                         <p className="text-sm text-muted-foreground">{t('oec.noRequestsDesc')}</p>
                       </div>
-                      <Link href="/requests/new">
+                      <Link href="/oec/new-request">
                         <Button className="mt-2"><FilePlus className="h-4 w-4 mr-1" /> {t('oec.createRequest')}</Button>
                       </Link>
                     </div>
@@ -182,7 +182,7 @@ export default function OECDashboard() {
 
               {/* Quick Actions */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Link href="/requests/new">
+                <Link href="/oec/new-request">
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <FilePlus className="w-10 h-10 mx-auto mb-3 text-primary" />

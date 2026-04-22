@@ -1262,5 +1262,27 @@
       "approved": "Approved",
       "applied": "Applied"
     }
+  },
+  "oec": {
+    "dashboardSubtitle": "Dashboard of your conformity assessment body.",
+    "myRequests": "My Requests",
+    "activeRequests": "{{count}} active",
+    "actionsRequired": "Actions Required",
+    "awaitingAction": "Awaiting your action",
+    "accreditations": "Accreditations",
+    "activeCertificates": "Active certificates",
+    "avgProgress": "Avg. Progress",
+    "onActiveRequests": "On active requests",
+    "trackRequests": "Track the status of your requests",
+    "newRequest": "New Request",
+    "noRequests": "No requests",
+    "noRequestsDesc": "You have not submitted any accreditation request yet.",
+    "createRequest": "Create a request",
+    "requestRef": "Request #{{id}}",
+    "initial": "Initial",
+    "extension": "Extension",
+    "renewal": "Renewal",
+    "viewRequests": "View my requests",
+    "managePayments": "Manage your payments"
   }
 }

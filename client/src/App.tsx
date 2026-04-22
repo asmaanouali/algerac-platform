@@ -120,6 +120,7 @@ import RemoteEvaluationPage from "@/pages/cd/RemoteEvaluationPage";
 import RiskOpportunityPage from "@/pages/admin/RiskOpportunityPage";
 import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
 import OECTransferRequestPage from "@/pages/oec/TransferRequestPage";
+import OECTransferCreatePage from "@/pages/oec/TransferCreatePage";
 import TransferDecisionPage from "@/pages/cas/TransferDecisionPage";
 
 // Missing sidebar pages
@@ -172,6 +173,7 @@ function Router() {
       <Route path="/oec/documents">{() => <ProtectedRoute component={OECDocumentsPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/certificates">{() => <ProtectedRoute component={OECCertificatesPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/transfert">{() => <ProtectedRoute component={OECTransferRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/transfert/nouveau">{() => <ProtectedRoute component={OECTransferCreatePage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/surveillance">{() => <ProtectedRoute component={OECSurveillancePage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/profile">{() => <ProtectedRoute component={OECProfilePage} allowedRoles={["oec"]} />}</Route>
       

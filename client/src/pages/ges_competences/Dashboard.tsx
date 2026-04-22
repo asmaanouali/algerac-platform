@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ interface Candidature {
 }
 
 export default function GesCompetencesDashboard() {
-  const { t } = useTranslation();
   const { user } = useAuth();
   const [candidatures, setCandidatures] = useState<Candidature[]>([]);
   const [interviews, setInterviews] = useState<Candidature[]>([]);
@@ -163,7 +161,7 @@ export default function GesCompetencesDashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-slate-50">
       <Sidebar />
       
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
@@ -173,9 +171,9 @@ export default function GesCompetencesDashboard() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold">{t('ges.dashboardTitle')}</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Tableau de Bord</h1>
               <p className="text-muted-foreground mt-1">
-                {t('dashboard.welcome', { name: user?.fullName || t('roles.ges_competences') })}
+                Bienvenue, {user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.
               </p>
             </div>
             <div className="flex gap-2">
@@ -200,7 +198,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('ges.pendingCandidatures')}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dossiers en attente</p>
                     <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
                   </div>
                   <div className="p-3 bg-amber-50 rounded-xl">
@@ -214,7 +212,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('ges.upcomingInterviews')}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Entretiens à venir</p>
                     <p className="text-3xl font-bold text-blue-600 mt-1">{stats.interviewScheduled + stats.interviewConfirmed}</p>
                   </div>
                   <div className="p-3 bg-blue-50 rounded-xl">
@@ -228,7 +226,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('ges.approvedCandidates')}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Candidats acceptés</p>
                     <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.approved + stats.active}</p>
                   </div>
                   <div className="p-3 bg-emerald-50 rounded-xl">
@@ -242,7 +240,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('ges.totalCandidatures')}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total candidatures</p>
                     <p className="text-3xl font-bold text-slate-700 mt-1">{stats.total}</p>
                   </div>
                   <div className="p-3 bg-slate-100 rounded-xl">

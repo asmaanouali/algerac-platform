@@ -92,7 +92,6 @@ export function Sidebar() {
       { href: "/ra/surveillance", label: t('nav.surveillance'), icon: Eye },
       { href: "/ra/dossiers", label: t('nav.files'), icon: Files },
       { href: "/ra/planning", label: t('nav.planning'), icon: CalendarDays },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     dt: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -102,7 +101,6 @@ export function Sidebar() {
       { href: "/dt/certificats", label: t('nav.certificates'), icon: Award },
       { href: "/dt/ordres-mission", label: t('nav.missionOrders'), icon: Stamp },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     cd: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -120,21 +118,18 @@ export function Sidebar() {
       { href: "/cd/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
       { href: "/cd/surveillance", label: t('nav.surveillance'), icon: Eye },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     dag: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/dag/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
       { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
       { href: "/dag/tarifs", label: t('nav.pricing'), icon: CreditCard },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     admin: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/users", label: t('nav.users'), icon: Users },
       { href: "/admin/utilisateurs-pending", label: t('nav.candidatures'), icon: UserPlus },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     expert: [
       { href: "/expert/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -144,7 +139,6 @@ export function Sidebar() {
       { href: "/expert/mandatements", label: t('nav.mandatesMeetings'), icon: ClipboardList },
       { href: "/expert/evaluation", label: t('nav.evaluationDay'), icon: ClipboardList },
       { href: "/expert/rapports", label: t('nav.reports'), icon: FileText },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     ree: [
       { href: "/ree/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -156,7 +150,6 @@ export function Sidebar() {
       { href: "/ree/evaluation-site", label: t('nav.siteEvaluation'), icon: ShieldCheck },
       { href: "/ree/traitement-ecarts", label: t('nav.gapTreatment'), icon: AlertCircle },
       { href: "/ree/rapports", label: t('nav.reports'), icon: FileText },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     et: [
       { href: "/et/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -167,7 +160,6 @@ export function Sidebar() {
       { href: "/et/evaluation", label: t('nav.evaluationDay'), icon: ClipboardList },
       { href: "/et/traitement-ecarts", label: t('nav.gapTreatment'), icon: AlertCircle },
       { href: "/et/evaluation-plans", label: t('nav.actionPlans'), icon: AlertCircle },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     eq: [
       { href: "/eq/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -177,20 +169,17 @@ export function Sidebar() {
       { href: "/eq/mandatements", label: t('nav.mandatesMeetings'), icon: ClipboardList },
       { href: "/eq/evaluation", label: t('nav.siteEvaluation'), icon: ShieldCheck },
       { href: "/eq/traitement-ecarts", label: t('nav.gapTreatment'), icon: AlertCircle },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     cas_member: [
       { href: "/cas/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/cas/reunions", label: t('nav.casReunions'), icon: Gavel },
       { href: "/cas/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     cas_president: [
       { href: "/cas-president/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/cas-president/reunions", label: t('nav.casReunions'), icon: Gavel },
       { href: "/cas-president/decisions", label: t('nav.casDecisions'), icon: Crown },
       { href: "/cas-president/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     dg: [
       { href: "/dg/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -198,7 +187,6 @@ export function Sidebar() {
       { href: "/dg/ordres-mission", label: t('nav.missionOrders'), icon: Stamp },
       { href: "/dg/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     ges_competences: [
       { href: "/ges-competences/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -208,13 +196,11 @@ export function Sidebar() {
       { href: "/ges-competences/commission", label: t('nav.commission'), icon: Users },
       { href: "/ges-competences/observations", label: t('nav.observations'), icon: ClipboardCheck },
       { href: "/ges-competences/surveillance", label: t('nav.kpiSurveillance'), icon: BarChart3 },
-      { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
     rq: [
       { href: "/rq/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/rq/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
-      { href: "/rq/plaintes", label: t('nav.complaints'), icon: MessageSquareWarning },
     ],
   };
 

@@ -925,5 +925,27 @@
       "approved": "Approuvés",
       "applied": "Appliqués"
     }
+  },
+  "oec": {
+    "dashboardSubtitle": "Tableau de bord de votre organisme d'évaluation de la conformité.",
+    "myRequests": "Mes Demandes",
+    "activeRequests": "{{count}} active(s)",
+    "actionsRequired": "Actions Requises",
+    "awaitingAction": "En attente de votre action",
+    "accreditations": "Accréditations",
+    "activeCertificates": "Certificats actifs",
+    "avgProgress": "Progression Moy.",
+    "onActiveRequests": "Sur les demandes actives",
+    "trackRequests": "Suivez l'état de vos demandes",
+    "newRequest": "Nouvelle Demande",
+    "noRequests": "Aucune demande",
+    "noRequestsDesc": "Vous n'avez pas encore soumis de demande d'accréditation.",
+    "createRequest": "Créer une demande",
+    "requestRef": "Demande #{{id}}",
+    "initial": "Initiale",
+    "extension": "Extension",
+    "renewal": "Renouvellement",
+    "viewRequests": "Voir mes demandes",
+    "managePayments": "Gérer vos paiements"
   }
 }

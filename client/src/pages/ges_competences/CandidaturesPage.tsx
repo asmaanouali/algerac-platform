@@ -962,11 +962,7 @@ export default function GesCompetencesCandidaturesPage() {
               <Textarea id="rejectionReason" placeholder="Raison interne du refus (pour vos archives uniquement)..." value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} rows={3} className="mt-2" />
             </div>
 
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-700">
-                <strong>Note :</strong> Le candidat recevra un email mentionnant que son dossier sera conservé dans le vivier de compétences pour de futures opportunités. Aucune mention directe de refus.
-              </p>
-            </div>
+            
 
             <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-amber-50/50 cursor-pointer" onClick={() => setStarOnReject(!starOnReject)}>
               <Checkbox checked={starOnReject} onCheckedChange={(checked) => setStarOnReject(!!checked)} />

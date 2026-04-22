@@ -11,19 +11,54 @@ export default function OTPVerification() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpLength = otp.length;
   const [, setLocation] = useLocation();
   // Récupérer l'email depuis les paramètres de l'URL
   const urlParams = new URLSearchParams(window.location.search);
   const email = urlParams.get("email") || "nom@exemple.dz";// Replace with actual email from context if available
 
-  const handleChange = (idx: number, value: string) => {
-    if (!/^[0-9]?$/.test(value)) return;
+  const fillOtpFromIndex = (startIndex: number, digits: string) => {
+    const sanitized = digits.replace(/\D/g, "");
+    if (!sanitized) return;
+
     const newOtp = [...otp];
-    newOtp[idx] = value;
+    let currentIndex = startIndex;
+
+    for (const digit of sanitized) {
+      if (currentIndex >= otpLength) break;
+      newOtp[currentIndex] = digit;
+      currentIndex += 1;
+    }
+
     setOtp(newOtp);
-    if (value && idx < 5) {
+
+    const focusIndex = currentIndex >= otpLength ? otpLength - 1 : currentIndex;
+    inputRefs.current[focusIndex]?.focus();
+  };
+
+  const handleChange = (idx: number, value: string) => {
+    const digitsOnly = value.replace(/\D/g, "");
+
+    if (value && !digitsOnly) return;
+
+    if (digitsOnly.length > 1) {
+      fillOtpFromIndex(idx, digitsOnly);
+      return;
+    }
+
+    const newOtp = [...otp];
+    newOtp[idx] = digitsOnly;
+    setOtp(newOtp);
+
+    if (digitsOnly && idx < otpLength - 1) {
       inputRefs.current[idx + 1]?.focus();
     }
+  };
+
+  const handlePaste = (idx: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    fillOtpFromIndex(idx, pasted);
   };
 
   const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -229,6 +264,7 @@ export default function OTPVerification() {
                     value={val}
                     onChange={e => handleChange(i, e.target.value)}
                     onKeyDown={e => handleKeyDown(i, e)}
+                    onPaste={e => handlePaste(i, e)}
                     ref={el => (inputRefs.current[i] = el)}
                     disabled={loading}
                     inputMode="numeric"

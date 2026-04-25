@@ -50,13 +50,13 @@ public class AccreditationRequestController {
 
         List<AccreditationRequest> all = requestService.getAllRequests();
 
-        // Department scoping: a CD only sees requests of their own department.
+        // CD scoping: a CD only sees requests explicitly assigned to them.
         // Other staff roles keep full visibility. OEC should not reach this endpoint
         // in practice (they use /my-requests).
-        if (caller != null && caller.getRole() == UserRole.CD && caller.getDepartment() != null) {
-            final Long deptId = caller.getDepartment().getId();
+        if (caller != null && caller.getRole() == UserRole.CD) {
+            final Long callerCdId = caller.getId();
             all = all.stream()
-                    .filter(r -> r.getDepartment() != null && r.getDepartment().getId().equals(deptId))
+                    .filter(r -> r.getAssignedToCd() != null && r.getAssignedToCd().getId().equals(callerCdId))
                     .toList();
         }
         return ResponseEntity.ok(all);
@@ -113,18 +113,36 @@ public class AccreditationRequestController {
     public ResponseEntity<List<AccreditationRequest>> getRequestsByStatus(
             @PathVariable RequestStatus status,
             HttpSession session) {
-        // Optional: log if user is authenticated
         Long userId = (Long) session.getAttribute("userId");
+        User caller = userId == null ? null : userRepository.findById(userId).orElse(null);
         if (userId != null) {
             log.info("User {} fetching requests with status {}", userId, status);
         }
-        return ResponseEntity.ok(requestService.getRequestsByStatus(status));
+        List<AccreditationRequest> results = requestService.getRequestsByStatus(status);
+        // CD scoping: a CD only sees requests explicitly assigned to them.
+        if (caller != null && caller.getRole() == UserRole.CD) {
+            final Long callerCdId = caller.getId();
+            results = results.stream()
+                    .filter(r -> r.getAssignedToCd() != null && r.getAssignedToCd().getId().equals(callerCdId))
+                    .toList();
+        }
+        return ResponseEntity.ok(results);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<AccreditationRequest> getRequest(@PathVariable Long id) {
+    public ResponseEntity<?> getRequest(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        User caller = userId == null ? null : userRepository.findById(userId).orElse(null);
         return requestService.getRequest(id)
-                .map(ResponseEntity::ok)
+                .map(request -> {
+                    // CD can only see requests assigned to them
+                    if (caller != null && caller.getRole() == UserRole.CD) {
+                        if (request.getAssignedToCd() == null || !request.getAssignedToCd().getId().equals(caller.getId())) {
+                            return ResponseEntity.status(HttpStatus.FORBIDDEN).<AccreditationRequest>build();
+                        }
+                    }
+                    return ResponseEntity.ok(request);
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
     
@@ -146,6 +164,14 @@ public class AccreditationRequestController {
         AccreditationRequest request = optRequest.get();
         User oecUser = request.getOec();
         User caller = userRepository.findById(userId).orElse(null);
+
+        // CD can only see requests explicitly assigned to them
+        if (caller != null && caller.getRole() == UserRole.CD) {
+            if (request.getAssignedToCd() == null || !request.getAssignedToCd().getId().equals(caller.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Accès refusé"));
+            }
+        }
+
         boolean isOecCaller = caller != null && caller.getRole() == UserRole.OEC;
 
         java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();

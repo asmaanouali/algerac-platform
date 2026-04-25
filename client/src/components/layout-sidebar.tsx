@@ -202,8 +202,8 @@ export function Sidebar() {
     ],
     rq: [
       { href: "/rq/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
+      { href: "/rq/plaintes", label: t('nav.complaints'), icon: MessageSquareWarning },
       { href: "/rq/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
-      { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
     ],
   };
 

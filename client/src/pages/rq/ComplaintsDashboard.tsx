@@ -60,24 +60,24 @@ interface StaffMember {
 const COLORS = ["#3b82f6", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
 const categoryLabels: Record<string, string> = {
-  quality: "Qualit\u00e9",
-  delay: "D\u00e9lais",
-  competence: "Comp\u00e9tence",
-  impartiality: "Impartialit\u00e9",
-  confidentiality: "Confidentialit\u00e9",
+  quality: "Qualité",
+  delay: "Délais",
+  competence: "Compétence",
+  impartiality: "Impartialité",
+  confidentiality: "Confidentialité",
   other: "Autre",
 };
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  RECEIVED: { color: "bg-blue-500", label: "Re\u00e7ue" },
+  RECEIVED: { color: "bg-blue-500", label: "Reçue" },
   UNDER_REVIEW: { color: "bg-yellow-500", label: "En examen" },
-  ASSIGNED: { color: "bg-indigo-500", label: "Assign\u00e9e" },
+  ASSIGNED: { color: "bg-indigo-500", label: "Assignée" },
   INVESTIGATION: { color: "bg-orange-500", label: "Investigation" },
-  FOUNDED: { color: "bg-red-500", label: "Fond\u00e9e" },
-  UNFOUNDED: { color: "bg-gray-500", label: "Non fond\u00e9e" },
+  FOUNDED: { color: "bg-red-500", label: "Fondée" },
+  UNFOUNDED: { color: "bg-gray-500", label: "Non fondée" },
   CORRECTIVE_ACTIONS: { color: "bg-amber-500", label: "Actions correctives" },
-  RESOLVED: { color: "bg-green-500", label: "R\u00e9solue" },
-  CLOSED: { color: "bg-slate-500", label: "Cl\u00f4tur\u00e9e" },
+  RESOLVED: { color: "bg-green-500", label: "Résolue" },
+  CLOSED: { color: "bg-slate-500", label: "Clôturée" },
 };
 
 export default function RQComplaintsDashboard() {
@@ -142,11 +142,11 @@ export default function RQComplaintsDashboard() {
     setProcessing(true);
     try {
       await apiRequest("POST", `/api/complaints/${complaintId}/status`, { status: newStatus });
-      toast({ title: "Statut mis \u00e0 jour", description: `Plainte: ${statusConfig[newStatus]?.label || newStatus}` });
+      toast({ title: "Statut mis à jour", description: `Plainte: ${statusConfig[newStatus]?.label || newStatus}` });
       setDetailsOpen(false);
       loadComplaints();
     } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre \u00e0 jour." });
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour." });
     } finally { setProcessing(false); }
   };
 
@@ -160,12 +160,12 @@ export default function RQComplaintsDashboard() {
         rqNotes: decisionForm.notes,
         correctiveActions: founded ? decisionForm.correctiveActions : null,
       });
-      toast({ title: founded ? "Plainte fond\u00e9e" : "Plainte non fond\u00e9e", description: "D\u00e9cision enregistr\u00e9e." });
+      toast({ title: founded ? "Plainte fondée" : "Plainte non fondée", description: "Décision enregistrée." });
       setDecisionDialog(false);
       setDetailsOpen(false);
       loadComplaints();
     } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'enregistrer la d\u00e9cision." });
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'enregistrer la décision." });
     } finally { setProcessing(false); }
   };
 
@@ -174,7 +174,7 @@ export default function RQComplaintsDashboard() {
     setProcessing(true);
     try {
       await apiRequest("POST", `/api/complaints/${selectedComplaint.id}/assign`, { investigatorId: parseInt(selectedInvestigator) });
-      toast({ title: "Plainte assign\u00e9e", description: "Investigateur notifi\u00e9. Deadline: 3 mois." });
+      toast({ title: "Plainte assignée", description: "Investigateur notifié. Deadline: 3 mois." });
       setAssignDialog(false);
       setDetailsOpen(false);
       loadComplaints();
@@ -188,12 +188,12 @@ export default function RQComplaintsDashboard() {
     setProcessing(true);
     try {
       await apiRequest("POST", `/api/complaints/${selectedComplaint.id}/resolve`, { notes: resolveNotes });
-      toast({ title: "Plainte r\u00e9solue", description: "Actions correctives valid\u00e9es." });
+      toast({ title: "Plainte résolue", description: "Actions correctives validées." });
       setResolveDialog(false);
       setDetailsOpen(false);
       loadComplaints();
     } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de r\u00e9soudre." });
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de résoudre." });
     } finally { setProcessing(false); }
   };
 
@@ -202,17 +202,17 @@ export default function RQComplaintsDashboard() {
     setProcessing(true);
     try {
       await apiRequest("POST", `/api/complaints/${selectedComplaint.id}/close`, { finalResponse: closeFinalResponse });
-      toast({ title: "Plainte cl\u00f4tur\u00e9e", description: "Email de cl\u00f4ture envoy\u00e9." });
+      toast({ title: "Plainte clôturée", description: "Email de clôture envoyé." });
       setCloseDialog(false);
       setDetailsOpen(false);
       loadComplaints();
     } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de cl\u00f4turer." });
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de clôturer." });
     } finally { setProcessing(false); }
   };
 
   const exportFOR50 = () => {
-    const headers = ["Code", "Plaignant", "Email", "Organisation", "Organisme", "Cat\u00e9gorie", "Objet", "Description", "Statut", "D\u00e9cision", "Date d\u00e9cision", "Date d\u00e9p\u00f4t"];
+    const headers = ["Code", "Plaignant", "Email", "Organisation", "Organisme", "Catégorie", "Objet", "Description", "Statut", "Décision", "Date décision", "Date dépôt"];
     const rows = complaints.map(c => [
       c.trackingCode, c.complainantName, c.complainantEmail,
       c.complainantOrganization || "", c.targetOrganization || "",
@@ -222,7 +222,7 @@ export default function RQComplaintsDashboard() {
       c.decisionDate ? new Date(c.decisionDate).toLocaleDateString("fr-FR") : "",
       new Date(c.createdAt).toLocaleDateString("fr-FR"),
     ]);
-    const BOM = "\uFEFF";
+    const BOM = "\﻿";
     const csv = BOM + [headers.join(";"), ...rows.map(r => r.map(v => `"${v}"`).join(";"))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -231,12 +231,12 @@ export default function RQComplaintsDashboard() {
     a.download = `FOR50_Plaintes_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Export FOR 50", description: "CSV t\u00e9l\u00e9charg\u00e9." });
+    toast({ title: "Export FOR 50", description: "CSV téléchargé." });
   };
 
   const exportFOR021 = () => {
     const founded = complaints.filter(c => ["FOUNDED", "CORRECTIVE_ACTIONS", "RESOLVED", "CLOSED"].includes(c.status));
-    const headers = ["Code", "Plaignant", "Cat\u00e9gorie", "Objet", "D\u00e9cision", "Actions correctives", "Statut", "Date d\u00e9cision", "Date d\u00e9p\u00f4t"];
+    const headers = ["Code", "Plaignant", "Catégorie", "Objet", "Décision", "Actions correctives", "Statut", "Date décision", "Date dépôt"];
     const rows = founded.map(c => [
       c.trackingCode, c.complainantName, categoryLabels[c.category] || c.category,
       c.subject, c.decision || "", c.correctiveActions || "",
@@ -244,7 +244,7 @@ export default function RQComplaintsDashboard() {
       c.decisionDate ? new Date(c.decisionDate).toLocaleDateString("fr-FR") : "",
       new Date(c.createdAt).toLocaleDateString("fr-FR"),
     ]);
-    const BOM = "\uFEFF";
+    const BOM = "\﻿";
     const csv = BOM + [headers.join(";"), ...rows.map(r => r.map(v => `"${v.replace(/\n/g, " ")}"`).join(";"))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -253,7 +253,7 @@ export default function RQComplaintsDashboard() {
     a.download = `FOR02-1_NC_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Export FOR 02-1", description: "NC t\u00e9l\u00e9charg\u00e9." });
+    toast({ title: "Export FOR 02-1", description: "NC téléchargé." });
   };
 
   const filteredComplaints = complaints.filter(c => {
@@ -312,23 +312,23 @@ export default function RQComplaintsDashboard() {
       actions.push({ label: "Assigner", icon: <UserPlus className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setSelectedInvestigator(""); setAssignDialog(true); } });
     }
     if (["RECEIVED", "UNDER_REVIEW", "ASSIGNED", "INVESTIGATION"].includes(c.status)) {
-      actions.push({ label: "D\u00e9cider", icon: <ShieldCheck className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setDecisionForm({ decision: "", notes: "", correctiveActions: "" }); setDecisionDialog(true); } });
+      actions.push({ label: "Décider", icon: <ShieldCheck className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setDecisionForm({ decision: "", notes: "", correctiveActions: "" }); setDecisionDialog(true); } });
     }
     if (["FOUNDED", "CORRECTIVE_ACTIONS"].includes(c.status)) {
-      actions.push({ label: "R\u00e9soudre", icon: <CheckCircle className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setResolveNotes(""); setResolveDialog(true); } });
+      actions.push({ label: "Résoudre", icon: <CheckCircle className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setResolveNotes(""); setResolveDialog(true); } });
     }
     if (["RESOLVED", "UNFOUNDED"].includes(c.status)) {
-      actions.push({ label: "Cl\u00f4turer", icon: <Ban className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setCloseFinalResponse(""); setCloseDialog(true); } });
+      actions.push({ label: "Clôturer", icon: <Ban className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setCloseFinalResponse(""); setCloseDialog(true); } });
     }
     return actions;
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col w-full md:ml-64">
+      <div className="flex-1 flex flex-col w-full md:ml-64 max-w-full overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full">
           <Tabs defaultValue="complaints" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -345,7 +345,7 @@ export default function RQComplaintsDashboard() {
               <Alert className="border-red-300 bg-red-50">
                 <Timer className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
-                  <strong>Alerte d\u00e9lais PRO 21 :</strong> {stats.overdue} plainte(s) ont d\u00e9pass\u00e9 le d\u00e9lai de 3 mois.
+                  <strong>Alerte délais PRO 21 :</strong> {stats.overdue} plainte(s) ont dépassé le délai de 3 mois.
                 </AlertDescription>
               </Alert>
             )}
@@ -354,8 +354,8 @@ export default function RQComplaintsDashboard() {
               <div className="grid gap-4 md:grid-cols-5">
                 <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total</p><p className="text-2xl font-bold">{stats.total}</p></div><MessageSquareWarning className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
                 <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">En cours</p><p className="text-2xl font-bold">{stats.pending}</p></div><Clock className="h-8 w-8 text-yellow-500" /></div></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Fond\u00e9es</p><p className="text-2xl font-bold">{stats.founded}</p></div><AlertTriangle className="h-8 w-8 text-red-500" /></div></CardContent></Card>
-                <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">R\u00e9solues</p><p className="text-2xl font-bold">{stats.resolved}</p></div><CheckCircle className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Fondées</p><p className="text-2xl font-bold">{stats.founded}</p></div><AlertTriangle className="h-8 w-8 text-red-500" /></div></CardContent></Card>
+                <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Résolues</p><p className="text-2xl font-bold">{stats.resolved}</p></div><CheckCircle className="h-8 w-8 text-green-500" /></div></CardContent></Card>
                 <Card className={stats.overdue > 0 ? "border-red-300" : ""}><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">En retard</p><p className={`text-2xl font-bold ${stats.overdue > 0 ? "text-red-600" : ""}`}>{stats.overdue}</p></div><Timer className={`h-8 w-8 ${stats.overdue > 0 ? "text-red-500" : "text-gray-400"}`} /></div></CardContent></Card>
               </div>
 
@@ -382,7 +382,7 @@ export default function RQComplaintsDashboard() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Cat\u00e9gorie</Label>
+                      <Label>Catégorie</Label>
                       <Select value={filterCategory} onValueChange={setFilterCategory}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -403,16 +403,16 @@ export default function RQComplaintsDashboard() {
                   {loading ? (
                     <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
                   ) : filteredComplaints.length === 0 ? (
-                    <p className="text-center py-8 text-muted-foreground">Aucune plainte trouv\u00e9e</p>
+                    <p className="text-center py-8 text-muted-foreground">Aucune plainte trouvée</p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
+                    <div className="w-full max-w-full">
+                      <Table className="text-xs md:text-sm">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Code</TableHead>
                             <TableHead>Plaignant</TableHead>
                             <TableHead>Objet</TableHead>
-                            <TableHead>Cat\u00e9gorie</TableHead>
+                            <TableHead>Catégorie</TableHead>
                             <TableHead>Source</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Statut</TableHead>
@@ -423,14 +423,14 @@ export default function RQComplaintsDashboard() {
                         <TableBody>
                           {filteredComplaints.map((c) => (
                             <TableRow key={c.id} className={isOverdue(c.investigationDeadline) && !["RESOLVED", "CLOSED", "UNFOUNDED"].includes(c.status) ? "bg-red-50/50" : ""}>
-                              <TableCell className="font-mono text-sm">{c.trackingCode}</TableCell>
+                              <TableCell className="font-mono text-xs break-all">{c.trackingCode}</TableCell>
                               <TableCell>
                                 <div>
                                   <p className="font-medium">{c.complainantName}</p>
                                   <p className="text-xs text-muted-foreground">{c.complainantEmail}</p>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[200px] truncate">{c.subject}</TableCell>
+                              <TableCell className="max-w-[180px] break-words">{c.subject}</TableCell>
                               <TableCell><Badge variant="outline">{categoryLabels[c.category] || c.category}</Badge></TableCell>
                               <TableCell>
                                 {c.isPublic
@@ -446,7 +446,7 @@ export default function RQComplaintsDashboard() {
                                     {new Date(c.investigationDeadline).toLocaleDateString("fr-FR")}
                                   </span>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+                                  <span className="text-xs text-muted-foreground">{"—"}</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
@@ -486,10 +486,10 @@ export default function RQComplaintsDashboard() {
             <TabsContent value="dashboard" className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
-                  <CardHeader><CardTitle>R\u00e9partition par statut</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Répartition par statut</CardTitle></CardHeader>
                   <CardContent>
                     {statusData.length === 0 ? (
-                      <p className="text-center py-12 text-muted-foreground">Aucune donn\u00e9e</p>
+                      <p className="text-center py-12 text-muted-foreground">Aucune donnée</p>
                     ) : (
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -504,10 +504,10 @@ export default function RQComplaintsDashboard() {
                 </Card>
 
                 <Card>
-                  <CardHeader><CardTitle>R\u00e9partition par cat\u00e9gorie</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Répartition par catégorie</CardTitle></CardHeader>
                   <CardContent>
                     {categoryData.length === 0 ? (
-                      <p className="text-center py-12 text-muted-foreground">Aucune donn\u00e9e</p>
+                      <p className="text-center py-12 text-muted-foreground">Aucune donnée</p>
                     ) : (
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={categoryData}>
@@ -524,7 +524,7 @@ export default function RQComplaintsDashboard() {
 
                 <Card className="md:col-span-2">
                   <CardHeader>
-                    <CardTitle>Indicateurs cl\u00e9s — Bilan annuel PRO 21</CardTitle>
+                    <CardTitle>Indicateurs clés — Bilan annuel PRO 21</CardTitle>
                     <CardDescription>Rapport conforme ISO 17011 : FOR 50 / FOR 02-1</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -535,7 +535,7 @@ export default function RQComplaintsDashboard() {
                       </div>
                       <div className="text-center p-4 bg-red-50 rounded-lg">
                         <p className="text-3xl font-bold text-red-700">{stats.total > 0 ? ((stats.founded / stats.total) * 100).toFixed(0) : 0}%</p>
-                        <p className="text-sm text-muted-foreground mt-1">Taux fond\u00e9es</p>
+                        <p className="text-sm text-muted-foreground mt-1">Taux fondées</p>
                       </div>
                       <div className="text-center p-4 bg-yellow-50 rounded-lg">
                         <p className="text-3xl font-bold text-yellow-700">{stats.pending}</p>
@@ -543,7 +543,7 @@ export default function RQComplaintsDashboard() {
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <p className="text-3xl font-bold text-green-700">{stats.resolved}</p>
-                        <p className="text-sm text-muted-foreground mt-1">R\u00e9solues/Cl\u00f4tur\u00e9es</p>
+                        <p className="text-sm text-muted-foreground mt-1">Résolues/Clôturées</p>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg">
                         <p className="text-3xl font-bold text-purple-700">
@@ -584,7 +584,7 @@ export default function RQComplaintsDashboard() {
                 <Alert className="border-red-300 bg-red-50">
                   <Timer className="h-4 w-4 text-red-600" />
                   <AlertDescription className="text-red-800">
-                    <strong>Deadline d\u00e9pass\u00e9e !</strong> D\u00e9lai PRO 21 d\u00e9pass\u00e9 depuis le {new Date(selectedComplaint.investigationDeadline!).toLocaleDateString("fr-FR")}.
+                    <strong>Deadline dépassée !</strong> Délai PRO 21 dépassé depuis le {new Date(selectedComplaint.investigationDeadline!).toLocaleDateString("fr-FR")}.
                   </AlertDescription>
                 </Alert>
               )}
@@ -599,12 +599,12 @@ export default function RQComplaintsDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div><Label className="text-muted-foreground">Plaignant</Label><p className="font-medium">{selectedComplaint.complainantName}</p></div>
                 <div><Label className="text-muted-foreground">Email</Label><p>{selectedComplaint.complainantEmail}</p></div>
-                {selectedComplaint.complainantPhone && <div><Label className="text-muted-foreground">T\u00e9l\u00e9phone</Label><p>{selectedComplaint.complainantPhone}</p></div>}
+                {selectedComplaint.complainantPhone && <div><Label className="text-muted-foreground">Téléphone</Label><p>{selectedComplaint.complainantPhone}</p></div>}
                 {selectedComplaint.complainantOrganization && <div><Label className="text-muted-foreground">Organisation</Label><p>{selectedComplaint.complainantOrganization}</p></div>}
-                {selectedComplaint.targetOrganization && <div><Label className="text-muted-foreground">Organisme vis\u00e9</Label><p>{selectedComplaint.targetOrganization}</p></div>}
-                <div><Label className="text-muted-foreground">Cat\u00e9gorie</Label><p><Badge variant="outline">{categoryLabels[selectedComplaint.category] || selectedComplaint.category}</Badge></p></div>
-                <div><Label className="text-muted-foreground">Source</Label><p>{selectedComplaint.isPublic ? "Formulaire public" : `Interne (${selectedComplaint.submittedByRole || "\u2014"})`}</p></div>
-                <div><Label className="text-muted-foreground">Date de d\u00e9p\u00f4t</Label><p>{new Date(selectedComplaint.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p></div>
+                {selectedComplaint.targetOrganization && <div><Label className="text-muted-foreground">Organisme visé</Label><p>{selectedComplaint.targetOrganization}</p></div>}
+                <div><Label className="text-muted-foreground">Catégorie</Label><p><Badge variant="outline">{categoryLabels[selectedComplaint.category] || selectedComplaint.category}</Badge></p></div>
+                <div><Label className="text-muted-foreground">Source</Label><p>{selectedComplaint.isPublic ? "Formulaire public" : `Interne (${selectedComplaint.submittedByRole || "—"})`}</p></div>
+                <div><Label className="text-muted-foreground">Date de dépôt</Label><p>{new Date(selectedComplaint.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p></div>
                 {selectedComplaint.assignedToUser && (
                   <div><Label className="text-muted-foreground">Investigateur</Label><p className="font-medium">{selectedComplaint.assignedToUser.fullName} ({selectedComplaint.assignedToUser.role})</p></div>
                 )}
@@ -618,14 +618,14 @@ export default function RQComplaintsDashboard() {
               </div>
               {selectedComplaint.expectedResolution && (
                 <div>
-                  <Label className="text-muted-foreground">R\u00e9solution attendue</Label>
+                  <Label className="text-muted-foreground">Résolution attendue</Label>
                   <p className="mt-1 text-sm bg-slate-50 p-3 rounded border">{selectedComplaint.expectedResolution}</p>
                 </div>
               )}
               {selectedComplaint.decision && (
                 <Alert className={["FOUNDED", "CORRECTIVE_ACTIONS"].includes(selectedComplaint.status) ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"}>
                   <AlertDescription>
-                    <strong>D\u00e9cision {selectedComplaint.decisionDate ? `(${new Date(selectedComplaint.decisionDate).toLocaleDateString("fr-FR")})` : ""} :</strong> {selectedComplaint.decision}
+                    <strong>Décision {selectedComplaint.decisionDate ? `(${new Date(selectedComplaint.decisionDate).toLocaleDateString("fr-FR")})` : ""} :</strong> {selectedComplaint.decision}
                   </AlertDescription>
                 </Alert>
               )}
@@ -658,35 +658,35 @@ export default function RQComplaintsDashboard() {
       <Dialog open={decisionDialog} onOpenChange={setDecisionDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>D\u00e9cision sur la plainte</DialogTitle>
+            <DialogTitle>Décision sur la plainte</DialogTitle>
             <DialogDescription>{selectedComplaint?.trackingCode} — {selectedComplaint?.subject}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Analyse et conclusion <span className="text-red-500">*</span></Label>
-              <Textarea value={decisionForm.decision} onChange={(e) => setDecisionForm(p => ({ ...p, decision: e.target.value }))} placeholder="R\u00e9sum\u00e9 de l'analyse..." rows={4} />
+              <Textarea value={decisionForm.decision} onChange={(e) => setDecisionForm(p => ({ ...p, decision: e.target.value }))} placeholder="Résumé de l'analyse..." rows={4} />
             </div>
             <div className="space-y-2">
               <Label>Notes RQ (interne)</Label>
               <Textarea value={decisionForm.notes} onChange={(e) => setDecisionForm(p => ({ ...p, notes: e.target.value }))} placeholder="Notes internes..." rows={3} />
             </div>
             <div className="space-y-2">
-              <Label>Actions correctives (si fond\u00e9e)</Label>
+              <Label>Actions correctives (si fondée)</Label>
               <Textarea value={decisionForm.correctiveActions} onChange={(e) => setDecisionForm(p => ({ ...p, correctiveActions: e.target.value }))} placeholder="Mesures correctives..." rows={3} />
             </div>
             <Alert className="border-blue-200 bg-blue-50">
               <AlertDescription className="text-sm text-blue-800">
-                Un email sera envoy\u00e9 au plaignant avec la d\u00e9cision (PRO 21).
+                Un email sera envoyé au plaignant avec la décision (PRO 21).
               </AlertDescription>
             </Alert>
           </div>
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={() => setDecisionDialog(false)} disabled={processing}>Annuler</Button>
             <Button variant="outline" className="border-gray-300" onClick={() => handleDecision(false)} disabled={processing || !decisionForm.decision.trim()}>
-              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}Non fond\u00e9e
+              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}Non fondée
             </Button>
             <Button className="bg-red-600 hover:bg-red-700" onClick={() => handleDecision(true)} disabled={processing || !decisionForm.decision.trim()}>
-              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}Fond\u00e9e
+              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}Fondée
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -698,14 +698,14 @@ export default function RQComplaintsDashboard() {
           <DialogHeader>
             <DialogTitle>Assigner un investigateur</DialogTitle>
             <DialogDescription>
-              {selectedComplaint?.trackingCode} — PRO 21 : la personne ne doit pas \u00eatre impliqu\u00e9e dans l'activit\u00e9 objet de la plainte.
+              {selectedComplaint?.trackingCode} — PRO 21 : la personne ne doit pas être impliquée dans l'activité objet de la plainte.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Investigateur <span className="text-red-500">*</span></Label>
               <Select value={selectedInvestigator} onValueChange={setSelectedInvestigator}>
-                <SelectTrigger><SelectValue placeholder="S\u00e9lectionner un agent..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un agent..." /></SelectTrigger>
                 <SelectContent>
                   {assignableStaff.map(s => (
                     <SelectItem key={s.id} value={s.id.toString()}>
@@ -717,7 +717,7 @@ export default function RQComplaintsDashboard() {
             </div>
             <Alert className="border-amber-200 bg-amber-50">
               <AlertDescription className="text-sm text-amber-800">
-                D\u00e9lai de <strong>3 mois</strong> automatique (PRO 21). L'investigateur sera notifi\u00e9.
+                Délai de <strong>3 mois</strong> automatique (PRO 21). L'investigateur sera notifié.
               </AlertDescription>
             </Alert>
           </div>
@@ -734,19 +734,19 @@ export default function RQComplaintsDashboard() {
       <Dialog open={resolveDialog} onOpenChange={setResolveDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>R\u00e9soudre la plainte</DialogTitle>
+            <DialogTitle>Résoudre la plainte</DialogTitle>
             <DialogDescription>{selectedComplaint?.trackingCode} — Valider les actions correctives</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Notes de r\u00e9solution</Label>
-              <Textarea value={resolveNotes} onChange={(e) => setResolveNotes(e.target.value)} placeholder="D\u00e9tails sur les actions correctives..." rows={4} />
+              <Label>Notes de résolution</Label>
+              <Textarea value={resolveNotes} onChange={(e) => setResolveNotes(e.target.value)} placeholder="Détails sur les actions correctives..." rows={4} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResolveDialog(false)} disabled={processing}>Annuler</Button>
             <Button className="bg-green-600 hover:bg-green-700" onClick={handleResolve} disabled={processing}>
-              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}Marquer r\u00e9solue
+              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}Marquer résolue
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -756,26 +756,26 @@ export default function RQComplaintsDashboard() {
       <Dialog open={closeDialog} onOpenChange={setCloseDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cl\u00f4turer la plainte</DialogTitle>
+            <DialogTitle>Clôturer la plainte</DialogTitle>
             <DialogDescription>
-              {selectedComplaint?.trackingCode} — PRO 21 : ALGERAC fournit une r\u00e9ponse au plaignant.
+              {selectedComplaint?.trackingCode} — PRO 21 : ALGERAC fournit une réponse au plaignant.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>R\u00e9ponse finale au plaignant</Label>
-              <Textarea value={closeFinalResponse} onChange={(e) => setCloseFinalResponse(e.target.value)} placeholder="R\u00e9ponse officielle..." rows={4} />
+              <Label>Réponse finale au plaignant</Label>
+              <Textarea value={closeFinalResponse} onChange={(e) => setCloseFinalResponse(e.target.value)} placeholder="Réponse officielle..." rows={4} />
             </div>
             <Alert className="border-blue-200 bg-blue-50">
               <AlertDescription className="text-sm text-blue-800">
-                Un email de cl\u00f4ture sera envoy\u00e9 au plaignant.
+                Un email de clôture sera envoyé au plaignant.
               </AlertDescription>
             </Alert>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCloseDialog(false)} disabled={processing}>Annuler</Button>
             <Button onClick={handleClose} disabled={processing}>
-              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}Cl\u00f4turer
+              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}Clôturer
             </Button>
           </DialogFooter>
         </DialogContent>

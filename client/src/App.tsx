@@ -99,6 +99,7 @@ import PublicComplaintPage from "@/pages/complaints/PublicComplaintPage";
 import PublicTrackingPage from "@/pages/complaints/PublicTrackingPage";
 import InternalComplaintsPage from "@/pages/complaints/InternalComplaintsPage";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
+import RQDashboard from "@/pages/rq/Dashboard";
 
 // DAG Payment Tracking
 import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
@@ -141,8 +142,10 @@ import DTRequestDetailPage from "@/pages/dt/RequestDetailPage";
 import DTOECApplicationDetailPage from "@/pages/dt/OECApplicationDetailPage";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
 import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 function Router() {
+  usePageTitle();
   return (
     <Switch>
       <Route path="/" component={Login} />
@@ -332,8 +335,8 @@ function Router() {
       <Route path="/ges-competences/surveillance">{() => <ProtectedRoute component={SurveillanceQualPage} allowedRoles={["ges_competences"]} />}</Route>
       
       {/* RQ Routes */}
-      <Route path="/rq">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
-      <Route path="/rq/dashboard">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
+      <Route path="/rq">{() => <ProtectedRoute component={RQDashboard} allowedRoles={["rq"]} />}</Route>
+      <Route path="/rq/dashboard">{() => <ProtectedRoute component={RQDashboard} allowedRoles={["rq"]} />}</Route>
       <Route path="/rq/plaintes">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
       <Route path="/rq/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["rq"]} />}</Route>
       

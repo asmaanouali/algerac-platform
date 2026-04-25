@@ -816,7 +816,7 @@ export default function GesCompetencesCandidaturesPage() {
               )}
 
               {/* Blacklist action for other statuses */}
-              {selectedCandidature.status !== "PENDING" && !selectedCandidature.blacklisted && (
+              {selectedCandidature.status !== "PENDING" && selectedCandidature.status !== "DOCUMENTS_SUBMITTED" && !selectedCandidature.blacklisted && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => {
                     setBlacklistingCandidature(selectedCandidature);
@@ -881,11 +881,11 @@ export default function GesCompetencesCandidaturesPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique (automatique)</span>
+                  <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité (automatique)</span>
+                  <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité</span>
                 </div>
                 
                 <div>

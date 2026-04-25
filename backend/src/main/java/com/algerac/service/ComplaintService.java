@@ -357,32 +357,21 @@ public class ComplaintService {
         String decisionFr = decision == ComplaintStatus.FOUNDED ? "fondée" : "non fondée";
         String subject = "Décision sur votre plainte " + complaint.getTrackingCode() + " | ALGERAC";
         String body = String.format("""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; padding: 20px 0; border-bottom: 3px solid #00A63E;">
-                        <h1 style="color: #00A63E; margin: 0;">ALGERAC</h1>
-                        <p style="color: #666; margin: 5px 0 0 0; font-size: 13px;">Organisme Algérien d'Accréditation</p>
-                    </div>
-                    <div style="padding: 30px 0;">
-                        <p>Bonjour <strong>%s</strong>,</p>
-                        <p>Nous vous informons que votre plainte <strong>%s</strong> (objet : « %s ») a fait l'objet d'une analyse approfondie
-                           par le département qualité d'ALGERAC conformément à la procédure PRO 21.</p>
-                        <div style="background: %s; border: 2px solid %s; border-radius: 10px; padding: 20px; margin: 25px 0;">
-                            <p style="font-size: 18px; font-weight: bold; color: %s; margin: 0;">Décision : Plainte %s</p>
-                        </div>
-                        <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                            <p style="margin: 0; font-size: 14px;"><strong>Analyse et conclusion :</strong></p>
-                            <p style="margin: 8px 0 0 0; font-size: 14px;">%s</p>
-                        </div>
-                        %s
-                        <p>Vous pouvez consulter le détail de votre plainte sur notre portail avec le code de suivi <strong>%s</strong>.</p>
-                        <p style="color: #666; font-size: 13px; margin-top: 30px;">
-                            Pour toute question, contactez-nous à <a href="mailto:support@algerac.dz" style="color: #00A63E;">support@algerac.dz</a>
-                        </p>
-                    </div>
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; text-align: center; color: #999; font-size: 12px;">
-                        <p>ALGERAC — Organisme Algérien d'Accréditation</p>
-                    </div>
+                <p>Bonjour <strong>%s</strong>,</p>
+                <p>Nous vous informons que votre plainte <strong>%s</strong> (objet : « %s ») a fait l'objet d'une analyse approfondie
+                   par le département qualité d'ALGERAC conformément à la procédure PRO 21.</p>
+                <div style="background: %s; border: 2px solid %s; border-radius: 10px; padding: 20px; margin: 25px 0;">
+                    <p style="font-size: 18px; font-weight: bold; color: %s; margin: 0;">Décision : Plainte %s</p>
                 </div>
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px;"><strong>Analyse et conclusion :</strong></p>
+                    <p style="margin: 8px 0 0 0; font-size: 14px;">%s</p>
+                </div>
+                %s
+                <p>Vous pouvez consulter le détail de votre plainte sur notre portail avec le code de suivi <strong>%s</strong>.</p>
+                <p style="color: #666; font-size: 13px; margin-top: 30px;">
+                    Pour toute question, contactez-nous à <a href="mailto:support@algerac.dz" style="color: #00A63E;">support@algerac.dz</a>
+                </p>
                 """,
                 complaint.getComplainantName(),
                 complaint.getTrackingCode(),
@@ -409,24 +398,17 @@ public class ComplaintService {
     private void sendClosureEmail(Complaint complaint, String finalResponse) {
         String subject = "Clôture de votre plainte " + complaint.getTrackingCode() + " | ALGERAC";
         String body = String.format("""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; padding: 20px 0; border-bottom: 3px solid #00A63E;">
-                        <h1 style="color: #00A63E; margin: 0;">ALGERAC</h1>
-                    </div>
-                    <div style="padding: 30px 0;">
-                        <p>Bonjour <strong>%s</strong>,</p>
-                        <p>Nous vous informons que le traitement de votre plainte <strong>%s</strong> est désormais terminé.</p>
-                        <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 10px; padding: 20px; margin: 25px 0;">
-                            <p style="font-size: 18px; font-weight: bold; color: #16a34a; margin: 0;">Dossier clôturé</p>
-                        </div>
-                        %s
-                        <p>L'ensemble du dossier (fiche FOR 50, fiche de non-conformité FOR 02-1, preuves et réponses)
-                           est conservé conformément à la procédure PRO 21.</p>
-                        <p style="color: #666; font-size: 13px; margin-top: 30px;">
-                            ALGERAC — Organisme Algérien d'Accréditation
-                        </p>
-                    </div>
+                <p>Bonjour <strong>%s</strong>,</p>
+                <p>Nous vous informons que le traitement de votre plainte <strong>%s</strong> est désormais terminé.</p>
+                <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 10px; padding: 20px; margin: 25px 0;">
+                    <p style="font-size: 18px; font-weight: bold; color: #16a34a; margin: 0;">Dossier clôturé</p>
                 </div>
+                %s
+                <p>L'ensemble du dossier (fiche FOR 50, fiche de non-conformité FOR 02-1, preuves et réponses)
+                   est conservé conformément à la procédure PRO 21.</p>
+                <p style="color: #666; font-size: 13px; margin-top: 30px;">
+                    Pour toute question, contactez-nous à <a href="mailto:support@algerac.dz" style="color: #00A63E;">support@algerac.dz</a>.
+                </p>
                 """,
                 complaint.getComplainantName(),
                 complaint.getTrackingCode(),

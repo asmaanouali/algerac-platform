@@ -14,6 +14,7 @@ import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.NotificationService;
 import com.algerac.service.PaymentService;
+import com.algerac.service.PdfGenerationService;
 import com.algerac.service.QuotationService;
 import com.algerac.service.RequestService;
 import jakarta.servlet.http.HttpSession;
@@ -40,15 +41,25 @@ public class AccreditationRequestController {
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
     private final NotificationService notificationService;
+    private final PdfGenerationService pdfGenerationService;
     
     @GetMapping
     public ResponseEntity<List<AccreditationRequest>> getAllRequests(HttpSession session) {
-        // Optional: log if user is authenticated
         Long userId = (Long) session.getAttribute("userId");
-        if (userId != null) {
-            log.info("User {} fetching all requests", userId);
+        User caller = userId == null ? null : userRepository.findById(userId).orElse(null);
+
+        List<AccreditationRequest> all = requestService.getAllRequests();
+
+        // Department scoping: a CD only sees requests of their own department.
+        // Other staff roles keep full visibility. OEC should not reach this endpoint
+        // in practice (they use /my-requests).
+        if (caller != null && caller.getRole() == UserRole.CD && caller.getDepartment() != null) {
+            final Long deptId = caller.getDepartment().getId();
+            all = all.stream()
+                    .filter(r -> r.getDepartment() != null && r.getDepartment().getId().equals(deptId))
+                    .toList();
         }
-        return ResponseEntity.ok(requestService.getAllRequests());
+        return ResponseEntity.ok(all);
     }
     
     @GetMapping("/my-requests")
@@ -58,9 +69,32 @@ public class AccreditationRequestController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Non authentifié"));
         }
-        
+
         List<AccreditationRequest> requests = requestService.getRequestsByOec(userId);
-        return ResponseEntity.ok(requests);
+        // OEC black-box: strip staff identifiers from responses.
+        List<Map<String, Object>> masked = requests.stream().map(r -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("referenceNumber", r.getReferenceNumber());
+            m.put("type", r.getType());
+            m.put("domain", r.getDomain());
+            m.put("description", r.getDescription());
+            m.put("status", r.getStatus());
+            m.put("progress", r.getProgress());
+            m.put("submissionDate", r.getSubmissionDate());
+            m.put("createdAt", r.getCreatedAt());
+            m.put("currentPhase", r.getCurrentPhase());
+            m.put("currentStep", r.getCurrentStep());
+            m.put("nextAction", r.getNextAction());
+            m.put("isReceivable", r.getIsReceivable());
+            m.put("receivabilityComments", r.getReceivabilityComments());
+            m.put("receivabilityCorrectionNeeded", r.getReceivabilityCorrectionNeeded());
+            m.put("correctionDeadline", r.getCorrectionDeadline());
+            m.put("assignmentDate", r.getAssignmentDate());
+            m.put("dtReviewComments", r.getDtReviewComments());
+            return m;
+        }).toList();
+        return ResponseEntity.ok(masked);
     }
     
     @GetMapping("/assigned-to-me")
@@ -111,9 +145,48 @@ public class AccreditationRequestController {
         
         AccreditationRequest request = optRequest.get();
         User oecUser = request.getOec();
-        
+        User caller = userRepository.findById(userId).orElse(null);
+        boolean isOecCaller = caller != null && caller.getRole() == UserRole.OEC;
+
         java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
-        details.put("request", request);
+        if (isOecCaller) {
+            // Black-box: OEC must not see which staff is handling their dossier.
+            // Serialize the request as a map and strip all personnel pointers.
+            java.util.Map<String, Object> req = new java.util.LinkedHashMap<>();
+            req.put("id", request.getId());
+            req.put("referenceNumber", request.getReferenceNumber());
+            req.put("type", request.getType());
+            req.put("domain", request.getDomain());
+            req.put("description", request.getDescription());
+            req.put("status", request.getStatus());
+            req.put("progress", request.getProgress());
+            req.put("submissionDate", request.getSubmissionDate());
+            req.put("createdAt", request.getCreatedAt());
+            req.put("currentPhase", request.getCurrentPhase());
+            req.put("currentStep", request.getCurrentStep());
+            req.put("nextAction", request.getNextAction());
+            req.put("isReceivable", request.getIsReceivable());
+            req.put("receivabilityComments", request.getReceivabilityComments());
+            req.put("receivabilityCorrectionNeeded", request.getReceivabilityCorrectionNeeded());
+            req.put("correctionDeadline", request.getCorrectionDeadline());
+            req.put("assignmentDate", request.getAssignmentDate());
+            req.put("evaluationStartDate", request.getEvaluationStartDate());
+            req.put("evaluationEndDate", request.getEvaluationEndDate());
+            req.put("certificateIssueDate", request.getCertificateIssueDate());
+            req.put("certificateExpirationDate", request.getCertificateExpirationDate());
+            if (oecUser != null) {
+                java.util.Map<String, Object> oecRef = new java.util.LinkedHashMap<>();
+                oecRef.put("id", oecUser.getId());
+                oecRef.put("email", oecUser.getEmail());
+                oecRef.put("fullName", oecUser.getFullName());
+                oecRef.put("organizationName", oecUser.getOrganizationName());
+                req.put("oec", oecRef);
+            }
+            // Intentionally: no assignedToRa, no pendingWith, no staff identifiers
+            details.put("request", req);
+        } else {
+            details.put("request", request);
+        }
         
         // Infos OEC complètes
         if (oecUser != null) {
@@ -300,6 +373,52 @@ public class AccreditationRequestController {
         }
     }
     
+    /**
+     * DT: after validating, pick the department + a specific CD that will own
+     * the request. Body: { "departmentId": Long, "cdId": Long }.
+     */
+    @PostMapping("/{id}/dt-assign-cd")
+    public ResponseEntity<ApiResponse> dtAssignCd(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            Long departmentId = body.get("departmentId") == null ? null : ((Number) body.get("departmentId")).longValue();
+            Long cdId = body.get("cdId") == null ? null : ((Number) body.get("cdId")).longValue();
+            String comments = (String) body.getOrDefault("comments", null);
+            if (departmentId == null || cdId == null) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("departmentId et cdId requis"));
+            }
+            AccreditationRequest req = requestService.dtAssignRequestToCd(id, departmentId, cdId, comments, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Demande assignée au CD", req));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA: assign the final accreditation reference (AC/<domain>/<seq>/<year>).
+     * Before this call the request only has a sequential number.
+     */
+    @PostMapping("/{id}/assign-final-reference")
+    public ResponseEntity<ApiResponse> assignFinalReference(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            AccreditationRequest req = requestService.assignFinalAccreditationReference(id, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Référence d'accréditation attribuée", req));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     /**
      * OEC: Resoumettre après rejet DT
      */
@@ -922,58 +1041,100 @@ public class AccreditationRequestController {
     }
 
     /**
-     * OEC: Valide le devis, signe la convention
+     * OEC: Valide (ou refuse) conjointement le devis et la convention.
+     *
+     * Body fields:
+     *  - accepted: Boolean — the OEC accepts BOTH the quote and the convention.
+     *    (If false: the OEC is refusing; see the other flags.)
+     *  - conventionSigned: Boolean — must be true when accepted=true.
+     *  - scopeReductionRequested: Boolean — on refusal, ask for a reduced-scope
+     *    quote. The RA will produce a new quotation.
+     *  - scopeReductionNote: String — free-text description of what to drop.
+     *  - finalRejection: Boolean — refusal without scope reduction. Closes the dossier.
+     *
+     * Payment is NOT created here anymore. It is initiated on the day of the
+     * evaluation (see workflow step 7).
      */
     @PostMapping("/{id}/oec-validate-quotation")
     public ResponseEntity<ApiResponse> oecValidateQuotation(
             @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body,
             HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            
+
             AccreditationRequest request = requestService.getRequest(id)
                     .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
-            
-            // Créer le paiement des frais d'évaluation (flux standardisé)
-            // Le montant est celui fixé par le DAG lors de l'approbation du devis
-            try {
-                paymentService.createEvaluationFeePayment(id);
-                
-                // Mettre le dossier en attente de paiement des frais d'évaluation
-                request.setStatus(RequestStatus.PENDING_PAYMENT);
-                request.setNextAction("OEC doit payer les frais d'évaluation");
-                request.setPendingWith("OEC");
-                request.setCurrentPhase("PAIEMENT_EVALUATION");
-                request.setCurrentStep("evaluation_fee_payment");
-                request.setProgress(55);
-            } catch (Exception e) {
-                // Si le montant du devis n'est pas encore défini ou autre erreur,
-                // on continue sans créer le paiement (workflow legacy)
-                log.warn("Impossible de créer le paiement des frais d'évaluation pour {}: {}", 
-                        request.getReferenceNumber(), e.getMessage());
-                        
+
+            if (body == null) body = java.util.Map.of();
+            boolean accepted = Boolean.TRUE.equals(body.get("accepted"));
+            boolean conventionSigned = Boolean.TRUE.equals(body.get("conventionSigned"));
+            boolean scopeReduction = Boolean.TRUE.equals(body.get("scopeReductionRequested"));
+            boolean finalRejection = Boolean.TRUE.equals(body.get("finalRejection"));
+            String scopeNote = (String) body.getOrDefault("scopeReductionNote", "");
+
+            if (accepted) {
+                // The OEC must accept BOTH the quote and the convention — or neither.
+                if (!conventionSigned) {
+                    return ResponseEntity.badRequest().body(ApiResponse.error(
+                            "La convention doit être signée en même temps que l'acceptation du devis."));
+                }
                 request.setStatus(RequestStatus.QUOTATION_VALIDATED);
                 request.setNextAction("Constitution de l'équipe d'évaluation");
                 request.setPendingWith("RA");
                 request.setCurrentPhase("CONSTITUTION_EQUIPE");
                 request.setCurrentStep("team_designation");
-                request.setProgress(90);
+                request.setProgress(Math.max(request.getProgress() == null ? 0 : request.getProgress(), 35));
+
+                requestRepository.save(request);
+
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(
+                            request.getAssignedToRa().getId(),
+                            "Devis et convention acceptés",
+                            "L'OEC a accepté le devis ET la convention pour " + request.getReferenceNumber() +
+                                    ". Le paiement sera effectué le jour de l'évaluation.",
+                            "INFO");
+                }
+                return ResponseEntity.ok(ApiResponse.success("Devis et convention acceptés. Le paiement sera demandé le jour de l'évaluation.", request));
             }
-            
+
+            // Refusal path.
+            if (scopeReduction) {
+                request.setStatus(RequestStatus.QUOTATION_PREPARATION);
+                request.setNextAction("RA prépare un nouveau devis avec une portée réduite");
+                request.setPendingWith("RA");
+                request.setCurrentPhase("DEVIS");
+                request.setCurrentStep("scope_reduction_requested");
+                requestRepository.save(request);
+                if (request.getAssignedToRa() != null) {
+                    notificationService.createNotification(
+                            request.getAssignedToRa().getId(),
+                            "Réduction de portée demandée",
+                            "L'OEC " + (request.getOec() != null ? request.getOec().getOrganizationName() : "") +
+                                    " demande une réduction de portée : " + scopeNote,
+                            "WARNING");
+                }
+                return ResponseEntity.ok(ApiResponse.success("Demande de réduction de portée transmise au RA", request));
+            }
+
+            // Plain refusal (either first refusal without scope reduction, or second refusal) → close dossier.
+            request.setStatus(RequestStatus.CLOSED);
+            request.setNextAction("Dossier classé suite au refus du devis");
+            request.setPendingWith(null);
+            request.setCurrentPhase("CLOSED");
+            request.setCurrentStep("dossier_closed_quote_refused");
             requestRepository.save(request);
-            
-            // Notify RA
             if (request.getAssignedToRa() != null) {
                 notificationService.createNotification(
-                    request.getAssignedToRa().getId(),
-                    "Devis validé par l'OEC",
-                    "L'OEC a validé le devis et signé la convention pour " + request.getReferenceNumber() + ".",
-                    "INFO"
-                );
+                        request.getAssignedToRa().getId(),
+                        finalRejection ? "Dossier classé (refus définitif)" : "Dossier classé (refus du devis)",
+                        "Le dossier " + request.getReferenceNumber() + " a été classé suite au refus du devis par l'OEC.",
+                        "WARNING");
             }
-            
-            return ResponseEntity.ok(ApiResponse.success("Devis validé et convention signée", request));
+            return ResponseEntity.ok(ApiResponse.success("Dossier classé suite au refus du devis.", request));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -1072,5 +1233,33 @@ public class AccreditationRequestController {
     private ResponseEntity<ApiResponse> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Non authentifié"));
+    }
+
+    /** Download the DOC1 PDF built from the request's submitted payload. */
+    @GetMapping("/{id}/doc1.pdf")
+    public ResponseEntity<?> downloadDoc1Pdf(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("userId") == null) return unauthorized();
+        AccreditationRequest request = requestService.getRequest(id).orElse(null);
+        if (request == null) return ResponseEntity.notFound().build();
+        byte[] pdf = pdfGenerationService.generateAccreditationDoc1Pdf(request);
+        String filename = "DOC1-" + (request.getReferenceNumber() != null ? request.getReferenceNumber().replace('/', '_') : "demande-" + id) + ".pdf";
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(pdf);
+    }
+
+    /** Download the technical form PDF (FOR 04 / FOR 05 / FOR 06 / etc.). */
+    @GetMapping("/{id}/technical-form.pdf")
+    public ResponseEntity<?> downloadTechnicalFormPdf(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("userId") == null) return unauthorized();
+        AccreditationRequest request = requestService.getRequest(id).orElse(null);
+        if (request == null) return ResponseEntity.notFound().build();
+        byte[] pdf = pdfGenerationService.generateAccreditationTechnicalFormPdf(request);
+        String filename = "FORMS-" + (request.getReferenceNumber() != null ? request.getReferenceNumber().replace('/', '_') : "demande-" + id) + ".pdf";
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(pdf);
     }
 }

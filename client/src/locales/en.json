@@ -221,6 +221,7 @@
     "interviewPlanning": "Interview Planning",
     "evaluationPlan": "FOR 32 Plan",
     "complaints": "Complaints",
+    "registrationFees": "Registration Fees",
     "paymentTracking": "Payment Tracking",
     "switchRole": "Switch role",
     "gapReview": "Gap Review",
@@ -251,6 +252,7 @@
     "samplingPage": "Sampling",
     "evaluationOversight": "Evaluation Oversight",
     "interviewCandidates": "Candidate Interviews",
+    "raTeam": "RA Team",
     "logout": "Logout"
   },
   "dashboard": {
@@ -913,26 +915,26 @@
     "dashboardTitle": "OEC Dashboard",
     "dashboardSubtitle": "Dashboard of your conformity assessment body.",
     "myRequests": "My Requests",
-    "actionsRequired": "Actions Required",
-    "accreditations": "Accreditations",
-    "avgProgress": "Average Progress",
     "activeRequests": "{{count}} active",
+    "actionsRequired": "Actions Required",
     "awaitingAction": "Awaiting your action",
+    "accreditations": "Accreditations",
     "activeCertificates": "Active certificates",
+    "avgProgress": "Avg. Progress",
     "onActiveRequests": "On active requests",
-    "noRequests": "No requests",
-    "noRequestsDesc": "Start by creating your first accreditation request",
-    "createRequest": "Create a request",
+    "trackRequests": "Track the status of your requests",
     "newRequest": "New Request",
-    "payments": "Payments",
-    "managePayments": "Manage your pending payments",
-    "viewRequests": "View Requests",
-    "viewAll": "View all",
-    "trackRequests": "Track your accreditation files",
+    "noRequests": "No requests",
+    "noRequestsDesc": "You have not submitted any accreditation request yet.",
+    "createRequest": "Create a request",
     "requestRef": "Request #{{id}}",
     "initial": "Initial",
     "extension": "Extension",
-    "renewal": "Renewal"
+    "renewal": "Renewal",
+    "viewRequests": "View my requests",
+    "managePayments": "Manage your payments",
+    "payments": "Payments",
+    "viewAll": "View all"
   },
   "ra": {
     "dashboardTitle": "Accreditation Manager",
@@ -973,7 +975,7 @@
     }
   },
   "cd": {
-    "dashboardTitle": "CD Dashboard",
+    "dashboardTitle": "Chef de Département Dashboard",
     "dashboardSubtitle": "Overview of the accreditation department activity.",
     "totalRequests": "Total Requests",
     "toAssign": "To Assign",
@@ -991,6 +993,10 @@
     "activeCount": "Active files",
     "viewRequest": "View",
     "noRequests": "No requests to display",
+    "manageRequestsDesc": "Assign and track requests",
+    "certificatesDesc": "Certificates and decisions",
+    "raTeamTitle": "RA Team",
+    "workloadDesc": "Workload distribution",
     "tabs": {
       "all": "All",
       "pending": "Pending",
@@ -1263,26 +1269,8 @@
       "applied": "Applied"
     }
   },
-  "oec": {
-    "dashboardSubtitle": "Dashboard of your conformity assessment body.",
-    "myRequests": "My Requests",
-    "activeRequests": "{{count}} active",
-    "actionsRequired": "Actions Required",
-    "awaitingAction": "Awaiting your action",
-    "accreditations": "Accreditations",
-    "activeCertificates": "Active certificates",
-    "avgProgress": "Avg. Progress",
-    "onActiveRequests": "On active requests",
-    "trackRequests": "Track the status of your requests",
-    "newRequest": "New Request",
-    "noRequests": "No requests",
-    "noRequestsDesc": "You have not submitted any accreditation request yet.",
-    "createRequest": "Create a request",
-    "requestRef": "Request #{{id}}",
-    "initial": "Initial",
-    "extension": "Extension",
-    "renewal": "Renewal",
-    "viewRequests": "View my requests",
-    "managePayments": "Manage your payments"
+  "workflow": {
+    "progress": "File Progress",
+    "pendingWith": "Pending with"
   }
 }

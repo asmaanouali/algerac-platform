@@ -1,9 +1,13 @@
 package com.algerac.model;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -181,6 +185,31 @@ public class User {
     // INTERVIEW PANEL - members who must be present at the interview
     private Long interviewPanelCdId;  // Chef de Département chosen for this interview
     private Long interviewPanelRaId;  // Responsable d'Accréditation chosen for this interview
+
+    // Department (CD / RA / internal staff). OECs and experts may have null.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    private Department department;
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    @JsonGetter("department")
+    public java.util.Map<String, Object> getDepartmentForJson() {
+        if (department == null) return null;
+        try {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", department.getId());
+            m.put("code", department.getCode());
+            m.put("name", department.getName());
+            return m;
+        } catch (Exception e) {
+            return null;
+        }
+    }
     
     @PrePersist
     protected void onCreate() {
@@ -192,9 +221,13 @@ public class User {
         }
         // Auto-fill fullName if not set
         if (fullName == null) {
-            if (role == UserRole.EXPERT && nom != null && prenom != null) {
+            if (nom != null && prenom != null) {
                 fullName = prenom + " " + nom;
-            } else if (organizationName != null) {
+            } else if (nom != null) {
+                fullName = nom;
+            } else if (prenom != null) {
+                fullName = prenom;
+            } else if (role == UserRole.OEC && organizationName != null) {
                 fullName = organizationName;
             }
         }

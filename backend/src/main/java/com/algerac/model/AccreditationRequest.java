@@ -45,12 +45,26 @@ public class AccreditationRequest {
     @Column(nullable = false)
     private Integer progress; // 0-100
     
+    // Department that owns this request (routing target). Set by the DT when
+    // validating the request, then used to scope CD/RA assignments and visibility.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    private Department department;
+
+    // Sequential request number assigned at OEC submission. The final accreditation
+    // ID (AC/<domain>/<seq>/<year>) is composed later by the RA and stored in
+    // referenceNumber once the file has been accepted. Kept separately so we can
+    // always retrieve the simple sequence without parsing referenceNumber.
+    private Integer sequenceNumber;
+
     // Workflow fields
     @ManyToOne
     @JoinColumn(name = "assigned_to_cd")
     @JsonIgnore
     @Getter(AccessLevel.NONE)
-    private User assignedToCd; // CD assigné (basé sur le domaine)
+    private User assignedToCd; // CD assigné (basé sur le département)
     
     @ManyToOne
     @JoinColumn(name = "assigned_to_ra")
@@ -144,6 +158,7 @@ public class AccreditationRequest {
                 .email(oec.getEmail())
                 .fullName(oec.getFullName())
                 .organizationName(oec.getOrganizationName())
+                .typeDemande(oec.getTypeDemande())
                 .build();
     }
     
@@ -165,6 +180,24 @@ public class AccreditationRequest {
                 .email(assignedToCd.getEmail())
                 .fullName(assignedToCd.getFullName())
                 .build();
+    }
+
+    @JsonGetter("department")
+    public java.util.Map<String, Object> getDepartmentForJson() {
+        if (department == null) return null;
+        try {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", department.getId());
+            m.put("code", department.getCode());
+            m.put("name", department.getName());
+            return m;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public Department getDepartment() {
+        return department;
     }
     
     public User getOec() {

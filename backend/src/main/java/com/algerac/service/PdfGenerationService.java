@@ -1,5 +1,6 @@
 package com.algerac.service;
 
+import com.algerac.model.AccreditationRequest;
 import com.algerac.model.User;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.font.PdfFont;
@@ -750,10 +751,222 @@ public class PdfGenerationService {
             
             log.info("PDF DOC1 genere pour la candidature OEC #{}", application.getId());
             return baos.toByteArray();
-            
+
         } catch (Exception e) {
             log.error("Erreur lors de la generation du PDF DOC1", e);
             throw new RuntimeException("Erreur lors de la generation du PDF DOC1", e);
         }
+    }
+
+    // =======================================================================
+    // Accreditation request PDFs — used to package DOC1 and the technical form
+    // (FOR 04 / FOR 05 depending on activities) so DAG, CD, RA, etc. can read
+    // the submitted data offline and archive it with the dossier.
+    // =======================================================================
+
+    /**
+     * Build the DOC1 PDF for a submitted accreditation request. Reads the
+     * description JSON blob saved by the OEC's new-request flow and renders
+     * the administrative sections.
+     */
+    public byte[] generateAccreditationDoc1Pdf(AccreditationRequest request) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+            PdfFont font = PdfFontFactory.createFont("Helvetica");
+            PdfFont bold = PdfFontFactory.createFont("Helvetica-Bold");
+
+            document.add(new Paragraph("ALGERAC — DOC 1").setFont(bold).setFontSize(14).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Demande d'accréditation").setFont(bold).setFontSize(12).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph(" "));
+
+            String refLabel = request.getReferenceNumber();
+            if (refLabel == null || refLabel.isBlank()) {
+                refLabel = request.getSequenceNumber() != null ? ("Séq. #" + request.getSequenceNumber()) : ("Dossier #" + request.getId());
+            }
+            document.add(new Paragraph("Référence : " + refLabel).setFont(bold));
+            if (request.getSubmissionDate() != null) {
+                document.add(new Paragraph("Date de soumission : " + request.getSubmissionDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))).setFont(font));
+            }
+            document.add(new Paragraph(" "));
+
+            Map<String, Object> body = parseDescription(request.getDescription());
+
+            Table t = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+            addDoc1Row(t, "Type de demande", str(body.get("typeDemande")), font, bold);
+            addDoc1Row(t, "Type de site", str(body.get("siteType")), font, bold);
+            addDoc1Row(t, "Activités", joinList(body.get("activites")), font, bold);
+            addDoc1Row(t, "Date d'évaluation souhaitée", str(body.get("dateEvaluation")), font, bold);
+            addDoc1Row(t, "Nom légal", str(body.get("nomLegal")), font, bold);
+            addDoc1Row(t, "Abréviation", str(body.get("abreviation")), font, bold);
+            addDoc1Row(t, "Sigle", str(body.get("sigle")), font, bold);
+            addDoc1Row(t, "Statut juridique", str(body.get("statutJuridique")), font, bold);
+            addDoc1Row(t, "Registre de commerce", str(body.get("registreCommerce")), font, bold);
+            addDoc1Row(t, "Codes d'activité", str(body.get("codesActivite")), font, bold);
+            addDoc1Row(t, "Adresse du siège", str(body.get("adresseSiege")), font, bold);
+            addDoc1Row(t, "Email organisme", str(body.get("emailOrg")), font, bold);
+            addDoc1Row(t, "Site web", str(body.get("siteWeb")), font, bold);
+            addDoc1Row(t, "Contact — nom", str(body.get("contactNom")), font, bold);
+            addDoc1Row(t, "Contact — fonction", str(body.get("contactFonction")), font, bold);
+            addDoc1Row(t, "Contact — téléphone", str(body.get("contactTelephone")), font, bold);
+            addDoc1Row(t, "Contact — email", str(body.get("contactEmail")), font, bold);
+            addDoc1Row(t, "Responsable qualité", str(body.get("responsableQualiteNom")), font, bold);
+            addDoc1Row(t, "Demandeur", str(body.get("demandeurNom")), font, bold);
+            addDoc1Row(t, "Fonction demandeur", str(body.get("demandeurFonction")), font, bold);
+            addDoc1Row(t, "Date de la demande", str(body.get("demandeurDate")), font, bold);
+            document.add(t);
+
+            renderTableIfAny(document, body.get("sites"), "Sites", font, bold);
+            renderTableIfAny(document, body.get("personnelSites"), "Personnel par site", font, bold);
+            renderTableIfAny(document, body.get("responsablesTechniques"), "Responsables techniques", font, bold);
+            renderTableIfAny(document, body.get("reconnaissances"), "Reconnaissances existantes", font, bold);
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du PDF DOC1 pour la demande #{}", request.getId(), e);
+            throw new RuntimeException("Erreur lors de la génération du PDF DOC1 d'accréditation", e);
+        }
+    }
+
+    /**
+     * Build the technical form PDF (FOR 04 for inspection, FOR 05 for essais,
+     * FOR 06 for étalonnage, etc.) based on the activities declared by the OEC.
+     * Multiple activities produce multiple sections in a single document.
+     */
+    public byte[] generateAccreditationTechnicalFormPdf(AccreditationRequest request) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+            PdfFont font = PdfFontFactory.createFont("Helvetica");
+            PdfFont bold = PdfFontFactory.createFont("Helvetica-Bold");
+
+            Map<String, Object> body = parseDescription(request.getDescription());
+            List<String> activites = listOf(body.get("activites"));
+
+            document.add(new Paragraph("ALGERAC — Formulaires techniques").setFont(bold).setFontSize(14).setTextAlignment(TextAlignment.CENTER));
+            String refLabel = request.getReferenceNumber();
+            if (refLabel == null || refLabel.isBlank()) {
+                refLabel = request.getSequenceNumber() != null ? ("Séq. #" + request.getSequenceNumber()) : ("Dossier #" + request.getId());
+            }
+            document.add(new Paragraph("Dossier : " + refLabel).setFont(font).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph(" "));
+
+            if (activites.isEmpty()) {
+                document.add(new Paragraph("Aucune activité déclarée.").setFont(font));
+            }
+            if (activites.contains("inspection")) {
+                document.add(new Paragraph("FOR 04 — Inspection (ISO/IEC 17020)").setFont(bold).setFontSize(12));
+                addDoc1Row(singleColumn(document, font, bold), "Type d'organisme", str(body.get("for04Type")), font, bold);
+                renderTableIfAny(document, body.get("for04Domaines"), "Domaines d'inspection", font, bold);
+                renderTableIfAny(document, body.get("for04Inspecteurs"), "Personnel d'inspection", font, bold);
+                renderTableIfAny(document, body.get("for04Equipements"), "Équipements", font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("essais")) {
+                document.add(new Paragraph("FOR 05 — Essais (ISO/IEC 17025)").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for05Domaines"), "Portée d'accréditation", font, bold);
+                renderTableIfAny(document, body.get("for05Methodes"), "Méthodes", font, bold);
+                renderTableIfAny(document, body.get("for05Equipements"), "Équipements", font, bold);
+                renderTableIfAny(document, body.get("for05Personnel"), "Personnel", font, bold);
+                Table et = singleColumn(document, font, bold);
+                addDoc1Row(et, "Participation EIL", str(body.get("for05ParticipationEIL")), font, bold);
+                addDoc1Row(et, "Procédure incertitudes", str(body.get("for05ProcedureIncertitudes")), font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("etalonnage")) {
+                document.add(new Paragraph("FOR 06 — Étalonnage (ISO/IEC 17025)").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for06Grandeurs"), "Grandeurs et gammes", font, bold);
+                renderTableIfAny(document, body.get("for06Etalons"), "Étalons de référence", font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("cert_sm")) {
+                document.add(new Paragraph("FOR 07 — Certification SM").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for07Secteurs"), "Secteurs IAF", font, bold);
+                Table referentiels = singleColumn(document, font, bold);
+                addDoc1Row(referentiels, "Référentiels", joinList(body.get("for07Referentiels")), font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("examens_medicaux")) {
+                document.add(new Paragraph("FOR 05-1 — Biologie médicale").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for051Disciplines"), "Disciplines", font, bold);
+                document.add(new Paragraph(" "));
+            }
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du PDF technique pour la demande #{}", request.getId(), e);
+            throw new RuntimeException("Erreur lors de la génération du PDF technique", e);
+        }
+    }
+
+    // ---- Helpers -----------------------------------------------------------
+
+    private Table singleColumn(Document document, PdfFont font, PdfFont bold) {
+        Table tbl = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+        document.add(tbl);
+        return tbl;
+    }
+
+    private void addDoc1Row(Table t, String label, String value, PdfFont font, PdfFont bold) {
+        t.addCell(createCell(label, bold));
+        t.addCell(createCell(value == null || value.isBlank() ? "—" : value, font));
+    }
+
+    private Map<String, Object> parseDescription(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return Map.of("_raw", json);
+        }
+    }
+
+    private String str(Object o) {
+        return o == null ? "" : o.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> listOf(Object raw) {
+        if (raw instanceof List<?> l) {
+            return l.stream().map(String::valueOf).toList();
+        }
+        return List.of();
+    }
+
+    private String joinList(Object raw) {
+        List<String> l = listOf(raw);
+        return l.isEmpty() ? "" : String.join(", ", l);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void renderTableIfAny(Document doc, Object raw, String title, PdfFont font, PdfFont bold) {
+        if (!(raw instanceof List<?> rows) || rows.isEmpty()) return;
+        List<Map<String, Object>> typed = new java.util.ArrayList<>();
+        for (Object r : rows) {
+            if (r instanceof Map<?, ?> m) typed.add((Map<String, Object>) m);
+        }
+        if (typed.isEmpty()) return;
+
+        // Collect column keys preserving insertion order, ignoring internal "id"
+        java.util.LinkedHashSet<String> cols = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> r : typed) {
+            for (String k : r.keySet()) if (!"id".equals(k)) cols.add(k);
+        }
+        if (cols.isEmpty()) return;
+
+        doc.add(new Paragraph(title).setFont(bold).setFontSize(11));
+        float[] widths = new float[cols.size()];
+        java.util.Arrays.fill(widths, 1f);
+        Table table = new Table(UnitValue.createPercentArray(widths)).useAllAvailableWidth();
+        for (String c : cols) table.addHeaderCell(createCell(c, bold));
+        for (Map<String, Object> r : typed) {
+            for (String c : cols) table.addCell(createCell(str(r.get(c)), font));
+        }
+        doc.add(table);
+        doc.add(new Paragraph(" "));
     }
 }

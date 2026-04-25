@@ -38,6 +38,7 @@ const TYPES_ACTIVITES = [
 ];
 
 const STATUTS_JURIDIQUES = ["EURL", "SARL", "SPA", "EPE", "EPIC", "Autre"];
+const REQUIRES_AUTRE_TEXT = "Autre";
 
 const TYPES_SITES = [
   { value: "monosite", label: "Monosite" },
@@ -166,7 +167,7 @@ interface ResponsableTechnique {
   id: number; nom: string; qualifications: string; experience: string;
 }
 interface PrestationConseil {
-  id: number; types: string[]; prestataire: string; date: string; description: string;
+  id: number; types: string[]; prestataire: string; date: string; description: string; autrePrecision?: string;
 }
 interface Reconnaissance {
   id: number; organisation: string; domaine: string; validite: string;
@@ -255,6 +256,8 @@ export default function NewRequestPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
   const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -270,6 +273,7 @@ export default function NewRequestPage() {
   const [abreviation, setAbreviation] = useState("");
   const [sigle, setSigle] = useState("");
   const [statutJuridique, setStatutJuridique] = useState("");
+  const [statutJuridiqueAutre, setStatutJuridiqueAutre] = useState("");
   const [registreCommerce, setRegistreCommerce] = useState("");
   const [codesActivite, setCodesActivite] = useState("");
   const [adresseSiege, setAdresseSiege] = useState("");
@@ -416,30 +420,110 @@ export default function NewRequestPage() {
     setter((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
 
   // ── Validation ──
+  const validateRows = (rows: Array<Record<string, any>>, keys: string[]): boolean => {
+    if (!rows || rows.length === 0) return false;
+    return rows.every((r) => keys.every((k) => String(r[k] ?? "").trim() !== ""));
+  };
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (currentStep === 1) {
       if (!typeDemande) errs.typeDemande = "Le type de demande est requis";
+      if (!dateEvaluation) errs.dateEvaluation = "La date d'évaluation souhaitée est requise";
       if (activites.length === 0) errs.activites = "Veuillez sélectionner au moins une activité";
+      if (!siteType) errs.siteType = "Le type de site est requis";
     }
     if (currentStep === 2) {
       if (!nomLegal.trim()) errs.nomLegal = "Le nom légal est requis";
       if (!statutJuridique) errs.statutJuridique = "Le statut juridique est requis";
+      if (statutJuridique === REQUIRES_AUTRE_TEXT && !statutJuridiqueAutre.trim()) errs.statutJuridiqueAutre = "Précisez le statut juridique";
+      if (!registreCommerce.trim()) errs.registreCommerce = "Le registre de commerce est requis";
+      if (!codesActivite.trim()) errs.codesActivite = "Les codes d'activité sont requis";
       if (!adresseSiege.trim()) errs.adresseSiege = "L'adresse du siège est requise";
       if (!emailOrg.trim()) errs.emailOrg = "L'email est requis";
+      if (!appartientGroupe) errs.appartientGroupe = "Indiquez si vous appartenez à un groupe";
+      if (appartientGroupe === "oui") {
+        if (!groupeNom.trim()) errs.groupeNom = "Nom du groupe requis";
+        if (!groupeRelation.trim()) errs.groupeRelation = "Type de relation requis";
+      }
     }
     if (currentStep === 3) {
       if (!contactNom.trim()) errs.contactNom = "Le nom du contact est requis";
       if (!contactFonction.trim()) errs.contactFonction = "La fonction est requise";
+      if (!contactAdresse.trim()) errs.contactAdresse = "L'adresse du contact est requise";
       if (!contactTelephone.trim()) errs.contactTelephone = "Le téléphone est requis";
       if (!contactEmail.trim()) errs.contactEmail = "L'email du contact est requis";
     }
-    if (currentStep === 10 && !engagementsAcceptes) {
-      errs.engagements = "Vous devez accepter les engagements";
+    if (currentStep === 4) {
+      if (!validateRows(sites, ["localisation", "adresse", "activites"])) {
+        errs.sites = "Chaque site doit avoir localisation, adresse et activités";
+      }
+    }
+    if (currentStep === 5) {
+      if (!validateRows(personnelSites, ["site", "permanents"])) errs.personnelSites = "Indiquez le personnel de chaque site";
+      if (!validateRows(responsablesTechniques, ["nom", "qualifications", "experience"])) errs.responsablesTechniques = "Remplissez les infos du responsable technique";
+      if (!responsableQualiteNom.trim()) errs.responsableQualiteNom = "Responsable qualité requis";
+      if (!responsableQualiteQualif.trim()) errs.responsableQualiteQualif = "Qualifications du responsable qualité requises";
+      if (!responsableQualiteExp.trim()) errs.responsableQualiteExp = "Expérience du responsable qualité requise";
+    }
+    if (currentStep === 6) {
+      if (!prestationConseil) errs.prestationConseil = "Indiquez si vous avez eu recours à des prestations de conseil";
+      if (prestationConseil === "oui") {
+        if (prestations.length === 0) errs.prestations = "Ajoutez au moins une prestation";
+        else {
+          const invalid = prestations.some((pr) =>
+            pr.types.length === 0 || !pr.prestataire.trim() || !pr.date || !pr.description.trim() ||
+            (pr.types.includes("autre") && !(pr as any).autrePrecision?.toString().trim())
+          );
+          if (invalid) errs.prestations = "Complétez chaque prestation (type, prestataire, date, description)";
+        }
+      }
+    }
+    if (currentStep === 7) {
+      if (typeDemande === "transfert" && !motifTransfert.trim()) errs.motifTransfert = "Le motif du transfert est requis";
+    }
+    if (currentStep === 8) {
+      if (activites.includes("inspection")) {
+        if (!for04Type) errs.for04Type = "Type d'organisme d'inspection requis";
+        if (!validateRows(for04Domaines, ["domaine", "objetInspecte", "norme"])) errs.for04Domaines = "Complétez les domaines d'inspection";
+        if (!validateRows(for04Inspecteurs, ["nom", "qualification", "statut"])) errs.for04Inspecteurs = "Complétez le personnel d'inspection";
+        if (!validateRows(for04Equipements, ["designation", "gamme"])) errs.for04Equipements = "Complétez les équipements";
+      }
+      if (activites.includes("essais")) {
+        if (!validateRows(for05Domaines, ["domaine", "essaiAnalyse", "methodeRef"])) errs.for05Domaines = "Complétez la portée d'essais";
+        if (!validateRows(for05Methodes, ["reference", "titre"])) errs.for05Methodes = "Complétez les méthodes d'essai";
+        if (!validateRows(for05Personnel, ["nom", "diplome", "fonction"])) errs.for05Personnel = "Complétez le personnel technique";
+        if (!for05ProcedureIncertitudes.trim()) errs.for05ProcedureIncertitudes = "Procédure d'incertitudes requise";
+      }
+      if (activites.includes("etalonnage")) {
+        if (!validateRows(for06Grandeurs, ["grandeur", "gamme", "methode"])) errs.for06Grandeurs = "Complétez les grandeurs";
+        if (!validateRows(for06Etalons, ["designation", "grandeur"])) errs.for06Etalons = "Complétez les étalons";
+      }
+      if (activites.includes("cert_sm")) {
+        if (for07Referentiels.length === 0) errs.for07Referentiels = "Sélectionnez au moins un référentiel";
+        if (!validateRows(for07Secteurs, ["codeIAF", "description"])) errs.for07Secteurs = "Complétez les secteurs";
+      }
+      if (activites.includes("examens_medicaux") && !validateRows(for051Disciplines, ["discipline", "typeExamen"])) {
+        errs.for051Disciplines = "Complétez les disciplines";
+      }
+      // Fichiers pour docs cochés
+      const missingFile = Object.entries(docsChecked).some(([k, v]) => v && !documentFiles[k]);
+      if (missingFile) errs.docsChecked = "Joignez un fichier à chaque document coché";
+    }
+    if (currentStep === 9) {
+      const missing = Object.entries(docsAdminChecked).some(([k, v]) => v && !documentFiles[`admin-${k}`]);
+      if (missing) errs.docsAdminChecked = "Joignez un fichier à chaque document administratif coché";
+    }
+    if (currentStep === 10) {
+      if (!engagementsAcceptes) errs.engagements = "Vous devez accepter les engagements";
+      if (!demandeurNom.trim()) errs.demandeurNom = "Nom du demandeur requis";
+      if (!demandeurFonction.trim()) errs.demandeurFonction = "Fonction du demandeur requise";
+      if (!demandeurDate) errs.demandeurDate = "Date requise";
+      if (!signature.trim()) errs.signature = "Signature requise";
     }
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      toast({ title: "Champs requis manquants", description: "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
+      toast({ title: "Champs requis manquants", description: Object.values(errs)[0] || "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
       return false;
     }
     return true;
@@ -460,8 +544,18 @@ export default function NewRequestPage() {
   };
 
   // ── Submit ──
-  const handleSubmit = async () => {
+  const handleSubmitClick = () => {
     if (!validate()) return;
+    if (submitted || createdRequestId) {
+      toast({ title: "Déjà soumis", description: "Cette demande a déjà été soumise." });
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleSubmit = async () => {
+    if (submitted || loading) return;
+    setShowConfirmDialog(false);
     setLoading(true);
     try {
       const fileToBase64 = (f: File): Promise<string> =>
@@ -497,7 +591,9 @@ export default function NewRequestPage() {
       const description = JSON.stringify({
         // DOC1
         typeDemande, dateEvaluation, activites, siteType,
-        nomLegal, abreviation, sigle, statutJuridique, registreCommerce, codesActivite,
+        nomLegal, abreviation, sigle,
+        statutJuridique: statutJuridique === REQUIRES_AUTRE_TEXT ? `Autre: ${statutJuridiqueAutre}` : statutJuridique,
+        registreCommerce, codesActivite,
         adresseSiege, adresseFacturation, emailOrg, siteWeb,
         appartientGroupe, groupeNom, groupeAdresse, groupeRelation, groupeImpact,
         contactNom, contactFonction, contactAdresse, contactTelephone, contactFax, contactEmail,
@@ -548,6 +644,7 @@ export default function NewRequestPage() {
       }
 
       setCreatedRequestId(requestId);
+      setSubmitted(true);
       setShowPaymentDialog(true);
     } catch (error) {
       toast({
@@ -588,8 +685,9 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-2">
-        <Label>Date d'évaluation souhaitée</Label>
+        <Label>Date d'évaluation souhaitée <span className="text-red-500">*</span></Label>
         <StringDatePicker value={dateEvaluation} onChange={setDateEvaluation} />
+        {errors.dateEvaluation && <p className="text-sm text-red-500">{errors.dateEvaluation}</p>}
       </div>
 
       <div className="space-y-3">
@@ -606,7 +704,8 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-4">
-        <Label className="text-base font-semibold">Type de site</Label>
+        <Label className="text-base font-semibold">Type de site <span className="text-red-500">*</span></Label>
+        {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
         <RadioGroup value={siteType} onValueChange={setSiteType}>
           <div className="grid md:grid-cols-2 gap-3">
             {TYPES_SITES.map((t) => (
@@ -649,15 +748,21 @@ export default function NewRequestPage() {
               {STATUTS_JURIDIQUES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
             </SelectContent>
           </Select>
+          {statutJuridique === REQUIRES_AUTRE_TEXT && (
+            <Input value={statutJuridiqueAutre} onChange={(e) => setStatutJuridiqueAutre(e.target.value)} placeholder="Précisez le statut juridique *" className="mt-1" />
+          )}
           {errors.statutJuridique && <p className="text-sm text-red-500">{errors.statutJuridique}</p>}
+          {errors.statutJuridiqueAutre && <p className="text-sm text-red-500">{errors.statutJuridiqueAutre}</p>}
         </div>
         <div className="space-y-2">
-          <Label>N° registre de commerce</Label>
+          <Label>N° registre de commerce <span className="text-red-500">*</span></Label>
           <Input value={registreCommerce} onChange={(e) => setRegistreCommerce(e.target.value)} placeholder="Ex: 12-3456789-01" />
+          {errors.registreCommerce && <p className="text-sm text-red-500">{errors.registreCommerce}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Codes d'activité</Label>
+          <Label>Codes d'activité <span className="text-red-500">*</span></Label>
           <Input value={codesActivite} onChange={(e) => setCodesActivite(e.target.value)} placeholder="Codes NAA" />
+          {errors.codesActivite && <p className="text-sm text-red-500">{errors.codesActivite}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
           <Label>Adresse du siège <span className="text-red-500">*</span></Label>
@@ -680,7 +785,8 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-4 pt-4 border-t">
-        <Label className="text-base font-semibold">Appartient à un groupe ?</Label>
+        <Label className="text-base font-semibold">Appartient à un groupe ? <span className="text-red-500">*</span></Label>
+        {errors.appartientGroupe && <p className="text-sm text-red-500">{errors.appartientGroupe}</p>}
         <RadioGroup value={appartientGroupe} onValueChange={setAppartientGroupe}>
           <div className="flex gap-4">
             <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="g-oui" /><Label htmlFor="g-oui">Oui</Label></div>
@@ -691,9 +797,9 @@ export default function NewRequestPage() {
 
       {appartientGroupe === "oui" && (
         <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
-          <div className="space-y-2 md:col-span-2"><Label>Nom du groupe</Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder="Nom du groupe" /></div>
+          <div className="space-y-2 md:col-span-2"><Label>Nom du groupe <span className="text-red-500">*</span></Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder="Nom du groupe" />{errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}</div>
           <div className="space-y-2 md:col-span-2"><Label>Adresse du groupe</Label><Textarea value={groupeAdresse} onChange={(e) => setGroupeAdresse(e.target.value)} placeholder="Adresse complète" rows={2} /></div>
-          <div className="space-y-2"><Label>Type de relation</Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder="Ex: Filiale, Maison-mère" /></div>
+          <div className="space-y-2"><Label>Type de relation <span className="text-red-500">*</span></Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder="Ex: Filiale, Maison-mère" />{errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}</div>
           <div className="space-y-2"><Label>Impact sur les activités</Label><Input value={groupeImpact} onChange={(e) => setGroupeImpact(e.target.value)} placeholder="Précisez l'impact" /></div>
         </div>
       )}
@@ -706,7 +812,7 @@ export default function NewRequestPage() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2"><Label>Nom complet <span className="text-red-500">*</span></Label><Input value={contactNom} onChange={(e) => setContactNom(e.target.value)} placeholder="Nom et prénom" />{errors.contactNom && <p className="text-sm text-red-500">{errors.contactNom}</p>}</div>
         <div className="space-y-2"><Label>Fonction/Titre <span className="text-red-500">*</span></Label><Input value={contactFonction} onChange={(e) => setContactFonction(e.target.value)} placeholder="Ex: Directeur Général" />{errors.contactFonction && <p className="text-sm text-red-500">{errors.contactFonction}</p>}</div>
-        <div className="space-y-2 md:col-span-2"><Label>Adresse</Label><Textarea value={contactAdresse} onChange={(e) => setContactAdresse(e.target.value)} placeholder="Adresse du contact" rows={2} /></div>
+        <div className="space-y-2 md:col-span-2"><Label>Adresse <span className="text-red-500">*</span></Label><Textarea value={contactAdresse} onChange={(e) => setContactAdresse(e.target.value)} placeholder="Adresse du contact" rows={2} />{errors.contactAdresse && <p className="text-sm text-red-500">{errors.contactAdresse}</p>}</div>
         <div className="space-y-2"><Label>Téléphone <span className="text-red-500">*</span></Label><Input value={contactTelephone} onChange={(e) => setContactTelephone(e.target.value)} placeholder="+213 XXX XXX XXX" />{errors.contactTelephone && <p className="text-sm text-red-500">{errors.contactTelephone}</p>}</div>
         <div className="space-y-2"><Label>Fax</Label><Input value={contactFax} onChange={(e) => setContactFax(e.target.value)} placeholder="+213 XXX XXX XXX" /></div>
         <div className="space-y-2"><Label>Email <span className="text-red-500">*</span></Label><Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="contact@exemple.dz" />{errors.contactEmail && <p className="text-sm text-red-500">{errors.contactEmail}</p>}</div>
@@ -718,11 +824,12 @@ export default function NewRequestPage() {
   const renderStep4 = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Label className="text-base font-semibold">Sites et activités</Label>
+        <Label className="text-base font-semibold">Sites et activités <span className="text-red-500">*</span></Label>
         <Button type="button" onClick={() => setSites((p) => [...p, { id: Date.now(), localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }])} size="sm" className="gap-2">
           <Plus className="w-4 h-4" /> Ajouter un site
         </Button>
       </div>
+      {errors.sites && <p className="text-sm text-red-500">{errors.sites}</p>}
       {sites.map((site) => (
         <Card key={site.id} className="p-4">
           <div className="space-y-4">
@@ -735,9 +842,9 @@ export default function NewRequestPage() {
               )}
             </div>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-sm">Site/Localisation</Label><Input value={site.localisation} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, localisation: e.target.value } : s))} placeholder="Nom du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Adresse</Label><Input value={site.adresse} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, adresse: e.target.value } : s))} placeholder="Adresse du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Activités réalisées sur site</Label><Input value={site.activites} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, activites: e.target.value } : s))} placeholder="Activités" /></div>
+              <div className="space-y-2"><Label className="text-sm">Site/Localisation <span className="text-red-500">*</span></Label><Input value={site.localisation} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, localisation: e.target.value } : s))} placeholder="Nom du site" /></div>
+              <div className="space-y-2"><Label className="text-sm">Adresse <span className="text-red-500">*</span></Label><Input value={site.adresse} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, adresse: e.target.value } : s))} placeholder="Adresse du site" /></div>
+              <div className="space-y-2"><Label className="text-sm">Activités réalisées sur site <span className="text-red-500">*</span></Label><Input value={site.activites} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, activites: e.target.value } : s))} placeholder="Activités" /></div>
               <div className="space-y-2"><Label className="text-sm">Activités sous-traitées</Label><Input value={site.soustraitance} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, soustraitance: e.target.value } : s))} placeholder="Sous-traitance" /></div>
               <div className="space-y-2 md:col-span-2"><Label className="text-sm">EBMD avec nom de la structure</Label><Input value={site.ebmd} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, ebmd: e.target.value } : s))} placeholder="Examens de biologie médicale délocalisés" /></div>
             </div>
@@ -752,16 +859,17 @@ export default function NewRequestPage() {
     <div className="space-y-8">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Personnel par site</Label>
+          <Label className="text-base font-semibold">Personnel par site <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={() => setPersonnelSites((p) => [...p, { id: Date.now(), site: "", permanents: "", vacataires: "" }])} size="sm" className="gap-2">
             <Plus className="w-4 h-4" /> Ajouter
           </Button>
         </div>
+        {errors.personnelSites && <p className="text-sm text-red-500">{errors.personnelSites}</p>}
         {personnelSites.map((ps) => (
           <Card key={ps.id} className="p-4">
             <div className="grid md:grid-cols-4 gap-4 items-end">
-              <div className="space-y-2"><Label className="text-sm">Site</Label><Input value={ps.site} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, site: e.target.value } : x))} placeholder="Nom du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Personnel technique permanent</Label><Input type="number" value={ps.permanents} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, permanents: e.target.value } : x))} placeholder="Nombre" /></div>
+              <div className="space-y-2"><Label className="text-sm">Site <span className="text-red-500">*</span></Label><Input value={ps.site} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, site: e.target.value } : x))} placeholder="Nom du site" /></div>
+              <div className="space-y-2"><Label className="text-sm">Personnel technique permanent <span className="text-red-500">*</span></Label><Input type="number" value={ps.permanents} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, permanents: e.target.value } : x))} placeholder="Nombre" /></div>
               <div className="space-y-2"><Label className="text-sm">Personnel vacataire/extérieur</Label><Input type="number" value={ps.vacataires} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, vacataires: e.target.value } : x))} placeholder="Nombre" /></div>
               {personnelSites.length > 1 && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setPersonnelSites((p) => p.filter((x) => x.id !== ps.id))} className="h-10"><Trash2 className="w-4 h-4 text-red-500" /></Button>
@@ -773,17 +881,18 @@ export default function NewRequestPage() {
 
       <div className="space-y-4 pt-6 border-t">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Responsable(s) technique(s)</Label>
+          <Label className="text-base font-semibold">Responsable(s) technique(s) <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={() => setResponsablesTechniques((p) => [...p, { id: Date.now(), nom: "", qualifications: "", experience: "" }])} size="sm" className="gap-2">
             <Plus className="w-4 h-4" /> Ajouter
           </Button>
         </div>
+        {errors.responsablesTechniques && <p className="text-sm text-red-500">{errors.responsablesTechniques}</p>}
         {responsablesTechniques.map((rt) => (
           <Card key={rt.id} className="p-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2"><Label className="text-sm">Nom complet</Label><Input value={rt.nom} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, nom: e.target.value } : x))} placeholder="Nom et prénom" /></div>
-              <div className="space-y-2"><Label className="text-sm">Qualifications</Label><Input value={rt.qualifications} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, qualifications: e.target.value } : x))} placeholder="Diplômes, certifications" /></div>
-              <div className="space-y-2"><Label className="text-sm">Années d'expérience</Label><Input type="number" value={rt.experience} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, experience: e.target.value } : x))} placeholder="Années" /></div>
+              <div className="space-y-2"><Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label><Input value={rt.nom} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, nom: e.target.value } : x))} placeholder="Nom et prénom" /></div>
+              <div className="space-y-2"><Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label><Input value={rt.qualifications} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, qualifications: e.target.value } : x))} placeholder="Diplômes, certifications" /></div>
+              <div className="space-y-2"><Label className="text-sm">Années d'expérience <span className="text-red-500">*</span></Label><Input type="number" value={rt.experience} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, experience: e.target.value } : x))} placeholder="Années" /></div>
             </div>
             {responsablesTechniques.length > 1 && (
               <div className="flex justify-end mt-2">
@@ -795,11 +904,11 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-4 pt-6 border-t">
-        <Label className="text-base font-semibold">Responsable qualité</Label>
+        <Label className="text-base font-semibold">Responsable qualité <span className="text-red-500">*</span></Label>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label className="text-sm">Nom complet</Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder="Nom et prénom" /></div>
-          <div className="space-y-2"><Label className="text-sm">Qualifications</Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder="Diplômes" /></div>
-          <div className="space-y-2"><Label className="text-sm">Années d'expérience</Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder="Années" /></div>
+          <div className="space-y-2"><Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder="Nom et prénom" />{errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder="Diplômes" />{errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">Années d'expérience <span className="text-red-500">*</span></Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder="Années" />{errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}</div>
         </div>
       </div>
     </div>
@@ -809,7 +918,8 @@ export default function NewRequestPage() {
   const renderStep6 = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ?</Label>
+        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ? <span className="text-red-500">*</span></Label>
+        {errors.prestationConseil && <p className="text-sm text-red-500">{errors.prestationConseil}</p>}
         <RadioGroup value={prestationConseil} onValueChange={setPrestationConseil}>
           <div className="flex gap-4">
             <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="pc-oui" /><Label htmlFor="pc-oui">Oui</Label></div>
@@ -822,7 +932,7 @@ export default function NewRequestPage() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Label className="font-semibold">Détail des prestations</Label>
-            <Button type="button" onClick={() => setPrestations((p) => [...p, { id: Date.now(), types: [], prestataire: "", date: "", description: "" }])} size="sm" className="gap-2">
+            <Button type="button" onClick={() => setPrestations((p) => [...p, { id: Date.now(), types: [], prestataire: "", date: "", description: "", autrePrecision: "" }])} size="sm" className="gap-2">
               <Plus className="w-4 h-4" /> Ajouter
             </Button>
           </div>
@@ -849,6 +959,12 @@ export default function NewRequestPage() {
                     ))}
                   </div>
                 </div>
+                {pr.types.includes("autre") && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Précisez le type de prestation <span className="text-red-500">*</span></Label>
+                    <Input value={pr.autrePrecision || ""} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, autrePrecision: e.target.value } : x))} placeholder="Détaillez la prestation..." />
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label className="text-sm">Prestataire</Label><Input value={pr.prestataire} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, prestataire: e.target.value } : x))} placeholder="Nom du prestataire" /></div>
                   <div className="space-y-2"><Label className="text-sm">Date</Label><StringDatePicker value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
@@ -893,8 +1009,9 @@ export default function NewRequestPage() {
 
       {typeDemande === "transfert" && (
         <div className="space-y-4 pt-6 border-t">
-          <Label className="text-base font-semibold">Motif du transfert</Label>
+          <Label className="text-base font-semibold">Motif du transfert <span className="text-red-500">*</span></Label>
           <Textarea value={motifTransfert} onChange={(e) => setMotifTransfert(e.target.value)} placeholder="Décrivez le motif du transfert" rows={3} />
+          {errors.motifTransfert && <p className="text-sm text-red-500">{errors.motifTransfert}</p>}
         </div>
       )}
     </div>
@@ -1430,10 +1547,10 @@ export default function NewRequestPage() {
       <div className="space-y-4">
         <div className="space-y-2"><Label>Nom de l'organisme autorisant la soumission</Label><Input value={organismeSoumission} onChange={(e) => setOrganismeSoumission(e.target.value)} placeholder="Nom officiel de l'organisme" /></div>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>Nom complet du demandeur</Label><Input value={demandeurNom} onChange={(e) => setDemandeurNom(e.target.value)} placeholder="Nom et prénom" /></div>
-          <div className="space-y-2"><Label>Fonction</Label><Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder="Fonction du demandeur" /></div>
-          <div className="space-y-2"><Label>Date</Label><StringDatePicker value={demandeurDate} onChange={setDemandeurDate} /></div>
-          <div className="space-y-2"><Label>Signature (nom)</Label><Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="Signature électronique" /></div>
+          <div className="space-y-2"><Label>Nom complet du demandeur <span className="text-red-500">*</span></Label><Input value={demandeurNom} onChange={(e) => setDemandeurNom(e.target.value)} placeholder="Nom et prénom" />{errors.demandeurNom && <p className="text-sm text-red-500">{errors.demandeurNom}</p>}</div>
+          <div className="space-y-2"><Label>Fonction <span className="text-red-500">*</span></Label><Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder="Fonction du demandeur" />{errors.demandeurFonction && <p className="text-sm text-red-500">{errors.demandeurFonction}</p>}</div>
+          <div className="space-y-2"><Label>Date <span className="text-red-500">*</span></Label><StringDatePicker value={demandeurDate} onChange={setDemandeurDate} />{errors.demandeurDate && <p className="text-sm text-red-500">{errors.demandeurDate}</p>}</div>
+          <div className="space-y-2"><Label>Signature (nom) <span className="text-red-500">*</span></Label><Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="Signature électronique" />{errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}</div>
         </div>
       </div>
 
@@ -1538,8 +1655,8 @@ export default function NewRequestPage() {
                       Suivant <ArrowRight className="w-4 h-4" />
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading} className="ml-auto" style={{ backgroundColor: "#00A63E" }}>
-                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : "Soumettre la demande"}
+                    <Button type="button" onClick={handleSubmitClick} disabled={loading || submitted} className="ml-auto" style={{ backgroundColor: "#00A63E" }}>
+                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : submitted ? "Déjà soumise" : "Soumettre la demande"}
                     </Button>
                   )}
                 </div>
@@ -1549,6 +1666,28 @@ export default function NewRequestPage() {
           </div>
         </main>
       </div>
+
+      {/* Confirmation avant soumission */}
+      <Dialog open={showConfirmDialog} onOpenChange={(o) => !loading && setShowConfirmDialog(o)}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="h-5 w-5" />
+              Confirmer la soumission
+            </DialogTitle>
+            <DialogDescription>
+              Une fois la demande soumise, vous ne pourrez plus la modifier. Voulez-vous vraiment confirmer la soumission ?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>Retour au formulaire</Button>
+            <Button onClick={handleSubmit} disabled={loading} style={{ backgroundColor: "#00A63E" }}>
+              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi...</> : "Oui, confirmer la soumission"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Submission success dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
@@ -1570,13 +1709,11 @@ export default function NewRequestPage() {
                 <div>
                   <p className="font-medium text-blue-900">Prochaines étapes</p>
                   <p className="text-sm text-blue-700 mt-2">
-                    La Direction Technique (DT) va vérifier vos documents. Si votre dossier est conforme,
-                    il sera transmis au Chef de Département qui assignera un Responsable d'Accréditation.
-                  </p>
-                  <p className="text-sm text-blue-700 mt-2">
-                    Les frais d'enregistrement vous seront communiqués ultérieurement.
-                    Vous serez notifié à chaque étape de l'avancement de votre demande.
-                  </p>
+  Votre dossier sera vérifié par ALGERAC et traité conformément à la procédure en vigueur.
+</p>
+<p className="text-sm text-blue-700 mt-2">
+  Vous serez informé de l’avancement de votre demande ainsi que des frais associés.
+</p>
                 </div>
               </div>
             </div>

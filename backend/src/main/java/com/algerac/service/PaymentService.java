@@ -163,7 +163,7 @@ public class PaymentService {
         payment.setFeeSetById(dagUserId);
         
         payment = paymentRepository.save(payment);
-        
+
         // Mettre à jour le statut de la demande selon le type de paiement
         AccreditationRequest request = payment.getRequest();
         if ("DOC_REVIEW_FEE".equals(payment.getPaymentType())) {
@@ -176,7 +176,9 @@ public class PaymentService {
                         review.setStatus(DocumentaryReviewStatus.FEE_SET);
                         docReviewRepository.save(review);
                     });
-        } else {
+        } else if (request.getAssignedToRa() == null) {
+            // Only change status if the dossier hasn't been assigned to an RA yet.
+            // If already assigned, the RA's receivability study is in progress — don't disrupt it.
             request.setStatus(RequestStatus.PENDING_PAYMENT);
             request.setNextAction("OEC doit payer les frais d'enregistrement");
             request.setPendingWith("OEC");
@@ -258,17 +260,26 @@ public class PaymentService {
                 );
             }
         } else {
-            // Frais d'enregistrement payés → dossier va au CD pour assignation
-            request.setStatus(RequestStatus.PAYMENT_COMPLETED);
-            request.setNextAction("CD doit assigner le dossier à un RA");
-            request.setPendingWith("CD");
-            requestRepository.save(request);
-            
-            log.info("Preuve de paiement (frais enregistrement) soumise pour {} - Transaction: {}. Dossier envoyé au CD.", 
-                    request.getReferenceNumber(), transactionId);
-            
-            // Notifier le CD qu'une nouvelle demande est prête pour attribution
-            notificationService.notifyChefDepartmentNewRequest(request);
+            // Frais d'enregistrement payés.
+            // If the dossier is already assigned to an RA (receivability study in progress),
+            // don't change the request status — the RA's page filter would drop it.
+            // The RA will see the payment verified flag via the payment record directly.
+            if (request.getAssignedToRa() == null) {
+                request.setStatus(RequestStatus.PAYMENT_COMPLETED);
+                request.setNextAction("CD doit assigner le dossier à un RA");
+                request.setPendingWith("CD");
+                requestRepository.save(request);
+
+                log.info("Preuve de paiement (frais enregistrement) soumise pour {} - Transaction: {}. Dossier envoyé au CD.",
+                        request.getReferenceNumber(), transactionId);
+
+                // Notifier le CD qu'une nouvelle demande est prête pour attribution
+                notificationService.notifyChefDepartmentNewRequest(request);
+            } else {
+                requestRepository.save(request);
+                log.info("Preuve de paiement (frais enregistrement) soumise pour {} - Transaction: {}. Dossier déjà chez le RA, statut inchangé.",
+                        request.getReferenceNumber(), transactionId);
+            }
         }
         
         // Notifier aussi le DAG pour qu'il vérifie la preuve de paiement en parallèle

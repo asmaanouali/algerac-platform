@@ -25,4 +25,10 @@ public interface RequestRepository extends JpaRepository<AccreditationRequest, L
     List<AccreditationRequest> findByStatusIn(List<RequestStatus> statuses);
     
     long countByReferenceNumberStartingWith(String prefix);
+
+    List<AccreditationRequest> findByAssignedToCd_Id(Long cdId);
+
+    List<AccreditationRequest> findByDepartment_Id(Long departmentId);
+
+    java.util.Optional<AccreditationRequest> findTopBySequenceNumberIsNotNullOrderBySequenceNumberDesc();
 }

@@ -221,6 +221,7 @@
     "interviewPlanning": "تخطيط المقابلات",
     "evaluationPlan": "خطة FOR 32",
     "complaints": "الشكاوى",
+    "registrationFees": "رسوم التسجيل",
     "paymentTracking": "متابعة المدفوعات",
     "switchRole": "تغيير الدور",
     "gapReview": "مراجعة الفجوات",
@@ -251,6 +252,7 @@
     "samplingPage": "أخذ العينات",
     "evaluationOversight": "الإشراف على التقييم",
     "interviewCandidates": "مقابلات المرشحين",
+    "raTeam": "فريق RA",
     "logout": "تسجيل الخروج"
   },
   "dashboard": {
@@ -913,26 +915,26 @@
     "dashboardTitle": "لوحة تحكم الهيئة",
     "dashboardSubtitle": "لوحة تحكم هيئة تقييم المطابقة الخاصة بك.",
     "myRequests": "طلباتي",
-    "actionsRequired": "الإجراءات المطلوبة",
-    "accreditations": "الاعتمادات",
-    "avgProgress": "متوسط التقدم",
-    "activeRequests": "{{count}} نشط",
+    "activeRequests": "{{count}} نشط(ة)",
+    "actionsRequired": "إجراءات مطلوبة",
     "awaitingAction": "في انتظار إجراءك",
-    "activeCertificates": "شهادات نشطة",
+    "accreditations": "الاعتمادات",
+    "activeCertificates": "الشهادات النشطة",
+    "avgProgress": "متوسط التقدم",
     "onActiveRequests": "على الطلبات النشطة",
-    "noRequests": "لا توجد طلبات",
-    "noRequestsDesc": "ابدأ بإنشاء أول طلب اعتماد لك",
-    "createRequest": "إنشاء طلب",
+    "trackRequests": "تتبع حالة طلباتك",
     "newRequest": "طلب جديد",
-    "payments": "المدفوعات",
-    "managePayments": "إدارة مدفوعاتك المعلقة",
-    "viewRequests": "عرض الطلبات",
-    "viewAll": "عرض الكل",
-    "trackRequests": "تتبع ملفات اعتمادك",
-    "requestRef": "طلب رقم {{id}}",
+    "noRequests": "لا توجد طلبات",
+    "noRequestsDesc": "لم تقم بتقديم أي طلب اعتماد بعد.",
+    "createRequest": "إنشاء طلب",
+    "requestRef": "طلب #{{id}}",
     "initial": "أولي",
-    "extension": "توسيع",
-    "renewal": "تجديد"
+    "extension": "تمديد",
+    "renewal": "تجديد",
+    "viewRequests": "عرض طلباتي",
+    "managePayments": "إدارة مدفوعاتك",
+    "payments": "المدفوعات",
+    "viewAll": "عرض الكل"
   },
   "ra": {
     "dashboardTitle": "لوحة تحكم مسؤول الاعتماد",
@@ -973,7 +975,7 @@
     }
   },
   "cd": {
-    "dashboardTitle": "لوحة تحكم لجنة الإدارة",
+    "dashboardTitle": "لوحة تحكم رئيس القسم",
     "dashboardSubtitle": "نظرة عامة على نشاط قسم الاعتماد.",
     "totalRequests": "إجمالي الطلبات",
     "toAssign": "للإسناد",
@@ -991,6 +993,10 @@
     "activeCount": "الملفات النشطة",
     "viewRequest": "عرض",
     "noRequests": "لا توجد طلبات للعرض",
+    "manageRequestsDesc": "تعيين وتتبع الطلبات",
+    "certificatesDesc": "الشهادات والقرارات",
+    "raTeamTitle": "فريق المسؤولين عن الاعتماد",
+    "workloadDesc": "توزيع عبء العمل",
     "tabs": {
       "all": "الكل",
       "pending": "معلّق",
@@ -1263,26 +1269,8 @@
       "applied": "مطبقة"
     }
   },
-  "oec": {
-    "dashboardSubtitle": "لوحة تحكم هيئة تقييم المطابقة الخاصة بك.",
-    "myRequests": "طلباتي",
-    "activeRequests": "{{count}} نشط(ة)",
-    "actionsRequired": "إجراءات مطلوبة",
-    "awaitingAction": "في انتظار إجراءك",
-    "accreditations": "الاعتمادات",
-    "activeCertificates": "الشهادات النشطة",
-    "avgProgress": "متوسط التقدم",
-    "onActiveRequests": "على الطلبات النشطة",
-    "trackRequests": "تتبع حالة طلباتك",
-    "newRequest": "طلب جديد",
-    "noRequests": "لا توجد طلبات",
-    "noRequestsDesc": "لم تقم بتقديم أي طلب اعتماد بعد.",
-    "createRequest": "إنشاء طلب",
-    "requestRef": "طلب #{{id}}",
-    "initial": "أولي",
-    "extension": "تمديد",
-    "renewal": "تجديد",
-    "viewRequests": "عرض طلباتي",
-    "managePayments": "إدارة مدفوعاتك"
+  "workflow": {
+    "progress": "تقدم الملف",
+    "pendingWith": "في انتظار"
   }
 }

@@ -7,8 +7,9 @@ import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Files, UserCheck, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList } from "lucide-react";
+import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 
 interface Request {
@@ -24,12 +25,6 @@ interface Request {
   oecName: string | null;
   submissionDate: string | null;
   createdAt: string;
-}
-
-interface RAWorkload {
-  raId: number;
-  raName: string;
-  activeRequests: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -48,32 +43,38 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function CDDashboard() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
-  const [raWorkload, setRaWorkload] = useState<RAWorkload[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const loadData = async (isBackground = false) => {
+    if (!isBackground) setRefreshing(true);
+    try {
+      const reqRes = await apiRequest("GET", "/api/requests");
+      const reqData = await reqRes.json();
+      setRequests(Array.isArray(reqData) ? reqData : Array.isArray(reqData?.data) ? reqData.data : []);
+      setLastFetched(new Date());
+    } catch {
+      if (!isBackground) setRequests([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
+    // Keep the dashboard in sync with backend state: poll every 30s and on window focus.
+    const interval = setInterval(() => loadData(true), 30000);
+    const onFocus = () => loadData(true);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
-
-  const loadData = async () => {
-    try {
-      const [reqRes, raRes] = await Promise.all([
-        apiRequest("GET", "/api/requests"),
-        apiRequest("GET", "/api/workflow/ra-workload").catch(() => null),
-      ]);
-      const reqData = await reqRes.json();
-      setRequests(Array.isArray(reqData) ? reqData : []);
-      if (raRes) {
-        const raData = await raRes.json();
-        setRaWorkload(Array.isArray(raData) ? raData : []);
-      }
-    } catch {
-      setRequests([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getStatus = (status: string) => ({
     label: t(`workflowStatus.${status}`, { defaultValue: status.replace(/_/g, " ") }),
@@ -90,9 +91,26 @@ export default function CDDashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="mb-2">
-            <h1 className="text-2xl font-bold">{t('cd.dashboardTitle')}</h1>
-            <p className="text-muted-foreground mt-1">{t('cd.dashboardSubtitle')}</p>
+          <div className="mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">{t('cd.dashboardTitle')}</h1>
+              <p className="text-muted-foreground mt-1">
+                {(user as any)?.departmentName
+                  ? `Département : ${(user as any).departmentName}`
+                  : t('cd.dashboardSubtitle')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {lastFetched && (
+                <span className="text-xs text-muted-foreground">
+                  Mis à jour : {lastFetched.toLocaleTimeString("fr-FR")}
+                </span>
+              )}
+              <Button size="sm" variant="outline" onClick={() => loadData()} disabled={refreshing}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
+                Rafraîchir
+              </Button>
+            </div>
           </div>
 
           {loading ? (
@@ -129,39 +147,6 @@ export default function CDDashboard() {
                         </Link>
                       </div>
                     ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* RA Workload */}
-              {raWorkload.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> {t('cd.raWorkload')}</CardTitle>
-                    <CardDescription>{t('cd.activeFiles')}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {raWorkload.map(ra => (
-                        <div key={ra.raId} className="flex items-center justify-between p-3 rounded-lg border">
-                          <div className="flex items-center gap-3">
-                            <UserCheck className="h-5 w-5 text-primary" />
-                            <div>
-                              <p className="font-medium text-sm">{ra.raName}</p>
-                              <p className="text-xs text-muted-foreground">{ra.activeRequests} {t('cd.activeCount')}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 bg-slate-100 rounded-full h-2">
-                              <div className="bg-primary h-full rounded-full" style={{ width: `${Math.min(ra.activeRequests * 20, 100)}%` }} />
-                            </div>
-                            <Badge variant={ra.activeRequests > 4 ? "destructive" : "secondary"} className="text-xs">
-                              {ra.activeRequests}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -219,7 +204,7 @@ export default function CDDashboard() {
                     <CardContent className="p-6 text-center">
                       <ClipboardList className="w-10 h-10 mx-auto mb-3 text-primary" />
                       <h3 className="font-semibold">{t('cd.tabs.all')}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Assigner et suivre les demandes</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('cd.manageRequestsDesc')}</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -228,7 +213,7 @@ export default function CDDashboard() {
                     <CardContent className="p-6 text-center">
                       <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-600" />
                       <h3 className="font-semibold">{t('nav.accreditations')}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Certificats et décisions</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('cd.certificatesDesc')}</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -236,8 +221,8 @@ export default function CDDashboard() {
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <Users className="w-10 h-10 mx-auto mb-3 text-blue-600" />
-                      <h3 className="font-semibold">Équipe RA</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Répartition de charge</p>
+                      <h3 className="font-semibold">{t('cd.raTeamTitle')}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t('cd.workloadDesc')}</p>
                     </CardContent>
                   </Card>
                 </Link>

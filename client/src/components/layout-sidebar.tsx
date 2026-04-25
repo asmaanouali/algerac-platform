@@ -59,6 +59,7 @@ export function Sidebar() {
 
   const fullName = user.fullName || `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
   const role = (user as any).role || (user as any).typeRole || (user as any).roleId;
+  const roleLabel: string = role ? (t(`roles.${role}`, { defaultValue: String(role) }) as string) : '';
 
   const navItems = {
     oec: [
@@ -97,7 +98,6 @@ export function Sidebar() {
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/dt/demandes-accreditation", label: t('nav.accreditations'), icon: FileCheck },
       { href: "/dt/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
-      { href: "/dt/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
       { href: "/dt/certificats", label: t('nav.certificates'), icon: Award },
       { href: "/dt/ordres-mission", label: t('nav.missionOrders'), icon: Stamp },
       { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
@@ -106,6 +106,7 @@ export function Sidebar() {
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/cd/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
       { href: "/cd/manage-requests", label: t('nav.manageRequests'), icon: Files },
+      { href: "/cd/ra-workload", label: t('nav.raTeam'), icon: UserCheck },
       { href: "/cd/accreditations", label: t('nav.accreditations'), icon: FileCheck },
       { href: "/cd/revue-documentaire", label: t('nav.documentaryReview'), icon: FileSearch },
       { href: "/cd/preparation-evaluation", label: t('nav.evaluationPrep'), icon: CalendarDays },
@@ -122,6 +123,8 @@ export function Sidebar() {
     dag: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/dag/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
+      { href: "/dag/frais-enregistrement", label: t('nav.registrationFees'), icon: FileText },
+      { href: "/dag/fixation-devis", label: t('nav.quotationFixing', { defaultValue: 'Fixation des devis' }), icon: DollarSign },
       { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
       { href: "/dag/tarifs", label: t('nav.pricing'), icon: CreditCard },
     ],

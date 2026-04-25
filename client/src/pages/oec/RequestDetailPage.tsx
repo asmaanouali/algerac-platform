@@ -212,7 +212,6 @@ export default function RequestDetailPage() {
                 <Separator />
                 <InfoRow label="Date de soumission" value={formatDate(req.submissionDate)} />
                 <InfoRow label="Date de création" value={formatDate(req.createdAt)} />
-                {req.assignedToRa && <InfoRow label="RA assigné" value={req.assignedToRa.fullName} />}
                 {req.assignmentDate && <InfoRow label="Date d'assignation" value={formatDate(req.assignmentDate)} />}
                 {req.isReceivable !== null && (
                   <InfoRow label="Recevabilité" value={req.isReceivable ? "Recevable" : "Non recevable"} />
@@ -288,7 +287,7 @@ export default function RequestDetailPage() {
               <div className="space-y-3">
                 <TimelineItem date={req.createdAt} label="Création de la demande" done />
                 <TimelineItem date={req.submissionDate} label="Soumission" done={!!req.submissionDate} />
-                <TimelineItem date={req.assignmentDate} label="Assignation au RA" done={!!req.assignmentDate} />
+                <TimelineItem date={req.assignmentDate} label="Dossier pris en charge" done={!!req.assignmentDate} />
                 <TimelineItem date={req.evaluationStartDate} label="Début évaluation" done={!!req.evaluationStartDate} />
                 <TimelineItem date={req.evaluationEndDate} label="Fin évaluation" done={!!req.evaluationEndDate} />
                 <TimelineItem date={req.certificateIssueDate} label="Délivrance certificat" done={!!req.certificateIssueDate} />

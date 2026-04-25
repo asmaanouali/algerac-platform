@@ -38,12 +38,15 @@ public class WorkflowController {
     private final CASMeetingRepository casMeetingRepository;
     private final CASVoteRepository casVoteRepository;
     private final CASDecisionRepository casDecisionRepository;
+    private final CASCommitteeRepository casCommitteeRepository;
+    private final FOR58ConvocationRepository for58Repository;
     private final UserAvailabilityRepository availabilityRepository;
     private final NotificationService notificationService;
     private final PaymentRepository paymentRepository;
     private final MandateRepository mandateRepository;
     private final PreparationMeetingRepository prepMeetingRepository;
     private final WorkflowProgressService workflowProgressService;
+    private final com.algerac.service.PaymentService paymentService;
 
     // ========== WORKFLOW PROGRESS ==========
 
@@ -2734,29 +2737,54 @@ public class WorkflowController {
             if (userId == null) return unauthorized();
 
             Long requestId = ((Number) body.get("requestId")).longValue();
-            AccreditationRequest request = requestRepository.findById(requestId).orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+            AccreditationRequest request = requestRepository.findById(requestId)
+                    .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
             String meetingCode = "CAS-" + Year.now().getValue() + "-" + String.format("%03d", new Random().nextInt(999));
 
+            // PRO 07 §5.1 — Auto-assign the specialized committee for this domain.
+            // 1. Use explicit committeeId if provided.
+            // 2. Otherwise try to match from request.domain string.
+            CASCommittee committee = null;
+            if (body.get("committeeId") != null) {
+                Long cid = Long.valueOf(body.get("committeeId").toString());
+                committee = casCommitteeRepository.findById(cid).orElse(null);
+            }
+            if (committee == null && request.getDomain() != null) {
+                AccreditationDomain detected = AccreditationDomain.fromLabel(request.getDomain());
+                if (detected != null) {
+                    committee = casCommitteeRepository.findByDomain(detected).orElse(null);
+                }
+            }
+
             CASMeeting meeting = CASMeeting.builder()
                     .request(request)
+                    .committee(committee)
                     .meetingCode(meetingCode)
                     .meetingDate(LocalDateTime.parse((String) body.get("meetingDate")))
                     .location((String) body.getOrDefault("location", "ALGERAC - Salle CAS"))
                     .agenda((String) body.get("agenda"))
                     .dossierSummary((String) body.get("dossierSummary"))
                     .status(CASMeetingStatus.PLANNED)
-                    .quorumRequired(3) // PRO 07 §5.2 - default quorum
+                    .quorumRequired(3) // PRO 07 §5.10 — quorum = 3 out of 5
                     .attendeesConfirmed(0)
                     .quorumReached(false)
                     .build();
             casMeetingRepository.save(meeting);
 
             request.setStatus(RequestStatus.CAS_SCHEDULED);
-            request.setCurrentStep("Réunion CAS planifiée");
+            request.setCurrentStep("Réunion CAS planifiée" + (committee != null ? " — Comité: " + committee.getName() : ""));
             requestRepository.save(request);
 
-            return ResponseEntity.ok(ApiResponse.success("Réunion CAS planifiée", meeting));
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("meeting", meeting);
+            result.put("committeeAssigned", committee != null);
+            result.put("committeeName", committee != null ? committee.getName() : null);
+            result.put("committeeDomain", committee != null ? committee.getDomainLabel() : null);
+
+            return ResponseEntity.ok(ApiResponse.success("Réunion CAS planifiée" +
+                    (committee != null ? " — Comité assigné: " + committee.getName() : " (aucun comité trouvé pour ce domaine)"),
+                    result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -2850,78 +2878,176 @@ public class WorkflowController {
         }
     }
 
-    // PRO 07 §4.2 - Confirm attendance and declare conflict of interest
+    // PRO 07 §5.10 — Confirm attendance and declare conflict of interest.
+    // Also auto-detects evaluator involvement and marks member as excluded from deliberation.
     @PostMapping("/cas/{meetingId}/confirm-attendance")
-    public ResponseEntity<ApiResponse> confirmAttendance(@PathVariable Long meetingId, @RequestBody Map<String, Object> body, HttpSession session) {
+    public ResponseEntity<ApiResponse> confirmAttendance(@PathVariable Long meetingId,
+                                                          @RequestBody Map<String, Object> body,
+                                                          HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
-            User voter = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            User voter = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+            CASMeeting meeting = casMeetingRepository.findById(meetingId)
+                    .orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
 
-            // Check if already confirmed
             List<CASVote> existing = casVoteRepository.findByMeeting_Id(meetingId);
-            boolean alreadyConfirmed = existing.stream().anyMatch(v -> v.getVoter().getId().equals(userId) && Boolean.TRUE.equals(v.getAttendanceConfirmed()));
+            boolean alreadyConfirmed = existing.stream()
+                    .anyMatch(v -> v.getVoter().getId().equals(userId) && Boolean.TRUE.equals(v.getAttendanceConfirmed()));
             if (alreadyConfirmed) {
                 return ResponseEntity.ok(ApiResponse.success("Présence déjà confirmée", null));
             }
 
-            Boolean hasConflict = body.get("hasConflictOfInterest") != null && (Boolean) body.get("hasConflictOfInterest");
+            Boolean hasConflict = body.get("hasConflictOfInterest") != null
+                    && Boolean.TRUE.equals(body.get("hasConflictOfInterest"));
             String conflictDesc = (String) body.get("conflictDescription");
 
-            // Create attendance record (vote will be updated when they actually vote)
+            // PRO 07 §5.10.a — Check if this member was an evaluator/expert on the dossier.
+            // They may attend the meeting but are excluded from deliberation/voting.
+            boolean isExcluded = false;
+            String exclusionReason = null;
+            Long requestId = meeting.getRequestId();
+            if (requestId != null) {
+                List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
+                for (EvaluationTeam team : teams) {
+                    boolean wasEvaluator = team.getMembers().stream()
+                            .anyMatch(m -> m.getExpert() != null && m.getExpert().getId().equals(userId));
+                    if (wasEvaluator) {
+                        isExcluded = true;
+                        exclusionReason = "PRO 07 §5.10.a — Vous avez participé à l'évaluation de ce dossier en tant qu'évaluateur/expert. " +
+                                "Vous pouvez assister à la réunion mais vous retirez de la délibération.";
+                        break;
+                    }
+                }
+            }
+
             CASVote attendance = CASVote.builder()
-                    .meeting(meeting).voter(voter)
-                    .vote("PENDING") // Will be updated at vote time
+                    .meeting(meeting)
+                    .voter(voter)
+                    .vote("PENDING")
                     .attendanceConfirmed(true)
                     .hasConflictOfInterest(hasConflict)
                     .conflictDescription(conflictDesc)
+                    .isExcludedEvaluator(isExcluded)
+                    .exclusionReason(exclusionReason)
                     .build();
             casVoteRepository.save(attendance);
 
-            // Update meeting attendees count
+            // Only count non-excluded members toward quorum (excluded members attend but don't deliberate)
             long confirmedCount = casVoteRepository.findByMeeting_Id(meetingId).stream()
-                    .filter(v -> Boolean.TRUE.equals(v.getAttendanceConfirmed())).count();
+                    .filter(v -> Boolean.TRUE.equals(v.getAttendanceConfirmed())
+                            && !Boolean.TRUE.equals(v.getIsExcludedEvaluator()))
+                    .count();
             meeting.setAttendeesConfirmed((int) confirmedCount);
             if (meeting.getQuorumRequired() != null && confirmedCount >= meeting.getQuorumRequired()) {
                 meeting.setQuorumReached(true);
             }
-            if (meeting.getStatus() == CASMeetingStatus.SUMMONS_SENT) {
+            if (meeting.getStatus() == CASMeetingStatus.SUMMONS_SENT
+                    || meeting.getStatus() == CASMeetingStatus.DOSSIER_SENT) {
                 meeting.setStatus(CASMeetingStatus.ATTENDEES_CONFIRMED);
             }
             casMeetingRepository.save(meeting);
 
-            return ResponseEntity.ok(ApiResponse.success("Présence confirmée — déclaration d'intérêts enregistrée (PRO 07 §4.2)", attendance));
+            String msg = isExcluded
+                    ? "Présence enregistrée — ATTENTION: " + exclusionReason
+                    : "Présence confirmée — déclaration d'intérêts enregistrée (PRO 07 §5.10)";
+
+            return ResponseEntity.ok(ApiResponse.success(msg, attendance));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    // PRO 07 - Send formal summons (convocations) to CAS members
+    // PRO 07 §5.10.a — Check if the current user would be excluded from deliberation on this meeting.
+    @GetMapping("/cas/{meetingId}/evaluator-conflict-check")
+    public ResponseEntity<?> checkEvaluatorConflict(@PathVariable Long meetingId, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            CASMeeting meeting = casMeetingRepository.findById(meetingId)
+                    .orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+
+            boolean isExcluded = false;
+            if (meeting.getRequestId() != null) {
+                List<EvaluationTeam> teams = teamRepository.findByRequest_Id(meeting.getRequestId());
+                for (EvaluationTeam team : teams) {
+                    if (team.getMembers().stream()
+                            .anyMatch(m -> m.getExpert() != null && m.getExpert().getId().equals(userId))) {
+                        isExcluded = true;
+                        break;
+                    }
+                }
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("isExcludedEvaluator", isExcluded);
+            result.put("reason", isExcluded
+                    ? "PRO 07 §5.10.a — Vous avez participé à l'évaluation de ce dossier. Vous pouvez assister mais ne pouvez pas voter."
+                    : null);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // PRO 07 §5.10 — Send formal convocations (FOR 58) to committee members at least 5 days before meeting.
     @PostMapping("/cas/{meetingId}/send-summons")
     public ResponseEntity<ApiResponse> sendSummons(@PathVariable Long meetingId, HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
-            CASMeeting meeting = casMeetingRepository.findById(meetingId).orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
+            CASMeeting meeting = casMeetingRepository.findById(meetingId)
+                    .orElseThrow(() -> new RuntimeException("Réunion CAS non trouvée"));
             meeting.setStatus(CASMeetingStatus.SUMMONS_SENT);
             meeting.setSummonsSentAt(LocalDateTime.now());
             casMeetingRepository.save(meeting);
 
-            // Notify all CAS members
-            List<User> casMembers = userRepository.findByRole(UserRole.CAS_MEMBER);
-            for (User member : casMembers) {
+            // Determine which members to convoke:
+            // If a committee is assigned → use its members; otherwise fall back to all CAS_MEMBER users.
+            List<User> targets = new ArrayList<>();
+            if (meeting.getCommittee() != null) {
+                targets = meeting.getCommittee().getAllMembers();
+                // Always include CAS_PRESIDENT users even if not in committee list
+                List<User> presidents = userRepository.findByRole(UserRole.CAS_PRESIDENT);
+                for (User p : presidents) {
+                    if (targets.stream().noneMatch(t -> t.getId().equals(p.getId()))) {
+                        targets.add(p);
+                    }
+                }
+            } else {
+                targets.addAll(userRepository.findByRole(UserRole.CAS_MEMBER));
+                targets.addAll(userRepository.findByRole(UserRole.CAS_PRESIDENT));
+            }
+
+            String convText = "Objet : Convocation à la réunion CAS — " + meeting.getMeetingCode() + "\n" +
+                    "Date : " + meeting.getMeetingDate() + "\n" +
+                    "Lieu : " + meeting.getLocation() + "\n\n" +
+                    "Ordre du jour : " + (meeting.getAgenda() != null ? meeting.getAgenda() : "Examen du dossier d'accréditation") + "\n\n" +
+                    "Conformément à PRO 07 §5.10, veuillez confirmer votre présence et déclarer tout conflit d'intérêts.";
+
+            for (User member : targets) {
+                // Create FOR 58 convocation record if not already sent
+                if (!for58Repository.existsByMeeting_IdAndMember_Id(meeting.getId(), member.getId())) {
+                    FOR58Convocation conv = FOR58Convocation.builder()
+                            .meeting(meeting)
+                            .member(member)
+                            .convocationText(convText)
+                            .build();
+                    for58Repository.save(conv);
+                }
+                // Send in-app notification
                 notificationService.createNotification(member.getId(),
-                        "Convocation CAS — " + meeting.getMeetingCode(),
-                        "Vous êtes convoqué(e) à la réunion CAS " + meeting.getMeetingCode() +
-                        " le " + meeting.getMeetingDate() + " — Lieu : " + meeting.getLocation() +
-                        ". Veuillez confirmer votre présence et déclarer tout conflit d'intérêts (PRO 07 §4.2).",
+                        "Convocation CAS (FOR 58) — " + meeting.getMeetingCode(),
+                        convText,
                         "cas");
             }
 
-            return ResponseEntity.ok(ApiResponse.success("Convocations envoyées aux membres CAS (PRO 07)", meeting));
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Convocations FOR 58 envoyées à " + targets.size() + " membre(s) (PRO 07 §5.10)", meeting));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -3267,6 +3393,20 @@ public class WorkflowController {
             request.setPendingWith("Équipe d'évaluation");
             requestRepository.save(request);
 
+            // Payment is triggered on the day the evaluation starts (not at quote acceptance).
+            try {
+                paymentService.createEvaluationFeePayment(requestId);
+                if (request.getOec() != null) {
+                    notificationService.createNotification(
+                            request.getOec().getId(),
+                            "Paiement des frais d'évaluation",
+                            "L'évaluation du dossier " + request.getReferenceNumber() + " a démarré. Merci de régler les frais d'évaluation.",
+                            "payment");
+                }
+            } catch (Exception e) {
+                log.warn("Paiement d'évaluation non créé pour {}: {}", request.getReferenceNumber(), e.getMessage());
+            }
+
             // Notify all team members
             List<EvaluationTeam> teams = teamRepository.findByRequest_Id(requestId);
             if (!teams.isEmpty()) {
@@ -3312,8 +3452,19 @@ public class WorkflowController {
     // ========== RA WORKLOAD INFO ==========
 
     @GetMapping("/ra-workload")
-    public ResponseEntity<?> getRAWorkload() {
+    public ResponseEntity<?> getRAWorkload(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        User caller = userId == null ? null : userRepository.findById(userId).orElse(null);
         List<User> ras = userRepository.findByRole(UserRole.RA);
+
+        // Scope: a CD only sees RAs of their own department. Other roles keep full view.
+        if (caller != null && caller.getRole() == UserRole.CD && caller.getDepartment() != null) {
+            final Long cdDeptId = caller.getDepartment().getId();
+            ras = ras.stream()
+                    .filter(ra -> ra.getDepartment() != null && ra.getDepartment().getId().equals(cdDeptId))
+                    .collect(Collectors.toList());
+        }
+
         List<Map<String, Object>> result = ras.stream().map(ra -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", ra.getId());

@@ -5,6 +5,7 @@ import com.algerac.dto.CreateRequestDTO;
 import com.algerac.dto.NewRequestDTO;
 import com.algerac.dto.ReceivabilityDecisionDTO;
 import com.algerac.model.*;
+import com.algerac.repository.DepartmentRepository;
 import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class RequestService {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final DepartmentRepository departmentRepository;
     
     public List<AccreditationRequest> getAllRequests() {
         return requestRepository.findAll();
@@ -92,16 +94,16 @@ public class RequestService {
         request.setProgress(5);
         request.setNextAction("Votre dossier est en cours d'examen par la Direction Technique");
         request.setPendingWith("DT");
-        
-        // Générer le numéro de référence automatiquement à la soumission
-        if (request.getReferenceNumber() == null || request.getReferenceNumber().isEmpty()) {
-            String referenceNumber = generateReferenceNumber(request.getDomain());
-            request.setReferenceNumber(referenceNumber);
-            log.info("Numéro de dossier {} attribué automatiquement", referenceNumber);
+
+        // At submission we only assign a simple sequential number.
+        // The final accreditation ID (AC/<domain>/<seq>/<year>) is composed
+        // later by the RA after the dossier is accepted — see assignFinalAccreditationReference.
+        if (request.getSequenceNumber() == null) {
+            request.setSequenceNumber(nextSequenceNumber());
         }
-        
+
         request = requestRepository.save(request);
-        log.info("Demande {} soumise par l'OEC {}", request.getReferenceNumber(), currentUser.getOrganizationName());
+        log.info("Demande séquence #{} soumise par l'OEC {}", request.getSequenceNumber(), currentUser.getOrganizationName());
         
         // Notifier le DT qu'une nouvelle demande nécessite la vérification des documents
         notificationService.notifyDTNewRequest(request);
@@ -161,6 +163,93 @@ public class RequestService {
         return request;
     }
     
+    /**
+     * DT: explicitly assign a validated request to a specific CD of a given
+     * department. Called after dtReviewRequest(approved=true) — or as the
+     * combined validation step. The DT picks from CDs of the target
+     * department only.
+     */
+    @Transactional
+    public AccreditationRequest dtAssignRequestToCd(Long requestId, Long departmentId, Long cdUserId,
+                                                    String comments, User currentUser) {
+        if (currentUser.getRole() != UserRole.DT) {
+            throw new RuntimeException("Seul le DT peut assigner une demande à un CD");
+        }
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        if (request.getStatus() != RequestStatus.PENDING_CD_ASSIGNMENT
+                && request.getStatus() != RequestStatus.DT_APPROVED
+                && request.getStatus() != RequestStatus.PENDING_DT_REVIEW
+                && request.getStatus() != RequestStatus.SUBMITTED) {
+            throw new RuntimeException("Cette demande n'est pas en état d'être assignée à un CD");
+        }
+        Department dept = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new RuntimeException("Département introuvable"));
+        User cd = userRepository.findById(cdUserId)
+                .orElseThrow(() -> new RuntimeException("CD introuvable"));
+        if (!(cd.getRole() == UserRole.CD || cd.hasRole(UserRole.CD))) {
+            throw new RuntimeException("L'utilisateur choisi n'est pas un CD");
+        }
+        if (cd.getDepartment() == null || !cd.getDepartment().getId().equals(dept.getId())) {
+            throw new RuntimeException("Le CD sélectionné n'appartient pas au département choisi");
+        }
+
+        request.setDepartment(dept);
+        request.setAssignedToCd(cd);
+        if (comments != null && !comments.isBlank()) {
+            request.setDtReviewComments(comments);
+        }
+        request.setDtReviewDate(LocalDateTime.now());
+        request.setStatus(RequestStatus.PENDING_CD_ASSIGNMENT);
+        request.setProgress(Math.max(12, request.getProgress() == null ? 0 : request.getProgress()));
+        request.setCurrentPhase("INITIAL");
+        request.setCurrentStep("Assignée à un CD");
+        request.setNextAction("CD doit choisir un RA pour traiter cette demande");
+        request.setPendingWith("CD");
+        request = requestRepository.save(request);
+
+        notificationService.notifyCDAfterDTApproval(request);
+        log.info("DT a assigné la demande #{} au CD {} (département {})", request.getId(), cd.getFullName(), dept.getName());
+        return request;
+    }
+
+    /** Backwards-compatible overload. */
+    @Transactional
+    public AccreditationRequest dtAssignRequestToCd(Long requestId, Long departmentId, Long cdUserId, User currentUser) {
+        return dtAssignRequestToCd(requestId, departmentId, cdUserId, null, currentUser);
+    }
+
+    /**
+     * RA: once a dossier has been accepted and before evaluation begins, the RA
+     * assigns the final accreditation reference in the form AC/<domaine>/<seq>/<année>.
+     * Before this step, the request only carries a sequenceNumber.
+     */
+    @Transactional
+    public AccreditationRequest assignFinalAccreditationReference(Long requestId, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        boolean isRaOnRequest = request.getAssignedToRa() != null
+                && request.getAssignedToRa().getId().equals(currentUser.getId());
+        if (!isRaOnRequest && currentUser.getRole() != UserRole.ADMIN) {
+            throw new RuntimeException("Seul le RA assigné peut attribuer la référence finale");
+        }
+        if (request.getReferenceNumber() != null && !request.getReferenceNumber().isBlank()) {
+            return request; // already assigned — idempotent
+        }
+        String ref = generateReferenceNumber(request.getDomain());
+        request.setReferenceNumber(ref);
+        request = requestRepository.save(request);
+        log.info("Référence finale {} attribuée à la demande #{} par {}", ref, request.getId(), currentUser.getFullName());
+        return request;
+    }
+
+    private synchronized Integer nextSequenceNumber() {
+        return requestRepository.findTopBySequenceNumberIsNotNullOrderBySequenceNumberDesc()
+                .map(r -> r.getSequenceNumber() + 1)
+                .orElse(1);
+    }
+
     /**
      * OEC: Resoumettre après rejet DT
      */

@@ -270,8 +270,21 @@ public class EvaluationTeamService {
         team.setCompositionSheetFOR26(compositionSheet);
         team.setSentToOEC(LocalDateTime.now());
         team.setOecResponseDeadline(LocalDateTime.now().plusDays(3)); // 3 jours pour répondre
-        team.setProposedEvaluationDate(proposedEvaluationDate);
-        team.setEvaluationDateAccepted(null); // En attente réponse OEC
+
+        // Preserve an already-accepted date across re-sends. When the OEC has
+        // recused a member but accepted the date, sendToOEC should keep the
+        // same proposedEvaluationDate and keep evaluationDateAccepted=true so
+        // the OEC only re-validates the composition, not the date.
+        boolean dateAlreadyLockedIn = Boolean.TRUE.equals(team.getEvaluationDateAccepted())
+                && team.getProposedEvaluationDate() != null;
+
+        if (dateAlreadyLockedIn) {
+            // Ignore any new proposedEvaluationDate sent by the RA — the date is fixed.
+            log.info("Équipe {} renvoyée à l'OEC avec date déjà validée — date conservée.", team.getTeamCode());
+        } else {
+            team.setProposedEvaluationDate(proposedEvaluationDate);
+            team.setEvaluationDateAccepted(null); // En attente réponse OEC
+        }
         team.setStatus(TeamStatus.SENT_TO_OEC);
         team = teamRepository.save(team);
         
@@ -473,15 +486,28 @@ public class EvaluationTeamService {
                 }
             }
 
-            // Return team to RA for re-submission to CD after new members sign
+            // Return team to RA for re-submission to CD after new members sign.
             team.setStatus(TeamStatus.DRAFT);
             team.setHasRecusation(false);
 
+            // If the OEC had already accepted the evaluation date when they
+            // recused the member, the date stays fixed: the RA does not need
+            // to propose a new date, and the OEC does not need to re-accept it
+            // in the next round. Only the composition is re-validated.
+            boolean dateAlreadyAccepted = Boolean.TRUE.equals(team.getEvaluationDateAccepted());
+            String resumeStep = dateAlreadyAccepted
+                    ? "Membres récusés remplacés — la date reste fixée (déjà acceptée par l'OEC). Les nouveaux membres doivent signer les engagements (FOR 01-1)."
+                    : "Membres récusés remplacés — nouveaux membres doivent signer les engagements (FOR 01-1)";
+
             AccreditationRequest request = team.getRequest();
             request.setStatus(RequestStatus.TEAM_DESIGNATION);
-            request.setCurrentStep("Membres récusés remplacés — nouveaux membres doivent signer les engagements (FOR 01-1)");
+            request.setCurrentStep(resumeStep);
             request.setPendingWith("RA");
             requestRepository.save(request);
+
+            if (dateAlreadyAccepted) {
+                log.info("Récusation acceptée pour équipe {} avec date déjà validée par l'OEC — date conservée.", team.getTeamCode());
+            }
 
         } else {
             // Récusation non valide → équipe maintenue, notifier OEC

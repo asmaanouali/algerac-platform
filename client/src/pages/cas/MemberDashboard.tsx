@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Loader2, Gavel, Vote, FileText, CalendarDays, CheckCircle2, Users,
   ShieldCheck, AlertTriangle, ClipboardList, Eye, FileCheck,
-  UserCheck, Scale, Clock
+  UserCheck, Scale, Clock, Ban
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -47,6 +47,8 @@ export default function CASMemberDashboard() {
   const [showConfirmAttendance, setShowConfirmAttendance] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("dossier");
+  const [isExcludedEvaluator, setIsExcludedEvaluator] = useState(false);
+  const [exclusionReason, setExclusionReason] = useState<string>("");
 
   // FOR 14 - Avis des membres CAS form
   const [voteForm, setVoteForm] = useState({
@@ -83,13 +85,25 @@ export default function CASMemberDashboard() {
 
   const selectMeeting = async (meeting: any) => {
     setSelectedMeeting(meeting);
+    setIsExcludedEvaluator(false);
+    setExclusionReason("");
     try {
-      const vRes = await fetch(`/api/workflow/cas/${meeting.id}/votes`, { credentials: "include" });
+      const [vRes, conflictRes] = await Promise.all([
+        fetch(`/api/workflow/cas/${meeting.id}/votes`, { credentials: "include" }),
+        fetch(`/api/workflow/cas/${meeting.id}/evaluator-conflict-check`, { credentials: "include" }),
+      ]);
       if (vRes.ok) {
         const allVotes = await vRes.json();
         const votesList = Array.isArray(allVotes) ? allVotes : [];
         setVotes(votesList);
         setMyVotes(votesList.filter((v: any) => v.voterId === user?.id));
+      }
+      if (conflictRes.ok) {
+        const conflictData = await conflictRes.json();
+        if (conflictData.isExcludedEvaluator) {
+          setIsExcludedEvaluator(true);
+          setExclusionReason(conflictData.reason || "Participation à l'évaluation de ce dossier");
+        }
       }
     } catch (e) { }
   };
@@ -297,6 +311,22 @@ export default function CASMemberDashboard() {
                         {/* DOSSIER TAB */}
                         <TabsContent value="dossier">
                           <div className="space-y-4">
+                            {/* PRO 07 §5.10.a — Evaluator exclusion warning */}
+                            {isExcludedEvaluator && (
+                              <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-300 rounded-lg">
+                                <Ban className="w-5 h-5 text-orange-600 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="font-semibold text-orange-900">PRO 07 §5.10.a — Exclusion des délibérations</p>
+                                  <p className="text-sm text-orange-800 mt-1">
+                                    Vous avez participé à l'évaluation de ce dossier. Vous pouvez assister à la réunion mais
+                                    <strong> vous ne pouvez pas voter</strong> sur ce dossier.
+                                  </p>
+                                  {exclusionReason && (
+                                    <p className="text-xs text-orange-700 mt-1">Motif : {exclusionReason}</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                             <div className="flex items-start justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg">{selectedMeeting.meetingCode}</h3>
@@ -456,7 +486,18 @@ export default function CASMemberDashboard() {
                                     motivé avant la délibération collective.
                                   </p>
                                 </div>
-                                {!["VOTING", "IN_PROGRESS"].includes(selectedMeeting.status) ? (
+                                {isExcludedEvaluator ? (
+                                  <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-300 rounded-lg">
+                                    <Ban className="w-5 h-5 text-orange-600 mt-0.5 shrink-0" />
+                                    <div>
+                                      <p className="font-semibold text-orange-900 text-sm">Vote non autorisé — PRO 07 §5.10.a</p>
+                                      <p className="text-xs text-orange-800 mt-1">
+                                        Vous avez participé à l'évaluation de ce dossier et êtes exclu des délibérations.
+                                        Vous ne pouvez pas soumettre d'avis FOR 14 pour cette réunion.
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : !["VOTING", "IN_PROGRESS"].includes(selectedMeeting.status) ? (
                                   <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-4 rounded-lg border border-amber-200">
                                     <Clock className="w-5 h-5 shrink-0" />
                                     <div>
@@ -696,6 +737,17 @@ export default function CASMemberDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                {isExcludedEvaluator && (
+                  <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-300 rounded-lg text-sm">
+                    <Ban className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-orange-900">PRO 07 §5.10.a — Vous serez marqué exclu des délibérations</p>
+                      <p className="text-xs text-orange-800 mt-1">
+                        Votre présence est enregistrée, mais vous ne pourrez pas voter sur ce dossier.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                   <p className="font-medium mb-1">Engagement du membre CAS :</p>
                   <ul className="list-disc list-inside space-y-0.5 text-xs">

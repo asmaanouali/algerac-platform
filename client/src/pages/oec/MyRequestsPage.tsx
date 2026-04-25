@@ -36,14 +36,14 @@ interface AccreditationRequest {
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; phase: string }> = {
   DRAFT: { label: "Brouillon", variant: "secondary", phase: "initial" },
   SUBMITTED: { label: "Soumise", variant: "default", phase: "initial" },
-  PENDING_DT_REVIEW: { label: "Vérification DT en cours", variant: "outline", phase: "initial" },
-  DT_APPROVED: { label: "Validée par DT", variant: "default", phase: "initial" },
-  DT_REJECTED: { label: "Rejetée par DT - Correction requise", variant: "destructive", phase: "initial" },
-  PENDING_CD_ASSIGNMENT: { label: "En attente d'assignation CD", variant: "outline", phase: "initial" },
+  PENDING_DT_REVIEW: { label: "Vérification en cours", variant: "outline", phase: "initial" },
+  DT_APPROVED: { label: "Validée", variant: "default", phase: "initial" },
+  DT_REJECTED: { label: "Rejetée - Correction requise", variant: "destructive", phase: "initial" },
+  PENDING_CD_ASSIGNMENT: { label: "En attente d'assignation", variant: "outline", phase: "initial" },
   AWAITING_REGISTRATION_FEE: { label: "En attente frais d'enregistrement", variant: "outline", phase: "initial" },
   PENDING_PAYMENT: { label: "En attente de paiement", variant: "outline", phase: "initial" },
   PAYMENT_COMPLETED: { label: "Paiement effectué", variant: "default", phase: "initial" },
-  ASSIGNED_TO_RA: { label: "Assignee a un RA", variant: "default", phase: "study" },
+  ASSIGNED_TO_RA: { label: "Assignee", variant: "default", phase: "study" },
   RECEIVABILITY_STUDY: { label: "Etude de recevabilite", variant: "default", phase: "study" },
   RESOURCE_CHECK: { label: "Verification des ressources", variant: "default", phase: "study" },
   FOREIGN_EXPERT_PROPOSED: { label: "Expert etranger propose", variant: "outline", phase: "study" },
@@ -52,8 +52,8 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   PRELIMINARY_VISIT_SCHEDULED: { label: "Visite programmee", variant: "default", phase: "study" },
   PRELIMINARY_VISIT_COMPLETED: { label: "Visite effectuee", variant: "default", phase: "study" },
   PROCESS_SUSPENDED_OBSTACLES: { label: "Suspendu - Obstacles", variant: "destructive", phase: "study" },
-  PENDING_DG_VALIDATION: { label: "Validation DG en cours", variant: "default", phase: "study" },
-  DG_VALIDATED: { label: "Validee par le DG", variant: "default", phase: "study" },
+  PENDING_DG_VALIDATION: { label: "Validation en cours", variant: "default", phase: "study" },
+  DG_VALIDATED: { label: "Validee", variant: "default", phase: "study" },
   RECEIVABLE: { label: "Recevable", variant: "default", phase: "study" },
   NOT_RECEIVABLE: { label: "Non recevable", variant: "destructive", phase: "study" },
   RECEIVABILITY_CORRECTION: { label: "En correction", variant: "outline", phase: "study" },
@@ -101,25 +101,11 @@ const getPhaseLabel = (status: string): string => {
   return map[phase] || phase;
 };
 
-const getProgress = (status: string): number => {
-  const progressMap: Record<string, number> = {
-    DRAFT: 0, SUBMITTED: 5, PENDING_DT_REVIEW: 3, DT_APPROVED: 5, DT_REJECTED: 3, PENDING_CD_ASSIGNMENT: 6,
-    AWAITING_REGISTRATION_FEE: 8, PENDING_PAYMENT: 8, PAYMENT_COMPLETED: 10,
-    ASSIGNED_TO_RA: 15, RECEIVABILITY_STUDY: 20, RESOURCE_CHECK: 25,
-    FOREIGN_EXPERT_PROPOSED: 25, PRELIMINARY_VISIT_PROPOSED: 28,
-    PRELIMINARY_VISIT_ACCEPTED: 30, PRELIMINARY_VISIT_SCHEDULED: 32,
-    PRELIMINARY_VISIT_COMPLETED: 35, PENDING_DG_VALIDATION: 38,
-    DG_VALIDATED: 40, RECEIVABLE: 40, NOT_RECEIVABLE: 20,
-    DAG_APPROVED: 45, QUOTATION_PREPARATION: 45, QUOTATION_SENT_TO_OEC: 48,
-    QUOTATION_VALIDATED: 50, TEAM_DESIGNATION: 55, TEAM_SENT_TO_OEC: 58,
-    TEAM_VALIDATED: 60, DOCUMENTARY_REVIEW: 65, AWAITING_OEC_DOC_RESPONSE: 68,
-    DOCUMENTARY_REVIEW_COMPLETED: 70, EVALUATION_PLANNED: 75,
-    EVALUATION_IN_PROGRESS: 80, EVALUATION_COMPLETED: 85,
-    AWAITING_ACTION_PLANS: 82, ACTION_PLANS_IMPLEMENTATION: 85,
-    GAPS_RESOLVED: 88, CAS_SCHEDULED: 90, CAS_DECISION_GRANT: 100,
-    CERTIFICATE_ISSUED: 100, ACTIVE: 100,
-  };
-  return progressMap[status] || 0;
+// Prefer the authoritative backend progress (computed by WorkflowProgressService)
+// so it matches the RequestDetailPage / WorkflowTimeline. Only fall back if absent.
+const getProgress = (request: AccreditationRequest): number => {
+  if (typeof request.progress === "number" && !Number.isNaN(request.progress)) return request.progress;
+  return 0;
 };
 
 export default function MyRequestsPage() {
@@ -230,7 +216,7 @@ export default function MyRequestsPage() {
 
   const renderRequestCard = (request: AccreditationRequest) => {
     const config = STATUS_CONFIG[request.status] || { label: request.status, variant: "default" as const, phase: "initial" };
-    const progress = getProgress(request.status);
+    const progress = getProgress(request);
     return (
       <Card key={request.id} className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
@@ -257,7 +243,6 @@ export default function MyRequestsPage() {
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><p className="text-muted-foreground">Date de soumission</p><p className="font-medium">{request.submissionDate ? new Date(request.submissionDate).toLocaleDateString("fr-FR") : "Non soumise"}</p></div>
-            {request.assignedToRaName && <div><p className="text-muted-foreground">RA assigne</p><p className="font-medium">{request.assignedToRaName}</p></div>}
           </div>
           {/* Status-specific alerts */}
           {request.status === "DT_REJECTED" && (
@@ -326,7 +311,7 @@ export default function MyRequestsPage() {
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="action">Action requise ({actionNeeded.length})</TabsTrigger>
                   <TabsTrigger value="progress">En cours ({inProgress.length})</TabsTrigger>
-                  <TabsTrigger value="done">Terminees ({completed.length})</TabsTrigger>
+                  <TabsTrigger value="done">Terminées ({completed.length})</TabsTrigger>
                   <TabsTrigger value="all">Toutes ({requests.length})</TabsTrigger>
                 </TabsList>
                 <TabsContent value="action" className="space-y-4">

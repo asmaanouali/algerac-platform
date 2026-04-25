@@ -37,7 +37,12 @@ public class UserDTO {
     // Pour les OEC
     private String organizationName;
     private String typeOrganisme;
-    
+
+    // Pour CD / RA / staff interne : département ALGERAC
+    private Long departmentId;
+    private String departmentCode;
+    private String departmentName;
+
     private LocalDateTime createdAt;
     private String dateInscription;
     
@@ -49,7 +54,11 @@ public class UserDTO {
         String fullName = null;
         if (user.getNom() != null && user.getPrenom() != null) {
             fullName = user.getPrenom() + " " + user.getNom();
-        } else if (user.getOrganizationName() != null) {
+        } else if (user.getNom() != null) {
+            fullName = user.getNom();
+        } else if (user.getPrenom() != null) {
+            fullName = user.getPrenom();
+        } else if (com.algerac.model.UserRole.OEC.equals(user.getRole()) && user.getOrganizationName() != null) {
             fullName = user.getOrganizationName();
         } else if (user.getFullName() != null) {
             fullName = user.getFullName();
@@ -90,7 +99,13 @@ public class UserDTO {
             builder.organizationName(user.getOrganizationName())
                    .typeOrganisme(user.getTypeOrganisme());
         }
-        
+
+        if (user.getDepartment() != null) {
+            builder.departmentId(user.getDepartment().getId())
+                   .departmentCode(user.getDepartment().getCode())
+                   .departmentName(user.getDepartment().getName());
+        }
+
         return builder.build();
     }
 }

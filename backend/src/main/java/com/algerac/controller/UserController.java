@@ -5,6 +5,7 @@ import com.algerac.dto.UserDTO;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.model.UserStatus;
+import com.algerac.repository.DepartmentRepository;
 import com.algerac.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,6 +27,7 @@ public class UserController {
     
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DepartmentRepository departmentRepository;
     
     /**
      * Récupérer tous les utilisateurs (pour l'admin)
@@ -157,7 +160,11 @@ public class UserController {
                     .password(passwordEncoder.encode(request.getPassword()))
                     .status(UserStatus.APPROVED)
                     .build();
-            
+
+            if (request.getDepartmentId() != null) {
+                departmentRepository.findById(request.getDepartmentId()).ifPresent(newUser::setDepartment);
+            }
+
             User savedUser = userRepository.save(newUser);
             log.info("Nouvel utilisateur créé par admin: {} - {}", savedUser.getEmail(), savedUser.getRole());
             
@@ -184,5 +191,34 @@ public class UserController {
         private String telephone;
         private String role;
         private String password;
+        private Long departmentId;
+    }
+
+    /**
+     * Admin: set or change the department of a user (CD/RA/staff).
+     * Body: { "departmentId": Long | null }.
+     */
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/department")
+    public ResponseEntity<?> setUserDepartment(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        User caller = userRepository.findById(userId).orElse(null);
+        if (caller == null || caller.getRole() != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux administrateurs"));
+        }
+        User target = userRepository.findById(id).orElse(null);
+        if (target == null) return ResponseEntity.notFound().build();
+        Object raw = body.get("departmentId");
+        if (raw == null) {
+            target.setDepartment(null);
+        } else {
+            Long depId = ((Number) raw).longValue();
+            target.setDepartment(departmentRepository.findById(depId)
+                    .orElseThrow(() -> new RuntimeException("Département introuvable")));
+        }
+        return ResponseEntity.ok(UserDTO.fromUser(userRepository.save(target)));
     }
 }

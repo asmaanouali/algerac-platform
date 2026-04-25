@@ -43,6 +43,12 @@ export default function ValidateQuotationConventionPage() {
   const [validating, setValidating] = useState(false);
   const [conventionSigned, setConventionSigned] = useState(false);
   const [quotationAccepted, setQuotationAccepted] = useState(false);
+  // Scope-reduction flow: if the OEC refuses the quote they can ask for a reduced
+  // scope which generates a new quote. A second refusal closes the dossier.
+  const [showScopeReduction, setShowScopeReduction] = useState(false);
+  const [scopeReductionNote, setScopeReductionNote] = useState("");
+  const [finalRejectConfirm, setFinalRejectConfirm] = useState(false);
+  const [rejectionRound, setRejectionRound] = useState<number>(0);
 
   useEffect(() => {
     if (user && !authLoading) loadData();
@@ -60,7 +66,16 @@ export default function ValidateQuotationConventionPage() {
         fetch(`/api/conventions/by-request/${requestId}`, { credentials: "include" }),
       ]);
       if (reqRes.ok) setRequest(await reqRes.json());
-      if (quotRes.ok) { const q = await quotRes.json(); if (q.length > 0) setQuotation(q[0]); }
+      if (quotRes.ok) {
+        const q = await quotRes.json();
+        if (q.length > 0) {
+          // Show the latest quote and track how many have already been refused
+          // by this OEC to decide whether scope-reduction is still possible.
+          const latest = q[q.length - 1];
+          setQuotation(latest);
+          setRejectionRound(q.filter((x: any) => x.status === "REJECTED_BY_OEC").length);
+        }
+      }
       if (convRes.ok) { const c = await convRes.json(); if (c.length > 0) setConvention(c[0]); }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
@@ -68,8 +83,9 @@ export default function ValidateQuotationConventionPage() {
   };
 
   const handleValidate = async () => {
+    // Joint acceptance: both the quote and the convention must be accepted, or neither.
     if (!conventionSigned || !quotationAccepted) {
-      toast({ variant: "destructive", title: "Erreur", description: "Vous devez accepter le devis ET signer la convention" });
+      toast({ variant: "destructive", title: "Acceptation incomplète", description: "Vous devez accepter le devis ET la convention — c'est indissociable." });
       return;
     }
     try {
@@ -78,18 +94,52 @@ export default function ValidateQuotationConventionPage() {
         accepted: true,
         conventionSigned: true,
       });
-      toast({ title: "Succès", description: "Devis accepté et convention signée. Vous serez redirigé vers le paiement." });
-      setTimeout(() => setLocation(`/oec/paiement/${requestId}`), 2000);
+      // Payment is no longer collected here — it is requested on the day of the
+      // evaluation. The OEC is notified here and sent back to their dashboard.
+      toast({
+        title: "Devis et convention acceptés",
+        description: "Le paiement sera effectué le jour de l'évaluation — pas maintenant.",
+      });
+      setTimeout(() => setLocation("/oec/mes-demandes"), 1500);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setValidating(false); }
   };
 
-  const handleReject = async () => {
+  const handleRequestScopeReduction = async () => {
+    if (!scopeReductionNote.trim()) {
+      toast({ variant: "destructive", title: "Précisez votre demande", description: "Indiquez quelle portée vous souhaitez réduire." });
+      return;
+    }
     try {
       setValidating(true);
-      await apiRequest("POST", `/api/requests/${requestId}/oec-validate-quotation`, { accepted: false });
-      toast({ title: "Devis refusé", description: "Le processus d'accréditation sera arrêté", variant: "destructive" });
+      await apiRequest("POST", `/api/requests/${requestId}/oec-validate-quotation`, {
+        accepted: false,
+        scopeReductionRequested: true,
+        scopeReductionNote,
+      });
+      toast({
+        title: "Demande transmise",
+        description: "Le RA préparera un nouveau devis avec une portée réduite.",
+      });
+      setTimeout(() => setLocation("/oec/mes-demandes"), 1500);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setValidating(false); }
+  };
+
+  const handleFinalReject = async () => {
+    try {
+      setValidating(true);
+      await apiRequest("POST", `/api/requests/${requestId}/oec-validate-quotation`, {
+        accepted: false,
+        finalRejection: true,
+      });
+      toast({
+        title: "Dossier classé",
+        description: "Après ce second refus, votre dossier est clos.",
+        variant: "destructive",
+      });
       setTimeout(() => setLocation("/oec/mes-demandes"), 2000);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
@@ -236,15 +286,77 @@ export default function ValidateQuotationConventionPage() {
                   ) : (
                     <>
                       <div className="flex flex-col sm:flex-row gap-4">
-                        <Button variant="destructive" onClick={handleReject} disabled={validating} className="flex-1">
-                          Refuser le devis
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            if (rejectionRound >= 1) {
+                              // Already refused once → next refusal closes the dossier.
+                              setFinalRejectConfirm(true);
+                            } else {
+                              setShowScopeReduction(true);
+                            }
+                          }}
+                          disabled={validating}
+                          className="flex-1"
+                        >
+                          Je refuse le devis
                         </Button>
-                        <Button onClick={handleValidate} disabled={validating || !quotationAccepted || !conventionSigned} className="flex-1">
-                          {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><CreditCard className="mr-2 h-4 w-4" />Accepter et procéder au paiement</>}
+                        <Button
+                          onClick={handleValidate}
+                          disabled={validating || !quotationAccepted || !conventionSigned}
+                          className="flex-1"
+                        >
+                          {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><CheckCircle className="mr-2 h-4 w-4" />Accepter le devis ET la convention</>}
                         </Button>
                       </div>
-                      {(!quotationAccepted || !conventionSigned) && (
-                        <p className="text-sm text-muted-foreground mt-3 text-center">Acceptez le devis et signez la convention pour continuer</p>
+                      <p className="text-xs text-muted-foreground mt-3 text-center">
+                        L'acceptation du devis est indissociable de celle de la convention. Le paiement n'est pas demandé maintenant — il sera effectué le jour de l'évaluation.
+                      </p>
+
+                      {showScopeReduction && (
+                        <div className="mt-4 space-y-3 p-4 border border-amber-300 bg-amber-50 rounded-lg">
+                          <h3 className="font-semibold text-amber-900">Réduction de la portée</h3>
+                          <p className="text-sm text-amber-800">
+                            Avant d'abandonner le processus, vous pouvez demander une réduction de la portée pour obtenir un nouveau devis adapté. En cas de second refus, le dossier sera classé.
+                          </p>
+                          <textarea
+                            className="w-full border rounded p-2 text-sm"
+                            rows={3}
+                            placeholder="Indiquez les activités / sites que vous souhaitez retirer de la portée..."
+                            value={scopeReductionNote}
+                            onChange={(e) => setScopeReductionNote(e.target.value)}
+                          />
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button variant="outline" onClick={() => setShowScopeReduction(false)} disabled={validating}>Annuler</Button>
+                            <Button onClick={handleRequestScopeReduction} disabled={validating} className="flex-1">
+                              Demander un nouveau devis réduit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => { setShowScopeReduction(false); setFinalRejectConfirm(true); }}
+                              disabled={validating}
+                            >
+                              Refuser sans nouvelle demande
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {finalRejectConfirm && (
+                        <div className="mt-4 space-y-3 p-4 border border-red-300 bg-red-50 rounded-lg">
+                          <h3 className="font-semibold text-red-900">Clôture du dossier</h3>
+                          <p className="text-sm text-red-800">
+                            {rejectionRound >= 1
+                              ? "Vous avez déjà refusé un devis précédent. Un second refus entraînera la clôture définitive de votre dossier."
+                              : "Vous êtes sur le point de refuser le devis sans demander de réduction de portée. Le dossier sera classé."}
+                          </p>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setFinalRejectConfirm(false)} disabled={validating}>Annuler</Button>
+                            <Button variant="destructive" onClick={handleFinalReject} disabled={validating} className="flex-1">
+                              Confirmer et classer le dossier
+                            </Button>
+                          </div>
+                        </div>
                       )}
                     </>
                   )}

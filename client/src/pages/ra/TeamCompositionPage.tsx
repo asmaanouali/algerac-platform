@@ -68,6 +68,9 @@ export default function TeamCompositionPage() {
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState<string>("");
+  // Role must be picked first in the dialog so the candidate list is filtered
+  // to only evaluators with that platform role.
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [specialization, setSpecialization] = useState("");
 
   // Filters
@@ -142,7 +145,8 @@ export default function TeamCompositionPage() {
     if (!selectedExpert) return;
     const expert = experts.find(e => e.id === parseInt(selectedExpert));
     if (!expert) return;
-    const teamRole = platformRoleToTeamRole[expert.role] || "ET";
+    // Role picked first in the dialog; fall back to inference from the platform role.
+    const teamRole = selectedRole || platformRoleToTeamRole[expert.role] || "ET";
     try {
       const res = await apiRequest("POST", `/api/workflow/teams/${team.id}/add-member`, {
         expertId: parseInt(selectedExpert),
@@ -154,6 +158,7 @@ export default function TeamCompositionPage() {
         toast({ title: "Succes", description: `${expert.fullName} ajoute en tant que ${roleLabels[teamRole] || teamRole}` });
         setShowAddMember(false);
         setSelectedExpert("");
+        setSelectedRole("");
         setSpecialization("");
         selectRequest(selectedRequest);
       }
@@ -565,34 +570,61 @@ export default function TeamCompositionPage() {
           )}
 
           {/* Dialog Ajouter Membre */}
-          <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
+          <Dialog
+            open={showAddMember}
+            onOpenChange={(open) => {
+              setShowAddMember(open);
+              if (!open) { setSelectedRole(""); setSelectedExpert(""); }
+            }}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Ajouter un Membre a l'Equipe</DialogTitle>
-                <DialogDescription>Le role dans l'equipe est determine par le role dans la plateforme</DialogDescription>
+                <DialogDescription>Choisissez d'abord le role, puis un evaluateur correspondant.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Evaluateur</Label>
-                  <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                    <SelectTrigger><SelectValue placeholder="Choisir un evaluateur" /></SelectTrigger>
+                  <Label>Role dans l'equipe <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={selectedRole}
+                    onValueChange={(v) => { setSelectedRole(v); setSelectedExpert(""); }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Choisir un role" /></SelectTrigger>
                     <SelectContent>
-                      {experts.map((exp) => (
-                        <SelectItem key={exp.id} value={String(exp.id)}>
-                          {exp.fullName} [{exp.role}] --- {exp.specialite || "Generaliste"} ({exp.activeDossiers} dossiers)
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="REE">{roleLabels.REE}</SelectItem>
+                      <SelectItem value="ET">{roleLabels.ET}</SelectItem>
+                      <SelectItem value="EQ">{roleLabels.EQ}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {selectedExpert && (() => {
+                <div>
+                  <Label>Evaluateur</Label>
+                  <Select value={selectedExpert} onValueChange={setSelectedExpert} disabled={!selectedRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedRole ? "Choisir un evaluateur" : "Selectionnez d'abord un role"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {experts
+                        .filter((e) => platformRoleToTeamRole[e.role] === selectedRole)
+                        .map((exp) => (
+                          <SelectItem key={exp.id} value={String(exp.id)}>
+                            {exp.fullName} --- {exp.specialite || "Generaliste"} ({exp.activeDossiers} dossiers)
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedRole && experts.filter((e) => platformRoleToTeamRole[e.role] === selectedRole).length === 0 && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      Aucun evaluateur avec le role {roleLabels[selectedRole] || selectedRole} n'est disponible.
+                    </p>
+                  )}
+                </div>
+                {selectedExpert && selectedRole && (() => {
                   const exp = experts.find(e => e.id === parseInt(selectedExpert));
                   if (!exp) return null;
-                  const assignedRole = platformRoleToTeamRole[exp.role] || "ET";
                   return (
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm"><strong>{exp.fullName}</strong> sera ajoute en tant que <Badge variant="outline" className="ml-1">{roleLabels[assignedRole] || assignedRole}</Badge></p>
-                      <p className="text-xs text-muted-foreground mt-1">Role determine par son role plateforme : {exp.role}</p>
+                      <p className="text-sm"><strong>{exp.fullName}</strong> sera ajoute en tant que <Badge variant="outline" className="ml-1">{roleLabels[selectedRole] || selectedRole}</Badge></p>
                       {exp.unavailableDates?.length > 0 && (
                         <p className="text-xs text-amber-700 mt-1">{exp.unavailableDates.length} jour(s) d'indisponibilite</p>
                       )}
@@ -606,7 +638,7 @@ export default function TeamCompositionPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddMember(false)}>Annuler</Button>
-                <Button onClick={addMember} disabled={!selectedExpert}>Ajouter</Button>
+                <Button onClick={addMember} disabled={!selectedExpert || !selectedRole}>Ajouter</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

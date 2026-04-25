@@ -20,7 +20,7 @@ import {
   Loader2, Gavel, Vote, FileText, CalendarDays, CheckCircle2, Users,
   ShieldCheck, AlertTriangle, ClipboardList, Crown, FileCheck,
   UserCheck, Scale, Clock, Send, Play, StopCircle, Eye, BookOpen,
-  Stamp, AlertCircle, ArrowRight, BarChart3
+  Stamp, AlertCircle, ArrowRight, BarChart3, Building2, Star, Ban
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -49,6 +49,17 @@ export default function CASPresidentDashboard() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+
+  // FOR 33 & FOR 65-2
+  const [for33Data, setFor33Data] = useState<any>(null);
+  const [for65List, setFor65List] = useState<any[]>([]);
+  const [showFor65Dialog, setShowFor65Dialog] = useState(false);
+  const [for65Form, setFor65Form] = useState({
+    memberId: "", overallRating: "3", technicalKnowledgeRating: "3",
+    impartialityRating: "3", independenceRating: "3", communicationRating: "3",
+    strengths: "", areasForImprovement: "", remarks: "", recommendMaintain: true,
+    maintenanceJustification: "",
+  });
 
   // Dialogs
   const [showDecisionDialog, setShowDecisionDialog] = useState(false);
@@ -82,23 +93,21 @@ export default function CASPresidentDashboard() {
 
   const selectMeeting = async (meeting: any) => {
     setSelectedMeeting(meeting);
+    setFor33Data(null);
+    setFor65List([]);
     try {
-      const [vRes, aRes, vrRes] = await Promise.all([
+      const [vRes, aRes, vrRes, f33Res, f65Res] = await Promise.all([
         fetch(`/api/workflow/cas/${meeting.id}/votes`, { credentials: "include" }),
         fetch(`/api/workflow/cas/${meeting.id}/attendees`, { credentials: "include" }),
         fetch(`/api/workflow/cas/${meeting.id}/vote-results`, { credentials: "include" }),
+        fetch(`/api/cas-committees/meetings/${meeting.id}/for33`, { credentials: "include" }),
+        fetch(`/api/cas-committees/meetings/${meeting.id}/for65`, { credentials: "include" }),
       ]);
-      if (vRes.ok) {
-        const allVotes = await vRes.json();
-        setVotes(Array.isArray(allVotes) ? allVotes : []);
-      }
-      if (aRes.ok) {
-        const atts = await aRes.json();
-        setAttendees(Array.isArray(atts) ? atts : []);
-      }
-      if (vrRes.ok) {
-        setVoteResults(await vrRes.json());
-      }
+      if (vRes.ok) { const d = await vRes.json(); setVotes(Array.isArray(d) ? d : []); }
+      if (aRes.ok) { const d = await aRes.json(); setAttendees(Array.isArray(d) ? d : []); }
+      if (vrRes.ok) setVoteResults(await vrRes.json());
+      if (f33Res.ok) setFor33Data(await f33Res.json());
+      if (f65Res.ok) { const d = await f65Res.json(); setFor65List(Array.isArray(d) ? d : []); }
     } catch (e) { }
   };
 
@@ -344,21 +353,7 @@ export default function CASPresidentDashboard() {
               </div>
 
               {/* PRO 07/16 Reference */}
-              <Card className="mb-6 border-indigo-200 bg-indigo-50/30">
-                <CardContent className="pt-4">
-                  <div className="flex items-start gap-3">
-                    <BookOpen className="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-indigo-900">PRO 07 — Gestion CAS (Rév. 16) & PRO 16 — Prise de Décision (Rév. 04)</p>
-                      <p className="text-indigo-700 mt-1">
-                        Flux : Planification → Convocation → Confirmation présence & conflits d'intérêts → 
-                        Transmission dossier → Vérification quorum → Délibération → Avis FOR 14 (membres) → 
-                        Décision FOR 15 (Président) → Notification OEC avec droit de recours (GEN 04).
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Panel - Meetings List */}
@@ -411,12 +406,14 @@ export default function CASPresidentDashboard() {
                       </div>
                     ) : (
                       <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="mb-4">
+                        <TabsList className="mb-4 flex-wrap h-auto gap-1">
                           <TabsTrigger value="overview"><Eye className="w-4 h-4 mr-1" />Vue d'ensemble</TabsTrigger>
                           <TabsTrigger value="workflow"><ArrowRight className="w-4 h-4 mr-1" />Flux PRO 07</TabsTrigger>
                           <TabsTrigger value="attendees"><Users className="w-4 h-4 mr-1" />Présences</TabsTrigger>
+                          <TabsTrigger value="for33"><FileCheck className="w-4 h-4 mr-1" />FOR 33</TabsTrigger>
                           <TabsTrigger value="votes"><ClipboardList className="w-4 h-4 mr-1" />Avis FOR 14</TabsTrigger>
                           <TabsTrigger value="decision"><Gavel className="w-4 h-4 mr-1" />Décision FOR 15</TabsTrigger>
+                          <TabsTrigger value="for65"><Star className="w-4 h-4 mr-1" />FOR 65-2</TabsTrigger>
                         </TabsList>
 
                         {/* OVERVIEW TAB */}
@@ -466,6 +463,32 @@ export default function CASPresidentDashboard() {
                               <div className="p-3 bg-gray-50 rounded-lg border">
                                 <p className="text-xs font-medium text-muted-foreground mb-1">Synthèse du dossier</p>
                                 <p className="text-sm whitespace-pre-wrap">{selectedMeeting.dossierSummary}</p>
+                              </div>
+                            )}
+
+                            {/* Committee info — PRO 07 §5.1 */}
+                            {selectedMeeting.committeeName && (
+                              <Card className="border-blue-200 bg-blue-50/30">
+                                <CardContent className="pt-4">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Building2 className="w-5 h-5 text-blue-600" />
+                                    <p className="font-medium text-blue-900">Comité CAS assigné (PRO 07 §5.1)</p>
+                                  </div>
+                                  <p className="text-sm font-semibold">{selectedMeeting.committeeName}</p>
+                                  {for33Data && (
+                                    <p className="text-xs text-blue-600 mt-1">
+                                      {for33Data.totalConvened} membre(s) convoqué(s) — {for33Data.totalAttended} présent(s)
+                                    </p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            )}
+                            {!selectedMeeting.committeeId && (
+                              <div className="p-3 border border-amber-200 bg-amber-50/40 rounded-lg">
+                                <p className="text-xs text-amber-700 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Aucun comité assigné automatiquement. Vérifiez que le domaine de la demande correspond à un comité existant.
+                                </p>
                               </div>
                             )}
 
@@ -578,12 +601,29 @@ export default function CASPresidentDashboard() {
                           </div>
                         </TabsContent>
 
-                        {/* ATTENDEES TAB — PRO 07 §4.2 */}
+                        {/* ATTENDEES TAB — PRO 07 §5.10 */}
                         <TabsContent value="attendees">
                           <div className="space-y-4">
                             <h3 className="font-semibold flex items-center gap-2">
-                              <Users className="w-5 h-5" /> Membres CAS — Présences & Conflits d'intérêts (PRO 07 §4.2)
+                              <Users className="w-5 h-5" /> Présences & Impartialité (PRO 07 §5.10)
                             </h3>
+
+                            {/* Excluded evaluator alert */}
+                            {attendees.some((a: any) => a.isExcludedEvaluator) && (
+                              <Card className="border-orange-300 bg-orange-50/40">
+                                <CardContent className="pt-4">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Ban className="w-5 h-5 text-orange-600" />
+                                    <p className="font-medium text-orange-900">Membres exclus de la délibération (PRO 07 §5.10.a)</p>
+                                  </div>
+                                  <p className="text-sm text-orange-700">
+                                    Ces membres ont participé à l'évaluation du dossier. Ils peuvent assister à la réunion
+                                    mais ne participent pas au vote.
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            )}
+
                             {attendees.length > 0 ? (
                               <Table>
                                 <TableHeader>
@@ -591,12 +631,16 @@ export default function CASPresidentDashboard() {
                                     <TableHead>Membre</TableHead>
                                     <TableHead>Statut</TableHead>
                                     <TableHead>Conflit d'intérêts</TableHead>
+                                    <TableHead>Exclu (évaluateur)</TableHead>
                                     <TableHead>A voté</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {attendees.map((a: any, i: number) => (
-                                    <TableRow key={i} className={a.hasConflictOfInterest ? "bg-red-50/50" : ""}>
+                                    <TableRow key={i} className={
+                                      a.isExcludedEvaluator ? "bg-orange-50/50" :
+                                      a.hasConflictOfInterest ? "bg-red-50/50" : ""
+                                    }>
                                       <TableCell className="font-medium">{a.voterName || `Membre #${a.voterId}`}</TableCell>
                                       <TableCell>
                                         <Badge className="bg-green-100 text-green-800">
@@ -605,17 +649,28 @@ export default function CASPresidentDashboard() {
                                       </TableCell>
                                       <TableCell>
                                         {a.hasConflictOfInterest ? (
-                                          <div className="flex items-center gap-1">
+                                          <div>
                                             <Badge className="bg-red-100 text-red-800">
-                                              <AlertTriangle className="w-3 h-3 mr-1" /> Conflit déclaré
+                                              <AlertTriangle className="w-3 h-3 mr-1" /> Déclaré
                                             </Badge>
                                             {a.conflictDescription && (
-                                              <span className="text-xs text-red-600 max-w-[200px] truncate">{a.conflictDescription}</span>
+                                              <p className="text-xs text-red-600 mt-1 max-w-[180px] truncate">{a.conflictDescription}</p>
                                             )}
                                           </div>
                                         ) : (
                                           <Badge className="bg-green-100 text-green-800">
                                             <ShieldCheck className="w-3 h-3 mr-1" /> Aucun
+                                          </Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {a.isExcludedEvaluator ? (
+                                          <Badge className="bg-orange-100 text-orange-800">
+                                            <Ban className="w-3 h-3 mr-1" /> Exclu §5.10.a
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-green-100 text-green-800">
+                                            <CheckCircle2 className="w-3 h-3 mr-1" /> Éligible
                                           </Badge>
                                         )}
                                       </TableCell>
@@ -636,21 +691,88 @@ export default function CASPresidentDashboard() {
                                 <p className="text-sm">Aucune présence confirmée</p>
                               </div>
                             )}
+                          </div>
+                        </TabsContent>
 
-                            {/* Conflict of interest summary */}
-                            {attendees.some((a: any) => a.hasConflictOfInterest) && (
-                              <Card className="border-red-200 bg-red-50/30">
-                                <CardContent className="pt-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                                    <p className="font-medium text-red-900">Conflits d'intérêts détectés (PRO 07 §4.2)</p>
+                        {/* FOR 33 TAB — Liste de présence officielle */}
+                        <TabsContent value="for33">
+                          <div className="space-y-4">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <FileCheck className="w-5 h-5" /> FOR 33 — Liste de présence officielle (PRO 07 §5.10)
+                            </h3>
+                            {for33Data ? (
+                              <>
+                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                  <div className="p-3 bg-blue-50 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Convoqués</p>
+                                    <p className="text-xl font-bold text-blue-700">{for33Data.totalConvened}</p>
                                   </div>
-                                  <p className="text-sm text-red-700">
-                                    Les membres ayant déclaré un conflit d'intérêts ne participent pas aux délibérations
-                                    du dossier concerné.
-                                  </p>
-                                </CardContent>
-                              </Card>
+                                  <div className="p-3 bg-green-50 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Présents</p>
+                                    <p className="text-xl font-bold text-green-700">{for33Data.totalAttended}</p>
+                                  </div>
+                                  <div className="p-3 bg-amber-50 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">Quorum</p>
+                                    <p className="text-xl font-bold text-amber-700">{for33Data.quorumRequired}</p>
+                                  </div>
+                                </div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Membre</TableHead>
+                                      <TableHead>Rôle</TableHead>
+                                      <TableHead>Convoqué le</TableHead>
+                                      <TableHead>Présent</TableHead>
+                                      <TableHead>Conflit / Exclusion</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {(for33Data.attendanceList || []).map((row: any, i: number) => (
+                                      <TableRow key={i}>
+                                        <TableCell className="font-medium">
+                                          {row.memberName}
+                                          {row.isPresident && <Badge className="ml-2 bg-purple-100 text-purple-800 text-xs">Président</Badge>}
+                                          {row.isVicePresident && <Badge className="ml-2 bg-indigo-100 text-indigo-800 text-xs">Vice-Président</Badge>}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-500">{row.memberEmail}</TableCell>
+                                        <TableCell className="text-xs">
+                                          {row.convocationSentAt ? new Date(row.convocationSentAt).toLocaleDateString("fr-FR") : "—"}
+                                          {row.convocationAcknowledged && (
+                                            <Badge className="ml-1 bg-green-100 text-green-700 text-xs">Accusé de réception</Badge>
+                                          )}
+                                        </TableCell>
+                                        <TableCell>
+                                          {row.attended
+                                            ? <Badge className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" />Oui</Badge>
+                                            : <Badge className="bg-gray-100 text-gray-600">Non</Badge>}
+                                        </TableCell>
+                                        <TableCell>
+                                          {row.isExcludedEvaluator && (
+                                            <Badge className="bg-orange-100 text-orange-800">
+                                              <Ban className="w-3 h-3 mr-1" />Exclu §5.10.a
+                                            </Badge>
+                                          )}
+                                          {row.hasConflictOfInterest && !row.isExcludedEvaluator && (
+                                            <Badge className="bg-red-100 text-red-800">
+                                              <AlertTriangle className="w-3 h-3 mr-1" />Conflit déclaré
+                                            </Badge>
+                                          )}
+                                          {!row.isExcludedEvaluator && !row.hasConflictOfInterest && (
+                                            <Badge className="bg-green-100 text-green-800">
+                                              <ShieldCheck className="w-3 h-3 mr-1" />OK
+                                            </Badge>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </>
+                            ) : (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <FileCheck className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">Envoyez les convocations pour générer FOR 33</p>
+                              </div>
                             )}
                           </div>
                         </TabsContent>
@@ -926,6 +1048,58 @@ export default function CASPresidentDashboard() {
                             )}
                           </div>
                         </TabsContent>
+
+                        {/* FOR 65-2 TAB — Suivi des compétences membres CAS */}
+                        <TabsContent value="for65">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold flex items-center gap-2">
+                                <Star className="w-5 h-5" /> FOR 65-2 — Suivi des compétences (PRO 07 §5.4)
+                              </h3>
+                              <Button size="sm" onClick={() => setShowFor65Dialog(true)}>
+                                <Star className="w-4 h-4 mr-1" /> Évaluer un membre
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Renseigné par le CD/RA à chaque réunion d'examen. Sert à la décision de maintien/résiliation de la convention (3 ans).
+                            </p>
+
+                            {for65List.length > 0 ? (
+                              <div className="space-y-3">
+                                {for65List.map((r: any) => (
+                                  <Card key={r.id} className="p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="font-medium">{r.memberName}</p>
+                                      <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map(s => (
+                                          <Star key={s} className={`w-4 h-4 ${s <= (r.overallRating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
+                                      <div>Technique: {r.technicalKnowledgeRating}/5</div>
+                                      <div>Impartialité: {r.impartialityRating}/5</div>
+                                      <div>Indépendance: {r.independenceRating}/5</div>
+                                      <div>Communication: {r.communicationRating}/5</div>
+                                    </div>
+                                    {r.remarks && <p className="text-xs mt-2 text-gray-600">{r.remarks}</p>}
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Badge className={r.recommendMaintain ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                        {r.recommendMaintain ? "Recommandation : maintenir" : "Recommandation : résilier"}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">par {r.evaluatedByName}</span>
+                                    </div>
+                                  </Card>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Star className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">Aucune évaluation FOR 65-2 pour cette réunion</p>
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
                       </Tabs>
                     )}
                   </CardContent>
@@ -933,6 +1107,87 @@ export default function CASPresidentDashboard() {
               </div>
             </>
           )}
+
+          {/* FOR 65-2 Dialog */}
+          <Dialog open={showFor65Dialog} onOpenChange={setShowFor65Dialog}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" /> FOR 65-2 — Évaluation de compétence membre CAS
+                </DialogTitle>
+                <DialogDescription>PRO 07 §5.4 — Renseigné par CD/RA après chaque réunion</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div>
+                  <Label>Membre évalué</Label>
+                  <Select value={for65Form.memberId} onValueChange={v => setFor65Form(f => ({ ...f, memberId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner un membre" /></SelectTrigger>
+                    <SelectContent>
+                      {attendees.map((a: any) => (
+                        <SelectItem key={a.voterId} value={String(a.voterId)}>{a.voterName || `Membre #${a.voterId}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(["overallRating", "technicalKnowledgeRating", "impartialityRating", "independenceRating", "communicationRating"] as const).map(field => (
+                  <div key={field} className="space-y-1">
+                    <Label className="text-sm capitalize">{field.replace(/Rating/, "").replace(/([A-Z])/g, " $1")}</Label>
+                    <Select value={(for65Form as any)[field]} onValueChange={v => setFor65Form(f => ({ ...f, [field]: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["1", "2", "3", "4", "5"].map(v => <SelectItem key={v} value={v}>{v} / 5</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+                <div>
+                  <Label>Points forts</Label>
+                  <Textarea value={for65Form.strengths} onChange={e => setFor65Form(f => ({ ...f, strengths: e.target.value }))} rows={2} />
+                </div>
+                <div>
+                  <Label>Axes d'amélioration</Label>
+                  <Textarea value={for65Form.areasForImprovement} onChange={e => setFor65Form(f => ({ ...f, areasForImprovement: e.target.value }))} rows={2} />
+                </div>
+                <div>
+                  <Label>Observations</Label>
+                  <Textarea value={for65Form.remarks} onChange={e => setFor65Form(f => ({ ...f, remarks: e.target.value }))} rows={2} />
+                </div>
+                <div>
+                  <Label>Recommandation</Label>
+                  <Select value={for65Form.recommendMaintain ? "true" : "false"} onValueChange={v => setFor65Form(f => ({ ...f, recommendMaintain: v === "true" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Maintenir la convention</SelectItem>
+                      <SelectItem value="false">Résilier la convention</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowFor65Dialog(false)}>Annuler</Button>
+                <Button onClick={async () => {
+                  if (!selectedMeeting || !for65Form.memberId) return;
+                  try {
+                    const res = await fetch(`/api/cas-committees/meetings/${selectedMeeting.id}/for65`, {
+                      method: "POST", credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ...for65Form, recommendMaintain: for65Form.recommendMaintain }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast({ title: "FOR 65-2 enregistré", description: data.message });
+                      setShowFor65Dialog(false);
+                      selectMeeting(selectedMeeting);
+                    } else {
+                      toast({ title: "Erreur", description: data.message, variant: "destructive" });
+                    }
+                  } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
+                }}>
+                  Enregistrer FOR 65-2
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* FOR 15 Decision Dialog — PRO 16 */}
           <Dialog open={showDecisionDialog} onOpenChange={setShowDecisionDialog}>

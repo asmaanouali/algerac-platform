@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./client/src/locales/en.json'\\); console.log\\('en.json valid'\\)\")",
+      "Bash(node -e \"require\\('./client/src/locales/ar.json'\\); console.log\\('ar.json valid'\\)\")",
+      "Bash(node scan_locales.cjs)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

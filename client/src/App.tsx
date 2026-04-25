@@ -34,6 +34,7 @@ import RAFeasibilityPage from "@/pages/ra/FeasibilityPage";
 import QuotationConventionPage from "@/pages/ra/QuotationConventionPage";
 import CDDashboard from "@/pages/cd/Dashboard";
 import CDManageRequestsPage from "@/pages/cd/ManageRequestsPage";
+import CDRAWorkloadPage from "@/pages/cd/RAWorkloadPage";
 import DAGDashboard from "@/pages/dag/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DashboardPage from "@/pages/dashboard-page";
@@ -102,6 +103,8 @@ import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 // DAG Payment Tracking
 import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
 import DAGOECApplicationsPage from "@/pages/dag/OECApplicationsPage";
+import DAGRegistrationFeesPage from "@/pages/dag/RegistrationFeesPage";
+import DAGQuotationFixingPage from "@/pages/dag/QuotationFixingPage";
 
 // RA Recusation
 import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
@@ -122,6 +125,7 @@ import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
 import OECTransferRequestPage from "@/pages/oec/TransferRequestPage";
 import OECTransferCreatePage from "@/pages/oec/TransferCreatePage";
 import TransferDecisionPage from "@/pages/cas/TransferDecisionPage";
+import CommitteeManagementPage from "@/pages/admin/CommitteeManagementPage";
 
 // Missing sidebar pages
 import OECDocumentsPage from "@/pages/oec/DocumentsPage";
@@ -132,6 +136,9 @@ import RADossiersPage from "@/pages/ra/DossiersPage";
 import RAPlanningPage from "@/pages/ra/PlanningPage";
 import DTDashboard from "@/pages/dt/Dashboard";
 import DTRequestReviewPage from "@/pages/dt/RequestReviewPage";
+import DTAccreditationRequestsPage from "@/pages/dt/AccreditationRequestsPage";
+import DTRequestDetailPage from "@/pages/dt/RequestDetailPage";
+import DTOECApplicationDetailPage from "@/pages/dt/OECApplicationDetailPage";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
 import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
 
@@ -202,6 +209,8 @@ function Router() {
       <Route path="/cd/dashboard">{() => <ProtectedRoute component={CDDashboard} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/manage-requests">{() => <ProtectedRoute component={CDManageRequestsPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/gerer-demandes">{() => <ProtectedRoute component={CDManageRequestsPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/ra-workload">{() => <ProtectedRoute component={CDRAWorkloadPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/responsables">{() => <ProtectedRoute component={CDRAWorkloadPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/accreditations">{() => <ProtectedRoute component={CDAccreditations} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/pilotage-evaluation">{() => <ProtectedRoute component={EvaluationOversightPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/revue-documentaire">{() => <ProtectedRoute component={CDDocumentaryDecisionPage} allowedRoles={["cd"]} />}</Route>
@@ -220,6 +229,8 @@ function Router() {
       <Route path="/dag">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
       <Route path="/dag/dashboard">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
       <Route path="/dag/paiements">{() => <ProtectedRoute component={DAGPaymentTracking} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/frais-enregistrement">{() => <ProtectedRoute component={DAGRegistrationFeesPage} allowedRoles={["dag"]} />}</Route>
+      <Route path="/dag/fixation-devis">{() => <ProtectedRoute component={DAGQuotationFixingPage} allowedRoles={["dag"]} />}</Route>
       <Route path="/dag/candidatures-oec">{() => <ProtectedRoute component={DAGOECApplicationsPage} allowedRoles={["dag"]} />}</Route>
       <Route path="/dag/tarifs">{() => <ProtectedRoute component={TariffPage} allowedRoles={["dag"]} />}</Route>
       
@@ -230,11 +241,15 @@ function Router() {
       <Route path="/users">{() => <ProtectedRoute component={UsersManagementPage} allowedRoles={["admin"]} />}</Route>
       <Route path="/admin/utilisateurs">{() => <ProtectedRoute component={UsersManagementPage} allowedRoles={["admin"]} />}</Route>
       <Route path="/admin/utilisateurs-pending">{() => <ProtectedRoute component={UtilisateursPendingPage} allowedRoles={["admin"]} />}</Route>
+      <Route path="/admin/comites-cas">{() => <ProtectedRoute component={CommitteeManagementPage} allowedRoles={["admin", "cd"]} />}</Route>
       <Route path="/risques-opportunites">{() => <ProtectedRoute component={RiskOpportunityPage} allowedRoles={["admin"]} />}</Route>
       <Route path="/dt">{() => <ProtectedRoute component={DTDashboard} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/dashboard">{() => <ProtectedRoute component={DTDashboard} allowedRoles={["dt"]} />}</Route>
-      <Route path="/dt/demandes-accreditation">{() => <ProtectedRoute component={DTRequestReviewPage} allowedRoles={["dt"]} />}</Route>
-      <Route path="/dt/candidatures-oec">{() => <ProtectedRoute component={CandidaturesOECPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/demandes-accreditation">{() => <ProtectedRoute component={DTAccreditationRequestsPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/demande/:requestId">{() => <ProtectedRoute component={DTRequestDetailPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/candidature-oec/:id">{() => <ProtectedRoute component={DTOECApplicationDetailPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/candidatures-oec">{() => <ProtectedRoute component={DTAccreditationRequestsPage} allowedRoles={["dt"]} />}</Route>
+      <Route path="/dt/demandes-accreditation-legacy">{() => <ProtectedRoute component={DTRequestReviewPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/candidatures">{() => <ProtectedRoute component={CandidaturesPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/ordres-mission">{() => <ProtectedRoute component={DTMissionOrdersPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/certificats">{() => <ProtectedRoute component={CertificateSigningPage} allowedRoles={["dt"]} />}</Route>
@@ -296,6 +311,7 @@ function Router() {
       <Route path="/cas-president/reunions">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
       <Route path="/cas-president/decisions">{() => <ProtectedRoute component={CASPresidentDashboard} allowedRoles={["cas_president"]} />}</Route>
       <Route path="/cas-president/transferts">{() => <ProtectedRoute component={TransferDecisionPage} allowedRoles={["cas_president"]} />}</Route>
+      <Route path="/cas-president/comites">{() => <ProtectedRoute component={CommitteeManagementPage} allowedRoles={["cas_president", "admin", "cd"]} />}</Route>
       
       {/* DG Routes */}
       <Route path="/dg">{() => <ProtectedRoute component={DGDashboard} allowedRoles={["dg"]} />}</Route>

@@ -118,24 +118,55 @@ export default function CommitmentsPage() {
                     <ShieldCheck className="w-5 h-5 text-green-600" />
                     <CardTitle className="text-lg">Engagements Signés</CardTitle>
                   </div>
+                  <CardDescription>
+                    Vous gardez l'accès à vos engagements signés, avec la date de signature, pour consultation à tout moment.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {signed.length > 0 ? (
-                    <div className="space-y-2">
-                      {signed.map((m: any) => (
-                        <div key={m.id} className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-green-50/30 hover:bg-green-50/50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                            <div>
-                              <p className="font-medium text-sm">Équipe #{m.teamId} — {m.role}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Signé le {m.commitmentDate ? new Date(m.commitmentDate).toLocaleDateString("fr-FR") : "—"}
-                              </p>
+                    <div className="space-y-3">
+                      {signed.map((m: any) => {
+                        const signedDate = m.commitmentDate
+                          ? new Date(m.commitmentDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
+                          : null;
+                        const signedTime = m.commitmentDate
+                          ? new Date(m.commitmentDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                          : null;
+                        return (
+                          <div key={m.id} className="border border-green-200 rounded-lg p-4 bg-green-50/40">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                                <div>
+                                  <p className="font-medium text-sm">Équipe #{m.teamId} — {m.role}</p>
+                                  {signedDate && (
+                                    <p className="text-xs text-green-800">
+                                      Signé le <strong>{signedDate}</strong>{signedTime ? ` à ${signedTime}` : ""}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge className="bg-green-100 text-green-800">Signé</Badge>
                             </div>
+                            <details className="mt-3">
+                              <summary className="cursor-pointer text-sm text-green-800 select-none">
+                                Consulter le texte de l'engagement
+                              </summary>
+                              <div className="mt-2 p-3 bg-white rounded border border-green-100 text-sm space-y-1">
+                                <p className="font-medium">En signant cet engagement, je m'engage à :</p>
+                                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                  <li>Respecter la confidentialité des informations de l'organisme évalué</li>
+                                  <li>Ne pas divulguer les résultats de l'évaluation à des tiers</li>
+                                  <li>Déclarer tout conflit d'intérêt potentiel</li>
+                                  <li>Exercer mon rôle en toute impartialité et objectivité</li>
+                                  <li>Respecter les procédures et normes en vigueur</li>
+                                  <li>Me conformer au code de déontologie d'ALGERAC</li>
+                                </ul>
+                              </div>
+                            </details>
                           </div>
-                          <Badge className="bg-green-100 text-green-800">Signé</Badge>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Aucun engagement signé</p>

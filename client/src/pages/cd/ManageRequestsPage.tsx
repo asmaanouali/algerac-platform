@@ -322,15 +322,14 @@ export default function CDManageRequestsPage() {
             </div>
 
             <Tabs defaultValue="pending" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="pending">En attente ({pendingRequests.length})</TabsTrigger>
-                <TabsTrigger value="receivability-review"><ClipboardCheck className="h-4 w-4 mr-1" />Études à valider ({receivabilityRequests.length})</TabsTrigger>
-                <TabsTrigger value="cd-validation"><Send className="h-4 w-4 mr-1" />Devis & Convention ({pendingCDValidation.length})</TabsTrigger>
-                <TabsTrigger value="non-receivable">Non recevables ({nonReceivableRequests.length})</TabsTrigger>
-                <TabsTrigger value="all">Tous ({allRequests.length})</TabsTrigger>
-                <TabsTrigger value="ra-workload"><Users className="h-4 w-4 mr-1" />Charge RAs</TabsTrigger>
-                <TabsTrigger value="team-validation"><Shield className="h-4 w-4 mr-1" />Équipes ({pendingTeamValidation.length})</TabsTrigger>
-                <TabsTrigger value="recusations"><AlertTriangle className="h-4 w-4 mr-1" />Récusations ({pendingRecusations.length})</TabsTrigger>
+              <TabsList className="flex flex-wrap h-auto gap-1 justify-start w-full p-1">
+                <TabsTrigger value="pending" className="text-xs md:text-sm">En attente ({pendingRequests.length})</TabsTrigger>
+                <TabsTrigger value="receivability-review" className="text-xs md:text-sm"><ClipboardCheck className="h-4 w-4 mr-1" />Études à valider ({receivabilityRequests.length})</TabsTrigger>
+                <TabsTrigger value="cd-validation" className="text-xs md:text-sm"><Send className="h-4 w-4 mr-1" />Devis & Convention ({pendingCDValidation.length})</TabsTrigger>
+                <TabsTrigger value="non-receivable" className="text-xs md:text-sm">Non recevables ({nonReceivableRequests.length})</TabsTrigger>
+                <TabsTrigger value="team-validation" className="text-xs md:text-sm"><Shield className="h-4 w-4 mr-1" />Équipes ({pendingTeamValidation.length})</TabsTrigger>
+                <TabsTrigger value="recusations" className="text-xs md:text-sm"><AlertTriangle className="h-4 w-4 mr-1" />Récusations ({pendingRecusations.length})</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs md:text-sm">Tous ({allRequests.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pending">
@@ -500,28 +499,6 @@ export default function CDManageRequestsPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ra-workload">
-                <Card>
-                  <CardHeader><CardTitle>Charge de travail des RAs</CardTitle><CardDescription>Expertise et dossiers actifs</CardDescription></CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader><TableRow><TableHead>RA</TableHead><TableHead>Domaine d'expertise</TableHead><TableHead>Spécialité</TableHead><TableHead>Actifs</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                        {rasWorkload.map((ra) => (
-                          <TableRow key={ra.id}>
-                            <TableCell><div><p className="font-medium">{ra.fullName}</p><p className="text-xs text-muted-foreground">{ra.email}</p></div></TableCell>
-                            <TableCell>{ra.domaineExpertise || "—"}</TableCell>
-                            <TableCell>{ra.specialite || "—"}</TableCell>
-                            <TableCell><Badge variant={ra.activeDossiers > 5 ? "destructive" : "outline"}>{ra.activeDossiers}</Badge></TableCell>
-                            <TableCell>{ra.assignedDossiers}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               <TabsContent value="team-validation">
                 <Card>
                   <CardHeader>
@@ -614,13 +591,15 @@ export default function CDManageRequestsPage() {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Assigner à un Responsable d'Accréditation</DialogTitle>
-                <DialogDescription>Sélectionnez le RA le plus compétent selon le domaine et la charge</DialogDescription>
+                <DialogDescription>
+                  Seuls les RA de votre département sont proposés ci-dessous.
+                </DialogDescription>
               </DialogHeader>
               {selectedRequest && (
                 <div className="space-y-4 py-4">
                   <Alert><AlertDescription><strong>OEC :</strong> {selectedRequest.oec?.organizationName}<br /><strong>Domaine :</strong> {selectedRequest.domain}<br /><strong>Type :</strong> {selectedRequest.type}</AlertDescription></Alert>
                   <div className="space-y-2">
-                    <Label>Responsable d'accréditation</Label>
+                    <Label>Responsable d'accréditation (RA du département)</Label>
                     <Select value={selectedRaId} onValueChange={setSelectedRaId}>
                       <SelectTrigger><SelectValue placeholder="Sélectionnez un RA" /></SelectTrigger>
                       <SelectContent>
@@ -638,6 +617,11 @@ export default function CDManageRequestsPage() {
                         })}
                       </SelectContent>
                     </Select>
+                    {rasWorkload.length === 0 && (
+                      <p className="text-xs text-amber-700">
+                        Aucun RA n'est rattaché à votre département. Contactez l'administrateur.
+                      </p>
+                    )}
                   </div>
                   {selectedRaId && (() => {
                     const ra = rasWorkload.find(r => r.id === parseInt(selectedRaId));

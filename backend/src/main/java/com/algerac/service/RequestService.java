@@ -72,7 +72,41 @@ public class RequestService {
         
         return request;
     }
-    
+
+    /**
+     * Création + soumission directe d'une demande pour un OEC qui n'a pas encore
+     * de compte (inscription via /oecregister). La demande est immédiatement placée
+     * en PENDING_DT_REVIEW pour être visible dans la liste des demandes du DT.
+     */
+    @Transactional
+    public AccreditationRequest createAndSubmitForNewOec(User pendingOec, RequestType type, String domain, String description) {
+        AccreditationRequest request = AccreditationRequest.builder()
+                .oec(pendingOec)
+                .type(type != null ? type : RequestType.INITIAL)
+                .domain(domain != null && !domain.isBlank() ? domain : "À définir")
+                .description(description)
+                .status(RequestStatus.PENDING_DT_REVIEW)
+                .progress(5)
+                .currentPhase("INITIAL")
+                .currentStep("En attente de vérification DT")
+                .nextAction("Le dossier doit être vérifié par la Direction Technique")
+                .pendingWith("DT")
+                .submissionDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .sequenceNumber(nextSequenceNumber())
+                .build();
+
+        request = requestRepository.save(request);
+        log.info("Demande créée+soumise (nouvel OEC sans compte) #{} pour {}",
+                request.getSequenceNumber(),
+                pendingOec.getOrganizationName());
+
+        // Notifier le DT qu'une nouvelle demande nécessite la vérification des documents
+        notificationService.notifyDTNewRequest(request);
+
+        return request;
+    }
+
     /**
      * Soumission de la demande par l'OEC (après remplissage du formulaire)
      */
@@ -145,6 +179,13 @@ public class RequestService {
             
             // Notifier le(s) CD concerné(s) par le domaine
             notificationService.notifyCDAfterDTApproval(request);
+
+            // Cas particulier : nouvel OEC inscrit via /oecregister sans compte (User en PENDING).
+            // Demander à l'admin de créer le compte. La demande continue son flux normal vers le CD.
+            User oecUser = request.getOec();
+            if (oecUser != null && oecUser.getStatus() == UserStatus.PENDING) {
+                notificationService.notifyAdminCreateOECAccount(request);
+            }
         } else {
             request.setStatus(RequestStatus.DT_REJECTED);
             request.setProgress(3);

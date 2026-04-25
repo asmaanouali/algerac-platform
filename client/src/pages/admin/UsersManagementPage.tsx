@@ -26,7 +26,8 @@ import {
   Phone,
   User,
   Calendar,
-  CreditCard
+  CreditCard,
+  ShieldCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,6 +49,20 @@ interface OECAccountApplication {
   createdAt: string;
   depositFeeAmount?: number;
   paymentVerifiedAt?: string;
+}
+
+interface NewOECPending {
+  id: number;
+  nomOrganisme: string;
+  typeOrganisme: string;
+  adresseSiege: string;
+  email: string;
+  telephone: string;
+  nomRepresentant: string;
+  fonction: string;
+  porteeAccreditation: string;
+  typeDemande: string;
+  createdAt: string;
 }
 
 interface ActiveUser {
@@ -122,11 +137,19 @@ export default function UsersManagementPage() {
   const [oecConfirmApp, setOecConfirmApp] = useState<OECAccountApplication | null>(null);
   const [showOecConfirmDialog, setShowOecConfirmDialog] = useState(false);
 
+  // New OEC pending account creation (DT-approved, no account yet)
+  const [newOecPending, setNewOecPending] = useState<NewOECPending[]>([]);
+  const [newOecLoading, setNewOecLoading] = useState(true);
+  const [newOecActivating, setNewOecActivating] = useState<number | null>(null);
+  const [newOecConfirm, setNewOecConfirm] = useState<NewOECPending | null>(null);
+  const [showNewOecConfirmDialog, setShowNewOecConfirmDialog] = useState(false);
+
   useEffect(() => {
     if (user && !authLoading) {
       fetchActiveUsers();
       fetchPendingApplications();
       fetchOecAccountApps();
+      fetchNewOecPending();
     }
   }, [user, authLoading]);
 
@@ -221,6 +244,45 @@ export default function UsersManagementPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message || "Impossible de créer le compte" });
     } finally { setOecCreating(false); }
+  };
+
+  // New OEC (from /oecregister, no account) — fetch + activate
+  const fetchNewOecPending = async () => {
+    try {
+      setNewOecLoading(true);
+      const res = await fetch("/api/users/pending-new-oec", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setNewOecPending(Array.isArray(data) ? data : []);
+      } else {
+        setNewOecPending([]);
+      }
+    } catch {
+      setNewOecPending([]);
+    } finally {
+      setNewOecLoading(false);
+    }
+  };
+
+  const handleActivateNewOec = async () => {
+    if (!newOecConfirm) return;
+    try {
+      setNewOecActivating(newOecConfirm.id);
+      const res = await apiRequest("POST", `/api/users/${newOecConfirm.id}/activate-oec`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erreur lors de la création du compte");
+      toast({
+        title: "Compte créé",
+        description: `Le compte OEC pour ${newOecConfirm.nomOrganisme} a été activé et les identifiants ont été envoyés par email.`,
+      });
+      setShowNewOecConfirmDialog(false);
+      fetchNewOecPending();
+      fetchActiveUsers();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message || "Impossible d'activer le compte" });
+    } finally {
+      setNewOecActivating(null);
+    }
   };
 
   const filteredOecAccountApps = oecAccountApps.filter(a =>
@@ -410,7 +472,7 @@ export default function UsersManagementPage() {
                 </TabsTrigger>
                 <TabsTrigger value="oec-accounts" className="gap-2">
                   <CreditCard className="w-4 h-4" />
-                  Comptes OEC ({oecAccountApps.length})
+                  Comptes OEC ({oecAccountApps.length + newOecPending.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -640,6 +702,85 @@ export default function UsersManagementPage() {
                   </CardContent>
                 </Card>
 
+                {/* New OECs from /oecregister whose DT approved the request */}
+                <Card className={newOecPending.length > 0 ? "ring-2 ring-amber-300" : ""}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-amber-600" />
+                      Nouveaux OEC — validés par DT ({newOecPending.length})
+                    </CardTitle>
+                    <CardDescription>
+                      OEC inscrits via le formulaire public dont le dossier a été approuvé par la Direction Technique. Créez leur compte pour qu'ils puissent se connecter.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {newOecLoading ? (
+                      <p className="text-center py-6 text-muted-foreground">Chargement...</p>
+                    ) : newOecPending.length === 0 ? (
+                      <div className="text-center py-8 space-y-2">
+                        <CheckCircle2 className="w-12 h-12 mx-auto text-green-500" />
+                        <p className="text-sm text-muted-foreground">Aucun nouveau OEC en attente de compte</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Organisme</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Représentant</TableHead>
+                              <TableHead>Portée</TableHead>
+                              <TableHead>Soumis le</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {newOecPending
+                              .filter(o =>
+                                (o.nomOrganisme || "").toLowerCase().includes(oecAccountsSearch.toLowerCase()) ||
+                                (o.email || "").toLowerCase().includes(oecAccountsSearch.toLowerCase()) ||
+                                (o.nomRepresentant || "").toLowerCase().includes(oecAccountsSearch.toLowerCase())
+                              )
+                              .map((oec) => (
+                                <TableRow key={oec.id}>
+                                  <TableCell className="font-medium">{oec.nomOrganisme}</TableCell>
+                                  <TableCell>
+                                    <Badge className="bg-orange-100 text-orange-700 border-orange-200" variant="outline">
+                                      {oec.typeOrganisme || "OEC"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{oec.email}</TableCell>
+                                  <TableCell>{oec.nomRepresentant || "—"}</TableCell>
+                                  <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">{oec.porteeAccreditation || "—"}</TableCell>
+                                  <TableCell>{formatDate(oec.createdAt)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button
+                                      size="sm"
+                                      className="bg-amber-600 hover:bg-amber-700"
+                                      disabled={newOecActivating === oec.id}
+                                      onClick={() => {
+                                        setNewOecConfirm(oec);
+                                        setShowNewOecConfirmDialog(true);
+                                      }}
+                                    >
+                                      {newOecActivating === oec.id
+                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                                        : <UserPlus className="w-3.5 h-3.5 mr-1" />
+                                      }
+                                      Créer compte
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Original DAG-verified OEC applications */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Candidatures OEC vérifiées ({filteredOecAccountApps.length})</CardTitle>
@@ -711,7 +852,7 @@ export default function UsersManagementPage() {
         </div>
       </div>
 
-      {/* OEC Account Confirm Dialog */}
+      {/* OEC Account Confirm Dialog (DAG flow) */}
       <Dialog open={showOecConfirmDialog} onOpenChange={setShowOecConfirmDialog}>
         <DialogContent>
           <DialogHeader>
@@ -751,6 +892,46 @@ export default function UsersManagementPage() {
           setShowAddUserDialog(false);
         }}
       />
+
+      {/* New OEC Activation Confirm Dialog */}
+      <Dialog open={showNewOecConfirmDialog} onOpenChange={setShowNewOecConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Créer le compte OEC</DialogTitle>
+            <DialogDescription>
+              Un mot de passe temporaire sera généré et envoyé par email à l'organisme.
+            </DialogDescription>
+          </DialogHeader>
+          {newOecConfirm && (
+            <div className="space-y-2 text-sm">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+                <p><strong>Organisme :</strong> {newOecConfirm.nomOrganisme}</p>
+                <p><strong>Type :</strong> {newOecConfirm.typeOrganisme}</p>
+                <p><strong>Email :</strong> {newOecConfirm.email}</p>
+                <p><strong>Représentant :</strong> {newOecConfirm.nomRepresentant || "—"}</p>
+                <p><strong>Portée :</strong> {newOecConfirm.porteeAccreditation || "—"}</p>
+                <p><strong>Type de demande :</strong> {newOecConfirm.typeDemande || "initiale"}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                L'OEC recevra un email contenant ses identifiants de connexion et un message confirmant que son dossier a été accepté.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewOecConfirmDialog(false)} disabled={!!newOecActivating}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700"
+              disabled={!!newOecActivating}
+              onClick={handleActivateNewOec}
+            >
+              {newOecActivating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
+              Confirmer et envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Application Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>

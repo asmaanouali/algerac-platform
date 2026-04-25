@@ -5,11 +5,13 @@ package com.algerac.controller;
 import com.algerac.dto.*;
 import com.algerac.model.User;
 import com.algerac.model.OECApplication;
+import com.algerac.model.RequestType;
 import com.algerac.repository.UserRepository;
 import com.algerac.repository.OECApplicationRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import com.algerac.service.NotificationService;
+import com.algerac.service.RequestService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class AuthController {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final OECApplicationRepository oecApplicationRepository;
+    private final RequestService requestService;
 
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")
@@ -228,6 +231,23 @@ public class AuthController {
                     .build();
             oecApplicationRepository.save(oecApp);
             
+            // Créer aussi une AccreditationRequest en PENDING_DT_REVIEW pour que ce
+            // nouvel OEC (sans compte) apparaisse dans la liste des demandes du DT
+            // au même titre qu'un OEC existant. Le champ User.typeDemande sert de
+            // discriminant côté UI ("Type demandeur").
+            try {
+                RequestType reqType = mapTypeDemande(request.getTypeDemande());
+                requestService.createAndSubmitForNewOec(
+                        user,
+                        reqType,
+                        request.getPorteeAccreditation(),
+                        request.getDescription()
+                );
+            } catch (Exception e) {
+                log.error("Erreur lors de la création de l'AccreditationRequest pour le nouvel OEC {} : {}",
+                        user.getEmail(), e.getMessage(), e);
+            }
+            
             // Envoyer email de confirmation à l'OEC
             emailService.sendOECRegistrationConfirmation(user);
             
@@ -346,5 +366,15 @@ public class AuthController {
     @GetMapping("/health")
     public ResponseEntity<ApiResponse> healthCheck() {
         return ResponseEntity.ok(ApiResponse.success("API is running"));
+    }
+
+    private RequestType mapTypeDemande(String typeDemande) {
+        if (typeDemande == null) return RequestType.INITIAL;
+        return switch (typeDemande.toLowerCase()) {
+            case "extension" -> RequestType.EXTENSION;
+            case "renouvellement" -> RequestType.RENOUVELLEMENT;
+            case "transfert" -> RequestType.EXTENSION;
+            default -> RequestType.INITIAL;
+        };
     }
 }

@@ -2,17 +2,21 @@ package com.algerac.controller;
 
 import com.algerac.dto.ApiResponse;
 import com.algerac.dto.UserDTO;
+import com.algerac.model.RequestStatus;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.model.UserStatus;
 import com.algerac.repository.DepartmentRepository;
+import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
+import com.algerac.service.EmailService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +32,8 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DepartmentRepository departmentRepository;
+    private final RequestRepository requestRepository;
+    private final EmailService emailService;
     
     /**
      * Récupérer tous les utilisateurs (pour l'admin)
@@ -220,5 +226,103 @@ public class UserController {
                     .orElseThrow(() -> new RuntimeException("Département introuvable")));
         }
         return ResponseEntity.ok(UserDTO.fromUser(userRepository.save(target)));
+    }
+
+    // =====================================================================
+    // Nouveaux OEC sans compte — inscrits via /oecregister, validés par DT
+    // =====================================================================
+
+    /**
+     * Retourne les utilisateurs OEC en statut PENDING dont le DT a validé la demande.
+     * Ces utilisateurs ont rempli le formulaire OECRegister sans avoir de compte existant.
+     */
+    @GetMapping("/pending-new-oec")
+    public ResponseEntity<?> getPendingNewOec(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+
+        List<RequestStatus> excluded = List.of(
+                RequestStatus.DRAFT,
+                RequestStatus.PENDING_DT_REVIEW,
+                RequestStatus.DT_REJECTED
+        );
+
+        List<User> users = requestRepository.findNewOECsPendingAccountCreation(excluded);
+
+        List<Map<String, Object>> result = users.stream().map(u -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", u.getId());
+            m.put("nomOrganisme", u.getOrganizationName());
+            m.put("typeOrganisme", u.getTypeOrganisme());
+            m.put("adresseSiege", u.getAdresseSiege());
+            m.put("email", u.getEmail());
+            m.put("telephone", u.getPhone());
+            m.put("nomRepresentant", u.getNomRepresentant());
+            m.put("fonction", u.getFonction());
+            m.put("porteeAccreditation", u.getPorteeAccreditation());
+            m.put("typeDemande", u.getTypeDemande());
+            m.put("createdAt", u.getCreatedAt());
+            return m;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Crée le compte d'un OEC inscrit via /oecregister dont le DT a validé la demande :
+     * active le User (PENDING → APPROVED), génère un mot de passe temporaire et
+     * envoie l'email de bienvenue avec les identifiants.
+     */
+    @Transactional
+    @PostMapping("/{id}/activate-oec")
+    public ResponseEntity<?> activateNewOec(@PathVariable Long id, HttpSession session) {
+        Long callerId = (Long) session.getAttribute("userId");
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        User caller = userRepository.findById(callerId).orElse(null);
+        if (caller == null || caller.getRole() != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux administrateurs"));
+        }
+
+        User oec = userRepository.findById(id).orElse(null);
+        if (oec == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Utilisateur introuvable"));
+        }
+        if (oec.getRole() != UserRole.OEC) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Cet utilisateur n'est pas un OEC"));
+        }
+        if (oec.getStatus() != UserStatus.PENDING) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Ce compte est déjà actif ou a été rejeté"));
+        }
+
+        // Générer un mot de passe sécurisé de 12 caractères
+        String rawPassword = generateSecurePassword();
+        oec.setPassword(passwordEncoder.encode(rawPassword));
+        oec.setStatus(UserStatus.APPROVED);
+        userRepository.save(oec);
+
+        // Envoyer l'email de bienvenue avec les identifiants
+        try {
+            emailService.sendOECAccountCredentials(oec, rawPassword);
+        } catch (Exception e) {
+            log.warn("Envoi email de bienvenue OEC {} échoué : {}", oec.getEmail(), e.getMessage());
+        }
+
+        log.info("Compte OEC activé par admin {} pour {} ({})", callerId, oec.getOrganizationName(), oec.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Compte créé et email envoyé à " + oec.getEmail(),
+                UserDTO.fromUser(oec)
+        ));
+    }
+
+    private String generateSecurePassword() {
+        String chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+        java.security.SecureRandom rng = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) sb.append(chars.charAt(rng.nextInt(chars.length())));
+        return sb.toString();
     }
 }

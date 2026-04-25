@@ -298,7 +298,40 @@ public class NotificationService {
         
         log.info("Notification envoyée aux CD après validation DT de la demande {}", request.getReferenceNumber());
     }
-    
+
+    /**
+     * Notifier les ADMINs qu'un nouvel OEC (sans compte) a été validé par le DT
+     * et qu'il faut désormais créer son compte utilisateur.
+     */
+    @Transactional
+    public void notifyAdminCreateOECAccount(AccreditationRequest request) {
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        User oec = request.getOec();
+        String orgName = oec != null && oec.getOrganizationName() != null
+                ? oec.getOrganizationName() : "OEC";
+        String email = oec != null ? oec.getEmail() : "—";
+
+        for (User admin : admins) {
+            Notification notification = Notification.builder()
+                    .user(admin)
+                    .title("Création de compte OEC requise")
+                    .message(String.format(
+                            "La demande %s du nouvel OEC %s (%s) a été validée par la Direction Technique. Veuillez créer le compte utilisateur correspondant.",
+                            request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId(),
+                            orgName,
+                            email))
+                    .type("action_required")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            notificationRepository.save(notification);
+        }
+
+        log.info("Notification envoyée aux ADMIN pour création de compte OEC suite à validation DT (demande {})",
+                request.getId());
+    }
+
     /**
      * Notifier l'OEC que ses documents ont été rejetés par le DT
      */

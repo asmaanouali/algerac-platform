@@ -224,6 +224,7 @@ public class AuthController {
                     .emailProfessionnel(request.getEmailProfessionnel())
                     .porteeAccreditation(request.getPorteeAccreditation())
                     .typeDemande(request.getTypeDemande())
+                    .formDataJson(request.getDescription())
                     .build();
             oecApplicationRepository.save(oecApp);
             

@@ -60,8 +60,11 @@ public class AuthService {
     public User registerOEC(OECSignupRequest request) {
         Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
-            if (existingUser.get().getStatus() == UserStatus.REJECTED) {
-                userRepository.delete(existingUser.get());
+            User existing = existingUser.get();
+            if (existing.getStatus() == UserStatus.REJECTED || existing.getStatus() == UserStatus.PENDING) {
+                // Archive the old entry so the user can resubmit
+                existing.setEmail(existing.getEmail() + "_archived_" + System.currentTimeMillis());
+                userRepository.save(existing);
                 userRepository.flush();
             } else {
                 throw new RuntimeException("Un compte avec cet email existe déjà");

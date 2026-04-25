@@ -231,6 +231,7 @@ interface PrestationConseil {
   prestataire: string;
   date: string;
   description: string;
+  autrePrecision?: string;
 }
 
 interface Reconnaissance {
@@ -405,6 +406,7 @@ interface FormData {
   abreviation: string;
   sigle: string;
   statutJuridique: string;
+  statutJuridiqueAutre: string;
   registreCommerce: string;
   codesActivite: string;
   adresseSiege: string;
@@ -548,6 +550,7 @@ export default function OECRegister() {
     abreviation: "",
     sigle: "",
     statutJuridique: "",
+    statutJuridiqueAutre: "",
     registreCommerce: "",
     codesActivite: "",
     adresseSiege: "",
@@ -716,65 +719,113 @@ export default function OECRegister() {
     }
   };
 
+  const validateRows = (rows: Array<Record<string, any>>, keys: string[]): boolean => {
+    if (!rows || rows.length === 0) return false;
+    return rows.every((r) => keys.every((k) => String(r[k] ?? "").trim() !== ""));
+  };
+
   const validateStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    switch (currentStep) {
-      case 1:
-        if (!formData.typeDemande) {
-          newErrors.typeDemande = "Le type de demande est requis";
+    if (currentStep === 1) {
+      if (!formData.typeDemande) newErrors.typeDemande = "Le type de demande est requis";
+      if (!formData.dateEvaluation) newErrors.dateEvaluation = "La date d'évaluation souhaitée est requise";
+      if (formData.activites.length === 0) newErrors.activites = "Veuillez sélectionner au moins une activité";
+      if (!formData.siteType) newErrors.siteType = "Le type de site est requis";
+    }
+    if (currentStep === 2) {
+      if (!formData.nomLegal.trim()) newErrors.nomLegal = "Le nom légal est requis";
+      if (!formData.statutJuridique) newErrors.statutJuridique = "Le statut juridique est requis";
+      if (formData.statutJuridique === "Autre" && !formData.statutJuridiqueAutre?.trim()) newErrors.statutJuridiqueAutre = "Précisez le statut juridique";
+      if (!formData.registreCommerce.trim()) newErrors.registreCommerce = "Le registre de commerce est requis";
+      if (!formData.codesActivite.trim()) newErrors.codesActivite = "Les codes d'activité sont requis";
+      if (!formData.adresseSiege.trim()) newErrors.adresseSiege = "L'adresse du siège est requise";
+      if (!formData.email.trim()) newErrors.email = "L'email est requis";
+      if (!formData.appartientGroupe) newErrors.appartientGroupe = "Indiquez si vous appartenez à un groupe";
+      if (formData.appartientGroupe === "oui") {
+        if (!formData.groupeNom.trim()) newErrors.groupeNom = "Nom du groupe requis";
+        if (!formData.groupeRelation.trim()) newErrors.groupeRelation = "Type de relation requis";
+      }
+    }
+    if (currentStep === 3) {
+      if (!formData.contactNom.trim()) newErrors.contactNom = "Le nom du contact est requis";
+      if (!formData.contactFonction.trim()) newErrors.contactFonction = "La fonction est requise";
+      if (!formData.contactAdresse.trim()) newErrors.contactAdresse = "L'adresse du contact est requise";
+      if (!formData.contactTelephone.trim()) newErrors.contactTelephone = "Le téléphone est requis";
+      if (!formData.contactEmail.trim()) newErrors.contactEmail = "L'email du contact est requis";
+    }
+    if (currentStep === 4) {
+      if (!validateRows(formData.sites, ["localisation", "adresse", "activites"])) {
+        newErrors.sites = "Chaque site doit avoir localisation, adresse et activités";
+      }
+    }
+    if (currentStep === 5) {
+      if (!validateRows(formData.personnelSites, ["site", "permanents"])) newErrors.personnelSites = "Indiquez le personnel de chaque site";
+      if (!validateRows(formData.responsablesTechniques, ["nom", "qualifications", "experience"])) newErrors.responsablesTechniques = "Remplissez les infos du responsable technique";
+      if (!formData.responsableQualiteNom.trim()) newErrors.responsableQualiteNom = "Responsable qualité requis";
+      if (!formData.responsableQualiteQualif.trim()) newErrors.responsableQualiteQualif = "Qualifications du responsable qualité requises";
+      if (!formData.responsableQualiteExp.trim()) newErrors.responsableQualiteExp = "Expérience du responsable qualité requise";
+    }
+    if (currentStep === 6) {
+      if (!formData.prestationConseil) newErrors.prestationConseil = "Indiquez si vous avez eu recours à des prestations de conseil";
+      if (formData.prestationConseil === "oui") {
+        if (formData.prestations.length === 0) newErrors.prestations = "Ajoutez au moins une prestation";
+        else {
+          const invalid = formData.prestations.some((pr) =>
+            pr.types.length === 0 || !pr.prestataire.trim() || !pr.date || !pr.description.trim() ||
+            (pr.types.includes("autre") && !(pr as any).autrePrecision?.toString().trim())
+          );
+          if (invalid) newErrors.prestations = "Complétez chaque prestation (type, prestataire, date, description)";
         }
-        if (formData.activites.length === 0) {
-          newErrors.activites = "Veuillez sélectionner au moins une activité";
-        }
-        break;
-
-      case 2:
-        if (!formData.nomLegal.trim()) {
-          newErrors.nomLegal = "Le nom légal complet est requis";
-        }
-        if (!formData.statutJuridique) {
-          newErrors.statutJuridique = "Le statut juridique est requis";
-        }
-        if (!formData.adresseSiege.trim()) {
-          newErrors.adresseSiege = "L'adresse du siège est requise";
-        }
-        if (!formData.email.trim()) {
-          newErrors.email = "L'email est requis";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-          newErrors.email = "L'email n'est pas valide";
-        }
-        break;
-
-      case 3:
-        if (!formData.contactNom.trim()) {
-          newErrors.contactNom = "Le nom complet est requis";
-        }
-        if (!formData.contactFonction.trim()) {
-          newErrors.contactFonction = "La fonction/titre est requise";
-        }
-        if (!formData.contactTelephone.trim()) {
-          newErrors.contactTelephone = "Le téléphone est requis";
-        }
-        if (!formData.contactEmail.trim()) {
-          newErrors.contactEmail = "L'email est requis";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
-          newErrors.contactEmail = "L'email n'est pas valide";
-        }
-        break;
+      }
+    }
+    if (currentStep === 7) {
+      if (formData.typeDemande === "transfert" && !formData.motifTransfert.trim()) newErrors.motifTransfert = "Le motif du transfert est requis";
+    }
+    if (currentStep === 8) {
+      if (formData.activites.includes("inspection")) {
+        if (!for04Type) newErrors.for04Type = "Type d'organisme d'inspection requis";
+        if (!validateRows(for04Domaines, ["domaine", "objetInspecte", "norme"])) newErrors.for04Domaines = "Complétez les domaines d'inspection";
+        if (!validateRows(for04Inspecteurs, ["nom", "qualification", "statut"])) newErrors.for04Inspecteurs = "Complétez le personnel d'inspection";
+        if (!validateRows(for04Equipements, ["designation", "gamme"])) newErrors.for04Equipements = "Complétez les équipements";
+      }
+      if (formData.activites.includes("essais")) {
+        if (!validateRows(for05Domaines, ["domaine", "essaiAnalyse", "methodeRef"])) newErrors.for05Domaines = "Complétez la portée d'essais";
+        if (!validateRows(for05Methodes, ["reference", "titre"])) newErrors.for05Methodes = "Complétez les méthodes d'essai";
+        if (!validateRows(for05Personnel, ["nom", "diplome", "fonction"])) newErrors.for05Personnel = "Complétez le personnel technique";
+        if (!for05ProcedureIncertitudes.trim()) newErrors.for05ProcedureIncertitudes = "Procédure d'incertitudes requise";
+      }
+      if (formData.activites.includes("etalonnage")) {
+        if (!validateRows(for06Grandeurs, ["grandeur", "gamme", "methode"])) newErrors.for06Grandeurs = "Complétez les grandeurs";
+        if (!validateRows(for06Etalons, ["designation", "grandeur"])) newErrors.for06Etalons = "Complétez les étalons";
+      }
+      if (formData.activites.includes("cert_sm")) {
+        if (for07Referentiels.length === 0) newErrors.for07Referentiels = "Sélectionnez au moins un référentiel";
+        if (!validateRows(for07Secteurs, ["codeIAF", "description"])) newErrors.for07Secteurs = "Complétez les secteurs";
+      }
+      if (formData.activites.includes("examens_medicaux") && !validateRows(for051Disciplines, ["discipline", "typeExamen"])) {
+        newErrors.for051Disciplines = "Complétez les disciplines";
+      }
+      const missingFile = Object.entries(formData.documentsChecked).some(([k, v]) => v && !documentFiles[k]);
+      if (missingFile) newErrors.docsChecked = "Joignez un fichier à chaque document coché";
+    }
+    if (currentStep === 9) {
+      const missing = Object.entries(formData.docsAdminChecked).some(([k, v]) => v && !documentFiles[`admin-${k}`]);
+      if (missing) newErrors.docsAdminChecked = "Joignez un fichier à chaque document administratif coché";
+    }
+    if (currentStep === 10) {
+      if (!formData.engagementsAcceptes) newErrors.engagements = "Vous devez accepter les engagements";
+      if (!formData.demandeurNom.trim()) newErrors.demandeurNom = "Nom du demandeur requis";
+      if (!formData.demandeurFonction.trim()) newErrors.demandeurFonction = "Fonction du demandeur requise";
+      if (!formData.demandeurDate) newErrors.demandeurDate = "Date requise";
+      if (!formData.signature.trim()) newErrors.signature = "Signature requise";
     }
 
     setErrors(newErrors);
-    
     if (Object.keys(newErrors).length > 0) {
-      toast({
-        title: "Champs requis manquants",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive"
-      });
+      toast({ title: "Champs requis manquants", description: Object.values(newErrors)[0] || "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
       return false;
     }
-    
     return true;
   };
 
@@ -817,9 +868,63 @@ export default function OECRegister() {
       }
 
       // Mapper les données du formulaire vers le format attendu par le backend
+      const description = JSON.stringify({
+        typeDemande: formData.typeDemande,
+        dateEvaluation: formData.dateEvaluation,
+        activites: formData.activites,
+        siteType: formData.siteType,
+        nomLegal: formData.nomLegal,
+        abreviation: formData.abreviation,
+        sigle: formData.sigle,
+        statutJuridique: formData.statutJuridique === "Autre" ? `Autre: ${formData.statutJuridiqueAutre}` : formData.statutJuridique,
+        registreCommerce: formData.registreCommerce,
+        codesActivite: formData.codesActivite,
+        adresseSiege: formData.adresseSiege,
+        adresseFacturation: formData.adresseFacturation,
+        emailOrg: formData.email,
+        siteWeb: formData.siteWeb,
+        appartientGroupe: formData.appartientGroupe,
+        groupeNom: formData.groupeNom,
+        groupeAdresse: formData.groupeAdresse,
+        groupeRelation: formData.groupeRelation,
+        groupeImpact: formData.groupeImpact,
+        contactNom: formData.contactNom,
+        contactFonction: formData.contactFonction,
+        contactAdresse: formData.contactAdresse,
+        contactTelephone: formData.contactTelephone,
+        contactFax: formData.contactFax,
+        contactEmail: formData.contactEmail,
+        sites: formData.sites,
+        personnelSites: formData.personnelSites,
+        responsablesTechniques: formData.responsablesTechniques,
+        responsableQualiteNom: formData.responsableQualiteNom,
+        responsableQualiteQualif: formData.responsableQualiteQualif,
+        responsableQualiteExp: formData.responsableQualiteExp,
+        prestationConseil: formData.prestationConseil,
+        prestations: formData.prestations,
+        reconnaissances: formData.reconnaissances,
+        motifTransfert: formData.motifTransfert,
+        demandeurNom: formData.demandeurNom,
+        demandeurFonction: formData.demandeurFonction,
+        demandeurDate: formData.demandeurDate,
+        signature: formData.signature,
+        organismeSoumission: formData.organismeSoumission,
+        technicalForms: {
+          ...(formData.activites.includes("inspection") ? { for04: { typeOrganisme: for04Type, domaines: for04Domaines, inspecteurs: for04Inspecteurs, equipements: for04Equipements } } : {}),
+          ...(formData.activites.includes("essais") ? { for05: { domaines: for05Domaines, methodes: for05Methodes, equipements: for05Equipements, personnel: for05Personnel, participationEIL: for05ParticipationEIL, procedureIncertitudes: for05ProcedureIncertitudes } } : {}),
+          ...(formData.activites.includes("etalonnage") ? { for06: { grandeurs: for06Grandeurs, etalons: for06Etalons, equipements: for06Equipements, personnel: for06Personnel, conditionsEnvironnementales: for06ConditionsEnv } } : {}),
+          ...(formData.activites.includes("cert_sm") ? { for07: { referentiels: for07Referentiels, secteurs: for07Secteurs, auditeurs: for07Auditeurs, comite: for07Comite, nbClientsCertifies: for07NbClientsCertifies } } : {}),
+          ...(formData.activites.includes("examens_medicaux") ? { for051: { disciplines: for051Disciplines, personnel: for051Personnel, participationEEQ: for051ParticipationEEQ } } : {}),
+          ...(formData.activites.includes("essais_aptitude") ? { for055: { programmes: for055Programmes, personnel: for055Personnel } } : {}),
+          ...(formData.activites.includes("cert_produits") ? { for075: { produits: for075Produits, evaluateurs: for075Evaluateurs } } : {}),
+          ...(formData.activites.includes("cert_personnes") ? { for078: { schemas: for078Schemas, evaluateurs: for078Evaluateurs } } : {}),
+        },
+        documents: docsList,
+      });
+
       const payload = {
         nomOrganisme: formData.nomLegal,
-        typeOrganisme: formData.statutJuridique || "OEC",
+        typeOrganisme: formData.statutJuridique === "Autre" ? formData.statutJuridiqueAutre || "Autre" : formData.statutJuridique || "OEC",
         adresseSiege: formData.adresseSiege,
         telephone: formData.contactTelephone,
         email: formData.email,
@@ -830,7 +935,8 @@ export default function OECRegister() {
         porteeAccreditation: formData.activites.join(", "),
         typeDemande: formData.typeDemande,
         userType: "OEC",
-        documents: docsList.length > 0 ? docsList : undefined
+        description,
+        documents: docsList.length > 0 ? docsList : undefined,
       };
 
       const response = await fetch("/api/auth/signup/oec", {
@@ -907,11 +1013,12 @@ export default function OECRegister() {
       </div>
 
       <div className="space-y-2">
-        <Label>Date d'évaluation souhaitée</Label>
+        <Label>Date d'évaluation souhaitée <span className="text-red-500">*</span></Label>
         <StringDatePicker
           value={formData.dateEvaluation}
           onChange={(v) => updateFormData("dateEvaluation", v)}
         />
+        {errors.dateEvaluation && <p className="text-sm text-red-500">{errors.dateEvaluation}</p>}
       </div>
 
       <div className="space-y-3">
@@ -932,7 +1039,8 @@ export default function OECRegister() {
       </div>
 
       <div className="space-y-4">
-        <Label className="text-base font-semibold">Type de site</Label>
+        <Label className="text-base font-semibold">Type de site <span className="text-red-500">*</span></Label>
+        {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
         <RadioGroup value={formData.siteType} onValueChange={(v) => updateFormData("siteType", v)}>
           <div className="grid md:grid-cols-2 gap-3">
             {TYPES_SITES.map(type => (
@@ -992,24 +1100,35 @@ export default function OECRegister() {
             </SelectContent>
           </Select>
           {errors.statutJuridique && <p className="text-sm text-red-500">{errors.statutJuridique}</p>}
+          {formData.statutJuridique === "Autre" && (
+            <Input
+              value={formData.statutJuridiqueAutre}
+              onChange={(e) => updateFormData("statutJuridiqueAutre", e.target.value)}
+              placeholder="Précisez le statut juridique *"
+              className="mt-1"
+            />
+          )}
+          {errors.statutJuridiqueAutre && <p className="text-sm text-red-500">{errors.statutJuridiqueAutre}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label>Numéro de registre de commerce</Label>
+          <Label>N° registre de commerce <span className="text-red-500">*</span></Label>
           <Input 
             value={formData.registreCommerce}
             onChange={(e) => updateFormData("registreCommerce", e.target.value)}
             placeholder="Ex: 12-3456789-01"
           />
+          {errors.registreCommerce && <p className="text-sm text-red-500">{errors.registreCommerce}</p>}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label>Codes d'activité</Label>
+          <Label>Codes d'activité <span className="text-red-500">*</span></Label>
           <Input 
             value={formData.codesActivite}
             onChange={(e) => updateFormData("codesActivite", e.target.value)}
             placeholder="Codes NAA"
           />
+          {errors.codesActivite && <p className="text-sm text-red-500">{errors.codesActivite}</p>}
         </div>
 
         <div className="space-y-2 md:col-span-2">
@@ -1055,7 +1174,8 @@ export default function OECRegister() {
       </div>
 
       <div className="space-y-4 pt-4 border-t">
-        <Label className="text-base font-semibold">Appartient à un groupe ?</Label>
+        <Label className="text-base font-semibold">Appartient à un groupe ? <span className="text-red-500">*</span></Label>
+        {errors.appartientGroupe && <p className="text-sm text-red-500">{errors.appartientGroupe}</p>}
         <RadioGroup value={formData.appartientGroupe} onValueChange={(v) => updateFormData("appartientGroupe", v)}>
           <div className="flex gap-4">
             <div className="flex items-center space-x-2">
@@ -1073,12 +1193,13 @@ export default function OECRegister() {
       {formData.appartientGroupe === "oui" && (
         <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
           <div className="space-y-2 md:col-span-2">
-            <Label>Nom du groupe</Label>
+            <Label>Nom du groupe <span className="text-red-500">*</span></Label>
             <Input 
               value={formData.groupeNom}
               onChange={(e) => updateFormData("groupeNom", e.target.value)}
               placeholder="Nom du groupe"
             />
+            {errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -1092,12 +1213,13 @@ export default function OECRegister() {
           </div>
 
           <div className="space-y-2">
-            <Label>Type de relation</Label>
+            <Label>Type de relation <span className="text-red-500">*</span></Label>
             <Input 
               value={formData.groupeRelation}
               onChange={(e) => updateFormData("groupeRelation", e.target.value)}
               placeholder="Ex: Filiale, Maison-mère"
             />
+            {errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}
           </div>
 
           <div className="space-y-2">
@@ -1138,13 +1260,14 @@ export default function OECRegister() {
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label>Adresse</Label>
+          <Label>Adresse <span className="text-red-500">*</span></Label>
           <Textarea 
             value={formData.contactAdresse}
             onChange={(e) => updateFormData("contactAdresse", e.target.value)}
             placeholder="Adresse du contact"
             rows={2}
           />
+          {errors.contactAdresse && <p className="text-sm text-red-500">{errors.contactAdresse}</p>}
         </div>
 
         <div className="space-y-2">
@@ -1184,11 +1307,12 @@ export default function OECRegister() {
   const renderStep4 = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Label className="text-base font-semibold">Sites et activités</Label>
+        <Label className="text-base font-semibold">Sites et activités <span className="text-red-500">*</span></Label>
         <Button type="button" onClick={addSite} size="sm" className="gap-2">
           <Plus className="w-4 h-4" /> Ajouter une ligne
         </Button>
       </div>
+      {errors.sites && <p className="text-sm text-red-500">{errors.sites}</p>}
 
       <div className="space-y-4">
         {formData.sites.map((site) => (
@@ -1211,7 +1335,7 @@ export default function OECRegister() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Site/Localisation</Label>
+                  <Label className="text-sm">Site/Localisation <span className="text-red-500">*</span></Label>
                   <Input 
                     value={site.localisation}
                     onChange={(e) => updateSite(site.id, "localisation", e.target.value)}
@@ -1220,7 +1344,7 @@ export default function OECRegister() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Adresse</Label>
+                  <Label className="text-sm">Adresse <span className="text-red-500">*</span></Label>
                   <Input 
                     value={site.adresse}
                     onChange={(e) => updateSite(site.id, "adresse", e.target.value)}
@@ -1229,7 +1353,7 @@ export default function OECRegister() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Activités réalisées sur site</Label>
+                  <Label className="text-sm">Activités réalisées sur site <span className="text-red-500">*</span></Label>
                   <Input 
                     value={site.activites}
                     onChange={(e) => updateSite(site.id, "activites", e.target.value)}
@@ -1268,18 +1392,19 @@ export default function OECRegister() {
       {/* Section Personnel par site */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Personnel par site</Label>
+          <Label className="text-base font-semibold">Personnel par site <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={addPersonnelSite} size="sm" className="gap-2">
             <Plus className="w-4 h-4" /> Ajouter
           </Button>
         </div>
+        {errors.personnelSites && <p className="text-sm text-red-500">{errors.personnelSites}</p>}
 
         <div className="space-y-3">
           {formData.personnelSites.map((ps) => (
             <Card key={ps.id} className="p-4">
               <div className="grid md:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
-                  <Label className="text-sm">Site</Label>
+                  <Label className="text-sm">Site <span className="text-red-500">*</span></Label>
                   <Input 
                     value={ps.site}
                     onChange={(e) => updatePersonnelSite(ps.id, "site", e.target.value)}
@@ -1288,7 +1413,7 @@ export default function OECRegister() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Personnel technique permanent</Label>
+                  <Label className="text-sm">Personnel technique permanent <span className="text-red-500">*</span></Label>
                   <Input 
                     type="number"
                     value={ps.permanents}
@@ -1327,11 +1452,12 @@ export default function OECRegister() {
       {/* Section Responsables techniques */}
       <div className="space-y-4 pt-6 border-t">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Responsable(s) technique(s)</Label>
+          <Label className="text-base font-semibold">Responsable(s) technique(s) <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={addResponsableTechnique} size="sm" className="gap-2">
             <Plus className="w-4 h-4" /> Ajouter
           </Button>
         </div>
+        {errors.responsablesTechniques && <p className="text-sm text-red-500">{errors.responsablesTechniques}</p>}
 
         <div className="space-y-3">
           {formData.responsablesTechniques.map((rt) => (
@@ -1354,7 +1480,7 @@ export default function OECRegister() {
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm">Nom complet</Label>
+                    <Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label>
                     <Input 
                       value={rt.nom}
                       onChange={(e) => updateResponsableTechnique(rt.id, "nom", e.target.value)}
@@ -1363,7 +1489,7 @@ export default function OECRegister() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">Qualifications</Label>
+                    <Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label>
                     <Input 
                       value={rt.qualifications}
                       onChange={(e) => updateResponsableTechnique(rt.id, "qualifications", e.target.value)}
@@ -1372,7 +1498,7 @@ export default function OECRegister() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">Années d'expérience</Label>
+                    <Label className="text-sm">Années d'expérience <span className="text-red-500">*</span></Label>
                     <Input 
                       type="number"
                       value={rt.experience}
@@ -1389,34 +1515,37 @@ export default function OECRegister() {
 
       {/* Section Responsable qualité */}
       <div className="space-y-4 pt-6 border-t">
-        <Label className="text-base font-semibold">Responsable qualité</Label>
+        <Label className="text-base font-semibold">Responsable qualité <span className="text-red-500">*</span></Label>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label className="text-sm">Nom complet</Label>
+            <Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label>
             <Input 
               value={formData.responsableQualiteNom}
               onChange={(e) => updateFormData("responsableQualiteNom", e.target.value)}
               placeholder="Nom et prénom"
             />
+            {errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm">Qualifications</Label>
+            <Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label>
             <Input 
               value={formData.responsableQualiteQualif}
               onChange={(e) => updateFormData("responsableQualiteQualif", e.target.value)}
               placeholder="Diplômes, certifications"
             />
+            {errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm">Années d'expérience dans la fonction</Label>
+            <Label className="text-sm">Années d'expérience dans la fonction <span className="text-red-500">*</span></Label>
             <Input 
               type="number"
               value={formData.responsableQualiteExp}
               onChange={(e) => updateFormData("responsableQualiteExp", e.target.value)}
               placeholder="Années"
             />
+            {errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}
           </div>
         </div>
       </div>
@@ -1427,7 +1556,8 @@ export default function OECRegister() {
   const renderStep6 = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ?</Label>
+        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ? <span className="text-red-500">*</span></Label>
+        {errors.prestationConseil && <p className="text-sm text-red-500">{errors.prestationConseil}</p>}
         <RadioGroup value={formData.prestationConseil} onValueChange={(v) => updateFormData("prestationConseil", v)}>
           <div className="flex gap-4">
             <div className="flex items-center space-x-2">
@@ -1491,6 +1621,16 @@ export default function OECRegister() {
                         </div>
                       ))}
                     </div>
+                    {prestation.types.includes("autre") && (
+                      <div className="space-y-2">
+                        <Label className="text-sm">Précisez le type de prestation <span className="text-red-500">*</span></Label>
+                        <Input
+                          value={(prestation as any).autrePrecision || ""}
+                          onChange={(e) => updatePrestation(prestation.id, "autrePrecision" as any, e.target.value)}
+                          placeholder="Détaillez la prestation..."
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
@@ -1597,104 +1737,15 @@ export default function OECRegister() {
 
       {/* Section Transfert (si applicable) */}
       {formData.typeDemande === "transfert" && (
-        <div className="space-y-6 pt-6 border-t">
-          <Label className="text-base font-semibold">Informations sur le transfert</Label>
-          
-          <div className="space-y-4">
-            <Label className="text-sm font-medium">Motif du transfert</Label>
-            <RadioGroup value={formData.motifTransfert} onValueChange={(v) => updateFormData("motifTransfert", v)}>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="reorganisation" id="motif-reorganisation" />
-                  <Label htmlFor="motif-reorganisation" className="cursor-pointer">
-                    Réorganisation/création de filiale
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="cession" id="motif-cession" />
-                  <Label htmlFor="motif-cession" className="cursor-pointer">
-                    Cession de portée à une autre entité
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="fusion" id="motif-fusion" />
-                  <Label htmlFor="motif-fusion" className="cursor-pointer">
-                    Fusion de deux OEC
-                  </Label>
-                </div>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Tableau des changements</Label>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label className="text-sm">Postes clés - changement opéré</Label>
-                <Textarea 
-                  value={formData.changementsTransfert.posteCles}
-                  onChange={(e) => updateFormData("changementsTransfert", {
-                    ...formData.changementsTransfert,
-                    posteCles: e.target.value
-                  })}
-                  placeholder="Décrire les changements"
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Effectif - changement opéré</Label>
-                <Textarea 
-                  value={formData.changementsTransfert.effectif}
-                  onChange={(e) => updateFormData("changementsTransfert", {
-                    ...formData.changementsTransfert,
-                    effectif: e.target.value
-                  })}
-                  placeholder="Décrire les changements"
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Locaux - changement opéré</Label>
-                <Textarea 
-                  value={formData.changementsTransfert.locaux}
-                  onChange={(e) => updateFormData("changementsTransfert", {
-                    ...formData.changementsTransfert,
-                    locaux: e.target.value
-                  })}
-                  placeholder="Décrire les changements"
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Équipements - changement opéré</Label>
-                <Textarea 
-                  value={formData.changementsTransfert.equipements}
-                  onChange={(e) => updateFormData("changementsTransfert", {
-                    ...formData.changementsTransfert,
-                    equipements: e.target.value
-                  })}
-                  placeholder="Décrire les changements"
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Système de management - changement opéré</Label>
-                <Textarea 
-                  value={formData.changementsTransfert.systemeManagement}
-                  onChange={(e) => updateFormData("changementsTransfert", {
-                    ...formData.changementsTransfert,
-                    systemeManagement: e.target.value
-                  })}
-                  placeholder="Décrire les changements"
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
+        <div className="space-y-4 pt-6 border-t">
+          <Label className="text-base font-semibold">Motif du transfert <span className="text-red-500">*</span></Label>
+          <Textarea
+            value={formData.motifTransfert}
+            onChange={(e) => updateFormData("motifTransfert", e.target.value)}
+            placeholder="Décrivez le motif du transfert"
+            rows={3}
+          />
+          {errors.motifTransfert && <p className="text-sm text-red-500">{errors.motifTransfert}</p>}
         </div>
       )}
     </div>

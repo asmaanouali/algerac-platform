@@ -906,8 +906,7 @@ export default function InterviewEvaluationPage() {
               </Select>
             </div>
             <p className="text-sm text-muted-foreground">
-              Une notification sera envoyée à l'administrateur pour créer le compte utilisateur. Le candidat ne
-              recevra pas d'email à ce stade.
+              Une notification sera envoyée à l'administrateur pour créer le compte utilisateur.
             </p>
           </div>
           <DialogFooter className="gap-2">

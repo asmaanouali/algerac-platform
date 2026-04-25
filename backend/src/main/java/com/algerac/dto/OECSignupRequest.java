@@ -51,6 +51,8 @@ public class OECSignupRequest {
     @NotBlank(message = "Le type d'utilisateur est requis")
     private String userType; // "OEC"
     
+    private String description; // Données complètes du formulaire en JSON
+    
     // Documents joints (checklisteDocs + fichiers uploadés)
     private List<DocumentJoint> documents;
     

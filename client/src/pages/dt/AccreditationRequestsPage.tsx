@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +58,9 @@ export default function DTAccreditationRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterDemandeur, setFilterDemandeur] = useState("all");
+  const [filterDomain, setFilterDomain] = useState("all");
 
   const load = async () => {
     setLoading(true);
@@ -88,7 +92,13 @@ export default function DTAccreditationRequestsPage() {
 
   const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
+  const domains = Array.from(new Set(requests.map((r) => r.domain).filter(Boolean))) as string[];
+
   const matches = (r: RequestRow) => {
+    if (filterType !== "all" && (r.type || "").toUpperCase() !== filterType) return false;
+    if (filterDemandeur === "new" && !isNewOec(r)) return false;
+    if (filterDemandeur === "existing" && isNewOec(r)) return false;
+    if (filterDomain !== "all" && (r.domain || "") !== filterDomain) return false;
     const q = search.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -244,14 +254,55 @@ export default function DTAccreditationRequestsPage() {
                   </CardTitle>
                   <CardDescription>Filtrez et recherchez dans l'ensemble des demandes</CardDescription>
                 </div>
-                <div className="relative w-full md:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher (référence, organisme, email…)"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="relative w-full md:w-60">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Référence, organisme, email…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Type de demande" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les types</SelectItem>
+                      <SelectItem value="INITIAL">Initiale</SelectItem>
+                      <SelectItem value="RENOUVELLEMENT">Renouvellement</SelectItem>
+                      <SelectItem value="EXTENSION">Extension</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterDemandeur} onValueChange={setFilterDemandeur}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Type demandeur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les OEC</SelectItem>
+                      <SelectItem value="new">Nouveau OEC</SelectItem>
+                      <SelectItem value="existing">OEC existant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {domains.length > 0 && (
+                    <Select value={filterDomain} onValueChange={setFilterDomain}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Domaine" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les domaines</SelectItem>
+                        {domains.map((d) => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {(filterType !== "all" || filterDemandeur !== "all" || filterDomain !== "all" || search) && (
+                    <Button variant="ghost" size="sm" onClick={() => { setFilterType("all"); setFilterDemandeur("all"); setFilterDomain("all"); setSearch(""); }}>
+                      Réinitialiser
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>

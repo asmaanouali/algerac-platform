@@ -457,6 +457,24 @@ export default function DTRequestDetailPage() {
             </Card>
           )}
 
+          {/* CD Assignment Info */}
+          {req.assignedToCd && (
+            <Card className="border-emerald-200 bg-emerald-50/40">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-emerald-800">
+                  <Send className="w-4 h-4" /> Assignation au Chef de Département
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Info icon={Users} label="Chef de Département" value={req.assignedToCd.fullName} />
+                  <Info icon={Mail} label="Email du CD" value={req.assignedToCd.email} />
+                  {req.department && <Info icon={Building2} label="Département" value={`${req.department.name} (${req.department.code})`} />}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           <Card className={canReview ? "border-2 border-amber-300" : ""}>
             <CardHeader>

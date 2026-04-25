@@ -146,7 +146,7 @@ export default function DocumentaryResponsePage() {
             )}
 
             {/* Response form */}
-            {(request?.status === "DOC_REVIEW_RESULTS_SENT_TO_OEC") && (
+            {(request?.status === "DOC_REVIEW_RESULTS_SENT_TO_OEC" || request?.status === "AWAITING_OEC_DOC_RESPONSE") && (
               <Card>
                 <CardHeader>
                   <CardTitle><Send className="inline h-5 w-5 mr-2" />Votre Réponse</CardTitle>

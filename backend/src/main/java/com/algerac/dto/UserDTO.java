@@ -86,8 +86,7 @@ public class UserDTO {
                 .dateInscription(dateInscription);
         
         // Champs spécifiques aux experts
-        if ("EXPERT".equals(user.getRole()) || "EVALUATEUR".equals(user.getRole()) || 
-            "FORMATEUR".equals(user.getRole())) {
+        if ("EXPERT".equals(user.getRole()) || "FORMATEUR".equals(user.getRole())) {
             builder.dateNaissance(user.getDateNaissance())
                    .nationalite(user.getNationalite())
                    .domaineExpertise(user.getDomaineExpertise())

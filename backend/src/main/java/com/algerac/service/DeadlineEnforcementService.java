@@ -213,7 +213,7 @@ public class DeadlineEnforcementService {
      * Vérifie les demandes en attente de réponse OEC pour la revue documentaire (3 mois)
      */
     private void checkDocReviewOECResponseDeadline() {
-        List<AccreditationRequest> requests = requestRepository.findByStatus(RequestStatus.AWAITING_OEC_DOC_RESPONSE);
+        List<AccreditationRequest> requests = requestRepository.findByStatus(RequestStatus.DOC_REVIEW_RESULTS_SENT_TO_OEC);
         LocalDateTime now = LocalDateTime.now();
         for (AccreditationRequest request : requests) {
             if (request.getNextActionDate() != null && request.getNextActionDate().isBefore(now)) {

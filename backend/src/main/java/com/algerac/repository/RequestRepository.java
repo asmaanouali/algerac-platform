@@ -29,6 +29,9 @@ public interface RequestRepository extends JpaRepository<AccreditationRequest, L
     
     long countByReferenceNumberStartingWith(String prefix);
 
+    @Query("SELECT COUNT(r) FROM AccreditationRequest r WHERE r.referenceNumber LIKE :pattern")
+    long countByReferenceNumberLike(@Param("pattern") String pattern);
+
     List<AccreditationRequest> findByAssignedToCd_Id(Long cdId);
 
     List<AccreditationRequest> findByDepartment_Id(Long departmentId);

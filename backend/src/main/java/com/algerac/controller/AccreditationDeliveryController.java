@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -257,7 +258,7 @@ public class AccreditationDeliveryController {
                 (String) body.get("scopeSampling"),
                 body.get("estimatedDuration") != null ? ((Number) body.get("estimatedDuration")).intValue() : null,
                 body.get("firstSurveillanceDate") != null ?
-                    LocalDateTime.parse((String) body.get("firstSurveillanceDate")) : null,
+                    LocalDate.parse((String) body.get("firstSurveillanceDate")).atStartOfDay() : null,
                 user
             );
             return ResponseEntity.ok(ApiResponse.success("Plan de surveillance créé", result));

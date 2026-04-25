@@ -139,7 +139,7 @@ public class WorkflowController {
 
     @GetMapping("/available-experts")
     public ResponseEntity<?> getAvailableExperts(@RequestParam(required = false) String date) {
-        List<UserRole> teamEligibleRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR);
+        List<UserRole> teamEligibleRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ);
         List<User> experts = userRepository.findAll().stream()
                 .filter(u -> teamEligibleRoles.contains(u.getRole()) && u.getStatus() == UserStatus.APPROVED)
                 .collect(Collectors.toList());
@@ -486,7 +486,7 @@ public class WorkflowController {
                     .collect(java.util.stream.Collectors.toSet());
 
             List<UserRole> eligibleRoles = List.of(
-                    UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR);
+                    UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ);
 
             List<Map<String, Object>> result = userRepository.findAll().stream()
                     .filter(u -> eligibleRoles.contains(u.getRole())
@@ -685,13 +685,19 @@ public class WorkflowController {
      * L'équipe dispose de 15 jours max.
      */
     @PostMapping("/documentary-review/{id}/transmit-docs")
-    public ResponseEntity<ApiResponse> transmitDocsToTeam(@PathVariable Long id, HttpSession session) {
+    public ResponseEntity<ApiResponse> transmitDocsToTeam(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpSession session) {
         try {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return unauthorized();
 
             DocumentaryReview review = docReviewRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Revue documentaire non trouvée"));
+
+            // Persist selected document types and optional notes from RA
+            String docTypes = body.get("documentTypes") != null ? body.get("documentTypes").toString() : null;
+            String notes = body.get("notes") != null ? body.get("notes").toString() : null;
+            review.setTransmittedDocumentTypes(docTypes);
+            review.setTransmissionNotes(notes);
 
             review.setDocumentationSentToTeam(LocalDateTime.now());
             review.setTeamResultsDeadline(LocalDateTime.now().plusDays(15));
@@ -708,11 +714,15 @@ public class WorkflowController {
             if (review.getTeam() != null) {
                 for (TeamMember member : review.getTeam().getMembers()) {
                     if (member.getExpert() != null) {
+                        String notifMsg = "Les documents de l'OEC pour le dossier " + request.getReferenceNumber()
+                                + " vous ont été transmis. Vous disposez de 15 jours maximum pour soumettre vos résultats.";
+                        if (notes != null && !notes.isBlank()) {
+                            notifMsg += "\n\nNote du RA : " + notes;
+                        }
                         notificationService.createNotification(
                             member.getExpert().getId(),
                             "Documents à analyser - Revue documentaire",
-                            "Les documents de l'OEC pour le dossier " + request.getReferenceNumber()
-                                + " vous ont été transmis. Vous disposez de 15 jours maximum pour soumettre vos résultats.",
+                            notifMsg,
                             "ACTION_REQUIRED"
                         );
                     }
@@ -1020,6 +1030,7 @@ public class WorkflowController {
             request.setStatus(RequestStatus.DOC_REVIEW_RESULTS_SENT_TO_OEC);
             request.setCurrentStep("Résultats/synthèse envoyés à l'OEC");
             request.setPendingWith("OEC");
+            request.setNextActionDate(LocalDateTime.now().plusMonths(3));
             requestRepository.save(request);
 
             // Notifier l'OEC
@@ -3490,7 +3501,7 @@ public class WorkflowController {
 
     @GetMapping("/experts-directory")
     public ResponseEntity<?> getExpertsDirectory() {
-        List<UserRole> evaluatorRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EVALUATEUR, UserRole.FORMATEUR);
+        List<UserRole> evaluatorRoles = List.of(UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.FORMATEUR);
         List<User> experts = userRepository.findAll().stream()
                 .filter(u -> evaluatorRoles.contains(u.getRole()) && u.getStatus() == UserStatus.APPROVED)
                 .collect(Collectors.toList());

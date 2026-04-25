@@ -66,7 +66,7 @@ public class EvaluationTeamService {
         
         List<UserRole> teamEligibleRoles = List.of(
             UserRole.EXPERT, UserRole.REE, UserRole.ET, UserRole.EQ,
-            UserRole.EVALUATEUR, UserRole.FORMATEUR, UserRole.RA
+            UserRole.FORMATEUR, UserRole.RA
         );
         if (!teamEligibleRoles.contains(expert.getRole())) {
             throw new RuntimeException("L'utilisateur doit avoir un rôle d'évaluation (REE, ET, EQ, EXPERT, etc.)");

@@ -163,10 +163,10 @@ export default function MyRequestsPage() {
   const actionNeeded = requests.filter((r) => [
     "DT_REJECTED", "PENDING_PAYMENT", "NOT_RECEIVABLE", "PRELIMINARY_VISIT_PROPOSED",
     "FOREIGN_EXPERT_PROPOSED", "QUOTATION_SENT_TO_OEC", "TEAM_SENT_TO_OEC",
-    "AWAITING_OEC_DOC_RESPONSE", "PROCESS_SUSPENDED_OBSTACLES",
+    "DOC_REVIEW_RESULTS_SENT_TO_OEC", "AWAITING_OEC_DOC_RESPONSE", "PROCESS_SUSPENDED_OBSTACLES",
     "AWAITING_ACTION_PLANS", "OBSTACLES_IDENTIFIED",
   ].includes(r.status));
-  const inProgress = requests.filter((r) => !["DRAFT","CLOSED","WITHDRAWN","SUSPENDED","CAS_DECISION_GRANT","CAS_DECISION_REFUSAL","CERTIFICATE_ISSUED","ACTIVE","DT_REJECTED","NOT_RECEIVABLE","PENDING_PAYMENT","PRELIMINARY_VISIT_PROPOSED","FOREIGN_EXPERT_PROPOSED","QUOTATION_SENT_TO_OEC","TEAM_SENT_TO_OEC","AWAITING_OEC_DOC_RESPONSE","PROCESS_SUSPENDED_OBSTACLES","AWAITING_ACTION_PLANS","OBSTACLES_IDENTIFIED"].includes(r.status));
+  const inProgress = requests.filter((r) => !["DRAFT","CLOSED","WITHDRAWN","SUSPENDED","CAS_DECISION_GRANT","CAS_DECISION_REFUSAL","CERTIFICATE_ISSUED","ACTIVE","DT_REJECTED","NOT_RECEIVABLE","PENDING_PAYMENT","PRELIMINARY_VISIT_PROPOSED","FOREIGN_EXPERT_PROPOSED","QUOTATION_SENT_TO_OEC","TEAM_SENT_TO_OEC","DOC_REVIEW_RESULTS_SENT_TO_OEC","AWAITING_OEC_DOC_RESPONSE","PROCESS_SUSPENDED_OBSTACLES","AWAITING_ACTION_PLANS","OBSTACLES_IDENTIFIED"].includes(r.status));
   const completed = requests.filter((r) => ["CAS_DECISION_GRANT","CERTIFICATE_ISSUED","ACTIVE","CAS_DECISION_REFUSAL","CLOSED","WITHDRAWN","SUSPENDED"].includes(r.status));
 
   const renderActions = (request: AccreditationRequest) => {
@@ -200,8 +200,11 @@ export default function MyRequestsPage() {
       case "TEAM_SENT_TO_OEC":
         actions.push(<Button key="validate-t" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/equipe`)}><Users className="h-4 w-4 mr-1" />Valider l'equipe</Button>);
         break;
+      case "DOC_REVIEW_RESULTS_SENT_TO_OEC":
+        actions.push(<Button key="doc-view" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>Voir les résultats</Button>);
+        break;
       case "AWAITING_OEC_DOC_RESPONSE":
-        actions.push(<Button key="doc-resp" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>Repondre aux manquements</Button>);
+        actions.push(<Button key="doc-resp" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>Répondre aux manquements</Button>);
         break;
       case "PROCESS_SUSPENDED_OBSTACLES":
       case "OBSTACLES_IDENTIFIED":
@@ -265,6 +268,9 @@ export default function MyRequestsPage() {
           )}
           {request.status === "AWAITING_OEC_DOC_RESPONSE" && (
             <Alert><AlertDescription><strong>Action requise :</strong> Des insuffisances ont ete identifiees lors de la revue documentaire. <strong>Delai : 3 mois.</strong></AlertDescription></Alert>
+          )}
+          {request.status === "DOC_REVIEW_RESULTS_SENT_TO_OEC" && (
+            <Alert><AlertDescription><strong>Résultats disponibles :</strong> Les résultats de la revue documentaire sont disponibles. Consultez-les et répondez dans un délai de 3 mois.</AlertDescription></Alert>
           )}
           {request.status === "PROCESS_SUSPENDED_OBSTACLES" && (
             <Alert variant="destructive"><AlertDescription><strong>Processus suspendu :</strong> Des obstacles bloquants ont ete identifies. Utilisez le formulaire FOR 12 pour notifier la levee.</AlertDescription></Alert>

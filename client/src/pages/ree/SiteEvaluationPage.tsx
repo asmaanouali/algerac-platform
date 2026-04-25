@@ -391,8 +391,8 @@ export default function SiteEvaluationPage() {
                           {/* Summary stats */}
                           <div className="grid grid-cols-4 gap-3">
                             <Card className="p-3 text-center">
-                              <p className="text-xl font-bold">{memberGaps.length}</p>
-                              <p className="text-xs text-muted-foreground">Écarts reçus</p>
+                              <p className="text-xl font-bold">{myGaps.length + memberGaps.length}</p>
+                              <p className="text-xs text-muted-foreground">Écarts à traiter</p>
                             </Card>
                             <Card className="p-3 text-center">
                               <p className="text-xl font-bold">{memberSyntheses.length}</p>
@@ -425,6 +425,25 @@ export default function SiteEvaluationPage() {
                                 </div>
                               )) : (
                                 <p className="text-sm text-muted-foreground text-center py-4">Aucune synthèse reçue — les membres n'ont pas encore envoyé</p>
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* REE own gaps — must also go through keep/discard before sending to OEC */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Mes Écarts (Signalés directement)</CardTitle>
+                              <CardDescription>Écarts que vous avez signalés — conservez ou écartez avant envoi à l'OEC</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              {myGaps.length > 0 ? (
+                                <div className="space-y-4">
+                                  {myGaps.map((g: any) => (
+                                    <GapDecisionCard key={g.id} gap={g} onDecision={handleREEDecision} isWritable={isWritable} submitting={submitting} />
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">Aucun écart signalé directement</p>
                               )}
                             </CardContent>
                           </Card>

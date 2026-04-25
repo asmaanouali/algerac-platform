@@ -15,7 +15,6 @@ public enum UserRole {
     CAS_PRESIDENT,  // Président du Comité d'Accréditation Spécialisé
     DG,             // Directrice Générale
     GES_COMPETENCES, // Gestionnaire de Compétences
-    EVALUATEUR,     // Évaluateur
     FORMATEUR,      // Formateur
     RQ              // Responsable Qualité
 }

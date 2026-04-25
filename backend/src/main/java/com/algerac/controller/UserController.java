@@ -64,6 +64,18 @@ public class UserController {
             } else {
                 users = userRepository.findAll();
             }
+
+            // Scope: a CD requesting RAs only sees RAs from their own department
+            if (userId != null && "RA".equalsIgnoreCase(role)) {
+                User caller = userRepository.findById(userId).orElse(null);
+                if (caller != null && caller.getRole() == com.algerac.model.UserRole.CD && caller.getDepartment() != null) {
+                    final Long cdDeptId = caller.getDepartment().getId();
+                    users = users.stream()
+                            .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(cdDeptId))
+                            .collect(java.util.stream.Collectors.toList());
+                    log.info("CD {} scoped RA list to department {}: {} RAs", userId, cdDeptId, users.size());
+                }
+            }
             
             List<UserDTO> userDTOs = users.stream()
                     .map(UserDTO::fromUser)

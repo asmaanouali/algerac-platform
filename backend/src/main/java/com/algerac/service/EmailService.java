@@ -423,7 +423,6 @@ public class EmailService {
             return switch (user.getRole().name()) {
                 case "OEC" -> "Organisme d'Évaluation de la Conformité (OEC)";
                 case "EXPERT" -> "Expert";
-                case "EVALUATEUR" -> "Évaluateur";
                 case "FORMATEUR" -> "Formateur";
                 default -> user.getRole().name();
             };
@@ -814,7 +813,6 @@ public class EmailService {
         if (user.getUserType() == null) return "Expert";
         return switch (user.getUserType().toUpperCase()) {
             case "FORMATEUR" -> "Formateur";
-            case "EVALUATEUR" -> "Évaluateur";
             default -> "Expert";
         };
     }

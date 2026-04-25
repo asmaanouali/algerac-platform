@@ -248,7 +248,6 @@ public class CandidatureService {
             .stream()
             .filter(user -> user.getUserType() != null && 
                    (user.getUserType().equalsIgnoreCase("EXPERT") || 
-                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
                     user.getUserType().equalsIgnoreCase("FORMATEUR")))
             .toList();
     }
@@ -559,7 +558,7 @@ public class CandidatureService {
             .stream()
             .filter(user -> user.getUserType() != null && 
                    (user.getUserType().equalsIgnoreCase("EXPERT") || 
-                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
+                    user.getUserType().equalsIgnoreCase("ET") || 
                     user.getUserType().equalsIgnoreCase("FORMATEUR")) &&
                    (user.getStatus() == UserStatus.INTERVIEW_SCHEDULED || 
                     user.getStatus() == UserStatus.INTERVIEW_CONFIRMED ||
@@ -575,7 +574,7 @@ public class CandidatureService {
             .stream()
             .filter(user -> user.getUserType() != null && 
                    (user.getUserType().equalsIgnoreCase("EXPERT") || 
-                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
+                    user.getUserType().equalsIgnoreCase("ET") || 
                     user.getUserType().equalsIgnoreCase("FORMATEUR")) &&
                    user.getStatus() == UserStatus.CANDIDATURE_APPROVED)
             .toList();
@@ -901,7 +900,7 @@ public class CandidatureService {
     private void validateExpertType(User user) {
         if (user.getUserType() == null || 
             (!user.getUserType().equalsIgnoreCase("EXPERT") && 
-             !user.getUserType().equalsIgnoreCase("EVALUATEUR") && 
+             !user.getUserType().equalsIgnoreCase("ET") && 
              !user.getUserType().equalsIgnoreCase("FORMATEUR"))) {
             throw new RuntimeException("Cette candidature n'est pas une candidature expert/évaluateur/formateur");
         }
@@ -911,7 +910,6 @@ public class CandidatureService {
         if (user.getUserType() == null) return "Expert";
         return switch (user.getUserType().toUpperCase()) {
             case "FORMATEUR" -> "Formateur";
-            case "EVALUATEUR" -> "Évaluateur";
             default -> "Expert";
         };
     }

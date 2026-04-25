@@ -26,7 +26,7 @@ public class GapManagementService {
     @Transactional
     public Gap createGap(Long requestId, String gapCode, GapType type, 
                         String description, String requirement, String evidence, User currentUser) {
-        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT);
         if (!evaluatorRoles.contains(currentUser.getRole())) {
             throw new RuntimeException("Seuls les évaluateurs (REE, ET, EQ, EXPERT) peuvent créer des écarts");
         }
@@ -175,7 +175,7 @@ public class GapManagementService {
      */
     @Transactional
     public ActionPlan evaluateActionPlan(Long planId, Boolean accepted, String feedback, User currentUser) {
-        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT);
         if (!evaluatorRoles.contains(currentUser.getRole())) {
             throw new RuntimeException("Seuls les membres de l'équipe d'évaluation peuvent évaluer les plans d'actions");
         }
@@ -248,7 +248,7 @@ public class GapManagementService {
      */
     @Transactional
     public ActionPlan verifyEvidence(Long planId, Boolean satisfactory, User currentUser) {
-        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT, UserRole.EVALUATEUR);
+        List<UserRole> evaluatorRoles = List.of(UserRole.REE, UserRole.ET, UserRole.EQ, UserRole.EXPERT);
         if (!evaluatorRoles.contains(currentUser.getRole())) {
             throw new RuntimeException("Seuls les membres de l'équipe d'évaluation peuvent vérifier les preuves");
         }

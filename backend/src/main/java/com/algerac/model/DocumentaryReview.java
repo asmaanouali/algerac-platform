@@ -28,6 +28,12 @@ public class DocumentaryReview {
     private Long paymentId;                   // Référence au paiement associé
     
     private LocalDateTime documentationSentToTeam;
+
+    @Column(columnDefinition = "TEXT")
+    private String transmittedDocumentTypes; // JSON array of selected document type keys
+
+    @Column(columnDefinition = "TEXT")
+    private String transmissionNotes; // Optional instructions from RA to team
     
     private LocalDateTime reviewStartDate;
     

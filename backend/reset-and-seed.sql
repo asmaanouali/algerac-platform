@@ -246,13 +246,13 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
  'Souhila Taleb', 'EQ', 'ALGERAC', '0555600002', NOW(), 'APPROVED', false, false, 'ISO 17020', '8 ans', 'Taleb', 'Souhila');
 
 -- ============================================================
--- EVALUATEUR (2)
+-- ET (ex-EVALUATEUR) (2)
 -- ============================================================
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred, specialite, experience, nom, prenom) VALUES
 ('evaluateur1@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
- 'Smail Zerrouki', 'EVALUATEUR', 'ALGERAC', '0555700001', NOW(), 'APPROVED', false, false, 'Évaluation générale', '6 ans', 'Zerrouki', 'Smail'),
+ 'Smail Zerrouki', 'ET', 'ALGERAC', '0555700001', NOW(), 'APPROVED', false, false, 'Évaluation générale', '6 ans', 'Zerrouki', 'Smail'),
 ('evaluateur2@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
- 'Houda Benslimane', 'EVALUATEUR', 'ALGERAC', '0555700002', NOW(), 'APPROVED', false, false, 'Évaluation technique', '4 ans', 'Benslimane', 'Houda');
+ 'Houda Benslimane', 'ET', 'ALGERAC', '0555700002', NOW(), 'APPROVED', false, false, 'Évaluation technique', '4 ans', 'Benslimane', 'Houda');
 
 -- ============================================================
 -- FORMATEUR (2)
@@ -299,7 +299,7 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 --   3 REE
 --   3 ET
 --   1 EQ (+ Rachid Boudiaf via CD account roles + Samira Khelifi via ET account roles)
---   2 EVALUATEUR
+--   2 ET (ex-EVALUATEUR)
 --   2 FORMATEUR
 --   5 OEC
 --

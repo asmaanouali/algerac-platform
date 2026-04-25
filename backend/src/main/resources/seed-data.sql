@@ -107,7 +107,7 @@ INSERT INTO users (email, password, full_name, role, phone, created_at, status, 
 ('expert5@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Youcef Mansouri','EXPERT','0555300005',NOW(),'APPROVED',false,false,'Métrologie','15 ans','Mansouri','Youcef','Domaine 5')
 ON CONFLICT (email) DO NOTHING;
 
--- REE x3, ET x3, EQ x1, EVALUATEUR x2, FORMATEUR x2
+-- REE x3, ET x3, EQ x1, ET x2 (ex-EVALUATEUR), FORMATEUR x2
 -- Samira Khelifi (ET) also has EQ role
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred, specialite, experience, nom, prenom, roles) VALUES
 ('et1@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Samira Khelifi','ET','ALGERAC','0555500001',NOW(),'APPROVED',false,false,'Essais mécaniques','9 ans','Khelifi','Samira','ET,EQ')
@@ -119,8 +119,8 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 ('et2@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Abdelhakim Rahmani','ET','ALGERAC','0555500002',NOW(),'APPROVED',false,false,'Essais chimiques','7 ans','Rahmani','Abdelhakim'),
 ('et3@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Lynda Benzahra','ET','ALGERAC','0555500003',NOW(),'APPROVED',false,false,'Microbiologie','5 ans','Benzahra','Lynda'),
 ('eq2@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Souhila Taleb','EQ','ALGERAC','0555600002',NOW(),'APPROVED',false,false,'ISO 17020','8 ans','Taleb','Souhila'),
-('evaluateur1@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Smail Zerrouki','EVALUATEUR','ALGERAC','0555700001',NOW(),'APPROVED',false,false,'Évaluation générale','6 ans','Zerrouki','Smail'),
-('evaluateur2@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Houda Benslimane','EVALUATEUR','ALGERAC','0555700002',NOW(),'APPROVED',false,false,'Évaluation technique','4 ans','Benslimane','Houda'),
+('evaluateur1@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Smail Zerrouki','ET','ALGERAC','0555700001',NOW(),'APPROVED',false,false,'Évaluation générale','6 ans','Zerrouki','Smail'),
+('evaluateur2@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Houda Benslimane','ET','ALGERAC','0555700002',NOW(),'APPROVED',false,false,'Évaluation technique','4 ans','Benslimane','Houda'),
 ('formateur1@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Toufik Hadji','FORMATEUR','ALGERAC','0555800001',NOW(),'APPROVED',false,false,'Formation accréditation','10 ans','Hadji','Toufik'),
 ('formateur2@algeractestapp.dz','$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS','Djamila Ait-Ouali','FORMATEUR','ALGERAC','0555800002',NOW(),'APPROVED',false,false,'Formation qualité','7 ans','Ait-Ouali','Djamila')
 ON CONFLICT (email) DO NOTHING;

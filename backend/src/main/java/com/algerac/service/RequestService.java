@@ -355,7 +355,15 @@ public class RequestService {
         request.setCurrentStep("Assignée au RA");
         request.setNextAction("RA doit commencer l'étude de recevabilité");
         request.setPendingWith("RA");
-        
+
+        // Générer automatiquement la référence AC/<domaine>/<seq>/<année> à l'assignation
+        if (request.getReferenceNumber() == null || request.getReferenceNumber().isBlank()) {
+            String ref = generateReferenceNumber(request.getDomain());
+            request.setReferenceNumber(ref);
+            log.info("Référence {} générée automatiquement pour la demande #{} lors de l'assignation au RA",
+                    ref, request.getId());
+        }
+
         request = requestRepository.save(request);
         log.info("Demande {} assignée au RA {} par CD {}", 
                 request.getReferenceNumber(), ra.getFullName(), currentUser.getFullName());
@@ -631,24 +639,24 @@ public class RequestService {
     /**
      * Génère un numéro de référence au format AC/DOMAINE/NUMSEQUENTIEL/ANNEE
      * Ex: AC/ES/001/26 (première demande d'essais en 2026)
+     * Le compteur est remis à zéro chaque année et par domaine.
      */
     private synchronized String generateReferenceNumber(String domain) {
         String domainCode = mapDomainToCode(domain);
         String yearSuffix = String.valueOf(Year.now().getValue()).substring(2); // "26" for 2026
-        String prefix = "AC/" + domainCode + "/";
-        
-        // Count existing references with same domain code and year
-        long count = requestRepository.countByReferenceNumberStartingWith(prefix);
-        // Filter by year suffix too (in case old years exist)
-        // We use a simple approach: count all with this prefix, then check uniqueness
+
+        // Count only references for this domain AND this year (e.g. AC/ES/%/26)
+        String likePattern = "AC/" + domainCode + "/%/" + yearSuffix;
+        long count = requestRepository.countByReferenceNumberLike(likePattern);
+
         String refNumber = String.format("AC/%s/%03d/%s", domainCode, count + 1, yearSuffix);
-        
-        // Fallback: ensure uniqueness
+
+        // Ensure uniqueness in the rare case of concurrent inserts
         while (requestRepository.existsByReferenceNumber(refNumber)) {
             count++;
             refNumber = String.format("AC/%s/%03d/%s", domainCode, count + 1, yearSuffix);
         }
-        
+
         return refNumber;
     }
     

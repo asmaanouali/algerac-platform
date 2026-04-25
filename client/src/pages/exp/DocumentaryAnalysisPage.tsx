@@ -9,11 +9,23 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send, Users, Clock } from "lucide-react";
+import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send, Users, Clock, FolderOpen, Wrench, FileText, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
-export default function DocumentaryAnalysisPage() {
-  const { user } = useAuth();
+const DOC_TYPES = [
+  { key: "dossier_candidature", label: "Dossier de demande (FOR-01)", category: "Administratif" },
+  { key: "doc_administratif_statuts", label: "Statuts / Acte de création", category: "Administratif" },
+  { key: "doc_administratif_organigramme", label: "Organigramme", category: "Administratif" },
+  { key: "doc_administratif_locaux", label: "Description des locaux", category: "Administratif" },
+  { key: "doc_technique_manuel_qualite", label: "Manuel qualité", category: "Technique" },
+  { key: "doc_technique_procedures", label: "Procédures techniques", category: "Technique" },
+  { key: "doc_technique_equipements", label: "Liste des équipements & étalonnage", category: "Technique" },
+  { key: "doc_technique_personnel", label: "Qualifications du personnel", category: "Technique" },
+  { key: "doc_technique_methodes", label: "Méthodes / normes appliquées", category: "Technique" },
+  { key: "doc_technique_enregistrements", label: "Enregistrements qualité", category: "Technique" },
+];
+
+export default function DocumentaryAnalysisPage() {  const { user } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState<any[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
@@ -201,9 +213,62 @@ export default function DocumentaryAnalysisPage() {
                       </Alert>
                     )}
 
+                    {/* Documents sent by RA */}
+                    {review?.transmittedDocumentTypes && (() => {
+                      let docs: string[] = [];
+                      try { docs = JSON.parse(review.transmittedDocumentTypes); } catch {}
+                      if (!docs.length) return null;
+                      const adminDocs = DOC_TYPES.filter(d => d.category === "Administratif" && docs.includes(d.key));
+                      const techDocs = DOC_TYPES.filter(d => d.category === "Technique" && docs.includes(d.key));
+                      return (
+                        <Card className="border-emerald-200 bg-emerald-50/30">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <FolderOpen className="w-4 h-4 text-emerald-600" />Documents transmis par le RA
+                            </CardTitle>
+                            <CardDescription>Analysez les documents ci-dessous et soumettez vos résultats</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {adminDocs.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2"><FolderOpen className="w-3 h-3" />Documents administratifs</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                  {adminDocs.map(d => (
+                                    <div key={d.key} className="flex items-center gap-2 text-sm p-1.5 rounded bg-white border border-blue-100">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                      <span>{d.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {techDocs.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-2"><Wrench className="w-3 h-3" />Documents techniques</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                  {techDocs.map(d => (
+                                    <div key={d.key} className="flex items-center gap-2 text-sm p-1.5 rounded bg-white border border-orange-100">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                                      <span>{d.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {review.transmissionNotes && (
+                              <Alert className="border-amber-300 bg-amber-50">
+                                <AlertDescription>
+                                  <span className="font-medium">Note du RA :</span> {review.transmissionNotes}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+
                     {/* Progression des membres */}
-                    {isDocReviewActive && memberProgress.length > 0 && (
-                      <Card>
+                    {isDocReviewActive && memberProgress.length > 0 && (                      <Card>
                         <CardHeader>
                           <CardTitle className="text-sm flex items-center gap-2">
                             <Users className="w-4 h-4" /> Progression de l'équipe

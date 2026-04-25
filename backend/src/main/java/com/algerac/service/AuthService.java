@@ -32,7 +32,6 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     private static final String EXPERT_PREFIX = "EXP";
-    private static final String EVALUATEUR_PREFIX = "EVA";
     private static final String FORMATEUR_PREFIX = "FOR";
 
     /**
@@ -41,9 +40,6 @@ public class AuthService {
     private String generateRegistrationId(String userType) {
         String prefix;
         switch (userType != null ? userType.toUpperCase() : "") {
-            case "EVALUATEUR":
-                prefix = EVALUATEUR_PREFIX;
-                break;
             case "FORMATEUR":
                 prefix = FORMATEUR_PREFIX;
                 break;

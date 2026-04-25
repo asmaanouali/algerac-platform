@@ -8,8 +8,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+
+const DOC_TYPES = [
+  { key: "dossier_candidature", label: "Dossier de demande (FOR-01)", icon: FileText, category: "Administratif" },
+  { key: "doc_administratif_statuts", label: "Statuts / Acte de création", icon: FolderOpen, category: "Administratif" },
+  { key: "doc_administratif_organigramme", label: "Organigramme", icon: FolderOpen, category: "Administratif" },
+  { key: "doc_administratif_locaux", label: "Description des locaux", icon: FolderOpen, category: "Administratif" },
+  { key: "doc_technique_manuel_qualite", label: "Manuel qualité", icon: Wrench, category: "Technique" },
+  { key: "doc_technique_procedures", label: "Procédures techniques", icon: Wrench, category: "Technique" },
+  { key: "doc_technique_equipements", label: "Liste des équipements & étalonnage", icon: Wrench, category: "Technique" },
+  { key: "doc_technique_personnel", label: "Qualifications du personnel", icon: Wrench, category: "Technique" },
+  { key: "doc_technique_methodes", label: "Méthodes / normes appliquées", icon: Wrench, category: "Technique" },
+  { key: "doc_technique_enregistrements", label: "Enregistrements qualité", icon: Wrench, category: "Technique" },
+];
 
 const DOC_REVIEW_STATUSES = [
   "TEAM_VALIDATED", "TEAM_RECUSATION_INVALID",
@@ -41,6 +59,9 @@ export default function DocumentaryReviewPage() {
   const [memberProgress, setMemberProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [transmitDialogOpen, setTransmitDialogOpen] = useState(false);
+  const [selectedDocTypes, setSelectedDocTypes] = useState<string[]>([]);
+  const [transmissionNotes, setTransmissionNotes] = useState("");
 
   useEffect(() => { loadData(); }, []);
 
@@ -95,14 +116,24 @@ export default function DocumentaryReviewPage() {
     if (!reviews[0]) return;
     setActionLoading(true);
     try {
-      const res = await apiRequest("POST", `/api/workflow/documentary-review/${reviews[0].id}/transmit-docs`, {});
+      const res = await apiRequest("POST", `/api/workflow/documentary-review/${reviews[0].id}/transmit-docs`, {
+        documentTypes: JSON.stringify(selectedDocTypes),
+        notes: transmissionNotes.trim() || null,
+      });
       const data = await res.json();
       if (data.success) {
         toast({ title: "Succès", description: "Documents transmis à l'équipe. Délai: 15 jours." });
+        setTransmitDialogOpen(false);
+        setSelectedDocTypes([]);
+        setTransmissionNotes("");
         await loadData(); await selectRequest(selectedRequest);
       } else { toast({ title: "Erreur", description: data.message, variant: "destructive" }); }
     } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }); }
     setActionLoading(false);
+  };
+
+  const toggleDocType = (key: string) => {
+    setSelectedDocTypes(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   };
 
   const sendToCD = async () => {
@@ -124,6 +155,14 @@ export default function DocumentaryReviewPage() {
   const review = reviews[0];
   const reqStatus = selectedRequest?.status;
   const statusInfo = statusLabels[reqStatus] || { label: reqStatus?.replace(/_/g, " "), color: "bg-gray-100 text-gray-800", step: -1 };
+
+  // Parse already-transmitted docs if review exists
+  const transmittedDocs: string[] = (() => {
+    try { return review?.transmittedDocumentTypes ? JSON.parse(review.transmittedDocumentTypes) : []; } catch { return []; }
+  })();
+
+  const adminDocs = DOC_TYPES.filter(d => d.category === "Administratif");
+  const techDocs = DOC_TYPES.filter(d => d.category === "Technique");
 
   const steps = [
     { n: 0, label: "Lancer" }, { n: 1, label: "Transmettre" }, { n: 2, label: "Analyse (15j)" },
@@ -221,11 +260,11 @@ export default function DocumentaryReviewPage() {
                             <Send className="w-12 h-12 mx-auto text-emerald-600" />
                             <div>
                               <h3 className="text-lg font-semibold text-emerald-800">Revue lancée</h3>
-                              <p className="text-sm text-muted-foreground mt-1">Transmettez les documents de l'OEC à l'équipe d'évaluation. L'équipe aura <strong>15 jours</strong> maximum.</p>
+                              <p className="text-sm text-muted-foreground mt-1">Sélectionnez les documents à transmettre à l'équipe d'évaluation. L'équipe aura <strong>15 jours</strong> maximum.</p>
                             </div>
-                            <Button onClick={transmitDocs} disabled={actionLoading} size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                              {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                              Transmettre les Documents à l'Équipe
+                            <Button onClick={() => setTransmitDialogOpen(true)} size="lg" className="bg-emerald-600 hover:bg-emerald-700">
+                              <Send className="w-4 h-4 mr-2" />
+                              Sélectionner et Transmettre les Documents
                             </Button>
                           </CardContent>
                         </Card>
@@ -247,6 +286,28 @@ export default function DocumentaryReviewPage() {
                                 )}
                               </div>
                             </div>
+
+                            {/* Documents transmitted */}
+                            {transmittedDocs.length > 0 && (
+                              <div className="bg-white rounded-lg border p-4">
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2"><FolderOpen className="w-4 h-4 text-emerald-600" />Documents transmis à l'équipe</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {DOC_TYPES.filter(d => transmittedDocs.includes(d.key)).map(d => (
+                                    <div key={d.key} className="flex items-center gap-2 text-sm">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                      <span>{d.label}</span>
+                                      <Badge variant="outline" className="text-[10px] ml-auto">{d.category}</Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                                {review?.transmissionNotes && (
+                                  <div className="mt-3 pt-3 border-t">
+                                    <p className="text-xs text-muted-foreground font-medium">Note aux membres :</p>
+                                    <p className="text-sm mt-1 whitespace-pre-wrap">{review.transmissionNotes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {/* Progression des soumissions par membre */}
                             {memberProgress.length > 0 && (
                               <div className="bg-white rounded-lg border p-4">
@@ -397,6 +458,96 @@ export default function DocumentaryReviewPage() {
           )}
         </main>
       </div>
+
+      {/* Transmit Documents Dialog */}
+      <Dialog open={transmitDialogOpen} onOpenChange={setTransmitDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Send className="w-5 h-5 text-emerald-600" />Transmettre les documents à l'équipe</DialogTitle>
+            <DialogDescription>Sélectionnez les documents à communiquer aux membres de l'équipe d'évaluation. L'équipe disposera de 15 jours pour soumettre ses résultats.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Administrative docs */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <FolderOpen className="w-4 h-4 text-blue-600" />
+                <p className="text-sm font-semibold text-blue-700">Documents administratifs</p>
+              </div>
+              <div className="space-y-2 pl-2">
+                {adminDocs.map(doc => (
+                  <div key={doc.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                    <Checkbox
+                      id={doc.key}
+                      checked={selectedDocTypes.includes(doc.key)}
+                      onCheckedChange={() => toggleDocType(doc.key)}
+                    />
+                    <Label htmlFor={doc.key} className="text-sm cursor-pointer flex-1">{doc.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Technical docs */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Wrench className="w-4 h-4 text-orange-600" />
+                <p className="text-sm font-semibold text-orange-700">Documents techniques</p>
+              </div>
+              <div className="space-y-2 pl-2">
+                {techDocs.map(doc => (
+                  <div key={doc.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                    <Checkbox
+                      id={doc.key}
+                      checked={selectedDocTypes.includes(doc.key)}
+                      onCheckedChange={() => toggleDocType(doc.key)}
+                    />
+                    <Label htmlFor={doc.key} className="text-sm cursor-pointer flex-1">{doc.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Notes */}
+            <div>
+              <Label htmlFor="transmission-notes" className="text-sm font-medium">Note aux membres <span className="text-muted-foreground font-normal">(optionnel)</span></Label>
+              <Textarea
+                id="transmission-notes"
+                className="mt-2 text-sm"
+                rows={3}
+                placeholder="Instructions spécifiques, points à vérifier en priorité..."
+                value={transmissionNotes}
+                onChange={e => setTransmissionNotes(e.target.value)}
+              />
+            </div>
+
+            {selectedDocTypes.length > 0 && (
+              <Alert className="border-emerald-300 bg-emerald-50">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <AlertDescription className="text-emerald-800">
+                  <strong>{selectedDocTypes.length} document(s)</strong> sélectionné(s) pour transmission.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransmitDialogOpen(false)}>Annuler</Button>
+            <Button
+              onClick={transmitDocs}
+              disabled={actionLoading || selectedDocTypes.length === 0}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              Transmettre ({selectedDocTypes.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

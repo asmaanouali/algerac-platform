@@ -239,23 +239,6 @@ export default function CASMemberDashboard() {
                 </CardContent></Card>
               </div>
 
-              {/* PRO 07 Reference */}
-              <Card className="mb-6 border-blue-200 bg-blue-50/30">
-                <CardContent className="pt-4">
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-blue-900">PRO 07 — Procédure de Gestion des CAS (Rév. 16)</p>
-                      <p className="text-blue-700 mt-1">
-                        Étapes : (1) Confirmer votre présence et déclarer tout conflit d'intérêts,
-                        (2) Examiner les dossiers transmis, (3) Remplir le FOR 14 (Avis individuel),
-                        (4) Participer aux délibérations et voter en toute impartialité.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Panel - Meetings List */}
                 <Card className="lg:col-span-1">

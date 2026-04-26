@@ -75,6 +75,17 @@ import QualificationsPage from "@/pages/ges_competences/QualificationsPage";
 import CommissionPage from "@/pages/ges_competences/CommissionPage";
 import ObservationsPage from "@/pages/ges_competences/ObservationsPage";
 import SurveillanceQualPage from "@/pages/ges_competences/SurveillancePage";
+import SupervisorsListPage from "@/pages/ges_competences/SupervisorsListPage";
+import SupervisionPlanPage from "@/pages/ges_competences/SupervisionPlanPage";
+import RequalificationPage from "@/pages/ges_competences/RequalificationPage";
+import CompetenceExtensionPage from "@/pages/ges_competences/CompetenceExtensionPage";
+import EvaluatorMonitoringPage from "@/pages/ges_competences/EvaluatorMonitoringPage";
+import RegularInfoPage from "@/pages/ges_competences/RegularInfoPage";
+import EFPipelinePage from "@/pages/ges_competences/EFPipelinePage";
+import MyQualificationJourneyPage from "@/pages/shared/MyQualificationJourneyPage";
+import SupDashboard from "@/pages/sup/Dashboard";
+import SupMyPlanPage from "@/pages/sup/MyPlanPage";
+import SupervisionFormPage from "@/pages/sup/SupervisionFormPage";
 
 // Phase II - Évaluation sur site
 import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
@@ -119,7 +130,6 @@ import SamplingPage from "@/pages/cd/SamplingPage";
 import DomainDevelopmentPage from "@/pages/cd/DomainDevelopmentPage";
 import TariffPage from "@/pages/dag/TariffPage";
 import ReferenceRulesPage from "@/pages/cd/ReferenceRulesPage";
-import MultiSitePage from "@/pages/cd/MultiSitePage";
 import RemoteEvaluationPage from "@/pages/cd/RemoteEvaluationPage";
 import RiskOpportunityPage from "@/pages/admin/RiskOpportunityPage";
 import AccreditationTransferPage from "@/pages/cd/AccreditationTransferPage";
@@ -222,7 +232,6 @@ function Router() {
       <Route path="/cd/echantillonnage">{() => <ProtectedRoute component={SamplingPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/developpement-domaines">{() => <ProtectedRoute component={DomainDevelopmentPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/regles-reference">{() => <ProtectedRoute component={ReferenceRulesPage} allowedRoles={["cd"]} />}</Route>
-      <Route path="/cd/multi-sites">{() => <ProtectedRoute component={MultiSitePage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/evaluation-distance">{() => <ProtectedRoute component={RemoteEvaluationPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/transferts">{() => <ProtectedRoute component={AccreditationTransferPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/surveillance">{() => <ProtectedRoute component={CDSurveillancePage} allowedRoles={["cd"]} />}</Route>
@@ -333,6 +342,25 @@ function Router() {
       <Route path="/ges-competences/commission">{() => <ProtectedRoute component={CommissionPage} allowedRoles={["ges_competences"]} />}</Route>
       <Route path="/ges-competences/observations">{() => <ProtectedRoute component={ObservationsPage} allowedRoles={["ges_competences"]} />}</Route>
       <Route path="/ges-competences/surveillance">{() => <ProtectedRoute component={SurveillanceQualPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/supervisors">{() => <ProtectedRoute component={SupervisorsListPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/supervision-plan">{() => <ProtectedRoute component={SupervisionPlanPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/requalification">{() => <ProtectedRoute component={RequalificationPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/extensions">{() => <ProtectedRoute component={CompetenceExtensionPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/monitoring">{() => <ProtectedRoute component={EvaluatorMonitoringPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/bulletins">{() => <ProtectedRoute component={RegularInfoPage} allowedRoles={["ges_competences"]} />}</Route>
+      <Route path="/ges-competences/ef-pipeline">{() => <ProtectedRoute component={EFPipelinePage} allowedRoles={["ges_competences"]} />}</Route>
+
+      {/* SUP (Superviseur) Routes */}
+      <Route path="/sup">{() => <ProtectedRoute component={SupDashboard} allowedRoles={["sup"]} />}</Route>
+      <Route path="/sup/dashboard">{() => <ProtectedRoute component={SupDashboard} allowedRoles={["sup"]} />}</Route>
+      <Route path="/sup/my-plan">{() => <ProtectedRoute component={SupMyPlanPage} allowedRoles={["sup"]} />}</Route>
+      <Route path="/sup/supervision/:id">{() => <ProtectedRoute component={SupervisionFormPage} allowedRoles={["sup"]} />}</Route>
+
+      {/* EF (Évaluateurs en Formation) — accessible to evaluator roles */}
+      <Route path="/exp/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/et/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["et"]} />}</Route>
+      <Route path="/ree/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["ree"]} />}</Route>
+      <Route path="/eq/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["eq"]} />}</Route>
       
       {/* RQ Routes */}
       <Route path="/rq">{() => <ProtectedRoute component={RQDashboard} allowedRoles={["rq"]} />}</Route>

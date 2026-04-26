@@ -150,7 +150,7 @@ export default function REEDashboard() {
                         { label: "Mon Planning", href: "/ree/planning", icon: CalendarCheck, desc: "Gérer mes disponibilités" },
                         { label: "Engagements", href: "/ree/engagements", icon: FileText, desc: "Confidentialité et impartialité" },
                         { label: "Revue Documentaire", href: "/ree/revue-documentaire", icon: ClipboardList, desc: "Analyser les documents OEC" },
-                        { label: "Évaluation sur Site", href: "/ree/evaluation", icon: CheckCircle2, desc: "Checklists, notes et écarts" },
+                        { label: "Évaluation sur Site", href: "/ree/evaluation-site", icon: CheckCircle2, desc: "Checklists, notes et écarts" },
                         { label: "Rédaction Rapports", href: "/ree/rapports", icon: FileText, desc: "Rédiger le rapport FOR 23" },
                       ].map((item) => (
                         <Link key={item.href} href={item.href}>

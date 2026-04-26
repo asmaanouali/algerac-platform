@@ -19,8 +19,7 @@ import { useTheme } from "@/hooks/use-theme";
 const TYPES_DEMANDE = [
   { value: "initiale", label: "Accréditation initiale" },
   { value: "extension", label: "Extension" },
-  { value: "renouvellement", label: "Renouvellement" },
-  { value: "transfert", label: "Transfert" }
+  { value: "renouvellement", label: "Renouvellement" }
 ];
 
 // Types d'activités

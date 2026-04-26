@@ -24,7 +24,14 @@ export default function ProtectedRoute({ component: Component, allowedRoles }: P
 
   if (allowedRoles && allowedRoles.length > 0) {
     const userRole = (user as any).role?.toLowerCase();
-    const hasAccess = allowedRoles.some(r => r.toLowerCase() === userRole);
+    const rawRoles = (user as any).roles ?? (user as any).role ?? "";
+    const userRoles: string[] = (Array.isArray(rawRoles)
+      ? rawRoles
+      : String(rawRoles).split(","))
+      .map((r: any) => String(r).trim().toLowerCase())
+      .filter(Boolean);
+    const allowed = allowedRoles.map((r) => r.toLowerCase());
+    const hasAccess = allowed.includes(userRole) || userRoles.some((r) => allowed.includes(r));
     if (!hasAccess) {
       return <Redirect to="/" />;
     }

@@ -37,8 +37,20 @@ interface PersistedStudy {
     forTechnicalOk: boolean;
     accreditationScope: string;
   };
+  // PRO 26 §5.1 — revue des 6 critères par le RA pour les demandes multisites
+  multisiteCriteriaReview: Record<string, { verified: boolean; comment: string }>;
   updatedAt: string;
 }
+
+// PRO 26 §5.1 — 6 critères de qualification ; identiques au formulaire OEC
+const MULTISITE_CRITERIA: { id: string; label: string }[] = [
+  { id: "legalLink",     label: "Lien juridique entre tous les sites (même entité légale)" },
+  { id: "centralSM",     label: "Le siège social dispose d'un SM conforme à la norme" },
+  { id: "commonSM",      label: "Tous les sites soumis au SM commun défini par le siège" },
+  { id: "internalAudit", label: "Tous les sites couverts par le programme d'audit interne" },
+  { id: "centralMgmt",   label: "SM géré centralement (audit interne + revue de direction)" },
+  { id: "dataCapacity",  label: "Capacité à collecter et analyser les données de tous les sites" },
+];
 
 const emptyStudy: PersistedStudy = {
   step: "documents",
@@ -50,6 +62,7 @@ const emptyStudy: PersistedStudy = {
   rejectionReason: "",
   docChecks: {},
   administrativeReview: { doc1Complete: false, docsAdminOk: false, forTechnicalOk: false, accreditationScope: "" },
+  multisiteCriteriaReview: {},
   updatedAt: "",
 };
 
@@ -156,11 +169,28 @@ export default function RAFeasibilityPage() {
     if (study.decision === "NOT_RECEIVABLE" && !study.rejectionReason.trim()) {
       toast({ variant: "destructive", title: "Raison requise" }); return;
     }
+    // PRO 26 §5.2.1 : si demande multisites, tous les critères §5.1 doivent avoir été examinés
+    const isMultisite = !!details?.request?.isMultisite;
+    if (isMultisite) {
+      const allReviewed = MULTISITE_CRITERIA.every(c => {
+        const r = study.multisiteCriteriaReview[c.id];
+        return r && (r.comment?.trim().length || 0) > 0;
+      });
+      if (!allReviewed) {
+        toast({ variant: "destructive", title: "Revue §5.1 incomplète", description: "Tous les critères PRO 26 §5.1 doivent être examinés avec un commentaire." });
+        return;
+      }
+      if (study.decision === "RECEIVABLE" && !MULTISITE_CRITERIA.every(c => study.multisiteCriteriaReview[c.id]?.verified)) {
+        toast({ variant: "destructive", title: "Critères non vérifiés", description: "Pour déclarer la demande recevable, les 6 critères §5.1 doivent être vérifiés." });
+        return;
+      }
+    }
     try {
       setSubmitting(true);
       await apiRequest("POST", `/api/requests/${selectedRequest.id}/receivability-decision`, {
         isReceivable: study.decision === "RECEIVABLE",
         comments: `${study.technicalAnalysis}\n\nConformité: ${study.complianceCheck}\n\nPortée évaluée: ${study.administrativeReview.accreditationScope}\n\nCommentaires: ${study.comments}${study.rejectionReason ? "\n\nRaison du rejet: " + study.rejectionReason : ""}`,
+        multisiteCriteriaReviewJson: isMultisite ? JSON.stringify(study.multisiteCriteriaReview) : null,
       });
       toast({ title: "Étude envoyée au CD", description: "Votre étude a été soumise pour validation." });
       // Clear persisted draft since it's submitted
@@ -446,6 +476,33 @@ export default function RAFeasibilityPage() {
                             </div>
                           </RadioGroup>
                         </div>
+                        {/* PRO 26 §5.1 — revue des critères de qualification multisites */}
+                        {details?.request?.isMultisite && (
+                          <Card className="p-4 bg-blue-50 border-blue-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ShieldCheck className="h-4 w-4 text-blue-700" />
+                              <h4 className="font-medium text-sm text-blue-900">Revue des critères de qualification multisites (PRO 26 §5.1)</h4>
+                            </div>
+                            <p className="text-xs text-slate-600 mb-3">Examinez chacun des 6 critères déclarés par l'OEC et confirmez leur vérification à partir des pièces du dossier.</p>
+                            <div className="space-y-3">
+                              {MULTISITE_CRITERIA.map(c => {
+                                const r = study.multisiteCriteriaReview[c.id] || { verified: false, comment: "" };
+                                return (
+                                  <div key={c.id} className="pb-3 border-b border-blue-100 last:border-0">
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                      <input type="checkbox" className="mt-1" checked={r.verified}
+                                        onChange={(e) => persist({ multisiteCriteriaReview: { ...study.multisiteCriteriaReview, [c.id]: { ...r, verified: e.target.checked } } })} />
+                                      <span className="text-sm flex-1">{c.label}</span>
+                                    </label>
+                                    <Textarea className="mt-2" rows={2} placeholder="Commentaire / preuves examinées…"
+                                      value={r.comment}
+                                      onChange={(e) => persist({ multisiteCriteriaReview: { ...study.multisiteCriteriaReview, [c.id]: { ...r, comment: e.target.value } } })} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </Card>
+                        )}
                         <div className="space-y-2"><Label>Commentaires</Label><Textarea value={study.comments} onChange={(e) => persist({ comments: e.target.value })} placeholder="Observations générales..." rows={3} /></div>
                         {study.decision === "NOT_RECEIVABLE" && (
                           <div className="space-y-2"><Label>Raison du rejet *</Label><Textarea value={study.rejectionReason} onChange={(e) => persist({ rejectionReason: e.target.value })} placeholder="Détaillez les raisons..." rows={4} /></div>

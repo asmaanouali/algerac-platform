@@ -44,6 +44,10 @@ import {
   Eye,
   RefreshCw,
   Expand,
+  GraduationCap,
+  Megaphone,
+  RotateCcw,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -114,7 +118,6 @@ export function Sidebar() {
       { href: "/cd/echantillonnage", label: t('nav.samplingPage'), icon: Beaker },
       { href: "/cd/developpement-domaines", label: t('nav.domainDev'), icon: Globe },
       { href: "/cd/regles-reference", label: t('nav.referenceRules'), icon: BookOpen },
-      { href: "/cd/multi-sites", label: t('nav.multiSite'), icon: Network },
       { href: "/cd/evaluation-distance", label: t('nav.remoteEval'), icon: Video },
       { href: "/cd/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
       { href: "/cd/surveillance", label: t('nav.surveillance'), icon: Eye },
@@ -196,9 +199,20 @@ export function Sidebar() {
       { href: "/ges-competences/candidatures", label: t('nav.candidatures'), icon: UserPlus },
       { href: "/ges-competences/entretiens", label: t('nav.interviewPlanning'), icon: CalendarDays },
       { href: "/ges-competences/qualifications", label: t('nav.qualifications'), icon: Award },
+      { href: "/ges-competences/ef-pipeline", label: t('nav.efPipeline'), icon: GraduationCap },
       { href: "/ges-competences/commission", label: t('nav.commission'), icon: Users },
       { href: "/ges-competences/observations", label: t('nav.observations'), icon: ClipboardCheck },
+      { href: "/ges-competences/monitoring", label: t('nav.monitoring'), icon: ClipboardList },
+      { href: "/ges-competences/supervisors", label: t('nav.supervisors'), icon: ShieldCheck },
+      { href: "/ges-competences/supervision-plan", label: t('nav.supervisionPlan'), icon: CalendarDays },
+      { href: "/ges-competences/extensions", label: t('nav.extension'), icon: TrendingUp },
+      { href: "/ges-competences/requalification", label: t('nav.requalification'), icon: RotateCcw },
+      { href: "/ges-competences/bulletins", label: t('nav.regularInfo'), icon: Megaphone },
       { href: "/ges-competences/surveillance", label: t('nav.kpiSurveillance'), icon: BarChart3 },
+    ],
+    sup: [
+      { href: "/sup/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
+      { href: "/sup/my-plan", label: t('nav.mySupervisions'), icon: CalendarDays },
     ],
     rq: [
       { href: "/rq/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -223,6 +237,7 @@ export function Sidebar() {
     'DG': 'dg',
     'GES_COMPETENCES': 'ges_competences',
     'RQ': 'rq',
+    'SUP': 'sup',
   };
 
   const normalizedRole = role?.toUpperCase() || '';

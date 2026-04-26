@@ -23,7 +23,6 @@ const TYPES_DEMANDE = [
   { value: "initiale", label: "Accréditation initiale" },
   { value: "extension", label: "Extension" },
   { value: "renouvellement", label: "Renouvellement" },
-  { value: "transfert", label: "Transfert" },
 ];
 
 const TYPES_ACTIVITES = [
@@ -43,6 +42,16 @@ const REQUIRES_AUTRE_TEXT = "Autre";
 const TYPES_SITES = [
   { value: "monosite", label: "Monosite" },
   { value: "multisites", label: "Multisites" },
+];
+
+// PRO 26 §5.1 — 6 critères de qualification d'un OEC multisites
+const MULTISITE_CRITERIA: { id: string; label: string }[] = [
+  { id: "legalLink",     label: "Lien juridique entre tous les sites (même entité légale)" },
+  { id: "centralSM",     label: "Le siège social dispose d'un SM conforme à la norme de référence" },
+  { id: "commonSM",      label: "Tous les sites sont soumis au SM commun défini et contrôlé par le siège" },
+  { id: "internalAudit", label: "Tous les sites sont couverts par le programme d'audit interne" },
+  { id: "centralMgmt",   label: "SM géré centralement (plan d'audit + revue de direction initiée du siège)" },
+  { id: "dataCapacity",  label: "Capacité à collecter et analyser les données de tous les sites" },
 ];
 
 const TYPES_PRESTATION = [
@@ -299,6 +308,31 @@ export default function NewRequestPage() {
   const [personnelSites, setPersonnelSites] = useState<PersonnelSite[]>([{ id: 1, site: "", permanents: "", vacataires: "" }]);
   const [responsablesTechniques, setResponsablesTechniques] = useState<ResponsableTechnique[]>([{ id: 1, nom: "", qualifications: "", experience: "" }]);
   const [responsableQualiteNom, setResponsableQualiteNom] = useState("");
+
+  // ── PRO 26: Multisites ─────────────────────────────────────────────────────
+  // Siège central (HQ)
+  const [msMainSiteName, setMsMainSiteName] = useState("");
+  const [msMainSiteAddress, setMsMainSiteAddress] = useState("");
+  const [msMainSiteContactName, setMsMainSiteContactName] = useState("");
+  const [msMainSiteContactEmail, setMsMainSiteContactEmail] = useState("");
+  const [msCentralizedSM, setMsCentralizedSM] = useState(true);
+  const [msSMDescription, setMsSMDescription] = useState("");
+  const [msInterSiteExchangesDoc, setMsInterSiteExchangesDoc] = useState("");
+
+  // Sites satellites (PRO 26 §5.2-2)
+  const [satelliteSites, setSatelliteSites] = useState<
+    { id: number; name: string; address: string; activities: string; personnel: string; isInScope: boolean }[]
+  >([{ id: 1, name: "", address: "", activities: "", personnel: "", isInScope: true }]);
+
+  // Critères de qualification §5.1 cochés + justifiés
+  const [msCriteria, setMsCriteria] = useState<Record<string, { checked: boolean; justification: string }>>({
+    legalLink:    { checked: false, justification: "" },
+    centralSM:    { checked: false, justification: "" },
+    commonSM:     { checked: false, justification: "" },
+    internalAudit:{ checked: false, justification: "" },
+    centralMgmt:  { checked: false, justification: "" },
+    dataCapacity: { checked: false, justification: "" },
+  });
   const [responsableQualiteQualif, setResponsableQualiteQualif] = useState("");
   const [responsableQualiteExp, setResponsableQualiteExp] = useState("");
 
@@ -457,6 +491,19 @@ export default function NewRequestPage() {
     if (currentStep === 4) {
       if (!validateRows(sites, ["localisation", "adresse", "activites"])) {
         errs.sites = "Chaque site doit avoir localisation, adresse et activités";
+      }
+      // PRO 26 : si demande multisites, vérifier siège + au moins 1 site satellite + critères §5.1
+      if (siteType === "multisites") {
+        if (!msMainSiteName.trim())    errs.msMainSiteName = "Nom du siège central requis";
+        if (!msMainSiteAddress.trim()) errs.msMainSiteAddress = "Adresse du siège central requise";
+        if (!msMainSiteContactName.trim())  errs.msMainSiteContactName = "Contact du siège requis";
+        if (!msMainSiteContactEmail.trim()) errs.msMainSiteContactEmail = "Email du contact siège requis";
+        if (!msSMDescription.trim())   errs.msSMDescription = "Description du SM commun requise (PRO 26 §5.1)";
+        if (!msInterSiteExchangesDoc.trim()) errs.msInterSiteExchangesDoc = "Décrivez les modalités d'échanges inter-sites (PRO 26 §5.2-5)";
+        const validSatellites = satelliteSites.filter(s => s.name.trim() && s.address.trim() && s.activities.trim());
+        if (validSatellites.length === 0) errs.satelliteSites = "Au moins un site satellite est requis (siège exclu)";
+        const allChecked = MULTISITE_CRITERIA.every(c => msCriteria[c.id]?.checked);
+        if (!allChecked) errs.msCriteria = "Tous les critères de qualification §5.1 doivent être attestés";
       }
     }
     if (currentStep === 5) {
@@ -621,7 +668,31 @@ export default function NewRequestPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ type: backendType, domain, description }),
+        body: JSON.stringify({
+          type: backendType,
+          domain,
+          description,
+          isMultisite: siteType === "multisites",
+          multisite: siteType === "multisites" ? {
+            mainSiteName: msMainSiteName,
+            mainSiteAddress: msMainSiteAddress,
+            mainSiteContactName: msMainSiteContactName,
+            mainSiteContactEmail: msMainSiteContactEmail,
+            centralizedManagementSystem: msCentralizedSM,
+            managementSystemDescription: msSMDescription,
+            interSiteExchangesDoc: msInterSiteExchangesDoc,
+            qualificationCriteriaJson: JSON.stringify(msCriteria),
+            satelliteSites: satelliteSites
+              .filter(s => s.name.trim() && s.address.trim())
+              .map(s => ({
+                name: s.name,
+                address: s.address,
+                activities: s.activities,
+                personnel: s.personnel,
+                isInScope: s.isInScope,
+              })),
+          } : null,
+        }),
       });
 
       if (!createRes.ok) {
@@ -851,6 +922,125 @@ export default function NewRequestPage() {
           </div>
         </Card>
       ))}
+
+      {siteType === "multisites" && renderMultisiteSection()}
+    </div>
+  );
+
+  // ── PRO 26: Section multisites (visible uniquement si siteType === "multisites") ──
+  const renderMultisiteSection = () => (
+    <div className="space-y-6 mt-6 pt-6 border-t-2 border-blue-200">
+      <div className="flex items-center gap-2">
+        <AlertCircle className="w-5 h-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-blue-900">Configuration multisites (PRO 26)</h3>
+      </div>
+      <p className="text-sm text-slate-600">
+        En tant qu'OEC multisites, vous devez fournir les informations sur le siège central, la liste
+        des sites satellites, et attester des critères de qualification définis dans la procédure PRO 26.
+      </p>
+
+      {/* Siège central */}
+      <Card className="p-4">
+        <h4 className="font-medium text-sm mb-3">Siège central (siège social)</h4>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm">Nom du siège <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteName} onChange={(e) => setMsMainSiteName(e.target.value)} placeholder="Nom officiel du siège" />
+            {errors.msMainSiteName && <p className="text-xs text-red-500">{errors.msMainSiteName}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Adresse <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteAddress} onChange={(e) => setMsMainSiteAddress(e.target.value)} placeholder="Adresse du siège" />
+            {errors.msMainSiteAddress && <p className="text-xs text-red-500">{errors.msMainSiteAddress}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Contact (nom) <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteContactName} onChange={(e) => setMsMainSiteContactName(e.target.value)} placeholder="Représentant légal" />
+            {errors.msMainSiteContactName && <p className="text-xs text-red-500">{errors.msMainSiteContactName}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Email du contact <span className="text-red-500">*</span></Label>
+            <Input type="email" value={msMainSiteContactEmail} onChange={(e) => setMsMainSiteContactEmail(e.target.value)} placeholder="email@siege.dz" />
+            {errors.msMainSiteContactEmail && <p className="text-xs text-red-500">{errors.msMainSiteContactEmail}</p>}
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox id="ms-centralized" checked={msCentralizedSM} onCheckedChange={(v) => setMsCentralizedSM(Boolean(v))} />
+            <Label htmlFor="ms-centralized" className="text-sm cursor-pointer">SM commun centralisé sur l'ensemble du réseau (PRO 26 §5.1)</Label>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <Label className="text-sm">Description du Système de Management commun <span className="text-red-500">*</span></Label>
+          <Textarea value={msSMDescription} onChange={(e) => setMsSMDescription(e.target.value)} rows={3} placeholder="Manuel qualité, audit interne, revue de direction unique..." />
+          {errors.msSMDescription && <p className="text-xs text-red-500">{errors.msSMDescription}</p>}
+        </div>
+        <div className="mt-4 space-y-2">
+          <Label className="text-sm">Modalités d'échanges entre sites <span className="text-red-500">*</span></Label>
+          <Textarea value={msInterSiteExchangesDoc} onChange={(e) => setMsInterSiteExchangesDoc(e.target.value)} rows={2} placeholder="Décrivez les flux d'informations, documents et moyens entre sites (PRO 26 §5.2-5)" />
+          {errors.msInterSiteExchangesDoc && <p className="text-xs text-red-500">{errors.msInterSiteExchangesDoc}</p>}
+        </div>
+      </Card>
+
+      {/* Sites satellites */}
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="font-medium text-sm">Sites satellites <span className="text-red-500">*</span></h4>
+          <Button type="button" size="sm" className="gap-2"
+            onClick={() => setSatelliteSites(p => [...p, { id: Date.now(), name: "", address: "", activities: "", personnel: "", isInScope: true }])}>
+            <Plus className="w-4 h-4" /> Ajouter
+          </Button>
+        </div>
+        {errors.satelliteSites && <p className="text-sm text-red-500 mb-2">{errors.satelliteSites}</p>}
+        <div className="space-y-3">
+          {satelliteSites.map((s) => (
+            <Card key={s.id} className="p-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <Input placeholder="Nom du site" value={s.name} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, name: e.target.value } : x))} />
+                <Input placeholder="Adresse" value={s.address} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, address: e.target.value } : x))} />
+                <Input placeholder="Activités du site" value={s.activities} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, activities: e.target.value } : x))} />
+                <Input placeholder="Personnel sur site (effectifs / postes)" value={s.personnel} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, personnel: e.target.value } : x))} />
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox id={`scope-${s.id}`} checked={s.isInScope} onCheckedChange={(v) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, isInScope: Boolean(v) } : x))} />
+                  <Label htmlFor={`scope-${s.id}`} className="text-xs cursor-pointer">Site inclus dans la portée d'accréditation</Label>
+                </div>
+                {satelliteSites.length > 1 && (
+                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
+                    onClick={() => setSatelliteSites(p => p.filter(x => x.id !== s.id))}>
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Critères de qualification §5.1 */}
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <h4 className="font-medium text-sm mb-3">Critères de qualification (PRO 26 §5.1) <span className="text-red-500">*</span></h4>
+        <p className="text-xs text-slate-600 mb-3">Cochez chaque critère et apportez une justification. Ces éléments seront vérifiés en recevabilité.</p>
+        {errors.msCriteria && <p className="text-sm text-red-500 mb-2">{errors.msCriteria}</p>}
+        <div className="space-y-3">
+          {MULTISITE_CRITERIA.map((c) => (
+            <div key={c.id} className="space-y-2 pb-3 border-b border-blue-100 last:border-0">
+              <div className="flex items-start gap-2">
+                <Checkbox id={`crit-${c.id}`} checked={msCriteria[c.id]?.checked || false}
+                  onCheckedChange={(v) => setMsCriteria(prev => ({ ...prev, [c.id]: { ...prev[c.id], checked: Boolean(v) } }))} />
+                <Label htmlFor={`crit-${c.id}`} className="text-sm cursor-pointer flex-1">{c.label}</Label>
+              </div>
+              <Textarea
+                placeholder="Justification / preuves disponibles…"
+                value={msCriteria[c.id]?.justification || ""}
+                rows={2}
+                onChange={(e) => setMsCriteria(prev => ({ ...prev, [c.id]: { ...prev[c.id], justification: e.target.value } }))}
+              />
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 

@@ -33,7 +33,10 @@ public class Notification {
     private String message;
     
     private String type; // "info", "warning", "success", "error"
-    
+
+    @Column(name = "link")
+    private String link; // optional frontend route to navigate to on click
+
     @Column(nullable = false)
     private Boolean read;
     

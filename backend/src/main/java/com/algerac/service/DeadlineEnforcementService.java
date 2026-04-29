@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -29,12 +30,15 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("unused")
 public class DeadlineEnforcementService {
 
     private final RequestRepository requestRepository;
     private final QuotationRepository quotationRepository;
     private final EvaluationTeamRepository teamRepository;
     private final GapRepository gapRepository;
+    private final SurveillanceEvaluationRepository survEvalRepository;
+    private final AccreditationCertificateRepository certificateRepository;
     private final NotificationService notificationService;
 
     /**
@@ -53,8 +57,132 @@ public class DeadlineEnforcementService {
         checkReportDraftingDeadline();
         checkReportValidationDeadline();
         checkCriticalGapResolutionDeadline();
+        checkSurveillanceMonitoringDeadlines();
+        checkSurveillanceFindingDeadlines();
         sendEarlyWarnings();
         log.debug("Vérification des délais terminée");
+    }
+
+    // ========== PRO 25 §5.1 - SURVEILLANCE MONITORING DEADLINES ==========
+    // Délais max: S1 ≤ 14 mois, S2 ≤ 24 mois (cycle 1) / 26 mois (cycle 2+),
+    //             S3 ≤ 36 mois après date d'octroi.
+    // Tout dépassement sans motif valable peut entraîner suspension immédiate (PRO 23)
+    private void checkSurveillanceMonitoringDeadlines() {
+        List<SurveillanceEvaluation> planned = survEvalRepository.findByStatusIn(List.of(
+                SurveillanceEvaluationStatus.PLANNED,
+                SurveillanceEvaluationStatus.RISK_ANALYSIS_SENT,
+                SurveillanceEvaluationStatus.RISK_ANALYSIS_COMPLETED,
+                SurveillanceEvaluationStatus.DOCUMENTS_REQUESTED,
+                SurveillanceEvaluationStatus.DOCUMENTS_RECEIVED,
+                SurveillanceEvaluationStatus.QUOTATION_SENT
+        ));
+        LocalDateTime now = LocalDateTime.now();
+        for (SurveillanceEvaluation eval : planned) {
+            if (eval.getCertificate() == null || eval.getCertificate().getIssueDate() == null) continue;
+            if (!"SURVEILLANCE".equals(eval.getEvaluationType()) && eval.getEvaluationType() != null) continue;
+
+            LocalDateTime grantDate = eval.getCertificate().getIssueDate();
+            long monthsSinceGrant = ChronoUnit.MONTHS.between(grantDate, now);
+            // Estimate cycle: if certificate has been renewed, second cycle (4 yrs); else first cycle (3 yrs)
+            int cycleYears = eval.getCertificate().getExpirationDate() != null
+                    && ChronoUnit.YEARS.between(grantDate, eval.getCertificate().getExpirationDate()) >= 4 ? 2 : 1;
+            int maxMonths = computeMaxSurveillanceMonths(eval, cycleYears);
+            if (maxMonths > 0 && monthsSinceGrant > maxMonths) {
+                AccreditationRequest request = eval.getRequest();
+                if (request == null || request.getStatus() == RequestStatus.SUSPENDED) continue;
+                log.warn("PRO 25 §5.1 : surveillance {} en retard (>{} mois). Suspension auto.", eval.getEvaluationCode(), maxMonths);
+                request.setStatus(RequestStatus.SUSPENDED);
+                request.setCurrentStep("Suspension automatique - délai surveillance dépassé (PRO 25 §5.1)");
+                request.setNextAction("OEC doit justifier le retard. Voir PRO 23.");
+                request.setPendingWith("OEC");
+                requestRepository.save(request);
+                notificationService.createNotification(
+                        request.getOec().getId(),
+                        "Suspension automatique - délai de surveillance dépassé",
+                        "L'évaluation de surveillance " + eval.getEvaluationCode() + " dépasse " + maxMonths
+                                + " mois après la date d'octroi. Conformément à PRO 25 §5.1, votre accréditation est suspendue (PRO 23).",
+                        "DEADLINE_EXPIRED"
+                );
+            }
+        }
+    }
+
+    private int computeMaxSurveillanceMonths(SurveillanceEvaluation eval, int cycleYears) {
+        // Detect surveillance index by counting prior surveillance evaluations on the same certificate
+        List<SurveillanceEvaluation> history = survEvalRepository.findByCertificate_Id(eval.getCertificate().getId());
+        long completedSurv = history.stream()
+                .filter(e -> "SURVEILLANCE".equals(e.getEvaluationType())
+                        && e.getStatus() == SurveillanceEvaluationStatus.COMPLETED)
+                .count();
+        long index = completedSurv + 1; // surveillance number (S1, S2, S3)
+        if (index == 1) return 14;
+        if (index == 2) return cycleYears == 2 ? 26 : 24;
+        if (index == 3 && cycleYears == 2) return 36;
+        return -1;
+    }
+
+    // ========== PRO 25 §5.2.1.1 - FINDING (ÉCART) DEADLINES ==========
+    // Écart non critique: 3 mois max
+    // Écart critique: 2,5 mois max → soumission CAS si non soldé
+    private void checkSurveillanceFindingDeadlines() {
+        List<SurveillanceEvaluation> withFindings = survEvalRepository.findByStatusIn(List.of(
+                SurveillanceEvaluationStatus.EVALUATION_COMPLETED,
+                SurveillanceEvaluationStatus.REPORT_DRAFTING,
+                SurveillanceEvaluationStatus.REPORT_VALIDATED
+        ));
+        LocalDateTime now = LocalDateTime.now();
+        for (SurveillanceEvaluation eval : withFindings) {
+            if (eval.getEvaluationDate() == null) continue;
+            if (!Boolean.TRUE.equals(eval.getHasNewGaps())) continue;
+            int deadlineMonths = eval.getFindingDeadlineMonths() != null ? eval.getFindingDeadlineMonths() : 3;
+            // Critical findings: 2,5 months (75 days)
+            long criticalDays = 75;
+            long daysSince = ChronoUnit.DAYS.between(eval.getEvaluationDate(), now);
+
+            // Critical findings overdue → submit to CAS
+            long unresolvedCritical = gapRepository.countByRequest_IdAndTypeAndStatusNot(
+                    eval.getRequest().getId(), GapType.CRITIQUE, GapStatus.RESOLVED);
+            if (unresolvedCritical > 0 && daysSince > criticalDays
+                    && eval.getStatus() != SurveillanceEvaluationStatus.CAS_SUBMITTED) {
+                log.warn("PRO 25 §5.2.1.1 : écarts critiques non soldés sous 2,5 mois pour {}. Soumission CAS auto.",
+                        eval.getEvaluationCode());
+                eval.setStatus(SurveillanceEvaluationStatus.CAS_PREPARATION);
+                survEvalRepository.save(eval);
+                AccreditationRequest req = eval.getRequest();
+                if (req != null) {
+                    req.setCurrentStep("Écarts critiques non soldés (>2,5 mois) - soumission CAS");
+                    req.setNextAction("CD prépare le dossier CAS pour décision (PRO 25 §5.2.1.1)");
+                    req.setPendingWith("CD");
+                    requestRepository.save(req);
+                    notificationService.createNotification(
+                            req.getOec().getId(),
+                            "Écarts critiques - dossier soumis au CAS",
+                            "Vos écarts critiques pour " + eval.getEvaluationCode() + " n'ont pas été soldés sous 2,5 mois. Le dossier est soumis au CAS.",
+                            "DEADLINE_EXPIRED"
+                    );
+                }
+                continue;
+            }
+
+            // Non-critical findings overdue
+            long deadlineDaysNonCritical = (long)(deadlineMonths * 30.44);
+            long unresolvedNonCritical = gapRepository.countByRequest_IdAndTypeAndStatusNot(
+                    eval.getRequest().getId(), GapType.NON_CRITIQUE, GapStatus.RESOLVED);
+            if (unresolvedNonCritical > 0 && daysSince > deadlineDaysNonCritical) {
+                log.warn("PRO 25 §5.2.1.1 : écarts non critiques en retard (>{} mois) pour {}",
+                        deadlineMonths, eval.getEvaluationCode());
+                AccreditationRequest req = eval.getRequest();
+                if (req != null) {
+                    notificationService.createNotification(
+                            req.getOec().getId(),
+                            "Écarts non critiques - délai dépassé",
+                            unresolvedNonCritical + " écart(s) non critique(s) non soldé(s) après " + deadlineMonths
+                                    + " mois pour " + eval.getEvaluationCode() + ".",
+                            "DEADLINE_EXPIRED"
+                    );
+                }
+            }
+        }
     }
 
     /**

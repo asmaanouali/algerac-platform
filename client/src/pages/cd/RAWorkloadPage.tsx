@@ -16,6 +16,10 @@ interface RAWorkload {
   specialite: string;
   domaineExpertise: string;
   sousDomaineExpertise: string;
+  experience: string | null;
+  departmentId: number | null;
+  departmentCode: string | null;
+  departmentName: string | null;
   assignedDossiers: number;
   activeDossiers: number;
 }
@@ -45,7 +49,8 @@ export default function CDRAWorkloadPage() {
     return (
       r.fullName?.toLowerCase().includes(q) ||
       r.email?.toLowerCase().includes(q) ||
-      r.domaineExpertise?.toLowerCase().includes(q) ||
+      r.departmentName?.toLowerCase().includes(q) ||
+      r.departmentCode?.toLowerCase().includes(q) ||
       r.specialite?.toLowerCase().includes(q)
     );
   });
@@ -93,7 +98,7 @@ export default function CDRAWorkloadPage() {
                 </div>
                 <div className="relative w-full md:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Rechercher nom, email, domaine..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                  <Input placeholder="Rechercher nom, email, département..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
                 </div>
               </div>
             </CardHeader>
@@ -108,17 +113,23 @@ export default function CDRAWorkloadPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>RA</TableHead>
-                        <TableHead>Domaine d'expertise</TableHead>
+                        <TableHead>Département</TableHead>
                         <TableHead>Sous-domaine</TableHead>
                         <TableHead>Spécialité</TableHead>
                         <TableHead className="text-center">Actifs</TableHead>
                         <TableHead className="text-center">Total</TableHead>
-                        <TableHead>Charge</TableHead>
+                        <TableHead className="text-center">Années d'expérience</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filtered.map((ra) => {
-                        const pct = Math.min(((ra.activeDossiers || 0) / 6) * 100, 100);
+                        const expRaw = (ra.experience ?? "").toString().trim();
+                        const expNum = expRaw ? Number(expRaw.replace(/[^0-9.]/g, "")) : NaN;
+                        const expLabel = expRaw
+                          ? (Number.isFinite(expNum) && expRaw === String(expNum)
+                              ? `${expNum} an${expNum > 1 ? "s" : ""}`
+                              : expRaw)
+                          : "—";
                         return (
                           <TableRow key={ra.id}>
                             <TableCell>
@@ -127,20 +138,14 @@ export default function CDRAWorkloadPage() {
                                 <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" />{ra.email}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm">{ra.domaineExpertise || "—"}</TableCell>
+                            <TableCell className="text-sm">{ra.departmentName || ra.departmentCode || "—"}</TableCell>
                             <TableCell className="text-sm">{ra.sousDomaineExpertise || "—"}</TableCell>
                             <TableCell className="text-sm flex items-center gap-1"><Briefcase className="w-3 h-3 text-muted-foreground" />{ra.specialite || "—"}</TableCell>
                             <TableCell className="text-center">
                               <Badge variant={(ra.activeDossiers || 0) > 5 ? "destructive" : "outline"}>{ra.activeDossiers || 0}</Badge>
                             </TableCell>
                             <TableCell className="text-center text-sm">{ra.assignedDossiers || 0}</TableCell>
-                            <TableCell>
-                              <div className="w-32">
-                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full ${pct > 83 ? "bg-red-500" : pct > 50 ? "bg-amber-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                            </TableCell>
+                            <TableCell className="text-center text-sm">{expLabel}</TableCell>
                           </TableRow>
                         );
                       })}

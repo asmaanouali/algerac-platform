@@ -16,5 +16,7 @@ public enum UserRole {
     DG,             // Directrice Générale
     GES_COMPETENCES, // Gestionnaire de Compétences
     FORMATEUR,      // Formateur
-    RQ              // Responsable Qualité
+    RQ,             // Responsable Qualité
+    SUP,            // Superviseur (PRO 06 §5.2 / LIS 09)
+    CONSOLIDATION   // Service Consolidation : facturation + envoi certificat/annexe à l'OEC
 }

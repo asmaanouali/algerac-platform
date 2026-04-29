@@ -8,6 +8,7 @@ import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.QuotationService;
+import com.algerac.service.PdfGenerationService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class QuotationController {
     
     private final QuotationService quotationService;
     private final UserRepository userRepository;
+    private final PdfGenerationService pdfGenerationService;
     
     /**
      * RA: Créer un nouveau devis
@@ -98,7 +100,16 @@ public class QuotationController {
             Long userId = (Long) session.getAttribute("userId");
             if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
             User currentUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-            Quotation quotation = quotationService.approveQuotationByDAG(id, dto.getAmount(), dto.getComments(), currentUser);
+            Quotation quotation = quotationService.approveQuotationByDAG(
+                    id,
+                    dto.getAmount(),
+                    dto.getComments(),
+                    dto.getBreakdown(),
+                    dto.getDevisEstimatifNumber(),
+                    dto.getDevisEstimatifDate(),
+                    dto.getSiteName(),
+                    dto.getSiteAddress(),
+                    currentUser);
             return ResponseEntity.ok(ApiResponse.success("Devis approuvé avec succès", quotation));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -211,6 +222,23 @@ public class QuotationController {
     @GetMapping("/pending-approval")
     public ResponseEntity<List<Quotation>> getPendingDAGApprovalQuotations() {
         return ResponseEntity.ok(quotationService.getPendingDAGApprovalQuotations());
+    }
+
+    /**
+     * Télécharge le devis estimatif au format PDF (FOR 44 / 44-1 / 44-2).
+     */
+    @GetMapping("/{id}/devis.pdf")
+    public ResponseEntity<byte[]> downloadDevisPdf(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Quotation quotation = quotationService.getQuotationById(id);
+        if (quotation == null) return ResponseEntity.notFound().build();
+        byte[] pdf = pdfGenerationService.generateDevisEstimatifPdf(quotation);
+        String filename = "Devis_" + (quotation.getQuotationNumber() != null ? quotation.getQuotationNumber() : id) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                .body(pdf);
     }
     
     /**

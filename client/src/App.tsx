@@ -111,6 +111,7 @@ import PublicTrackingPage from "@/pages/complaints/PublicTrackingPage";
 import InternalComplaintsPage from "@/pages/complaints/InternalComplaintsPage";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 import RQDashboard from "@/pages/rq/Dashboard";
+import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 
 // DAG Payment Tracking
 import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
@@ -144,11 +145,13 @@ import OECCertificatesPage from "@/pages/oec/CertificatesPage";
 import OECProfilePage from "@/pages/oec/ProfilePage";
 import RAQuotesPage from "@/pages/ra/QuotesPage";
 import RADossiersPage from "@/pages/ra/DossiersPage";
+import RARequestDetailPage from "@/pages/ra/RequestDetailPage";
 import RAPlanningPage from "@/pages/ra/PlanningPage";
 import DTDashboard from "@/pages/dt/Dashboard";
 import DTRequestReviewPage from "@/pages/dt/RequestReviewPage";
 import DTAccreditationRequestsPage from "@/pages/dt/AccreditationRequestsPage";
 import DTRequestDetailPage from "@/pages/dt/RequestDetailPage";
+import CDRequestDetailPage from "@/pages/cd/RequestDetailPage";
 import DTOECApplicationDetailPage from "@/pages/dt/OECApplicationDetailPage";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
 import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
@@ -214,6 +217,7 @@ function Router() {
       <Route path="/ra/experts">{() => <ProtectedRoute component={ExpertDirectoryPage} allowedRoles={["ra"]} />}</Route>
       <Route path="/ra/quotes">{() => <ProtectedRoute component={RAQuotesPage} allowedRoles={["ra"]} />}</Route>
       <Route path="/ra/dossiers">{() => <ProtectedRoute component={RADossiersPage} allowedRoles={["ra"]} />}</Route>
+      <Route path="/ra/dossiers/:requestId">{() => <ProtectedRoute component={RARequestDetailPage} allowedRoles={["ra"]} />}</Route>
       <Route path="/ra/planning">{() => <ProtectedRoute component={RAPlanningPage} allowedRoles={["ra"]} />}</Route>
       <Route path="/ra/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["ra"]} />}</Route>
       
@@ -236,6 +240,7 @@ function Router() {
       <Route path="/cd/transferts">{() => <ProtectedRoute component={AccreditationTransferPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/surveillance">{() => <ProtectedRoute component={CDSurveillancePage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["cd"]} />}</Route>
+      <Route path="/cd/demande/:requestId">{() => <ProtectedRoute component={CDRequestDetailPage} allowedRoles={["cd"]} />}</Route>
       
       {/* DAG Routes */}
       <Route path="/dag">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
@@ -367,6 +372,10 @@ function Router() {
       <Route path="/rq/dashboard">{() => <ProtectedRoute component={RQDashboard} allowedRoles={["rq"]} />}</Route>
       <Route path="/rq/plaintes">{() => <ProtectedRoute component={RQComplaintsDashboard} allowedRoles={["rq"]} />}</Route>
       <Route path="/rq/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["rq"]} />}</Route>
+
+      {/* Consolidation Routes */}
+      <Route path="/consolidation">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
+      <Route path="/consolidation/dashboard">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
       
       {/* Complaints (internal - for authenticated roles) */}
       <Route path="/complaints/internal">{() => <ProtectedRoute component={InternalComplaintsPage} />}</Route>

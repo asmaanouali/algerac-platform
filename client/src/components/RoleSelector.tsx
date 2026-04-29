@@ -28,6 +28,8 @@ const roleIcons: Record<string, string> = {
   DG: '🏛️',
   GES_COMPETENCES: '📚',
   RQ: '📝',
+  SUP: '👁️',
+  CONSOLIDATION: '🧾',
   EVALUATEUR: '🔎',
   FORMATEUR: '📖',
 };
@@ -48,6 +50,8 @@ const roleColors: Record<string, string> = {
   DG: 'from-violet-500 to-violet-700',
   GES_COMPETENCES: 'from-sky-500 to-sky-700',
   RQ: 'from-fuchsia-500 to-fuchsia-700',
+  SUP: 'from-stone-500 to-stone-700',
+  CONSOLIDATION: 'from-pink-500 to-pink-700',
 };
 
 export default function RoleSelector({ roles, userName, onSelectRole }: RoleSelectorProps) {

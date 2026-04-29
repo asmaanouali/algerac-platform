@@ -19,4 +19,10 @@ public class NewRequestDTO {
     private String domain;
     
     private String description; // Description détaillée de la demande
+
+    /** PRO 26 : true si la demande concerne un OEC multisites. */
+    private Boolean isMultisite;
+
+    /** PRO 26 : payload multisites (siège, sites satellites, critères §5.1). */
+    private MultisiteRequestPayloadDTO multisite;
 }

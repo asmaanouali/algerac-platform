@@ -3,6 +3,7 @@ package com.algerac.service;
 import com.algerac.model.*;
 import com.algerac.repository.SamplingPlanRepository;
 import com.algerac.repository.RequestRepository;
+import com.algerac.repository.SatelliteSiteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class SamplingService {
 
     private final SamplingPlanRepository samplingPlanRepository;
     private final RequestRepository requestRepository;
+    private final SatelliteSiteRepository satelliteSiteRepository;
 
     private static final AtomicLong samplingSequence = new AtomicLong(System.currentTimeMillis() % 10000);
 
@@ -102,11 +104,11 @@ public class SamplingService {
 
         // §5.1 Initial/Extension: validate full coverage
         if (assessmentType == RequestType.INITIAL || assessmentType == RequestType.EXTENSION) {
-            validateInitialPlan(plan);
+            validateInitialPlan(plan, request);
         }
         // §5.2 Surveillance/Renewal: validate HQ is included
         if (assessmentType == RequestType.SURVEILLANCE || assessmentType == RequestType.RENOUVELLEMENT) {
-            validateSurveillancePlan(plan);
+            validateSurveillancePlan(plan, request);
         }
 
         plan = samplingPlanRepository.save(plan);
@@ -295,7 +297,20 @@ public class SamplingService {
 
     // ---- Validation ----
 
-    private void validateInitialPlan(SamplingPlan plan) {
+    private void validateInitialPlan(SamplingPlan plan, AccreditationRequest request) {
+        // PRO 26 §5.4 — pour une demande initiale multisites, tous les sites en portée doivent être évalués
+        if (Boolean.TRUE.equals(request.getIsMultisite()) && request.getType() == RequestType.INITIAL) {
+            long activeInScope = satelliteSiteRepository.countByRequest_IdAndStatus(request.getId(), SatelliteSiteStatus.ACTIVE);
+            int requiredTotal = (int) (1 + activeInScope); // 1 = siège
+            if (plan.getSelectedSitesCount() == null || plan.getSelectedSitesCount() < requiredTotal) {
+                throw new RuntimeException(
+                    "PRO 26 §5.4 : pour une demande initiale multisites, tous les sites doivent être évalués (" +
+                    "requis: " + requiredTotal + ", sélectionnés: " + plan.getSelectedSitesCount() + ")");
+            }
+            if (!Boolean.TRUE.equals(plan.getHeadquartersIncluded())) {
+                throw new RuntimeException("PRO 26 §5.4 : le siège social doit être inclus dans une évaluation initiale multisites");
+            }
+        }
         // §5.1.a: All sites must be assessed initially
         if (plan.getTotalSitesInScope() != null && plan.getSelectedSitesCount() != null) {
             if (plan.getSelectedSitesCount() < plan.getTotalSitesInScope()) {
@@ -312,10 +327,24 @@ public class SamplingService {
         }
     }
 
-    private void validateSurveillancePlan(SamplingPlan plan) {
+    private void validateSurveillancePlan(SamplingPlan plan, AccreditationRequest request) {
         // §5.2.a: HQ must always be assessed
         if (plan.getHeadquartersIncluded() == null || !plan.getHeadquartersIncluded()) {
             log.warn("Plan {}: surveillance — le siège doit être systématiquement évalué", plan.getPlanCode());
+        }
+        // PRO 26 §5.7 — pour un OEC multisites, l'échantillonnage en surveillance/renouvellement
+        // doit couvrir au moins ⌈√n⌉ sites satellites en portée (n = nombre de sites satellites actifs).
+        if (Boolean.TRUE.equals(request.getIsMultisite())) {
+            long activeInScope = satelliteSiteRepository.countByRequest_IdAndStatus(
+                request.getId(), SatelliteSiteStatus.ACTIVE);
+            int minSatellites = (int) Math.ceil(Math.sqrt(activeInScope));
+            int requiredTotal = 1 + minSatellites; // +1 pour le siège
+            if (plan.getSelectedSitesCount() == null || plan.getSelectedSitesCount() < requiredTotal) {
+                throw new RuntimeException(
+                    "PRO 26 §5.7 : l'échantillonnage multisites doit couvrir au moins le siège + ⌈√" + activeInScope +
+                    "⌉ = " + minSatellites + " sites satellites (total requis : " + requiredTotal +
+                    ", sélectionnés : " + plan.getSelectedSitesCount() + ")");
+            }
         }
     }
 

@@ -1288,4 +1288,35 @@ public class AccreditationRequestController {
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .body(pdf);
     }
+
+    // ─── PRO 26 : sites satellites ────────────────────────────────────────────────
+
+    /** Liste des sites satellites d'une demande multisites. */
+    @GetMapping("/{id}/satellite-sites")
+    public ResponseEntity<?> listSatelliteSites(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("userId") == null) return unauthorized();
+        return ResponseEntity.ok(ApiResponse.success("Sites satellites",
+                requestService.listSatelliteSites(id)));
+    }
+
+    /**
+     * PRO 26 §5.5-4 : l'OEC déclare la fermeture d'un site satellite.
+     * Met à jour le statut → CLOSED et notifie le CD.
+     */
+    @PostMapping("/{id}/satellite-sites/{siteId}/close")
+    public ResponseEntity<?> closeSatelliteSite(@PathVariable Long id,
+                                                @PathVariable Long siteId,
+                                                @RequestBody(required = false) Map<String, Object> body,
+                                                HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) return unauthorized();
+        try {
+            User user = userRepository.findById(userId).orElseThrow();
+            String reason = body != null ? (String) body.get("reason") : null;
+            return ResponseEntity.ok(ApiResponse.success("Site marqué comme fermé",
+                    requestService.closeSatelliteSite(id, siteId, reason, user)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }

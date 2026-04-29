@@ -41,12 +41,35 @@ public class EvaluationPlan {
     
     @Column(columnDefinition = "TEXT")
     private String documentsToExamine; // Documents à examiner sur site
-    
+
+    /** PRO 26 §5.3.2-a : JSON des IDs de sites satellites planifiés pour cette évaluation. */
+    @Column(columnDefinition = "TEXT")
+    private String sitesToEvaluateJson;
+
+    /** PRO 26 §5.3.2-a : à l'initiale, tous les sites doivent être évalués. */
+    private Boolean multisiteAllSitesRequired;
+
+    /** PRO 26 §5.3.2-b : temps de déplacement total estimé entre sites (en heures). */
+    private Integer travelTimeHours;
+
     private LocalDateTime createdByREE;
     
+    /**
+     * Routing FOR 32 :
+     *  - REE INTERNE à ALGERAC  → validation par DT
+     *  - REE EXTERNE à ALGERAC  → validation par CD
+     * Cette colonne est renseignée à la création du plan d'après le profil de l'REE.
+     */
+    private Boolean reeIsExternal;
+
     private Boolean validatedByCD;
     
     private LocalDateTime cdValidationDate;
+
+    /** Validation par DT lorsque le REE est interne à ALGERAC. */
+    private Boolean validatedByDT;
+
+    private LocalDateTime dtValidationDate;
     
     @Column(columnDefinition = "TEXT")
     private String cdAdjustmentRequests; // Demandes d'ajustements par CD

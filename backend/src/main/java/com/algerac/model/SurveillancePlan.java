@@ -44,6 +44,31 @@ public class SurveillancePlan {
     
     @Column(columnDefinition = "TEXT")
     private String satisfactionFeedback; // Retour OEC sur FOR 22
+
+    // ─── Circuit RA → CD → OEC (plan de surveillance 3 ans) ───────────
+    /** Plan de surveillance 3 ans rédigé par le RA dès accréditation prononcée. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "drafted_by_ra_id")
+    private User draftedByRA;
+
+    private LocalDateTime draftedAt;
+
+    /** Plan soumis au CD pour validation. */
+    private LocalDateTime submittedToCDAt;
+
+    /** Validation du plan par le CD (gate avant envoi à l'OEC). */
+    private Boolean validatedByCD;
+    private LocalDateTime cdValidationDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String cdValidationComments;
+
+    /** Plan envoyé à l'OEC après validation CD. */
+    private LocalDateTime sentToOECAt;
+
+    private Boolean oecAcknowledged;
+    private LocalDateTime oecAcknowledgedAt;
+    // ──────────────────────────────────────────────────────────────────
     
     private LocalDateTime createdAt;
     

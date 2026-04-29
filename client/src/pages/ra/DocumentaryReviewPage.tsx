@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench } from "lucide-react";
+import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const DOC_TYPES = [
@@ -209,7 +209,19 @@ export default function DocumentaryReviewPage() {
                       <CardTitle className="text-lg flex items-center gap-2"><FileSearch className="w-5 h-5" />Revue Documentaire</CardTitle>
                       <CardDescription>{selectedRequest ? `Dossier: ${selectedRequest.referenceNumber || selectedRequest.id}` : "Sélectionnez un dossier"}</CardDescription>
                     </div>
-                    {selectedRequest && <Badge className={statusInfo.color}>{statusInfo.label}</Badge>}
+                    <div className="flex items-center gap-2">
+                      {selectedRequest && <Badge className={statusInfo.color}>{statusInfo.label}</Badge>}
+                      {selectedRequest && (
+                        <>
+                          <a href={`/api/requests/${selectedRequest.id}/doc1.pdf`} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />DOC 01</Button>
+                          </a>
+                          <a href={`/api/requests/${selectedRequest.id}/technical-form.pdf`} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />Formulaire</Button>
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

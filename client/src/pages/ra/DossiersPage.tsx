@@ -39,13 +39,13 @@ export default function RADossiersPage() {
   const loadDossiers = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/accreditation-requests", { credentials: "include" });
+      const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const requests = await res.json();
-        setDossiers(requests.map((r: any) => ({
+        setDossiers((Array.isArray(requests) ? requests : []).map((r: any) => ({
           id: r.id,
           referenceNumber: r.referenceNumber || `ACC-${r.id}`,
-          oecName: r.oec?.nomOrganisme || r.oec?.fullName || "—",
+          oecName: r.oec?.organizationName || r.oec?.fullName || "—",
           type: r.type,
           domain: r.domain || "—",
           status: r.status,
@@ -165,7 +165,7 @@ export default function RADossiersPage() {
                         </TableCell>
                         <TableCell>{new Date(d.createdAt).toLocaleDateString("fr-FR")}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => setLocation(`/ra/demandes/${d.id}/devis`)}>
+                          <Button variant="ghost" size="sm" onClick={() => setLocation(`/ra/dossiers/${d.id}`)}>
                             <Eye className="w-4 h-4 mr-1" />
                             Voir
                           </Button>

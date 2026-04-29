@@ -41,6 +41,12 @@ VALUES ('rq@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalA
         'Leila Bouazza', 'RQ', 'ALGERAC', '0555000006', NOW(), 'APPROVED', false, false)
 ON CONFLICT (email) DO NOTHING;
 
+-- CONSOLIDATION (facturation + délivrance certificat)
+INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
+VALUES ('consolidation@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
+        'Karim Bensalah', 'CONSOLIDATION', 'ALGERAC', '0555000016', NOW(), 'APPROVED', false, false)
+ON CONFLICT (email) DO NOTHING;
+
 -- CAS_PRESIDENT
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
 VALUES ('cas.president@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',

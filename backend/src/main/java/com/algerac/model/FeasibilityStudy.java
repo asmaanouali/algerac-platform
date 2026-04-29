@@ -45,7 +45,11 @@ public class FeasibilityStudy {
     
     private LocalDateTime studyStartDate;
     private LocalDateTime studyCompletionDate;
-    
+
+    /** Brouillon intermédiaire sérialisé en JSON – persiste la progression du RA entre les sessions. */
+    @Column(columnDefinition = "TEXT")
+    private String draftJson;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

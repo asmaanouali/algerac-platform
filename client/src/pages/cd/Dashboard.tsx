@@ -7,7 +7,7 @@ import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, RefreshCw } from "lucide-react";
+import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, RefreshCw, UserPlus, FileSearch, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -81,8 +81,53 @@ export default function CDDashboard() {
     color: STATUS_COLORS[status] || "bg-slate-100 text-slate-700",
   });
 
-  const pendingAssignment = requests.filter(r => r.status === "PAYMENT_COMPLETED");
-  const inProgress = requests.filter(r => !["PAYMENT_COMPLETED", "CERTIFICATE_ISSUED", "CLOSED", "WITHDRAWN", "CAS_DECISION_GRANT"].includes(r.status));
+  const pendingAssignment = requests.filter(r => r.status === "PAYMENT_COMPLETED" || r.status === "PENDING_CD_ASSIGNMENT");
+  const teamComposition = requests.filter(r => r.status === "TEAM_COMPOSITION");
+  const quotationPrep = requests.filter(r => r.status === "QUOTATION_PREPARATION");
+  const receivabilityStudy = requests.filter(r => r.status === "RECEIVABILITY_STUDY");
+
+  const requiredActions = [
+    ...(pendingAssignment.length > 0 ? [{
+      label: "Demandes sans RA affecté",
+      description: "Affecter un responsable d'accréditation",
+      href: "/cd/manage-requests",
+      icon: UserPlus,
+      badgeColor: "bg-amber-100 text-amber-800",
+      borderColor: "border-l-amber-500",
+      requests: pendingAssignment,
+    }] : []),
+    ...(receivabilityStudy.length > 0 ? [{
+      label: "Études de recevabilité",
+      description: "Décision de recevabilité à rendre",
+      href: "/cd/revue-documentaire",
+      icon: FileSearch,
+      badgeColor: "bg-indigo-100 text-indigo-800",
+      borderColor: "border-l-indigo-500",
+      requests: receivabilityStudy,
+    }] : []),
+    ...(teamComposition.length > 0 ? [{
+      label: "Compositions d'équipe",
+      description: "Valider la composition de l'équipe d'audit",
+      href: "/cd/pilotage-evaluation",
+      icon: Users,
+      badgeColor: "bg-purple-100 text-purple-800",
+      borderColor: "border-l-purple-500",
+      requests: teamComposition,
+    }] : []),
+    ...(quotationPrep.length > 0 ? [{
+      label: "Devis à préparer",
+      description: "Préparer et envoyer le devis à l'OEC",
+      href: "/cd/pilotage-evaluation",
+      icon: BarChart3,
+      badgeColor: "bg-cyan-100 text-cyan-800",
+      borderColor: "border-l-cyan-500",
+      requests: quotationPrep,
+    }] : []),
+  ];
+
+  const totalActionCount = requiredActions.reduce((sum, a) => sum + a.requests.length, 0);
+
+  const inProgress = requests.filter(r => !["PAYMENT_COMPLETED", "PENDING_CD_ASSIGNMENT", "CERTIFICATE_ISSUED", "CLOSED", "WITHDRAWN", "CAS_DECISION_GRANT"].includes(r.status));
   const completed = requests.filter(r => r.status === "CERTIFICATE_ISSUED" || r.status === "CAS_DECISION_GRANT");
 
   return (
@@ -125,31 +170,57 @@ export default function CDDashboard() {
                 <StatCard title={t('cd.completed')} value={completed.length} icon={CheckCircle2} description={t('cd.certifiedOrGranted')} className="border-l-emerald-500" />
               </div>
 
-              {/* Alert for pending assignment */}
-              {pendingAssignment.length > 0 && (
-                <Card className="border-amber-200 bg-amber-50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-amber-800 flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5" /> {pendingAssignment.length} {t('cd.pendingAssignment')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {pendingAssignment.slice(0, 5).map(req => (
-                      <div key={req.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100">
-                        <div>
-                          <p className="font-medium text-sm">{req.referenceNumber || `Demande #${req.id}`}</p>
-                          <p className="text-xs text-amber-700">{req.oecName || req.domain}</p>
-                        </div>
-                        <Link href="/cd/manage-requests">
-                          <Button size="sm" variant="outline" className="text-amber-700 border-amber-300">
-                            {t('cd.assignRA')} <ArrowRight className="ml-1 h-3 w-3" />
-                          </Button>
-                        </Link>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
+              {/* Actions requises */}
+              <Card className={requiredActions.length > 0 ? "border-rose-200 bg-rose-50/40" : ""}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertCircle className={`h-5 w-5 ${requiredActions.length > 0 ? "text-rose-600" : "text-muted-foreground"}`} />
+                    Actions requises
+                    {totalActionCount > 0 && (
+                      <Badge className="bg-rose-100 text-rose-700 ml-1">{totalActionCount}</Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>Éléments nécessitant votre intervention directe</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {requiredActions.length === 0 ? (
+                    <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-lg px-4 py-3 border border-emerald-200">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Aucune action requise — tout est à jour.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {requiredActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <div key={action.label}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Icon className="h-4 w-4 text-slate-400" />
+                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{action.label}</span>
+                              <Badge className={`${action.badgeColor} text-xs`}>{action.requests.length}</Badge>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {action.requests.map((req) => (
+                                <Link key={req.id} href={`${action.href}?id=${req.id}`}>
+                                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border-l-4 bg-white border border-slate-100 hover:shadow-md transition-shadow cursor-pointer ${action.borderColor}`}>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="font-semibold text-sm">{req.referenceNumber ?? `#${req.id}`}</span>
+                                      <span className="text-xs text-muted-foreground truncate">{req.oecName ?? "OEC non renseigné"} — {action.description}</span>
+                                    </div>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-3" />
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent Requests */}
 
               {/* Recent Requests */}
               <Card>

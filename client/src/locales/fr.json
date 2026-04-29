@@ -185,7 +185,9 @@
     "CAS_PRESIDENT": "Président CAS",
     "DG": "Directeur Général",
     "GES_COMPETENCES": "Gestion des Compétences",
-    "RQ": "Responsable Qualité"
+    "RQ": "Responsable Qualité",
+    "SUP": "Superviseur",
+    "CONSOLIDATION": "Service Consolidation"
   },
   "nav": {
     "dashboard": "Tableau de bord",

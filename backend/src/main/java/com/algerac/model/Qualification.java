@@ -90,6 +90,18 @@ public class Qualification {
     private String sourceAccreditationBody;
     private Boolean lightProcessApplied;
 
+    // Type d'emploi : différencie cycle 3 ans (EXTERNAL) vs 6 ans (PERMANENT) — PRO 06 §5.3
+    @Column(length = 20)
+    private String employmentType; // "EXTERNAL" | "PERMANENT"
+
+    // Suivi d'inactivité — PRO 06 §5.5 : période d'inactivité ≥ 1 an déclenche requalification
+    private LocalDate lastActivityDate;
+    private LocalDate inactivityNoticeDate;
+    private Boolean requalificationRequired;
+
+    // PRO 06 §5.3 — étape 2 : évaluation partielle satisfaisante (limitée à une reprise)
+    private Boolean partialAssessmentCompleted;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

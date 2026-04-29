@@ -2,11 +2,13 @@ package com.algerac.service;
 
 import com.algerac.dto.AssignRequestDTO;
 import com.algerac.dto.CreateRequestDTO;
+import com.algerac.dto.MultisiteRequestPayloadDTO;
 import com.algerac.dto.NewRequestDTO;
 import com.algerac.dto.ReceivabilityDecisionDTO;
 import com.algerac.model.*;
 import com.algerac.repository.DepartmentRepository;
 import com.algerac.repository.RequestRepository;
+import com.algerac.repository.SatelliteSiteRepository;
 import com.algerac.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ public class RequestService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final DepartmentRepository departmentRepository;
+    private final SatelliteSiteRepository satelliteSiteRepository;
     
     public List<AccreditationRequest> getAllRequests() {
         return requestRepository.findAll();
@@ -57,7 +60,10 @@ public class RequestService {
             throw new RuntimeException("Seuls les OEC peuvent créer des demandes");
         }
         
-        AccreditationRequest request = AccreditationRequest.builder()
+        boolean isMultisite = Boolean.TRUE.equals(dto.getIsMultisite());
+        MultisiteRequestPayloadDTO ms = dto.getMultisite();
+
+        AccreditationRequest.AccreditationRequestBuilder builder = AccreditationRequest.builder()
                 .oec(currentUser)
                 .type(dto.getType())
                 .domain(dto.getDomain())
@@ -65,10 +71,41 @@ public class RequestService {
                 .status(RequestStatus.DRAFT)
                 .progress(0)
                 .createdAt(LocalDateTime.now())
-                .build();
-        
-        request = requestRepository.save(request);
-        log.info("Nouvelle demande créée en brouillon par l'OEC {}", currentUser.getOrganizationName());
+                .isMultisite(isMultisite);
+
+        if (isMultisite && ms != null) {
+            builder
+                .mainSiteName(ms.getMainSiteName())
+                .mainSiteAddress(ms.getMainSiteAddress())
+                .mainSiteContactName(ms.getMainSiteContactName())
+                .mainSiteContactEmail(ms.getMainSiteContactEmail())
+                .centralizedManagementSystem(ms.getCentralizedManagementSystem())
+                .managementSystemDescription(ms.getManagementSystemDescription())
+                .interSiteExchangesDoc(ms.getInterSiteExchangesDoc())
+                .qualificationCriteriaJson(ms.getQualificationCriteriaJson());
+        }
+
+        AccreditationRequest request = requestRepository.save(builder.build());
+
+        // PRO 26 §5.2-2 : persister les sites satellites comme entités enfants
+        if (isMultisite && ms != null && ms.getSatelliteSites() != null) {
+            for (MultisiteRequestPayloadDTO.SatelliteSiteInputDTO s : ms.getSatelliteSites()) {
+                if (s == null || s.getName() == null || s.getName().isBlank()) continue;
+                SatelliteSite site = SatelliteSite.builder()
+                        .request(request)
+                        .name(s.getName())
+                        .address(s.getAddress())
+                        .activities(s.getActivities())
+                        .personnel(s.getPersonnel())
+                        .isInScope(s.getIsInScope() == null ? Boolean.TRUE : s.getIsInScope())
+                        .status(SatelliteSiteStatus.ACTIVE)
+                        .build();
+                satelliteSiteRepository.save(site);
+            }
+        }
+
+        log.info("Nouvelle demande créée en brouillon par l'OEC {} (multisite={})",
+                currentUser.getOrganizationName(), isMultisite);
         
         return request;
     }
@@ -467,6 +504,15 @@ public class RequestService {
             throw new RuntimeException("La demande n'est pas en étude de recevabilité");
         }
         
+        // PRO 26 §5.2.1 : pour une demande multisites, la revue des 6 critères §5.1 est obligatoire
+        if (Boolean.TRUE.equals(request.getIsMultisite())) {
+            if (dto.getMultisiteCriteriaReviewJson() == null || dto.getMultisiteCriteriaReviewJson().isBlank()) {
+                throw new RuntimeException("La revue des critères §5.1 (PRO 26) est requise pour une demande multisites");
+            }
+            request.setMultisiteCriteriaReviewJson(dto.getMultisiteCriteriaReviewJson());
+            request.setMultisiteQualificationReviewed(true);
+        }
+        
         // Stocker la décision du RA mais ne pas l'appliquer directement
         request.setReceivabilityComments(dto.getComments());
         request.setReceivabilityDecisionDate(LocalDateTime.now());
@@ -701,5 +747,62 @@ public class RequestService {
         }
         
         return requestRepository.save(request);
+    }
+
+    // ─── PRO 26 : sites satellites ───────────────────────────────────────────────
+
+    public java.util.List<SatelliteSite> listSatelliteSites(Long requestId) {
+        return satelliteSiteRepository.findByRequest_IdOrderByIdAsc(requestId);
+    }
+
+    /**
+     * PRO 26 §5.5-4 : l'OEC déclare la fermeture d'un site.
+     * Le site passe à CLOSED ; il sera retiré de l'annexe technique à la prochaine émission de certificat.
+     */
+    @Transactional
+    public SatelliteSite closeSatelliteSite(Long requestId, Long siteId, String reason, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        // Seul l'OEC propriétaire (ou un staff CD/RA/DT) peut déclarer une fermeture.
+        boolean isOwner = request.getOec() != null && request.getOec().getId().equals(currentUser.getId());
+        boolean isStaff = currentUser.getRole() == UserRole.CD
+                || currentUser.getRole() == UserRole.RA
+                || currentUser.getRole() == UserRole.DT
+                || currentUser.getRole() == UserRole.ADMIN;
+        if (!isOwner && !isStaff) {
+            throw new RuntimeException("Non autorisé à modifier ce site");
+        }
+
+        SatelliteSite site = satelliteSiteRepository.findById(siteId)
+                .orElseThrow(() -> new RuntimeException("Site satellite introuvable"));
+        if (site.getRequest() == null || !site.getRequest().getId().equals(requestId)) {
+            throw new RuntimeException("Le site n'appartient pas à cette demande");
+        }
+        if (site.getStatus() == SatelliteSiteStatus.CLOSED) {
+            return site;
+        }
+        site.setStatus(SatelliteSiteStatus.CLOSED);
+        site.setClosedAt(LocalDateTime.now());
+        site.setClosureReason(reason);
+        site = satelliteSiteRepository.save(site);
+
+        log.info("PRO 26 §5.5-4 : site satellite #{} de la demande #{} marqué CLOSED par {} (raison: {})",
+                siteId, requestId, currentUser.getEmail(), reason);
+
+        // Notifier le CD assigné de la fermeture pour mise à jour de l'annexe technique.
+        if (request.getAssignedToCd() != null) {
+            try {
+                notificationService.createNotification(
+                        request.getAssignedToCd().getId(),
+                        "Fermeture de site satellite",
+                        "L'OEC a déclaré la fermeture du site « " + site.getName() + " » (demande "
+                                + request.getReferenceNumber() + ").",
+                        "MULTISITE_SITE_CLOSED");
+            } catch (Exception e) {
+                log.warn("Notification fermeture site échouée: {}", e.getMessage());
+            }
+        }
+        return site;
     }
 }

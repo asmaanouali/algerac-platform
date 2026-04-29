@@ -70,6 +70,13 @@ public class EvaluationTeam {
 
     private LocalDateTime finalValidationDate;
     
+    /**
+     * Le REE désigné pour cette équipe est-il externe à ALGERAC ?
+     * Détermine le circuit de validation du plan FOR 32 :
+     *   externe → CD ; interne → DT.
+     */
+    private Boolean reeIsExternal;
+
     @Enumerated(EnumType.STRING)
     private TeamStatus status;
     

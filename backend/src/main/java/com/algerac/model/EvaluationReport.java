@@ -64,6 +64,16 @@ public class EvaluationReport {
     
     private LocalDateTime draftedByREE; // Rédigé par REE (délai: 30 jours après clôture)
     
+    /** Étape 1 du circuit v2 : REE soumet au RA. */
+    private LocalDateTime submittedToRA;
+
+    /** Le RA a relu et transmis au CD pour validation. */
+    private Boolean validatedByRA;
+    private LocalDateTime raValidationDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String raComments;
+
     private LocalDateTime submittedToCD;
     
     private Boolean validatedByCD;
@@ -79,6 +89,17 @@ public class EvaluationReport {
     private String FOR23AppreciationSheet; // FOR 23 remplie par CD
     
     private LocalDateTime sentToDeptConsolidation;
+
+    /** Consolidation : facture émise + rapport+facture envoyés à l'OEC. */
+    private Boolean consolidationCompleted;
+    private LocalDateTime consolidationCompletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consolidation_user_id")
+    private User consolidationUser;
+
+    /** Rapport + facture envoyés à l'OEC. */
+    private LocalDateTime sentToOEC;
     
     @Enumerated(EnumType.STRING)
     private EvaluationReportStatus status;

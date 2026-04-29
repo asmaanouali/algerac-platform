@@ -99,20 +99,20 @@ const RA_PENDING_STATUSES = new Set([
   "REPORT_VALIDATED",
 ]);
 
-const NEXT_STEP_LINK: Record<string, { href: string; label: string }> = {
-  ASSIGNED_TO_RA: { href: "/ra/faisabilite", label: "Étude de recevabilité" },
-  RECEIVABILITY_STUDY: { href: "/ra/faisabilite", label: "Continuer l'étude" },
-  RESOURCE_CHECK: { href: "/ra/faisabilite", label: "Décider visite préliminaire" },
-  PRELIMINARY_VISIT_COMPLETED: { href: "/ra/faisabilite", label: "Préparer dossier DG" },
-  DG_VALIDATED: { href: "/ra/faisabilite", label: "Notifier l'OEC" },
-  RECEIVABLE: { href: "/ra/dossiers", label: "Préparer le devis" },
-  QUOTATION_APPROVED_BY_DAG: { href: "/ra/dossiers", label: "Préparer convention" },
-  QUOTATION_CONVENTION_CD_MODIF: { href: "/ra/dossiers", label: "Corriger (modif CD)" },
-  QUOTATION_VALIDATED: { href: "/ra/equipes", label: "Constituer l'équipe" },
-  TEAM_VALIDATED: { href: "/ra/revue-documentaire", label: "Revue documentaire" },
-  DOCUMENTARY_REVIEW_COMPLETED: { href: "/ra/preparation-evaluation", label: "Préparer évaluation" },
-  EVALUATION_COMPLETED: { href: "/ra/gestion-ecarts", label: "Gérer les écarts" },
-  REPORT_VALIDATED: { href: "/ra/preparation-cas", label: "Préparer CAS" },
+const NEXT_STEP_LINK: Record<string, { href: (id: number | string) => string; label: string }> = {
+  ASSIGNED_TO_RA: { href: () => "/ra/faisabilite", label: "Étude de recevabilité" },
+  RECEIVABILITY_STUDY: { href: () => "/ra/faisabilite", label: "Continuer l'étude" },
+  RESOURCE_CHECK: { href: () => "/ra/faisabilite", label: "Décider visite préliminaire" },
+  PRELIMINARY_VISIT_COMPLETED: { href: () => "/ra/faisabilite", label: "Préparer dossier DG" },
+  DG_VALIDATED: { href: () => "/ra/faisabilite", label: "Notifier l'OEC" },
+  RECEIVABLE: { href: (id) => `/ra/demandes/${id}/devis`, label: "Préparer le devis" },
+  QUOTATION_APPROVED_BY_DAG: { href: (id) => `/ra/demandes/${id}/devis`, label: "Préparer convention" },
+  QUOTATION_CONVENTION_CD_MODIF: { href: (id) => `/ra/demandes/${id}/devis`, label: "Corriger (modif CD)" },
+  QUOTATION_VALIDATED: { href: () => "/ra/equipes", label: "Constituer l'équipe" },
+  TEAM_VALIDATED: { href: () => "/ra/revue-documentaire", label: "Revue documentaire" },
+  DOCUMENTARY_REVIEW_COMPLETED: { href: () => "/ra/preparation-evaluation", label: "Préparer évaluation" },
+  EVALUATION_COMPLETED: { href: () => "/ra/gestion-ecarts", label: "Gérer les écarts" },
+  REPORT_VALIDATED: { href: () => "/ra/preparation-cas", label: "Préparer CAS" },
 };
 
 export default function RADashboard() {
@@ -227,7 +227,7 @@ export default function RADashboard() {
                             </p>
                           </div>
                           {next && (
-                            <Link href={next.href}>
+                            <Link href={next.href(req.id)}>
                               <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 ml-2">
                                 {next.label} <ArrowRight className="ml-1 h-3 w-3" />
                               </Button>

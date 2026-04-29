@@ -219,6 +219,9 @@ export function Sidebar() {
       { href: "/rq/plaintes", label: t('nav.complaints'), icon: MessageSquareWarning },
       { href: "/rq/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
     ],
+    consolidation: [
+      { href: "/consolidation/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
+    ],
   };
 
   const roleMapping: Record<string, keyof typeof navItems> = {
@@ -238,6 +241,7 @@ export function Sidebar() {
     'GES_COMPETENCES': 'ges_competences',
     'RQ': 'rq',
     'SUP': 'sup',
+    'CONSOLIDATION': 'consolidation',
   };
 
   const normalizedRole = role?.toUpperCase() || '';

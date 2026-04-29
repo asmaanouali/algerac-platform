@@ -185,7 +185,9 @@
     "CAS_PRESIDENT": "CAS President",
     "DG": "General Director",
     "GES_COMPETENCES": "Competence Management",
-    "RQ": "Quality Manager"
+    "RQ": "Quality Manager",
+    "SUP": "Supervisor",
+    "CONSOLIDATION": "Consolidation Service"
   },
   "nav": {
     "dashboard": "Dashboard",

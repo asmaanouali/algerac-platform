@@ -795,7 +795,22 @@ public class PdfGenerationService {
 
             Table t = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
             addDoc1Row(t, "Type de demande", str(body.get("typeDemande")), font, bold);
-            addDoc1Row(t, "Type de site", str(body.get("siteType")), font, bold);
+            // Type de site — displayed in official form format with checkboxes
+            String siteType = str(body.get("siteType"));
+            boolean isMonosite  = "monosite".equalsIgnoreCase(siteType);
+            boolean isMultisite = "multisites".equalsIgnoreCase(siteType);
+            String monoBox  = isMonosite  ? "\u2611" : "\u2610";
+            String multiBox = isMultisite ? "\u2611" : "\u2610";
+            Cell siteCell = new Cell(1, 2)
+                .setPadding(4)
+                .setMarginBottom(2);
+            siteCell.add(new Paragraph(
+                "L\u2019activit\u00e9 est r\u00e9alis\u00e9e sur un monosite " + monoBox + " ou un multisites " + multiBox)
+                .setFont(bold).setFontSize(10));
+            siteCell.add(new Paragraph(
+                "(Si multisites, pri\u00e8re de renseigner le formulaire de renseignement technique de l\u2019activit\u00e9 concern\u00e9e pour chaque site)")
+                .setFont(font).setFontSize(9).setItalic());
+            t.addCell(siteCell);
             addDoc1Row(t, "Activités", joinList(body.get("activites")), font, bold);
             addDoc1Row(t, "Date d'évaluation souhaitée", str(body.get("dateEvaluation")), font, bold);
             addDoc1Row(t, "Nom légal", str(body.get("nomLegal")), font, bold);
@@ -807,6 +822,15 @@ public class PdfGenerationService {
             addDoc1Row(t, "Adresse du siège", str(body.get("adresseSiege")), font, bold);
             addDoc1Row(t, "Email organisme", str(body.get("emailOrg")), font, bold);
             addDoc1Row(t, "Site web", str(body.get("siteWeb")), font, bold);
+            // Groupe
+            String appartientGroupe = str(body.get("appartientGroupe"));
+            addDoc1Row(t, "Appartient à un groupe", "oui".equalsIgnoreCase(appartientGroupe) ? "Oui" : "Non", font, bold);
+            if ("oui".equalsIgnoreCase(appartientGroupe)) {
+                addDoc1Row(t, "Nom du groupe", str(body.get("groupeNom")), font, bold);
+                addDoc1Row(t, "Adresse du groupe", str(body.get("groupeAdresse")), font, bold);
+                addDoc1Row(t, "Type de relation", str(body.get("groupeRelation")), font, bold);
+                addDoc1Row(t, "Interventions du groupe sur les activités", str(body.get("groupeImpact")), font, bold);
+            }
             addDoc1Row(t, "Contact — nom", str(body.get("contactNom")), font, bold);
             addDoc1Row(t, "Contact — fonction", str(body.get("contactFonction")), font, bold);
             addDoc1Row(t, "Contact — téléphone", str(body.get("contactTelephone")), font, bold);
@@ -817,7 +841,38 @@ public class PdfGenerationService {
             addDoc1Row(t, "Date de la demande", str(body.get("demandeurDate")), font, bold);
             document.add(t);
 
-            renderTableIfAny(document, body.get("sites"), "Sites", font, bold);
+            // Site section — differs by siteType
+            String pdfSiteType = str(body.get("siteType"));
+            if ("monosite".equalsIgnoreCase(pdfSiteType)) {
+                document.add(new Paragraph(" "));
+                document.add(new Paragraph("Site unique").setFont(bold).setFontSize(11));
+                List<Object> monoSites = body.get("sites") instanceof List<?> ls ? (List<Object>) ls : List.of();
+                if (!monoSites.isEmpty() && monoSites.get(0) instanceof Map<?,?> ms) {
+                    Table st = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+                    addDoc1Row(st, "Adresse", str(ms.get("adresse")), font, bold);
+                    addDoc1Row(st, "Activités réalisées", str(ms.get("activites")), font, bold);
+                    String soustr = str(ms.get("soustraitance"));
+                    if (!soustr.isBlank()) addDoc1Row(st, "Activités sous-traitées", soustr, font, bold);
+                    String ebmd = str(ms.get("ebmd"));
+                    if (!ebmd.isBlank()) addDoc1Row(st, "EBMD", ebmd, font, bold);
+                    document.add(st);
+                }
+            } else {
+                // Multisites (PRO 26)
+                document.add(new Paragraph(" "));
+                document.add(new Paragraph("Configuration multisites (PRO 26)").setFont(bold).setFontSize(11));
+                Table mst = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+                addDoc1Row(mst, "Siège central — nom", str(body.get("msMainSiteName")), font, bold);
+                addDoc1Row(mst, "Siège central — adresse", str(body.get("msMainSiteAddress")), font, bold);
+                addDoc1Row(mst, "Contact siège — nom", str(body.get("msMainSiteContactName")), font, bold);
+                addDoc1Row(mst, "Contact siège — email", str(body.get("msMainSiteContactEmail")), font, bold);
+                addDoc1Row(mst, "SM commun centralisé", Boolean.TRUE.equals(body.get("msCentralizedSM")) ? "Oui" : "Non", font, bold);
+                addDoc1Row(mst, "Description SM commun", str(body.get("msSMDescription")), font, bold);
+                addDoc1Row(mst, "Modalités d'échanges inter-sites", str(body.get("msInterSiteExchangesDoc")), font, bold);
+                document.add(mst);
+                renderTableIfAny(document, body.get("satelliteSites"), "Sites satellites", font, bold);
+            }
+
             renderTableIfAny(document, body.get("personnelSites"), "Personnel par site", font, bold);
             renderTableIfAny(document, body.get("responsablesTechniques"), "Responsables techniques", font, bold);
             renderTableIfAny(document, body.get("reconnaissances"), "Reconnaissances existantes", font, bold);
@@ -929,7 +984,6 @@ public class PdfGenerationService {
         return o == null ? "" : o.toString();
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> listOf(Object raw) {
         if (raw instanceof List<?> l) {
             return l.stream().map(String::valueOf).toList();
@@ -968,5 +1022,426 @@ public class PdfGenerationService {
         }
         doc.add(table);
         doc.add(new Paragraph(" "));
+    }
+
+    // ============================================================
+    // DEVIS ESTIMATIF (FOR 44 / FOR 44-1 / FOR 44-2)
+    // ============================================================
+
+    private static final java.math.BigDecimal TVA_RATE = new java.math.BigDecimal("0.19");
+    private static final java.text.NumberFormat DA_FMT;
+    static {
+        java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols(java.util.Locale.FRENCH);
+        sym.setGroupingSeparator(' ');
+        sym.setDecimalSeparator(',');
+        DA_FMT = new java.text.DecimalFormat("#,##0.00", sym);
+    }
+
+    public byte[] generateDevisEstimatifPdf(com.algerac.model.Quotation quotation) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            document.setMargins(28, 28, 28, 28);
+
+            PdfFont font = PdfFontFactory.createFont("Helvetica");
+            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold");
+
+            com.algerac.model.AccreditationRequest request = quotation.getRequest();
+            com.algerac.model.RequestType type = request != null ? request.getType() : com.algerac.model.RequestType.INITIAL;
+
+            String formCode;
+            String mainTitle;
+            String subTitle;
+            switch (type) {
+                case SURVEILLANCE -> {
+                    formCode = "FOR 44-1 Rév 04/23-01-2017";
+                    mainTitle = "Devis estimatif de l'évaluation de surveillance dans le cadre de l'accréditation";
+                    subTitle = "Coûts évalués de l'évaluation de Surveillance de l'Accréditation d'un organisme d'évaluation de la conformité - OEC -\n(Laboratoire, Organisme d'inspection ou certificateur)";
+                }
+                case EXTENSION -> {
+                    formCode = "FOR 44-2 Rév 04/23-01-2017";
+                    mainTitle = "Devis estimatif de l'extension dans le cadre de l'accréditation";
+                    subTitle = "Coûts évalués de l'extension de l'Accréditation d'un organisme d'évaluation de la conformité - OEC\n(Laboratoire, Organisme d'inspection ou certificateur)";
+                }
+                default -> {
+                    formCode = "FOR 44 Rév 04/17-10-2016";
+                    mainTitle = "Devis estimatif de l'accréditation initiale ou de renouvellement dans le cadre de l'accréditation";
+                    subTitle = "Coûts évalués de l'Accréditation initiale ou de renouvellement d'un organisme d'évaluation de la\nconformité - OEC (Laboratoire, Organisme d'inspection ou certificateur)";
+                }
+            }
+
+            // ── Bandeau d'en-tête (titre + référence formulaire) ──
+            Table headerBar = new Table(UnitValue.createPercentArray(new float[]{80, 20})).useAllAvailableWidth();
+            headerBar.addCell(new Cell().add(new Paragraph(mainTitle).setFont(boldFont).setFontSize(10))
+                    .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(220, 230, 245))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setPadding(4));
+            headerBar.addCell(new Cell().add(new Paragraph("Page : 1/1").setFont(font).setFontSize(9).setTextAlignment(TextAlignment.RIGHT))
+                    .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(220, 230, 245))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setPadding(4));
+            document.add(headerBar);
+            document.add(new Paragraph(formCode).setFont(font).setFontSize(8).setMarginBottom(6));
+
+            // ── Sous-titre + ALGERAC ──
+            document.add(new Paragraph(subTitle)
+                    .setFont(font).setFontSize(10).setTextAlignment(TextAlignment.CENTER).setMarginTop(4));
+            document.add(new Paragraph("ALGERAC")
+                    .setFont(boldFont).setFontSize(13).setTextAlignment(TextAlignment.CENTER).setMarginBottom(8));
+
+            // ── Bloc Devis N° / Date ──
+            String devisNumber = quotation.getDevisEstimatifNumber() != null
+                    ? quotation.getDevisEstimatifNumber()
+                    : (quotation.getQuotationNumber() != null ? quotation.getQuotationNumber() : "");
+            String devisDate = quotation.getDevisEstimatifDate() != null
+                    ? quotation.getDevisEstimatifDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    : (quotation.getApprovedByDagDate() != null
+                        ? quotation.getApprovedByDagDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        : LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+
+            Table titleRow = new Table(UnitValue.createPercentArray(new float[]{50, 50})).useAllAvailableWidth();
+            titleRow.addCell(new Cell().add(new Paragraph("Devis Estimatif N° : " + devisNumber).setFont(boldFont).setFontSize(11))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setPadding(2));
+            titleRow.addCell(new Cell().add(new Paragraph("Date devis : " + devisDate).setFont(boldFont).setFontSize(11))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setPadding(2));
+            document.add(titleRow);
+
+            // Boîtes Organisme / Site
+            String orgLabel = (type == com.algerac.model.RequestType.INITIAL) ? "Sigle Organisme:" : "Raison sociale Organisme:";
+            String orgName = "";
+            String orgAddress = "";
+            if (request != null && request.getOecForJson() != null) {
+                var dto = request.getOecForJson();
+                orgName = dto.getOrganizationName() != null ? dto.getOrganizationName() : (dto.getFullName() != null ? dto.getFullName() : "");
+            }
+            String dossier = request != null && request.getReferenceNumber() != null ? request.getReferenceNumber() : "";
+            String siteName = quotation.getSiteName() != null ? quotation.getSiteName() : "";
+            String siteAddress = quotation.getSiteAddress() != null ? quotation.getSiteAddress() : "";
+
+            Table boxes = new Table(UnitValue.createPercentArray(new float[]{50, 50})).useAllAvailableWidth();
+            Cell leftBox = new Cell().setPadding(6)
+                    .add(new Paragraph(orgLabel + " " + orgName).setFont(font).setFontSize(10).setMarginBottom(4))
+                    .add(new Paragraph("Nom Organisme : " + orgName).setFont(font).setFontSize(10).setMarginBottom(4))
+                    .add(new Paragraph("Adresse Organisme : " + orgAddress).setFont(font).setFontSize(10).setMarginBottom(4))
+                    .add(new Paragraph("Dossier N° : " + dossier).setFont(font).setFontSize(10));
+            Cell rightBox = new Cell().setPadding(6)
+                    .add(new Paragraph("Nom Site : " + siteName).setFont(font).setFontSize(10).setMarginBottom(4))
+                    .add(new Paragraph("Adresse site : " + siteAddress).setFont(font).setFontSize(10));
+            boxes.addCell(leftBox);
+            boxes.addCell(rightBox);
+            document.add(boxes);
+
+            document.add(new Paragraph("U = DA")
+                    .setFont(boldFont).setFontSize(9).setTextAlignment(TextAlignment.RIGHT).setMarginTop(2).setMarginBottom(4));
+
+            // ── Tableau principal selon le type ──
+            java.util.Map<String, java.math.BigDecimal> b = parseBreakdown(quotation.getDevisBreakdownJson());
+            switch (type) {
+                case SURVEILLANCE -> document.add(buildSurveillanceTable(b, font, boldFont));
+                case EXTENSION -> document.add(buildExtensionTable(b, font, boldFont));
+                default -> document.add(buildInitialTable(b, type, font, boldFont));
+            }
+
+            // ── N.B. ──
+            document.add(new Paragraph("N.B :").setFont(boldFont).setFontSize(10).setMarginTop(8));
+            document.add(new Paragraph("TVA = 19% : taux soumis à modification suivant règlementation en vigueur.")
+                    .setFont(font).setFontSize(9));
+            document.add(new Paragraph("CAS : comité d'accréditation spécialisé.")
+                    .setFont(font).setFontSize(9));
+            for (String note : nbNotes(type)) {
+                document.add(new Paragraph(note).setFont(font).setFontSize(9).setMarginLeft(8));
+            }
+
+            if (quotation.getDagComments() != null && !quotation.getDagComments().isBlank()) {
+                document.add(new Paragraph("Observations DAG :").setFont(boldFont).setFontSize(10).setMarginTop(6));
+                document.add(new Paragraph(quotation.getDagComments()).setFont(font).setFontSize(9));
+            }
+
+            // ── Signatures ──
+            document.add(new Paragraph(" ").setMarginTop(10));
+            Table sig = new Table(UnitValue.createPercentArray(new float[]{60, 40})).useAllAvailableWidth();
+            sig.addCell(new Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+                    .add(new Paragraph("LU et APPROUVE (le client)").setFont(boldFont).setFontSize(10))
+                    .add(new Paragraph("Nom/fonction Cachet, Date et Visa").setFont(font).setFontSize(9)));
+            sig.addCell(new Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+                    .add(new Paragraph("ALGERAC").setFont(boldFont).setFontSize(11).setTextAlignment(TextAlignment.RIGHT)));
+            document.add(sig);
+
+            // ── Pied ──
+            document.add(new Paragraph("Règlement s'effectue par : Virement bancaire, chèque libellé EPIC ALGERAC")
+                    .setFont(font).setFontSize(8).setTextAlignment(TextAlignment.CENTER).setMarginTop(14));
+            document.add(new Paragraph("Compte N° : 002000380382200108/50    Code SWIFT : BEXADZAL038")
+                    .setFont(font).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Domiciliation bancaire : banque BEA 00038    88, Rue Hassiba BEN BOUALI Alger")
+                    .setFont(font).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+
+            document.close();
+            log.info("Devis estimatif {} généré pour la demande {}",
+                    quotation.getQuotationNumber(),
+                    request != null ? request.getReferenceNumber() : "?");
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Erreur génération PDF devis estimatif", e);
+            throw new RuntimeException("Erreur lors de la génération du devis estimatif", e);
+        }
+    }
+
+    private java.util.Map<String, java.math.BigDecimal> parseBreakdown(String json) {
+        java.util.LinkedHashMap<String, java.math.BigDecimal> out = new java.util.LinkedHashMap<>();
+        if (json == null || json.isBlank()) return out;
+        try {
+            Map<String, Object> raw = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+            for (Map.Entry<String, Object> e : raw.entrySet()) {
+                if (e.getValue() == null) continue;
+                try {
+                    out.put(e.getKey(), new java.math.BigDecimal(e.getValue().toString()));
+                } catch (NumberFormatException ignore) { /* skip */ }
+            }
+        } catch (Exception ex) {
+            log.warn("Devis breakdown JSON illisible: {}", ex.getMessage());
+        }
+        return out;
+    }
+
+    private java.math.BigDecimal getOrZero(java.util.Map<String, java.math.BigDecimal> b, String key) {
+        java.math.BigDecimal v = b.get(key);
+        return v == null ? java.math.BigDecimal.ZERO : v;
+    }
+
+    private String fmt(java.math.BigDecimal v) {
+        if (v == null) return "";
+        return DA_FMT.format(v);
+    }
+
+    private java.math.BigDecimal ttc(java.math.BigDecimal ht) {
+        if (ht == null) return null;
+        return ht.add(ht.multiply(TVA_RATE)).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private Cell phaseCell(String label, int rowspan, PdfFont bold) {
+        return new Cell(rowspan, 1).add(new Paragraph(label).setFont(bold).setFontSize(10))
+                .setVerticalAlignment(com.itextpdf.layout.properties.VerticalAlignment.MIDDLE)
+                .setTextAlignment(TextAlignment.CENTER).setPadding(4);
+    }
+
+    private Cell labelCell(String txt, PdfFont font) {
+        return new Cell().add(new Paragraph(txt).setFont(font).setFontSize(10)).setPadding(4);
+    }
+
+    private Cell amountCell(java.math.BigDecimal v, PdfFont font) {
+        return new Cell().add(new Paragraph(fmt(v)).setFont(font).setFontSize(10).setTextAlignment(TextAlignment.RIGHT)).setPadding(4);
+    }
+
+    private Cell subtotalLabel(String txt, int colspan, PdfFont bold) {
+        return new Cell(1, colspan).add(new Paragraph(txt).setFont(bold).setFontSize(10)).setPadding(4)
+                .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(225, 225, 225));
+    }
+
+    private Cell subtotalAmount(java.math.BigDecimal v, PdfFont bold) {
+        return new Cell().add(new Paragraph(fmt(v)).setFont(bold).setFontSize(10).setTextAlignment(TextAlignment.RIGHT)).setPadding(4)
+                .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(225, 225, 225));
+    }
+
+    private Table mainTable() {
+        Table t = new Table(UnitValue.createPercentArray(new float[]{12, 50, 19, 19})).useAllAvailableWidth();
+        // Header
+        PdfFont bold;
+        try { bold = PdfFontFactory.createFont("Helvetica-Bold"); } catch (Exception e) { throw new RuntimeException(e); }
+        com.itextpdf.kernel.colors.DeviceRgb hdr = new com.itextpdf.kernel.colors.DeviceRgb(200, 215, 230);
+        for (String h : new String[]{"Phases", "Désignation", "Montant HT", "Montant TTC"}) {
+            t.addHeaderCell(new Cell().add(new Paragraph(h).setFont(bold).setFontSize(10).setTextAlignment(TextAlignment.CENTER))
+                    .setBackgroundColor(hdr).setPadding(4));
+        }
+        return t;
+    }
+
+    private Table buildInitialTable(java.util.Map<String, java.math.BigDecimal> b,
+                                    com.algerac.model.RequestType type,
+                                    PdfFont font, PdfFont bold) {
+        Table t = mainTable();
+        boolean isInitial = type == com.algerac.model.RequestType.INITIAL;
+
+        // Phase I — Frais d'inscription (uniquement INITIAL)
+        if (isInitial) {
+            t.addCell(phaseCell("Phase I", 1, bold));
+            t.addCell(labelCell("Frais d'inscription du dossier (1)", font));
+            java.math.BigDecimal v = getOrZero(b, "registrationFee");
+            t.addCell(amountCell(v, font));
+            t.addCell(amountCell(ttc(v), font));
+        }
+
+        // Phase II
+        java.math.BigDecimal p2Analyse = getOrZero(b, "analysisFeeP2");
+        java.math.BigDecimal p2Eval = getOrZero(b, "evaluationFeeP2");
+        java.math.BigDecimal p2Total = p2Analyse.add(p2Eval);
+        t.addCell(phaseCell("Phase II", 3, bold));
+        t.addCell(labelCell("Frais d'Analyse documentaire", font));
+        t.addCell(amountCell(p2Analyse, font));
+        t.addCell(amountCell(ttc(p2Analyse), font));
+        t.addCell(labelCell("Frais d'évaluation (2)", font));
+        t.addCell(amountCell(p2Eval, font));
+        t.addCell(amountCell(ttc(p2Eval), font));
+        t.addCell(subtotalLabel("S/Total frais d'Accréditation. Phase II", 1, bold));
+        t.addCell(subtotalAmount(p2Total, bold));
+        t.addCell(subtotalAmount(ttc(p2Total), bold));
+
+        // Phase III
+        java.math.BigDecimal p3Cert = getOrZero(b, "certificateFeeP3");
+        java.math.BigDecimal totalP2P3 = p2Total.add(p3Cert);
+        t.addCell(phaseCell("Phase III", 2, bold));
+        t.addCell(labelCell("Frais de délivrance du certificat et annexes", font));
+        t.addCell(amountCell(p3Cert, font));
+        t.addCell(amountCell(ttc(p3Cert), font));
+        t.addCell(subtotalLabel("Total frais d'Accréditation. Phase II + Phase III", 1, bold));
+        t.addCell(subtotalAmount(totalP2P3, bold));
+        t.addCell(subtotalAmount(ttc(totalP2P3), bold));
+
+        // Phase IV — Redevance annuelle
+        java.math.BigDecimal annual = getOrZero(b, "annualFeeP4");
+        t.addCell(phaseCell("Phase IV", 1, bold));
+        t.addCell(labelCell("Redevance annuelle (Par année)", font));
+        t.addCell(amountCell(annual, font));
+        t.addCell(amountCell(ttc(annual), font));
+
+        // Phase V — Surveillance
+        java.math.BigDecimal p5Analyse = getOrZero(b, "analysisFeeP5");
+        java.math.BigDecimal p5Eval = getOrZero(b, "evaluationFeeP5");
+        java.math.BigDecimal p5Cas = getOrZero(b, "casFeeP5");
+        java.math.BigDecimal totalSurv = p5Analyse.add(p5Eval).add(p5Cas);
+        t.addCell(phaseCell("Phase V", 5, bold));
+        t.addCell(subtotalLabel("Évaluation de surveillance (Par année)", 3, bold));
+        t.addCell(labelCell("Frais d'Analyse documentaire", font));
+        t.addCell(amountCell(p5Analyse, font));
+        t.addCell(amountCell(ttc(p5Analyse), font));
+        t.addCell(labelCell("Frais d'évaluation (2)", font));
+        t.addCell(amountCell(p5Eval, font));
+        t.addCell(amountCell(ttc(p5Eval), font));
+        t.addCell(labelCell("Frais de modification du certificat et annexes (CAS) (3)", font));
+        t.addCell(amountCell(p5Cas, font));
+        t.addCell(amountCell(ttc(p5Cas), font));
+        t.addCell(subtotalLabel("Total Frais de Surveillance", 1, bold));
+        t.addCell(subtotalAmount(totalSurv, bold));
+        t.addCell(subtotalAmount(ttc(totalSurv), bold));
+
+        return t;
+    }
+
+    private Table buildSurveillanceTable(java.util.Map<String, java.math.BigDecimal> b, PdfFont font, PdfFont bold) {
+        Table t = mainTable();
+        java.math.BigDecimal p1Analyse = getOrZero(b, "analysisFeeP1");
+        java.math.BigDecimal p1Eval = getOrZero(b, "evaluationFeeP1");
+        java.math.BigDecimal p1Total = p1Analyse.add(p1Eval);
+        java.math.BigDecimal p2Cas = getOrZero(b, "casFeeP2");
+        java.math.BigDecimal grand = p1Total.add(p2Cas);
+
+        t.addCell(phaseCell("Phase I", 3, bold));
+        t.addCell(labelCell("Frais Analyse documentaire", font));
+        t.addCell(amountCell(p1Analyse, font));
+        t.addCell(amountCell(ttc(p1Analyse), font));
+        t.addCell(labelCell("Frais d'évaluation (1)", font));
+        t.addCell(amountCell(p1Eval, font));
+        t.addCell(amountCell(ttc(p1Eval), font));
+        t.addCell(subtotalLabel("S/TOTAL frais de surveillance", 1, bold));
+        t.addCell(subtotalAmount(p1Total, bold));
+        t.addCell(subtotalAmount(ttc(p1Total), bold));
+
+        t.addCell(phaseCell("Phase II", 1, bold));
+        t.addCell(labelCell("Frais de modification du certificat et annexes (CAS) (2)", font));
+        t.addCell(amountCell(p2Cas, font));
+        t.addCell(amountCell(ttc(p2Cas), font));
+
+        t.addCell(subtotalLabel("Total Frais de surveillance (Phase I + Phase II)", 2, bold));
+        t.addCell(subtotalAmount(grand, bold));
+        t.addCell(subtotalAmount(ttc(grand), bold));
+        return t;
+    }
+
+    private Table buildExtensionTable(java.util.Map<String, java.math.BigDecimal> b, PdfFont font, PdfFont bold) {
+        Table t = mainTable();
+        java.math.BigDecimal p1Analyse = getOrZero(b, "analysisFeeP1");
+        java.math.BigDecimal p1Eval = getOrZero(b, "evaluationFeeP1");
+        java.math.BigDecimal p1Total = p1Analyse.add(p1Eval);
+        java.math.BigDecimal p2Cert = getOrZero(b, "certModFeeP2");
+        java.math.BigDecimal p2Total = p2Cert; // sub-total Phase II
+        java.math.BigDecimal annualExt = getOrZero(b, "annualExtensionFeeP3");
+        java.math.BigDecimal nextAnnual = getOrZero(b, "nextAnnualFeeP3");
+        java.math.BigDecimal p4Analyse = getOrZero(b, "analysisFeeP4");
+        java.math.BigDecimal p4Eval = getOrZero(b, "evaluationFeeP4");
+        java.math.BigDecimal p4Cas = getOrZero(b, "casFeeP4");
+        java.math.BigDecimal totalSurv = p4Analyse.add(p4Eval).add(p4Cas);
+
+        t.addCell(phaseCell("Phase I", 3, bold));
+        t.addCell(labelCell("Frais analyse documentaire", font));
+        t.addCell(amountCell(p1Analyse, font));
+        t.addCell(amountCell(ttc(p1Analyse), font));
+        t.addCell(labelCell("Frais d'évaluation (1)", font));
+        t.addCell(amountCell(p1Eval, font));
+        t.addCell(amountCell(ttc(p1Eval), font));
+        t.addCell(subtotalLabel("S/Total Frais d'extension (Phase I)", 1, bold));
+        t.addCell(subtotalAmount(p1Total, bold));
+        t.addCell(subtotalAmount(ttc(p1Total), bold));
+
+        t.addCell(phaseCell("Phase II", 2, bold));
+        t.addCell(labelCell("Frais de modification du certificat ou annexes", font));
+        t.addCell(amountCell(p2Cert, font));
+        t.addCell(amountCell(ttc(p2Cert), font));
+        t.addCell(subtotalLabel("S/Total Frais d'extension (Phase II)", 1, bold));
+        t.addCell(subtotalAmount(p2Total, bold));
+        t.addCell(subtotalAmount(ttc(p2Total), bold));
+
+        t.addCell(phaseCell("Phase III", 2, bold));
+        t.addCell(labelCell("Redevance annuelle sur extension (par année) (2)", font));
+        t.addCell(amountCell(annualExt, font));
+        t.addCell(amountCell(ttc(annualExt), font));
+        t.addCell(labelCell("Prochaine redevance (INITIALE + EXTENSIONS)", font));
+        t.addCell(amountCell(nextAnnual, font));
+        t.addCell(amountCell(ttc(nextAnnual), font));
+
+        t.addCell(phaseCell("Phase IV", 4, bold));
+        t.addCell(subtotalLabel("Prochaine Évaluation de surveillance (INITIALE + EXTENSIONS) (par année)", 3, bold));
+        t.addCell(labelCell("Frais Analyse documentaire", font));
+        t.addCell(amountCell(p4Analyse, font));
+        t.addCell(amountCell(ttc(p4Analyse), font));
+        t.addCell(labelCell("Frais d'évaluation (1)", font));
+        t.addCell(amountCell(p4Eval, font));
+        t.addCell(amountCell(ttc(p4Eval), font));
+        t.addCell(labelCell("Frais de modification du certificat et annexes (CAS) (3)", font));
+        t.addCell(amountCell(p4Cas, font));
+        t.addCell(amountCell(ttc(p4Cas), font));
+
+        t.addCell(subtotalLabel("Total Frais de surveillance", 2, bold));
+        t.addCell(subtotalAmount(totalSurv, bold));
+        t.addCell(subtotalAmount(ttc(totalSurv), bold));
+        return t;
+    }
+
+    private java.util.List<String> nbNotes(com.algerac.model.RequestType type) {
+        java.util.List<String> n = new java.util.ArrayList<>();
+        switch (type) {
+            case SURVEILLANCE -> {
+                n.add("(1) : Coût soumis à une modification en cas de nécessité d'évaluation complémentaire.");
+                n.add("(2) : Dans les cas de changement ou de réduction avec passage au (CAS).");
+                n.add("✓ En cas d'extension, le devis de surveillance de l'accréditation initiale sera modifié en fonction des nouveaux domaines, portées, grandeurs ou référentiels ajoutés.");
+                n.add("✓ Les modalités de règlement sont définies dans l'annexe tarification. (Voir PRO 18).");
+                n.add("✓ Les frais d'hébergement, de restauration et de transport des évaluateurs et des experts sont à la charge de l'OEC candidat à l'accréditation.");
+            }
+            case EXTENSION -> {
+                n.add("(1) : Le coût soumis à une modification en cas de nécessité d'évaluation complémentaire.");
+                n.add("(2) : La prochaine redevance sur extension sera cumulée à la redevance annuelle initiale.");
+                n.add("(3) : Dans le cas de changement ou de réduction avec passage au CAS.");
+                n.add("✓ Le devis de surveillance de l'accréditation initiale est modifié en fonction des nouveaux domaines, portées, grandeurs ou référentiels.");
+                n.add("✓ Les modalités de règlement sont définies dans l'annexe tarification. (Voir PRO 18).");
+                n.add("✓ Les frais d'hébergement, de restauration et de transport des évaluateurs et des experts sont à la charge de l'OEC candidat à l'accréditation.");
+            }
+            default -> {
+                n.add("(1) : Les frais d'inscription sont exigés uniquement pour l'accréditation initiale et payables au moment du dépôt de la demande.");
+                n.add("(2) : Coût soumis à une modification en cas de nécessité d'évaluation complémentaire.");
+                n.add("(3) : Dans les cas de changement ou de réduction avec passage au (CAS).");
+                n.add("✓ Le nombre de surveillance est de deux (02) par cycle pour une accréditation initiale et de trois (3) pour le renouvellement.");
+                n.add("✓ En cas d'extension, le devis de surveillance de l'accréditation initiale sera modifié en fonction des nouveaux domaines, portées, grandeurs ou référentiels ajoutés.");
+                n.add("✓ Les modalités de règlement sont définies dans l'annexe tarification. (Voir PRO 18).");
+                n.add("✓ Les frais d'hébergement, de restauration et de transport des évaluateurs et des experts sont à la charge de l'OEC candidat à l'accréditation.");
+            }
+        }
+        return n;
     }
 }

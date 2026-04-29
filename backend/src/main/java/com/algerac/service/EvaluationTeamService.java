@@ -170,6 +170,17 @@ public class EvaluationTeamService {
             throw new RuntimeException("Tous les membres doivent avoir signé les engagements");
         }
         
+        // PRO 26 §5.3 — pour une demande multisites, exactement un coordinateur REE est requis
+        if (Boolean.TRUE.equals(team.getRequest().getIsMultisite())) {
+            long reeCoords = members.stream()
+                .filter(m -> m.getRole() == TeamRole.REE)
+                .count();
+            if (reeCoords != 1) {
+                throw new RuntimeException(
+                    "PRO 26 §5.3 : une équipe multisites doit comporter exactement un coordinateur REE (trouvés : " + reeCoords + ")");
+            }
+        }
+        
         team.setCompositionSheetFOR26(compositionSheet);
         team.setProposedEvaluationDate(proposedEvaluationDate);
         team.setStatus(TeamStatus.SENT_TO_CD);

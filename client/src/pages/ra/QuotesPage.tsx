@@ -43,9 +43,22 @@ export default function RAQuotesPage() {
   const loadQuotations = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/quotations", { credentials: "include" });
+      const res = await fetch("/api/quotations/my-quotations", { credentials: "include" });
       if (res.ok) {
-        setQuotations(await res.json());
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
+        setQuotations(list.map((q: any) => ({
+          id: q.id,
+          requestId: q.request?.id ?? q.requestId,
+          referenceNumber: q.request?.referenceNumber || q.quotationNumber || `Q-${q.id}`,
+          oecName: q.request?.oec?.organizationName || q.request?.oec?.fullName || "—",
+          type: q.request?.type || "—",
+          amount: q.amount != null ? Number(q.amount) : undefined,
+          status: q.status,
+          sentToOecDate: q.sentToOecDate,
+          oecResponseDate: q.oecResponseDate,
+          conventionSigned: q.conventionSigned,
+        })));
       }
     } catch (e) {
     } finally {

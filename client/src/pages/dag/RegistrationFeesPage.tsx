@@ -515,11 +515,11 @@ export default function DAGRegistrationFeesPage() {
                                   </p>
                                 )}
                               </div>
-                              {selected.proofDocumentBase64 && (
-                                <Button size="sm" variant="outline" onClick={downloadProof}>
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={`/api/payments/${selected.id}/proof`} download={selected.proofDocumentName} target="_blank" rel="noreferrer">
                                   <Download className="w-3 h-3 mr-1" /> Télécharger
-                                </Button>
-                              )}
+                                </a>
+                              </Button>
                             </div>
                           </div>
                         </>
@@ -622,11 +622,11 @@ export default function DAGRegistrationFeesPage() {
                     <p className="text-xs font-mono text-blue-700">Réf. : {selected.transactionId}</p>
                   )}
                 </div>
-                {selected.proofDocumentBase64 && (
-                  <Button size="sm" variant="outline" onClick={downloadProof}>
-                    <Download className="w-3 h-3 mr-1" /> Ouvrir
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" asChild>
+                  <a href={`/api/payments/${selected.id}/proof`} download={selected.proofDocumentName} target="_blank" rel="noreferrer">
+                    <Download className="w-3 h-3 mr-1" /> Télécharger
+                  </a>
+                </Button>
               </div>
             )}
             <div className="space-y-2">

@@ -157,13 +157,6 @@ export default function DTDashboard() {
                 />
               </div>
 
-              {/* Secondary stats */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <StatCard title="Demandes validées" value={requestsValidatedDT.length} icon={CheckCircle2} description="Transmises au CD" />
-                <StatCard title="Candidatures approuvées" value={approvedApps} icon={UserCheck} description="OEC intégrés" />
-                <StatCard title="Candidatures rejetées" value={rejectedApps} icon={XCircle} description="Historique" />
-              </div>
-
               {/* Pending accreditation requests */}
               {requestsPendingDT.length > 0 && (
                 <Card className="border-amber-200 bg-amber-50/60">
@@ -194,32 +187,6 @@ export default function DTDashboard() {
                         </div>
                       );
                     })}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Pending OEC candidatures */}
-              {pending.length > 0 && (
-                <Card className="border-blue-200 bg-blue-50/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-blue-800 flex items-center gap-2">
-                      <Building2 className="h-5 w-5" /> {pending.length} candidature(s) OEC en attente
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {pending.slice(0, 5).map(app => (
-                      <div key={app.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100">
-                        <div>
-                          <p className="font-medium text-sm">{app.nomOrganisme}</p>
-                          <p className="text-xs text-blue-700">{app.typeOrganisme} · {app.nomRepresentant}</p>
-                        </div>
-                        <Link href="/dt/candidatures">
-                          <Button size="sm" variant="outline" className="text-blue-700 border-blue-300">
-                            Examiner <ArrowRight className="ml-1 h-3 w-3" />
-                          </Button>
-                        </Link>
-                      </div>
-                    ))}
                   </CardContent>
                 </Card>
               )}

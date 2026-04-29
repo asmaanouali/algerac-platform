@@ -34,6 +34,8 @@ const roleColors: Record<string, string> = {
   DG: 'bg-violet-100 text-violet-700',
   GES_COMPETENCES: 'bg-sky-100 text-sky-700',
   RQ: 'bg-fuchsia-100 text-fuchsia-700',
+  SUP: 'bg-stone-100 text-stone-700',
+  CONSOLIDATION: 'bg-pink-100 text-pink-700',
 };
 
 const roleIcons: Record<string, string> = {
@@ -52,6 +54,8 @@ const roleIcons: Record<string, string> = {
   DG: '🏛️',
   GES_COMPETENCES: '📚',
   RQ: '📝',
+  SUP: '👁️',
+  CONSOLIDATION: '🧾',
 };
 
 export function RoleSwitcher({ currentRole, availableRoles, onSwitchRole, className }: RoleSwitcherProps) {

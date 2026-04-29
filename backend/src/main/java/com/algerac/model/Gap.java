@@ -20,7 +20,22 @@ public class Gap {
     @ManyToOne
     @JoinColumn(name = "request_id", nullable = false)
     private AccreditationRequest request;
-    
+
+    /**
+     * PRO 26 §5.4 : site satellite où l'écart a été identifié.
+     * Null = écart au siège central (ou demande monosite).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "identified_at_site_id")
+    private SatelliteSite identifiedAtSite;
+
+    /** PRO 26 §5.4-a : écart systémique constaté sur ≥2 sites. */
+    private Boolean isSystemic;
+
+    /** JSON : liste des IDs de sites affectés par l'écart si systémique. */
+    @Column(columnDefinition = "TEXT")
+    private String affectedSitesJson;
+
     @ManyToOne
     @JoinColumn(name = "created_by_id")
     private User createdBy; // Membre qui a signalé l'écart
@@ -69,6 +84,45 @@ public class Gap {
     @Column(columnDefinition = "TEXT")
     private String oecRefusalReason;
     private LocalDateTime oecResponseDate;
+
+    // ─── Escalade en cas de refus OEC ─────────────────────────────────
+    /**
+     * Si l'OEC refuse un écart, on demande l'avis d'un CD / DT / expert externe.
+     * Si refus persiste → on convoque le CAS pour décision finale.
+     */
+    private Boolean escalatedAfterOECRefusal;
+    private LocalDateTime escalatedAt;
+
+    /** Type de l'arbitre sollicité : "CD", "DT" ou "EXPERT". */
+    private String escalationReviewerType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "escalation_reviewer_id")
+    private User escalationReviewer;
+
+    /** Avis de l'arbitre : "KEEP" (garder l'écart) ou "REMOVE" (l'enlever). */
+    private String escalationReviewerOpinion;
+
+    @Column(columnDefinition = "TEXT")
+    private String escalationReviewerComments;
+
+    private LocalDateTime escalationReviewerDecisionAt;
+
+    /** L'OEC a-t-il maintenu son refus après l'avis de l'arbitre ? Si oui → CAS. */
+    private Boolean oecStillRefuses;
+
+    /** L'écart a été soumis au CAS pour décision finale. */
+    private Boolean escalatedToCAS;
+    private LocalDateTime escalatedToCASAt;
+
+    /** Décision finale du CAS sur l'écart : "KEEP" ou "REMOVE". */
+    private String casFinalDecision;
+
+    @Column(columnDefinition = "TEXT")
+    private String casFinalDecisionJustification;
+
+    private LocalDateTime casFinalDecisionAt;
+    // ──────────────────────────────────────────────────────────────────
     
     // Règles de requalification
     private Integer countOnSameRequirement;

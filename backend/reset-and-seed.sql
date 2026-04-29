@@ -38,7 +38,6 @@ TRUNCATE TABLE
     reference_rules,
     remote_evaluations,
     risk_analysis_forms,
-    risk_opportunity_registers,
     sampling_plans,
     surveillance_evaluations,
     surveillance_plans,

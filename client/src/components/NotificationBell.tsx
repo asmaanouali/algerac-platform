@@ -141,8 +141,13 @@ export function NotificationBell() {
                     key={n.id}
                     className={cn(
                       "flex gap-3 px-4 py-3 border-b last:border-0 hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-800 transition-colors group",
-                      !n.read && "bg-blue-50/60 hover:bg-blue-50 dark:bg-blue-950/30 dark:hover:bg-blue-950/50"
+                      !n.read && "bg-blue-50/60 hover:bg-blue-50 dark:bg-blue-950/30 dark:hover:bg-blue-950/50",
+                      n.link && "cursor-pointer"
                     )}
+                    onClick={() => {
+                      if (!n.read) markAsRead.mutate(n.id);
+                      if (n.link) { setOpen(false); navigate(n.link); }
+                    }}
                   >
                     <div className="mt-0.5">{typeIcon(n.type)}</div>
                     <div className="flex-1 min-w-0">
@@ -160,10 +165,13 @@ export function NotificationBell() {
                       <button
                         className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                         title="Marquer comme lu"
-                        onClick={() => markAsRead.mutate(n.id)}
+                        onClick={(e) => { e.stopPropagation(); markAsRead.mutate(n.id); }}
                       >
                         <Check className="h-4 w-4" />
                       </button>
+                    )}
+                    {n.read && n.link && (
+                      <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 shrink-0 mt-1 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors" />
                     )}
                   </li>
                 ))}

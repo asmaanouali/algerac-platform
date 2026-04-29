@@ -69,4 +69,5 @@ export interface Notification {
   type: "info" | "success" | "warning" | "error";
   read: boolean;
   createdAt: string;
+  link?: string | null;
 }

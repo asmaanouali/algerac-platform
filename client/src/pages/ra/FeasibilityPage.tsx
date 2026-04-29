@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,9 @@ export default function RAFeasibilityPage() {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [paymentValidationDate, setPaymentValidationDate] = useState<string | null>(null);
 
+  // Debounce timer for backend draft saves
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
     else if (user && !authLoading) loadRequests();
@@ -97,7 +100,14 @@ export default function RAFeasibilityPage() {
       setLoading(true);
       const res = await apiRequest("GET", "/api/requests/assigned-to-me");
       const data = await res.json();
-      setRequests(data.filter((r: any) => ["ASSIGNED_TO_RA", "RECEIVABILITY_STUDY", "RESOURCE_CHECK", "RECEIVABILITY_PENDING_CD_REVIEW"].includes(r.status)));
+      const filtered = data.filter((r: any) => ["ASSIGNED_TO_RA", "RECEIVABILITY_STUDY", "RESOURCE_CHECK", "RECEIVABILITY_PENDING_CD_REVIEW"].includes(r.status));
+      setRequests(filtered);
+      // Auto-select last active request so RA can resume seamlessly after reconnect
+      const lastId = localStorage.getItem("ra-feasibility-last-request");
+      if (lastId) {
+        const last = filtered.find((r: any) => String(r.id) === lastId && r.status === "RECEIVABILITY_STUDY");
+        if (last) selectRequest(last);
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setLoading(false); }
@@ -105,9 +115,21 @@ export default function RAFeasibilityPage() {
 
   const persist = (patch: Partial<PersistedStudy>) => {
     if (!selectedRequest) return;
+    const reqId = selectedRequest.id;
     setStudy((prev) => {
       const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
-      try { localStorage.setItem(storageKey(selectedRequest.id), JSON.stringify(next)); } catch { /* quota */ }
+      // Always save to localStorage immediately
+      try { localStorage.setItem(storageKey(reqId), JSON.stringify(next)); } catch { /* quota */ }
+      // Debounce-save to backend so progress survives any device/browser
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = setTimeout(() => {
+        fetch(`/api/feasibility-studies/draft/${reqId}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next),
+        }).catch(() => { /* best-effort, localStorage is the fallback */ });
+      }, 1500);
       return next;
     });
   };
@@ -115,13 +137,32 @@ export default function RAFeasibilityPage() {
   const selectRequest = async (r: any) => {
     setSelectedRequest(r);
     setDetails(null);
+    // Remember last opened request for auto-resume on next login
+    localStorage.setItem("ra-feasibility-last-request", String(r.id));
 
-    // Restore persisted study, if any
+    // Restore persisted study – prefer backend (survives any device) then localStorage
     let restored: PersistedStudy = emptyStudy;
-    try {
-      const raw = localStorage.getItem(storageKey(r.id));
-      if (raw) restored = { ...emptyStudy, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    if (r.status === "RECEIVABILITY_STUDY") {
+      try {
+        const draftRes = await fetch(`/api/feasibility-studies/draft/${r.id}`, { credentials: "include" });
+        if (draftRes.ok) {
+          const text = await draftRes.text();
+          if (text && text.trim() !== "{}" && text.trim() !== "") {
+            const parsed = JSON.parse(text);
+            if (parsed && Object.keys(parsed).length > 0) {
+              restored = { ...emptyStudy, ...parsed };
+            }
+          }
+        }
+      } catch { /* fall through */ }
+    }
+    // Fall back to localStorage if backend had nothing
+    if (restored === emptyStudy) {
+      try {
+        const raw = localStorage.getItem(storageKey(r.id));
+        if (raw) restored = { ...emptyStudy, ...JSON.parse(raw) };
+      } catch { /* ignore */ }
+    }
     setStudy(restored);
 
     // Load dossier details (doc1 + FOR forms + documents)
@@ -338,6 +379,15 @@ export default function RAFeasibilityPage() {
                             <CardDescription>Consultez les pièces soumises par l'OEC (DOC1 + formulaires techniques FOR + administratifs)</CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-2">
+                            {/* Official generated PDFs */}
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              <a href={`/api/requests/${selectedRequest.id}/doc1.pdf`} target="_blank" rel="noopener noreferrer">
+                                <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />DOC 01 (PDF)</Button>
+                              </a>
+                              <a href={`/api/requests/${selectedRequest.id}/technical-form.pdf`} target="_blank" rel="noopener noreferrer">
+                                <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />Formulaire technique (PDF)</Button>
+                              </a>
+                            </div>
                             {loadingDetails ? (
                               <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin" /></div>
                             ) : documents.length === 0 ? (
@@ -481,7 +531,7 @@ export default function RAFeasibilityPage() {
                           <Card className="p-4 bg-blue-50 border-blue-200">
                             <div className="flex items-center gap-2 mb-2">
                               <ShieldCheck className="h-4 w-4 text-blue-700" />
-                              <h4 className="font-medium text-sm text-blue-900">Revue des critères de qualification multisites (PRO 26 §5.1)</h4>
+                              <h4 className="font-medium text-sm text-blue-900">Revue des critères de qualification multisites</h4>
                             </div>
                             <p className="text-xs text-slate-600 mb-3">Examinez chacun des 6 critères déclarés par l'OEC et confirmez leur vérification à partir des pièces du dossier.</p>
                             <div className="space-y-3">

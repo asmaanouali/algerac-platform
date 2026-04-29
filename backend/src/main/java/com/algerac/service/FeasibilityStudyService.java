@@ -140,4 +140,28 @@ public class FeasibilityStudyService {
     public List<FeasibilityStudy> getStudiesByDecision(FeasibilityDecision decision) {
         return feasibilityStudyRepository.findByDecision(decision);
     }
+
+    /**
+     * Sauvegarder le brouillon intermédiaire de l'étude (permet au RA de reprendre après déconnexion).
+     */
+    @Transactional
+    public void saveDraft(Long requestId, Long raId, String draftJson) {
+        FeasibilityStudy study = feasibilityStudyRepository.findByRequest_Id(requestId)
+                .orElseThrow(() -> new RuntimeException("Étude de faisabilité non trouvée"));
+        if (!study.getRaId().equals(raId)) {
+            throw new RuntimeException("Non autorisé");
+        }
+        study.setDraftJson(draftJson);
+        feasibilityStudyRepository.save(study);
+    }
+
+    /**
+     * Récupérer le brouillon intermédiaire de l'étude.
+     */
+    public String getDraft(Long requestId, Long raId) {
+        FeasibilityStudy study = feasibilityStudyRepository.findByRequest_Id(requestId).orElse(null);
+        if (study == null) return null;
+        if (!study.getRaId().equals(raId)) return null;
+        return study.getDraftJson();
+    }
 }

@@ -136,7 +136,7 @@ export default function EvaluationPrepPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: "Succès", description: "Ordre de mission créé → en attente DT" });
+        toast({ title: "Succès", description: "Ordre de mission créé → en attente DG" });
         setShowCreateMission(false);
         setMissionForm({ teamMemberId: "", missionDetails: "", checklistTasks: "" });
         await selectRequest(selectedRequest);
@@ -194,7 +194,7 @@ export default function EvaluationPrepPage() {
   if (!user) return null;
 
   const missionStatusLabels: Record<string, string> = {
-    DRAFT: "Brouillon", PENDING_DT_APPROVAL: "Attente DT", DT_APPROVED: "Approuvé DT",
+    DRAFT: "Brouillon", PENDING_DT_APPROVAL: "Attente DG", DT_APPROVED: "Approuvé DG",
     PENDING_DG_APPROVAL: "Attente DG", FULLY_APPROVED: "Approuvé", SENT_TO_MEMBER: "Envoyé",
   };
   const mandateStatusLabels: Record<string, string> = {
@@ -220,7 +220,7 @@ export default function EvaluationPrepPage() {
 
   const steps = [
     { num: 1, label: "Mandatements" }, { num: 2, label: "CD valide" },
-    { num: 3, label: "Ordres mission" }, { num: 4, label: "DT/DG" },
+    { num: 3, label: "Ordres mission" }, { num: 4, label: "DG" },
     { num: 5, label: "Plan FOR 32" }, { num: 6, label: "RA vérifie" },
     { num: 7, label: "CD valide plan" }, { num: 8, label: "Envoi OEC" },
   ];
@@ -352,7 +352,7 @@ export default function EvaluationPrepPage() {
                         <div className="flex justify-between items-center">
                           <div>
                             <CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="w-5 h-5" /> 6.3 Ordres de Mission (FOR 18)</CardTitle>
-                            <CardDescription>RA établit ? DT valide ? DG valide ? RA transmet → l'équipe</CardDescription>
+                            <CardDescription>RA établit ? DG valide ? RA transmet → l'équipe</CardDescription>
                           </div>
                           {mandatesDone && !allMissionsApproved && <Button onClick={() => setShowCreateMission(true)} size="sm"><Plus className="w-4 h-4 mr-1" />Nouvel Ordre</Button>}
                           {!mandatesDone && currentStep < 3 && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Mandatements d'abord</Badge>}
@@ -376,8 +376,8 @@ export default function EvaluationPrepPage() {
                             {missionOrders.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-4">Aucun ordre</TableCell></TableRow>}
                           </TableBody>
                         </Table>
-                        {missionOrders.some((o: any) => ["PENDING_DT_APPROVAL", "PENDING_DG_APPROVAL"].includes(o.status)) && (
-                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200"><p className="text-sm text-amber-800">En attente d'approbation DT / DG.</p></div>
+                        {missionOrders.some((o: any) => o.status === "PENDING_DG_APPROVAL") && (
+                          <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200"><p className="text-sm text-amber-800">En attente d'approbation DG.</p></div>
                         )}
                       </CardContent>
                     </Card>
@@ -506,7 +506,7 @@ export default function EvaluationPrepPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Nouvel Ordre de Mission (FOR 18)</DialogTitle>
-                <DialogDescription>Soumis au DT puis au DG pour approbation</DialogDescription>
+                <DialogDescription>Soumis au DG pour approbation</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>

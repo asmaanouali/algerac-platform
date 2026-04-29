@@ -54,6 +54,30 @@ public class CASMeeting {
     private Integer attendeesConfirmed;
     private Boolean quorumReached;
 
+    // ─── Dossier en lecture seule (PRO 07) ────────────────────────────
+    /**
+     * Le dossier transmis aux membres du CAS doit être consultable en ligne
+     * mais NI téléchargeable NI modifiable. Vrai par défaut.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean dossierReadOnly = Boolean.TRUE;
+
+    /** Téléchargement explicitement désactivé (sécurité front + back). */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean dossierDownloadDisabled = Boolean.TRUE;
+    // ──────────────────────────────────────────────────────────────────
+
+    // ─── Expert optionnel (5 membres + éventuellement 1 expert) ───────
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "optional_expert_id")
+    private User optionalExpert;
+
+    @Column(columnDefinition = "TEXT")
+    private String optionalExpertJustification; // Pourquoi un expert est ajouté
+    // ──────────────────────────────────────────────────────────────────
+
     // PRO 16 - Decision details (FOR 15)
     @Column(columnDefinition = "TEXT")
     private String for15DecisionJustification;

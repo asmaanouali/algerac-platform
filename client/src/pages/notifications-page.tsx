@@ -1,5 +1,6 @@
-import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +64,7 @@ function formatDate(iso: string, t: (key: string, opts?: any) => string) {
 
 export default function NotificationsPage() {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   const { data: notifications = [], isLoading } = useNotifications();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -136,8 +138,13 @@ export default function NotificationsPage() {
                       key={n.id}
                       className={cn(
                         "flex gap-4 px-6 py-4 hover:bg-slate-50 transition-colors group",
-                        !n.read && "bg-blue-50/50 hover:bg-blue-50"
+                        !n.read && "bg-blue-50/50 hover:bg-blue-50",
+                        n.link && "cursor-pointer"
                       )}
+                      onClick={() => {
+                        if (!n.read) markAsRead.mutate(n.id);
+                        if (n.link) navigate(n.link);
+                      }}
                     >
                       {/* Icon */}
                       <div className="mt-0.5 shrink-0">{typeIcon(n.type)}</div>
@@ -172,12 +179,17 @@ export default function NotificationsPage() {
                             size="sm"
                             className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-slate-800"
                             title={t('notifications.markRead')}
-                            onClick={() => markAsRead.mutate(n.id)}
+                            onClick={(e) => { e.stopPropagation(); markAsRead.mutate(n.id); }}
                             disabled={markAsRead.isPending}
                           >
                             <Check className="h-4 w-4 mr-1" />
                             <span className="text-xs">{t('notifications.markRead')}</span>
                           </Button>
+                        </div>
+                      )}
+                      {n.read && n.link && (
+                        <div className="shrink-0 flex items-start pt-1.5">
+                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
                         </div>
                       )}
                     </li>

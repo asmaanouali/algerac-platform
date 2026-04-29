@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,7 @@ export default function MyRequestsPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [requests, setRequests] = useState<AccreditationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("action");
@@ -131,14 +133,14 @@ export default function MyRequestsPage() {
       const data = await response.json();
       setRequests(data);
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Erreur", description: err.message });
+      toast({ variant: "destructive", title: t("mrd.toasts.error"), description: err.message });
     } finally { setLoading(false); }
   };
 
   const handlePreliminaryVisitResponse = async (requestId: number, accepted: boolean) => {
     try {
       await apiRequest("POST", `/api/requests/${requestId}/preliminary-visit-response`, { accepted });
-      toast({ title: "Reponse enregistree", description: accepted ? "Visite preliminaire acceptee." : "Visite refusee." });
+      toast({ title: t("mrd.toasts.responseRecorded"), description: accepted ? t("mrd.toasts.visitAccepted") : t("mrd.toasts.visitRefused") });
       loadRequests();
     } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
   };
@@ -146,7 +148,7 @@ export default function MyRequestsPage() {
   const handleForeignExpertResponse = async (requestId: number, accepted: boolean) => {
     try {
       await apiRequest("POST", `/api/requests/${requestId}/foreign-expert-response`, { accepted });
-      toast({ title: "Reponse enregistree", description: accepted ? "Expert etranger accepte." : "Expert etranger refuse. Le dossier sera classe." });
+      toast({ title: t("mrd.toasts.responseRecorded"), description: accepted ? t("mrd.toasts.expertAccepted") : t("mrd.toasts.expertRefused") });
       loadRequests();
     } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
   };
@@ -154,7 +156,7 @@ export default function MyRequestsPage() {
   const handleResubmitAfterDT = async (requestId: number) => {
     try {
       await apiRequest("POST", `/api/requests/${requestId}/resubmit-after-dt`);
-      toast({ title: "Demande resoumise", description: "Votre demande a été renvoyée à la Direction Technique pour vérification." });
+      toast({ title: t("mrd.toasts.resubmitted"), description: t("mrd.toasts.resubmittedDesc") });
       loadRequests();
     } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
   };
@@ -173,45 +175,45 @@ export default function MyRequestsPage() {
     const actions: JSX.Element[] = [];
     actions.push(
       <Button key="view" variant="outline" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}`)}>
-        <Eye className="h-4 w-4 mr-1" />Details
+        <Eye className="h-4 w-4 mr-1" />{t("mrd.actions.details")}
       </Button>
     );
     switch (request.status) {
       case "PENDING_PAYMENT":
-        actions.push(<Button key="pay" size="sm" onClick={() => setLocation(`/oec/paiement/${request.id}`)}>Effectuer le paiement</Button>);
+        actions.push(<Button key="pay" size="sm" onClick={() => setLocation(`/oec/paiement/${request.id}`)}>{t("mrd.actions.makePayment")}</Button>);
         break;
       case "DT_REJECTED":
-        actions.push(<Button key="resubmit-dt" size="sm" variant="destructive" onClick={() => handleResubmitAfterDT(request.id)}>Corriger et resoumettre</Button>);
+        actions.push(<Button key="resubmit-dt" size="sm" variant="destructive" onClick={() => handleResubmitAfterDT(request.id)}>{t("mrd.actions.correctResubmit")}</Button>);
         break;
       case "NOT_RECEIVABLE":
-        actions.push(<Button key="correct" size="sm" variant="destructive" onClick={() => setLocation(`/oec/demandes/${request.id}/corriger`)}>Corriger et resoumettre</Button>);
+        actions.push(<Button key="correct" size="sm" variant="destructive" onClick={() => setLocation(`/oec/demandes/${request.id}/corriger`)}>{t("mrd.actions.correctResubmit")}</Button>);
         break;
       case "PRELIMINARY_VISIT_PROPOSED":
-        actions.push(<Button key="accept-visit" size="sm" onClick={() => handlePreliminaryVisitResponse(request.id, true)}>Accepter la visite</Button>);
-        actions.push(<Button key="refuse-visit" size="sm" variant="outline" onClick={() => handlePreliminaryVisitResponse(request.id, false)}>Refuser</Button>);
+        actions.push(<Button key="accept-visit" size="sm" onClick={() => handlePreliminaryVisitResponse(request.id, true)}>{t("mrd.actions.acceptVisit")}</Button>);
+        actions.push(<Button key="refuse-visit" size="sm" variant="outline" onClick={() => handlePreliminaryVisitResponse(request.id, false)}>{t("mrd.actions.refuseVisit")}</Button>);
         break;
       case "FOREIGN_EXPERT_PROPOSED":
-        actions.push(<Button key="accept-exp" size="sm" onClick={() => handleForeignExpertResponse(request.id, true)}>Accepter (frais supplementaires)</Button>);
-        actions.push(<Button key="refuse-exp" size="sm" variant="outline" onClick={() => handleForeignExpertResponse(request.id, false)}>Refuser (classement)</Button>);
+        actions.push(<Button key="accept-exp" size="sm" onClick={() => handleForeignExpertResponse(request.id, true)}>{t("mrd.actions.acceptExpert")}</Button>);
+        actions.push(<Button key="refuse-exp" size="sm" variant="outline" onClick={() => handleForeignExpertResponse(request.id, false)}>{t("mrd.actions.refuseExpert")}</Button>);
         break;
       case "QUOTATION_SENT_TO_OEC":
-        actions.push(<Button key="validate-q" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/validation`)}><FileText className="h-4 w-4 mr-1" />Valider devis et convention</Button>);
+        actions.push(<Button key="validate-q" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/validation`)}><FileText className="h-4 w-4 mr-1" />{t("mrd.actions.validateQuotation")}</Button>);
         break;
       case "TEAM_SENT_TO_OEC":
-        actions.push(<Button key="validate-t" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/equipe`)}><Users className="h-4 w-4 mr-1" />Valider l'equipe</Button>);
+        actions.push(<Button key="validate-t" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/equipe`)}><Users className="h-4 w-4 mr-1" />{t("mrd.actions.validateTeam")}</Button>);
         break;
       case "DOC_REVIEW_RESULTS_SENT_TO_OEC":
-        actions.push(<Button key="doc-view" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>Voir les résultats</Button>);
+        actions.push(<Button key="doc-view" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>{t("mrd.actions.viewResults")}</Button>);
         break;
       case "AWAITING_OEC_DOC_RESPONSE":
-        actions.push(<Button key="doc-resp" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>Répondre aux manquements</Button>);
+        actions.push(<Button key="doc-resp" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/reponse-documentaire`)}>{t("mrd.actions.respondDeficiencies")}</Button>);
         break;
       case "PROCESS_SUSPENDED_OBSTACLES":
       case "OBSTACLES_IDENTIFIED":
-        actions.push(<Button key="lift" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/lever-obstacles`)}>Notifier levee obstacles</Button>);
+        actions.push(<Button key="lift" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/lever-obstacles`)}>{t("mrd.actions.notifyObstacles")}</Button>);
         break;
       case "AWAITING_ACTION_PLANS":
-        actions.push(<Button key="plans" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/plans-actions`)}>Soumettre plans d'actions</Button>);
+        actions.push(<Button key="plans" size="sm" onClick={() => setLocation(`/oec/demandes/${request.id}/plans-actions`)}>{t("mrd.actions.submitActionPlans")}</Button>);
         break;
     }
     return actions;
@@ -232,51 +234,51 @@ export default function MyRequestsPage() {
               <CardDescription>{request.domain} &mdash; {request.type}</CardDescription>
             </div>
             <div className="text-right space-y-1">
-              <Badge variant={config.variant}>{config.label}</Badge>
-              <p className="text-xs text-muted-foreground">{getPhaseLabel(request.status)}</p>
+              <Badge variant={config.variant}>{t(`mrd.status.${request.status}`, { defaultValue: config.label })}</Badge>
+              <p className="text-xs text-muted-foreground">{t(`mrd.phase.${STATUS_CONFIG[request.status]?.phase || "initial"}`)}</p>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Progress */}
           <div className="space-y-1">
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Progression</span><span className="font-medium">{progress}%</span></div>
+            <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t("mrd.card.progression")}</span><span className="font-medium">{progress}%</span></div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} /></div>
           </div>
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><p className="text-muted-foreground">Date de soumission</p><p className="font-medium">{request.submissionDate ? new Date(request.submissionDate).toLocaleDateString("fr-FR") : "Non soumise"}</p></div>
+            <div><p className="text-muted-foreground">{t("mrd.card.submissionDate")}</p><p className="font-medium">{request.submissionDate ? new Date(request.submissionDate).toLocaleDateString("fr-FR") : t("mrd.card.notSubmitted")}</p></div>
           </div>
           {/* Status-specific alerts */}
           {request.status === "DT_REJECTED" && (
-            <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Documents rejetés par la Direction Technique.</strong>{request.dtReviewComments && <span className="block mt-1">{request.dtReviewComments}</span>}<span className="block mt-1">Veuillez corriger les documents et resoumettre votre demande.</span></AlertDescription></Alert>
+            <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>{t("mrd.alerts.dtRejected.title")}</strong>{request.dtReviewComments && <span className="block mt-1">{request.dtReviewComments}</span>}<span className="block mt-1">{t("mrd.alerts.dtRejected.cta")}</span></AlertDescription></Alert>
           )}
           {request.status === "NOT_RECEIVABLE" && (
-            <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Demande non recevable.</strong>{request.receivabilityComments && <span className="block mt-1">{request.receivabilityComments}</span>}{request.correctionDeadline && <span className="block mt-1">Date limite : {new Date(request.correctionDeadline).toLocaleDateString("fr-FR")}</span>}</AlertDescription></Alert>
+            <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>{t("mrd.alerts.notReceivable.title")}</strong>{request.receivabilityComments && <span className="block mt-1">{request.receivabilityComments}</span>}{request.correctionDeadline && <span className="block mt-1">{t("mrd.alerts.notReceivable.deadline")} {new Date(request.correctionDeadline).toLocaleDateString("fr-FR")}</span>}</AlertDescription></Alert>
           )}
           {request.status === "FOREIGN_EXPERT_PROPOSED" && (
-            <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>Action requise :</strong> Un expert etranger est propose. Des frais supplementaires seront a votre charge. En cas de refus, le dossier sera classe.</AlertDescription></Alert>
+            <Alert><AlertTriangle className="h-4 w-4" /><AlertDescription><strong>{t("mrd.alerts.foreignExpert.label")}</strong> {t("mrd.alerts.foreignExpert.text")}</AlertDescription></Alert>
           )}
           {request.status === "PRELIMINARY_VISIT_PROPOSED" && (
-            <Alert><AlertDescription><strong>Action requise :</strong> Une visite preliminaire est proposee. Veuillez indiquer si vous l'acceptez.</AlertDescription></Alert>
+            <Alert><AlertDescription><strong>{t("mrd.alerts.preliminaryVisit.label")}</strong> {t("mrd.alerts.preliminaryVisit.text")}</AlertDescription></Alert>
           )}
           {request.status === "QUOTATION_SENT_TO_OEC" && (
-            <Alert><AlertDescription><strong>Action requise :</strong> Le devis et la convention sont disponibles. <strong>Delai : 10 jours.</strong></AlertDescription></Alert>
+            <Alert><AlertDescription><strong>{t("mrd.alerts.quotation.label")}</strong> {t("mrd.alerts.quotation.text")} <strong>{t("mrd.alerts.quotation.deadline")}</strong></AlertDescription></Alert>
           )}
           {request.status === "TEAM_SENT_TO_OEC" && (
-            <Alert><AlertDescription><strong>Action requise :</strong> L'equipe d'evaluation est proposee. <strong>Delai : 3 jours</strong> pour valider ou recuser (PRO 22).</AlertDescription></Alert>
+            <Alert><AlertDescription><strong>{t("mrd.alerts.team.label")}</strong> {t("mrd.alerts.team.text")} <strong>{t("mrd.alerts.team.deadline")}</strong></AlertDescription></Alert>
           )}
           {request.status === "AWAITING_OEC_DOC_RESPONSE" && (
-            <Alert><AlertDescription><strong>Action requise :</strong> Des insuffisances ont ete identifiees lors de la revue documentaire. <strong>Delai : 3 mois.</strong></AlertDescription></Alert>
+            <Alert><AlertDescription><strong>{t("mrd.alerts.docResponse.label")}</strong> {t("mrd.alerts.docResponse.text")} <strong>{t("mrd.alerts.docResponse.deadline")}</strong></AlertDescription></Alert>
           )}
           {request.status === "DOC_REVIEW_RESULTS_SENT_TO_OEC" && (
-            <Alert><AlertDescription><strong>Résultats disponibles :</strong> Les résultats de la revue documentaire sont disponibles. Consultez-les et répondez dans un délai de 3 mois.</AlertDescription></Alert>
+            <Alert><AlertDescription><strong>{t("mrd.alerts.docResults.label")}</strong> {t("mrd.alerts.docResults.text")}</AlertDescription></Alert>
           )}
           {request.status === "PROCESS_SUSPENDED_OBSTACLES" && (
-            <Alert variant="destructive"><AlertDescription><strong>Processus suspendu :</strong> Des obstacles bloquants ont ete identifies. Utilisez le formulaire FOR 12 pour notifier la levee.</AlertDescription></Alert>
+            <Alert variant="destructive"><AlertDescription><strong>{t("mrd.alerts.suspended.label")}</strong> {t("mrd.alerts.suspended.text")}</AlertDescription></Alert>
           )}
           {request.status === "CAS_DECISION_GRANT" && (
-            <Alert className="border-green-500 bg-green-50"><AlertDescription><strong className="text-green-700">Felicitations ! Votre accreditation a ete accordee par le CAS.</strong></AlertDescription></Alert>
+            <Alert className="border-green-500 bg-green-50"><AlertDescription><strong className="text-green-700">{t("mrd.alerts.casGrant")}</strong></AlertDescription></Alert>
           )}
           {/* Actions */}
           <div className="flex gap-2 pt-1 flex-wrap">{renderActions(request)}</div>
@@ -296,38 +298,38 @@ export default function MyRequestsPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold">Mes Demandes d'Accreditation</h1>
-                <p className="text-muted-foreground mt-2">Suivez l'avancement de vos demandes en temps reel</p>
+                <h1 className="text-3xl font-bold">{t("mrd.title")}</h1>
+                <p className="text-muted-foreground mt-2">{t("mrd.subtitle")}</p>
               </div>
-              <Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />Nouvelle demande</Button>
+              <Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />{t("mrd.newRequest")}</Button>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card><CardContent className="pt-4 text-center"><p className="text-3xl font-bold">{requests.length}</p><p className="text-xs text-muted-foreground">Total</p></CardContent></Card>
-              <Card className="border-orange-200"><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-orange-600">{actionNeeded.length}</p><p className="text-xs text-muted-foreground">Action requise</p></CardContent></Card>
-              <Card><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-blue-600">{inProgress.length}</p><p className="text-xs text-muted-foreground">En cours</p></CardContent></Card>
-              <Card className="border-green-200"><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-green-600">{completed.length}</p><p className="text-xs text-muted-foreground">Terminees</p></CardContent></Card>
+              <Card><CardContent className="pt-4 text-center"><p className="text-3xl font-bold">{requests.length}</p><p className="text-xs text-muted-foreground">{t("mrd.stats.total")}</p></CardContent></Card>
+              <Card className="border-orange-200"><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-orange-600">{actionNeeded.length}</p><p className="text-xs text-muted-foreground">{t("mrd.stats.actionRequired")}</p></CardContent></Card>
+              <Card><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-blue-600">{inProgress.length}</p><p className="text-xs text-muted-foreground">{t("mrd.stats.inProgress")}</p></CardContent></Card>
+              <Card className="border-green-200"><CardContent className="pt-4 text-center"><p className="text-3xl font-bold text-green-600">{completed.length}</p><p className="text-xs text-muted-foreground">{t("mrd.stats.completed")}</p></CardContent></Card>
             </div>
 
             {requests.length === 0 ? (
-              <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground mb-4">Vous n'avez aucune demande pour le moment</p><Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />Creer une demande</Button></CardContent></Card>
+              <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground mb-4">{t("mrd.empty")}</p><Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />{t("mrd.create")}</Button></CardContent></Card>
             ) : (
               <Tabs value={tab} onValueChange={setTab}>
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="action">Action requise ({actionNeeded.length})</TabsTrigger>
-                  <TabsTrigger value="progress">En cours ({inProgress.length})</TabsTrigger>
-                  <TabsTrigger value="done">Terminées ({completed.length})</TabsTrigger>
-                  <TabsTrigger value="all">Toutes ({requests.length})</TabsTrigger>
+                  <TabsTrigger value="action">{t("mrd.tabs.action")} ({actionNeeded.length})</TabsTrigger>
+                  <TabsTrigger value="progress">{t("mrd.tabs.progress")} ({inProgress.length})</TabsTrigger>
+                  <TabsTrigger value="done">{t("mrd.tabs.done")} ({completed.length})</TabsTrigger>
+                  <TabsTrigger value="all">{t("mrd.tabs.all")} ({requests.length})</TabsTrigger>
                 </TabsList>
                 <TabsContent value="action" className="space-y-4">
-                  {actionNeeded.length === 0 ? <p className="text-center text-muted-foreground py-8">Aucune action requise</p> : actionNeeded.map(renderRequestCard)}
+                  {actionNeeded.length === 0 ? <p className="text-center text-muted-foreground py-8">{t("mrd.noAction")}</p> : actionNeeded.map(renderRequestCard)}
                 </TabsContent>
                 <TabsContent value="progress" className="space-y-4">
-                  {inProgress.length === 0 ? <p className="text-center text-muted-foreground py-8">Aucune demande en cours</p> : inProgress.map(renderRequestCard)}
+                  {inProgress.length === 0 ? <p className="text-center text-muted-foreground py-8">{t("mrd.noProgress")}</p> : inProgress.map(renderRequestCard)}
                 </TabsContent>
                 <TabsContent value="done" className="space-y-4">
-                  {completed.length === 0 ? <p className="text-center text-muted-foreground py-8">Aucune demande terminee</p> : completed.map(renderRequestCard)}
+                  {completed.length === 0 ? <p className="text-center text-muted-foreground py-8">{t("mrd.noDone")}</p> : completed.map(renderRequestCard)}
                 </TabsContent>
                 <TabsContent value="all" className="space-y-4">
                   {requests.map(renderRequestCard)}

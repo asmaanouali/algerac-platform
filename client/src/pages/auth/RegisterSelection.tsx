@@ -13,7 +13,7 @@ export default function RegisterSelection() {
       <div className="w-full max-w-4xl mx-auto">
         <div className="rounded-2xl overflow-hidden shadow-2xl flex flex-col lg:flex-row">
 
-          <div className="lg:w-[44%] bg-gradient-to-br from-[#005a2b] via-[#006e35] to-[#004d28] p-8 lg:p-10 flex flex-col text-white relative overflow-hidden">
+          <div className="hidden lg:flex lg:w-[44%] bg-gradient-to-br from-[#005a2b] via-[#006e35] to-[#004d28] p-10 flex-col text-white relative overflow-hidden">
             <div
               className="absolute inset-0 opacity-[0.04] pointer-events-none"
               style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
@@ -59,7 +59,15 @@ export default function RegisterSelection() {
             </div>
           </div>
 
-          <div className="lg:w-[56%] bg-white dark:bg-slate-900 p-8 lg:p-10 flex flex-col justify-center">
+          <div className="lg:w-[56%] bg-white dark:bg-slate-900 p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
+            {/* Mobile-only brand header */}
+            <div className="lg:hidden flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 dark:border-white/10">
+              <img src="/logoalgerac.png" alt="ALGERAC" className="h-10 w-auto shrink-0" />
+              <div>
+                <span className="text-base font-bold text-slate-800 dark:text-white">ALGERAC</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t("auth.tagline")}</p>
+              </div>
+            </div>
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t("auth.register.title")}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.register.subtitle")}</p>

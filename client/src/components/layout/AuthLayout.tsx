@@ -56,7 +56,7 @@ export default function AuthLayout({ children, topBar, hideFlagBar }: AuthLayout
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen py-16 px-4">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen py-8 sm:py-12 lg:py-16 px-4">
         {children}
       </div>
     </div>

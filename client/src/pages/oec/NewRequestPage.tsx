@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, CheckCircle, CreditCard, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle, CreditCard, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ const TYPES_DEMANDE = [
   { value: "initiale", label: "Accréditation initiale" },
   { value: "extension", label: "Extension" },
   { value: "renouvellement", label: "Renouvellement" },
+  { value: "transfert", label: "Transfert" },
 ];
 
 const TYPES_ACTIVITES = [
@@ -44,14 +46,9 @@ const TYPES_SITES = [
   { value: "multisites", label: "Multisites" },
 ];
 
-// PRO 26 §5.1 — 6 critères de qualification d'un OEC multisites
-const MULTISITE_CRITERIA: { id: string; label: string }[] = [
-  { id: "legalLink",     label: "Lien juridique entre tous les sites (même entité légale)" },
-  { id: "centralSM",     label: "Le siège social dispose d'un SM conforme à la norme de référence" },
-  { id: "commonSM",      label: "Tous les sites sont soumis au SM commun défini et contrôlé par le siège" },
-  { id: "internalAudit", label: "Tous les sites sont couverts par le programme d'audit interne" },
-  { id: "centralMgmt",   label: "SM géré centralement (plan d'audit + revue de direction initiée du siège)" },
-  { id: "dataCapacity",  label: "Capacité à collecter et analyser les données de tous les sites" },
+// PRO 26 §5.1 — 6 qualification criteria keys (labels resolved via t())
+const MULTISITE_CRITERIA_KEYS: string[] = [
+  "legalLink", "centralSM", "commonSM", "internalAudit", "centralMgmt", "dataCapacity",
 ];
 
 const TYPES_PRESTATION = [
@@ -260,6 +257,7 @@ function newRow(fields: string[]): ForRow {
 export default function NewRequestPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -324,7 +322,6 @@ export default function NewRequestPage() {
     { id: number; name: string; address: string; activities: string; personnel: string; isInScope: boolean }[]
   >([{ id: 1, name: "", address: "", activities: "", personnel: "", isInScope: true }]);
 
-  // Critères de qualification §5.1 cochés + justifiés
   const [msCriteria, setMsCriteria] = useState<Record<string, { checked: boolean; justification: string }>>({
     legalLink:    { checked: false, justification: "" },
     centralSM:    { checked: false, justification: "" },
@@ -354,7 +351,7 @@ export default function NewRequestPage() {
   const [organismeSoumission, setOrganismeSoumission] = useState("");
   const [demandeurNom, setDemandeurNom] = useState("");
   const [demandeurFonction, setDemandeurFonction] = useState("");
-  const [demandeurDate, setDemandeurDate] = useState("");
+  const [demandeurDate, setDemandeurDate] = useState(new Date().toISOString().split("T")[0]);
   const [signature, setSignature] = useState("");
   const [engagementsAcceptes, setEngagementsAcceptes] = useState(false);
 
@@ -462,115 +459,118 @@ export default function NewRequestPage() {
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (currentStep === 1) {
-      if (!typeDemande) errs.typeDemande = "Le type de demande est requis";
-      if (!dateEvaluation) errs.dateEvaluation = "La date d'évaluation souhaitée est requise";
-      if (activites.length === 0) errs.activites = "Veuillez sélectionner au moins une activité";
-      if (!siteType) errs.siteType = "Le type de site est requis";
+      if (!typeDemande) errs.typeDemande = t("nrp.validation.typeDemande");
+      if (!dateEvaluation) errs.dateEvaluation = t("nrp.validation.dateEvaluation");
+      if (activites.length === 0) errs.activites = t("nrp.validation.activites");
+      if (!siteType) errs.siteType = t("nrp.validation.siteType");
     }
     if (currentStep === 2) {
-      if (!nomLegal.trim()) errs.nomLegal = "Le nom légal est requis";
-      if (!statutJuridique) errs.statutJuridique = "Le statut juridique est requis";
-      if (statutJuridique === REQUIRES_AUTRE_TEXT && !statutJuridiqueAutre.trim()) errs.statutJuridiqueAutre = "Précisez le statut juridique";
-      if (!registreCommerce.trim()) errs.registreCommerce = "Le registre de commerce est requis";
-      if (!codesActivite.trim()) errs.codesActivite = "Les codes d'activité sont requis";
-      if (!adresseSiege.trim()) errs.adresseSiege = "L'adresse du siège est requise";
-      if (!emailOrg.trim()) errs.emailOrg = "L'email est requis";
-      if (!appartientGroupe) errs.appartientGroupe = "Indiquez si vous appartenez à un groupe";
+      if (!nomLegal.trim()) errs.nomLegal = t("nrp.validation.nomLegal");
+      if (!statutJuridique) errs.statutJuridique = t("nrp.validation.statutJuridique");
+      if (statutJuridique === REQUIRES_AUTRE_TEXT && !statutJuridiqueAutre.trim()) errs.statutJuridiqueAutre = t("nrp.validation.statutJuridiqueAutre");
+      if (!registreCommerce.trim()) errs.registreCommerce = t("nrp.validation.registreCommerce");
+      if (!codesActivite.trim()) errs.codesActivite = t("nrp.validation.codesActivite");
+      if (!adresseSiege.trim()) errs.adresseSiege = t("nrp.validation.adresseSiege");
+      if (!emailOrg.trim()) errs.emailOrg = t("nrp.validation.emailOrg");
+      if (!appartientGroupe) errs.appartientGroupe = t("nrp.validation.appartientGroupe");
       if (appartientGroupe === "oui") {
-        if (!groupeNom.trim()) errs.groupeNom = "Nom du groupe requis";
-        if (!groupeRelation.trim()) errs.groupeRelation = "Type de relation requis";
+        if (!groupeNom.trim()) errs.groupeNom = t("nrp.validation.groupeNom");
+        if (!groupeAdresse.trim()) errs.groupeAdresse = t("nrp.validation.groupeAdresse");
+        if (!groupeRelation.trim()) errs.groupeRelation = t("nrp.validation.groupeRelation");
+        if (!groupeImpact.trim()) errs.groupeImpact = t("nrp.validation.groupeImpact");
       }
     }
     if (currentStep === 3) {
-      if (!contactNom.trim()) errs.contactNom = "Le nom du contact est requis";
-      if (!contactFonction.trim()) errs.contactFonction = "La fonction est requise";
-      if (!contactAdresse.trim()) errs.contactAdresse = "L'adresse du contact est requise";
-      if (!contactTelephone.trim()) errs.contactTelephone = "Le téléphone est requis";
-      if (!contactEmail.trim()) errs.contactEmail = "L'email du contact est requis";
+      if (!contactNom.trim()) errs.contactNom = t("nrp.validation.contactNom");
+      if (!contactFonction.trim()) errs.contactFonction = t("nrp.validation.contactFonction");
+      if (!contactAdresse.trim()) errs.contactAdresse = t("nrp.validation.contactAdresse");
+      if (!contactTelephone.trim()) errs.contactTelephone = t("nrp.validation.contactTelephone");
+      if (!contactEmail.trim()) errs.contactEmail = t("nrp.validation.contactEmail");
     }
     if (currentStep === 4) {
-      if (!validateRows(sites, ["localisation", "adresse", "activites"])) {
-        errs.sites = "Chaque site doit avoir localisation, adresse et activités";
-      }
-      // PRO 26 : si demande multisites, vérifier siège + au moins 1 site satellite + critères §5.1
-      if (siteType === "multisites") {
-        if (!msMainSiteName.trim())    errs.msMainSiteName = "Nom du siège central requis";
-        if (!msMainSiteAddress.trim()) errs.msMainSiteAddress = "Adresse du siège central requise";
-        if (!msMainSiteContactName.trim())  errs.msMainSiteContactName = "Contact du siège requis";
-        if (!msMainSiteContactEmail.trim()) errs.msMainSiteContactEmail = "Email du contact siège requis";
-        if (!msSMDescription.trim())   errs.msSMDescription = "Description du SM commun requise (PRO 26 §5.1)";
-        if (!msInterSiteExchangesDoc.trim()) errs.msInterSiteExchangesDoc = "Décrivez les modalités d'échanges inter-sites (PRO 26 §5.2-5)";
+      if (siteType === "monosite") {
+        const s = sites[0];
+        if (!s.adresse.trim()) errs.sites = t("nrp.validation.sites");
+        else if (!s.activites.trim()) errs.sites = t("nrp.validation.sitesActivites");
+      } else {
+        // PRO 26 multisites
+        if (!msMainSiteName.trim())    errs.msMainSiteName = t("nrp.validation.msMainSiteName");
+        if (!msMainSiteAddress.trim()) errs.msMainSiteAddress = t("nrp.validation.msMainSiteAddress");
+        if (!msMainSiteContactName.trim())  errs.msMainSiteContactName = t("nrp.validation.msMainSiteContactName");
+        if (!msMainSiteContactEmail.trim()) errs.msMainSiteContactEmail = t("nrp.validation.msMainSiteContactEmail");
+        if (!msSMDescription.trim())   errs.msSMDescription = t("nrp.validation.msSMDescription");
+        if (!msInterSiteExchangesDoc.trim()) errs.msInterSiteExchangesDoc = t("nrp.validation.msInterSiteExchangesDoc");
         const validSatellites = satelliteSites.filter(s => s.name.trim() && s.address.trim() && s.activities.trim());
-        if (validSatellites.length === 0) errs.satelliteSites = "Au moins un site satellite est requis (siège exclu)";
-        const allChecked = MULTISITE_CRITERIA.every(c => msCriteria[c.id]?.checked);
-        if (!allChecked) errs.msCriteria = "Tous les critères de qualification §5.1 doivent être attestés";
+        if (validSatellites.length === 0) errs.satelliteSites = t("nrp.validation.satelliteSites");
+        const allChecked = MULTISITE_CRITERIA_KEYS.every(c => msCriteria[c]?.checked);
+        if (!allChecked) errs.msCriteria = t("nrp.validation.msCriteria");
       }
     }
     if (currentStep === 5) {
-      if (!validateRows(personnelSites, ["site", "permanents"])) errs.personnelSites = "Indiquez le personnel de chaque site";
-      if (!validateRows(responsablesTechniques, ["nom", "qualifications", "experience"])) errs.responsablesTechniques = "Remplissez les infos du responsable technique";
-      if (!responsableQualiteNom.trim()) errs.responsableQualiteNom = "Responsable qualité requis";
-      if (!responsableQualiteQualif.trim()) errs.responsableQualiteQualif = "Qualifications du responsable qualité requises";
-      if (!responsableQualiteExp.trim()) errs.responsableQualiteExp = "Expérience du responsable qualité requise";
+      if (!validateRows(personnelSites, ["site", "permanents"])) errs.personnelSites = t("nrp.validation.personnelSites");
+      if (!validateRows(responsablesTechniques, ["nom", "qualifications", "experience"])) errs.responsablesTechniques = t("nrp.validation.responsablesTechniques");
+      if (!responsableQualiteNom.trim()) errs.responsableQualiteNom = t("nrp.validation.responsableQualiteNom");
+      if (!responsableQualiteQualif.trim()) errs.responsableQualiteQualif = t("nrp.validation.responsableQualiteQualif");
+      if (!responsableQualiteExp.trim()) errs.responsableQualiteExp = t("nrp.validation.responsableQualiteExp");
     }
     if (currentStep === 6) {
-      if (!prestationConseil) errs.prestationConseil = "Indiquez si vous avez eu recours à des prestations de conseil";
+      if (!prestationConseil) errs.prestationConseil = t("nrp.validation.prestationConseil");
       if (prestationConseil === "oui") {
-        if (prestations.length === 0) errs.prestations = "Ajoutez au moins une prestation";
+        if (prestations.length === 0) errs.prestations = t("nrp.validation.prestations");
         else {
           const invalid = prestations.some((pr) =>
             pr.types.length === 0 || !pr.prestataire.trim() || !pr.date || !pr.description.trim() ||
             (pr.types.includes("autre") && !(pr as any).autrePrecision?.toString().trim())
           );
-          if (invalid) errs.prestations = "Complétez chaque prestation (type, prestataire, date, description)";
+          if (invalid) errs.prestations = t("nrp.validation.prestationsDetail");
         }
       }
     }
     if (currentStep === 7) {
-      if (typeDemande === "transfert" && !motifTransfert.trim()) errs.motifTransfert = "Le motif du transfert est requis";
+      if (typeDemande === "transfert" && !motifTransfert.trim()) errs.motifTransfert = t("nrp.validation.motifTransfert");
     }
     if (currentStep === 8) {
       if (activites.includes("inspection")) {
-        if (!for04Type) errs.for04Type = "Type d'organisme d'inspection requis";
-        if (!validateRows(for04Domaines, ["domaine", "objetInspecte", "norme"])) errs.for04Domaines = "Complétez les domaines d'inspection";
-        if (!validateRows(for04Inspecteurs, ["nom", "qualification", "statut"])) errs.for04Inspecteurs = "Complétez le personnel d'inspection";
-        if (!validateRows(for04Equipements, ["designation", "gamme"])) errs.for04Equipements = "Complétez les équipements";
+        if (!for04Type) errs.for04Type = t("nrp.validation.for04Type");
+        if (!validateRows(for04Domaines, ["domaine", "objetInspecte", "norme"])) errs.for04Domaines = t("nrp.validation.for04Domaines");
+        if (!validateRows(for04Inspecteurs, ["nom", "qualification", "statut"])) errs.for04Inspecteurs = t("nrp.validation.for04Inspecteurs");
+        if (!validateRows(for04Equipements, ["designation", "gamme"])) errs.for04Equipements = t("nrp.validation.for04Equipements");
       }
       if (activites.includes("essais")) {
-        if (!validateRows(for05Domaines, ["domaine", "essaiAnalyse", "methodeRef"])) errs.for05Domaines = "Complétez la portée d'essais";
-        if (!validateRows(for05Methodes, ["reference", "titre"])) errs.for05Methodes = "Complétez les méthodes d'essai";
-        if (!validateRows(for05Personnel, ["nom", "diplome", "fonction"])) errs.for05Personnel = "Complétez le personnel technique";
-        if (!for05ProcedureIncertitudes.trim()) errs.for05ProcedureIncertitudes = "Procédure d'incertitudes requise";
+        if (!validateRows(for05Domaines, ["domaine", "essaiAnalyse", "methodeRef"])) errs.for05Domaines = t("nrp.validation.for05Domaines");
+        if (!validateRows(for05Methodes, ["reference", "titre"])) errs.for05Methodes = t("nrp.validation.for05Methodes");
+        if (!validateRows(for05Personnel, ["nom", "diplome", "fonction"])) errs.for05Personnel = t("nrp.validation.for05Personnel");
+        if (!for05ProcedureIncertitudes.trim()) errs.for05ProcedureIncertitudes = t("nrp.validation.for05ProcedureIncertitudes");
       }
       if (activites.includes("etalonnage")) {
-        if (!validateRows(for06Grandeurs, ["grandeur", "gamme", "methode"])) errs.for06Grandeurs = "Complétez les grandeurs";
-        if (!validateRows(for06Etalons, ["designation", "grandeur"])) errs.for06Etalons = "Complétez les étalons";
+        if (!validateRows(for06Grandeurs, ["grandeur", "gamme", "methode"])) errs.for06Grandeurs = t("nrp.validation.for06Grandeurs");
+        if (!validateRows(for06Etalons, ["designation", "grandeur"])) errs.for06Etalons = t("nrp.validation.for06Etalons");
       }
       if (activites.includes("cert_sm")) {
-        if (for07Referentiels.length === 0) errs.for07Referentiels = "Sélectionnez au moins un référentiel";
-        if (!validateRows(for07Secteurs, ["codeIAF", "description"])) errs.for07Secteurs = "Complétez les secteurs";
+        if (for07Referentiels.length === 0) errs.for07Referentiels = t("nrp.validation.for07Referentiels");
+        if (!validateRows(for07Secteurs, ["codeIAF", "description"])) errs.for07Secteurs = t("nrp.validation.for07Secteurs");
       }
       if (activites.includes("examens_medicaux") && !validateRows(for051Disciplines, ["discipline", "typeExamen"])) {
-        errs.for051Disciplines = "Complétez les disciplines";
+        errs.for051Disciplines = t("nrp.validation.for051Disciplines");
       }
       // Fichiers pour docs cochés
       const missingFile = Object.entries(docsChecked).some(([k, v]) => v && !documentFiles[k]);
-      if (missingFile) errs.docsChecked = "Joignez un fichier à chaque document coché";
+      if (missingFile) errs.docsChecked = t("nrp.validation.docsChecked");
     }
     if (currentStep === 9) {
       const missing = Object.entries(docsAdminChecked).some(([k, v]) => v && !documentFiles[`admin-${k}`]);
-      if (missing) errs.docsAdminChecked = "Joignez un fichier à chaque document administratif coché";
+      if (missing) errs.docsAdminChecked = t("nrp.validation.docsAdminChecked");
     }
     if (currentStep === 10) {
-      if (!engagementsAcceptes) errs.engagements = "Vous devez accepter les engagements";
-      if (!demandeurNom.trim()) errs.demandeurNom = "Nom du demandeur requis";
-      if (!demandeurFonction.trim()) errs.demandeurFonction = "Fonction du demandeur requise";
-      if (!demandeurDate) errs.demandeurDate = "Date requise";
-      if (!signature.trim()) errs.signature = "Signature requise";
+      if (!engagementsAcceptes) errs.engagements = t("nrp.validation.engagements");
+      if (!demandeurNom.trim()) errs.demandeurNom = t("nrp.validation.demandeurNom");
+      if (!demandeurFonction.trim()) errs.demandeurFonction = t("nrp.validation.demandeurFonction");
+      if (!demandeurDate) errs.demandeurDate = t("nrp.validation.demandeurDate");
+      if (!signature.trim()) errs.signature = t("nrp.validation.signature");
     }
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      toast({ title: "Champs requis manquants", description: Object.values(errs)[0] || "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
+      toast({ title: t("nrp.validation.requiredFields"), description: Object.values(errs)[0] || t("nrp.validation.fillRequired"), variant: "destructive" });
       return false;
     }
     return true;
@@ -594,7 +594,7 @@ export default function NewRequestPage() {
   const handleSubmitClick = () => {
     if (!validate()) return;
     if (submitted || createdRequestId) {
-      toast({ title: "Déjà soumis", description: "Cette demande a déjà été soumise." });
+      toast({ title: t("nrp.validation.alreadySubmitted"), description: t("nrp.validation.alreadySubmittedDesc") });
       return;
     }
     setShowConfirmDialog(true);
@@ -741,13 +741,13 @@ export default function NewRequestPage() {
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-base font-semibold">Type de demande <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s1.typeDemande")} <span className="text-red-500">*</span></Label>
         <RadioGroup value={typeDemande} onValueChange={setTypeDemande}>
           <div className="grid md:grid-cols-2 gap-3">
-            {TYPES_DEMANDE.map((t) => (
-              <div key={t.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
-                <RadioGroupItem value={t.value} id={t.value} />
-                <Label htmlFor={t.value} className="cursor-pointer flex-1">{t.label}</Label>
+            {TYPES_DEMANDE.map((dt) => (
+              <div key={dt.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
+                <RadioGroupItem value={dt.value} id={dt.value} />
+                <Label htmlFor={dt.value} className="cursor-pointer flex-1">{t(`nrp.types.${dt.value}`)}</Label>
               </div>
             ))}
           </div>
@@ -756,37 +756,48 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-2">
-        <Label>Date d'évaluation souhaitée <span className="text-red-500">*</span></Label>
-        <StringDatePicker value={dateEvaluation} onChange={setDateEvaluation} />
+        <Label>{t("nrp.s1.dateEvaluation")} <span className="text-red-500">*</span></Label>
+        <StringDatePicker value={dateEvaluation} onChange={setDateEvaluation} min={new Date().toISOString().split("T")[0]} />
         {errors.dateEvaluation && <p className="text-sm text-red-500">{errors.dateEvaluation}</p>}
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-semibold">Type d'activité <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s1.typeActivite")} <span className="text-red-500">*</span></Label>
         <div className="grid md:grid-cols-2 gap-3">
           {TYPES_ACTIVITES.map((a) => (
             <div key={a.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
               <Checkbox id={a.value} checked={activites.includes(a.value)} onCheckedChange={() => toggleActivite(a.value)} />
-              <Label htmlFor={a.value} className="cursor-pointer flex-1 text-sm">{a.label}</Label>
+              <Label htmlFor={a.value} className="cursor-pointer flex-1 text-sm">{t(`nrp.activities.${a.value}`)}</Label>
             </div>
           ))}
         </div>
         {errors.activites && <p className="text-sm text-red-500">{errors.activites}</p>}
       </div>
 
-      <div className="space-y-4">
-        <Label className="text-base font-semibold">Type de site <span className="text-red-500">*</span></Label>
-        {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
+      <div className="space-y-3">
+        <Label className="text-base font-semibold">{t("nrp.s1.typeSite")} <span className="text-red-500">*</span></Label>
         <RadioGroup value={siteType} onValueChange={setSiteType}>
-          <div className="grid md:grid-cols-2 gap-3">
-            {TYPES_SITES.map((t) => (
-              <div key={t.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-slate-50">
-                <RadioGroupItem value={t.value} id={`site-${t.value}`} />
-                <Label htmlFor={`site-${t.value}`} className="cursor-pointer flex-1">{t.label}</Label>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="monosite" id="site-monosite" />
+              <Label htmlFor="site-monosite" className="cursor-pointer font-normal">
+                <span className="font-semibold">{t("nrp.siteTypes.monosite")}</span>
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="multisites" id="site-multisites" />
+              <Label htmlFor="site-multisites" className="cursor-pointer font-normal">
+                <span className="font-semibold">{t("nrp.siteTypes.multisites")}</span>
+              </Label>
+            </div>
           </div>
+          {siteType === "multisites" && (
+            <p className="text-xs text-slate-500 italic mt-2">
+              {t("nrp.s1.multisiteNote")}
+            </p>
+          )}
         </RadioGroup>
+        {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
       </div>
     </div>
   );
@@ -795,83 +806,88 @@ export default function NewRequestPage() {
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-        Les informations de votre organisme ont été pré-remplies depuis votre profil. Vous pouvez les modifier si nécessaire.
+        {t("nrp.s2.prefillBanner")}
       </div>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2 md:col-span-2">
-          <Label>Nom légal complet <span className="text-red-500">*</span></Label>
-          <Input value={nomLegal} onChange={(e) => setNomLegal(e.target.value)} placeholder="Nom complet de l'organisme" />
+          <Label>{t("nrp.s2.nomLegal")} <span className="text-red-500">*</span></Label>
+          <Input value={nomLegal} onChange={(e) => setNomLegal(e.target.value)} placeholder={t("nrp.s2.nomLegalPlaceholder")} />
           {errors.nomLegal && <p className="text-sm text-red-500">{errors.nomLegal}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Abréviation</Label>
-          <Input value={abreviation} onChange={(e) => setAbreviation(e.target.value)} placeholder="Abréviation" />
+          <Label>{t("nrp.s2.abreviation")}</Label>
+          <Input value={abreviation} onChange={(e) => setAbreviation(e.target.value)} placeholder={t("nrp.s2.abreviation")} />
         </div>
         <div className="space-y-2">
-          <Label>Sigle utilisé</Label>
-          <Input value={sigle} onChange={(e) => setSigle(e.target.value)} placeholder="Sigle" />
+          <Label>{t("nrp.s2.sigle")}</Label>
+          <Input value={sigle} onChange={(e) => setSigle(e.target.value)} placeholder={t("nrp.s2.sigle")} />
         </div>
         <div className="space-y-2">
-          <Label>Statut juridique <span className="text-red-500">*</span></Label>
+          <Label>{t("nrp.s2.statutJuridique")} <span className="text-red-500">*</span></Label>
           <Select value={statutJuridique} onValueChange={setStatutJuridique}>
-            <SelectTrigger><SelectValue placeholder="Sélectionnez" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t("nrp.s2.statutJuridiquePlaceholder")} /></SelectTrigger>
             <SelectContent>
               {STATUTS_JURIDIQUES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
             </SelectContent>
           </Select>
           {statutJuridique === REQUIRES_AUTRE_TEXT && (
-            <Input value={statutJuridiqueAutre} onChange={(e) => setStatutJuridiqueAutre(e.target.value)} placeholder="Précisez le statut juridique *" className="mt-1" />
+            <Input value={statutJuridiqueAutre} onChange={(e) => setStatutJuridiqueAutre(e.target.value)} placeholder={t("nrp.s2.statutAutrePlaceholder")} className="mt-1" />
           )}
           {errors.statutJuridique && <p className="text-sm text-red-500">{errors.statutJuridique}</p>}
           {errors.statutJuridiqueAutre && <p className="text-sm text-red-500">{errors.statutJuridiqueAutre}</p>}
         </div>
         <div className="space-y-2">
-          <Label>N° registre de commerce <span className="text-red-500">*</span></Label>
-          <Input value={registreCommerce} onChange={(e) => setRegistreCommerce(e.target.value)} placeholder="Ex: 12-3456789-01" />
+          <Label>{t("nrp.s2.registreCommerce")} <span className="text-red-500">*</span></Label>
+          <Input value={registreCommerce} onChange={(e) => setRegistreCommerce(e.target.value)} placeholder={t("nrp.s2.registreCommercePlaceholder")} />
           {errors.registreCommerce && <p className="text-sm text-red-500">{errors.registreCommerce}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Codes d'activité <span className="text-red-500">*</span></Label>
-          <Input value={codesActivite} onChange={(e) => setCodesActivite(e.target.value)} placeholder="Codes NAA" />
+          <Label>{t("nrp.s2.codesActivite")} <span className="text-red-500">*</span></Label>
+          <Input value={codesActivite} onChange={(e) => setCodesActivite(e.target.value)} placeholder={t("nrp.s2.codesActivitePlaceholder")} />
           {errors.codesActivite && <p className="text-sm text-red-500">{errors.codesActivite}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Adresse du siège <span className="text-red-500">*</span></Label>
-          <Textarea value={adresseSiege} onChange={(e) => setAdresseSiege(e.target.value)} placeholder="Adresse complète du siège social" rows={3} />
+          <Label>{t("nrp.s2.adresseSiege")} <span className="text-red-500">*</span></Label>
+          <Textarea value={adresseSiege} onChange={(e) => setAdresseSiege(e.target.value)} placeholder={t("nrp.s2.adresseSiegePlaceholder")} rows={3} />
           {errors.adresseSiege && <p className="text-sm text-red-500">{errors.adresseSiege}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Adresse de facturation (si différente)</Label>
-          <Textarea value={adresseFacturation} onChange={(e) => setAdresseFacturation(e.target.value)} placeholder="Laisser vide si identique au siège" rows={2} />
+          <Label>{t("nrp.s2.adresseFacturation")}</Label>
+          <Textarea value={adresseFacturation} onChange={(e) => setAdresseFacturation(e.target.value)} placeholder={t("nrp.s2.adresseFacturationPlaceholder")} rows={2} />
         </div>
         <div className="space-y-2">
-          <Label>Email <span className="text-red-500">*</span></Label>
-          <Input type="email" value={emailOrg} onChange={(e) => setEmailOrg(e.target.value)} placeholder="contact@exemple.dz" />
+          <Label>{t("nrp.s2.email")} <span className="text-red-500">*</span></Label>
+          <Input type="email" value={emailOrg} onChange={(e) => setEmailOrg(e.target.value)} placeholder={t("nrp.s2.emailPlaceholder")} />
           {errors.emailOrg && <p className="text-sm text-red-500">{errors.emailOrg}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Site web</Label>
-          <Input value={siteWeb} onChange={(e) => setSiteWeb(e.target.value)} placeholder="www.exemple.dz" />
+          <Label>{t("nrp.s2.siteWeb")}</Label>
+          <Input value={siteWeb} onChange={(e) => setSiteWeb(e.target.value)} placeholder={t("nrp.s2.siteWebPlaceholder")} />
         </div>
       </div>
 
       <div className="space-y-4 pt-4 border-t">
-        <Label className="text-base font-semibold">Appartient à un groupe ? <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s2.appartientGroupe")} <span className="text-red-500">*</span></Label>
         {errors.appartientGroupe && <p className="text-sm text-red-500">{errors.appartientGroupe}</p>}
         <RadioGroup value={appartientGroupe} onValueChange={setAppartientGroupe}>
           <div className="flex gap-4">
-            <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="g-oui" /><Label htmlFor="g-oui">Oui</Label></div>
-            <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="g-non" /><Label htmlFor="g-non">Non</Label></div>
+            <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="g-oui" /><Label htmlFor="g-oui">{t("nrp.s2.oui")}</Label></div>
+            <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="g-non" /><Label htmlFor="g-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
       </div>
 
       {appartientGroupe === "oui" && (
         <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
-          <div className="space-y-2 md:col-span-2"><Label>Nom du groupe <span className="text-red-500">*</span></Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder="Nom du groupe" />{errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}</div>
-          <div className="space-y-2 md:col-span-2"><Label>Adresse du groupe</Label><Textarea value={groupeAdresse} onChange={(e) => setGroupeAdresse(e.target.value)} placeholder="Adresse complète" rows={2} /></div>
-          <div className="space-y-2"><Label>Type de relation <span className="text-red-500">*</span></Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder="Ex: Filiale, Maison-mère" />{errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}</div>
-          <div className="space-y-2"><Label>Impact sur les activités</Label><Input value={groupeImpact} onChange={(e) => setGroupeImpact(e.target.value)} placeholder="Précisez l'impact" /></div>
+          <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeNom")} <span className="text-red-500">*</span></Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder={t("nrp.s2.groupeNomPlaceholder")} />{errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}</div>
+          <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeAdresse")} <span className="text-red-500">*</span></Label><Textarea value={groupeAdresse} onChange={(e) => setGroupeAdresse(e.target.value)} placeholder={t("nrp.s2.groupeAdressePlaceholder")} rows={2} />{errors.groupeAdresse && <p className="text-sm text-red-500">{errors.groupeAdresse}</p>}</div>
+          <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeRelation")} <span className="text-red-500">*</span></Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder={t("nrp.s2.groupeRelationPlaceholder")} />{errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}</div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>{t("nrp.s2.groupeImpact")} <span className="text-red-500">*</span></Label>
+            <p className="text-xs text-slate-500">{t("nrp.s2.groupeImpactHelper")}</p>
+            <Textarea value={groupeImpact} onChange={(e) => setGroupeImpact(e.target.value)} placeholder={t("nrp.s2.groupeImpactPlaceholder")} rows={3} />
+            {errors.groupeImpact && <p className="text-sm text-red-500">{errors.groupeImpact}</p>}
+          </div>
         </div>
       )}
     </div>
@@ -881,103 +897,111 @@ export default function NewRequestPage() {
   const renderStep3 = () => (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-2"><Label>Nom complet <span className="text-red-500">*</span></Label><Input value={contactNom} onChange={(e) => setContactNom(e.target.value)} placeholder="Nom et prénom" />{errors.contactNom && <p className="text-sm text-red-500">{errors.contactNom}</p>}</div>
-        <div className="space-y-2"><Label>Fonction/Titre <span className="text-red-500">*</span></Label><Input value={contactFonction} onChange={(e) => setContactFonction(e.target.value)} placeholder="Ex: Directeur Général" />{errors.contactFonction && <p className="text-sm text-red-500">{errors.contactFonction}</p>}</div>
-        <div className="space-y-2 md:col-span-2"><Label>Adresse <span className="text-red-500">*</span></Label><Textarea value={contactAdresse} onChange={(e) => setContactAdresse(e.target.value)} placeholder="Adresse du contact" rows={2} />{errors.contactAdresse && <p className="text-sm text-red-500">{errors.contactAdresse}</p>}</div>
-        <div className="space-y-2"><Label>Téléphone <span className="text-red-500">*</span></Label><Input value={contactTelephone} onChange={(e) => setContactTelephone(e.target.value)} placeholder="+213 XXX XXX XXX" />{errors.contactTelephone && <p className="text-sm text-red-500">{errors.contactTelephone}</p>}</div>
-        <div className="space-y-2"><Label>Fax</Label><Input value={contactFax} onChange={(e) => setContactFax(e.target.value)} placeholder="+213 XXX XXX XXX" /></div>
-        <div className="space-y-2"><Label>Email <span className="text-red-500">*</span></Label><Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="contact@exemple.dz" />{errors.contactEmail && <p className="text-sm text-red-500">{errors.contactEmail}</p>}</div>
+        <div className="space-y-2"><Label>{t("nrp.s3.nomComplet")} <span className="text-red-500">*</span></Label><Input value={contactNom} onChange={(e) => setContactNom(e.target.value)} placeholder={t("nrp.s3.nomCompletPlaceholder")} />{errors.contactNom && <p className="text-sm text-red-500">{errors.contactNom}</p>}</div>
+        <div className="space-y-2"><Label>{t("nrp.s3.fonction")} <span className="text-red-500">*</span></Label><Input value={contactFonction} onChange={(e) => setContactFonction(e.target.value)} placeholder={t("nrp.s3.fonctionPlaceholder")} />{errors.contactFonction && <p className="text-sm text-red-500">{errors.contactFonction}</p>}</div>
+        <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s3.adresse")} <span className="text-red-500">*</span></Label><Textarea value={contactAdresse} onChange={(e) => setContactAdresse(e.target.value)} placeholder={t("nrp.s3.adressePlaceholder")} rows={2} />{errors.contactAdresse && <p className="text-sm text-red-500">{errors.contactAdresse}</p>}</div>
+        <div className="space-y-2"><Label>{t("nrp.s3.telephone")} <span className="text-red-500">*</span></Label><Input value={contactTelephone} onChange={(e) => setContactTelephone(e.target.value)} placeholder={t("nrp.s3.telephonePlaceholder")} />{errors.contactTelephone && <p className="text-sm text-red-500">{errors.contactTelephone}</p>}</div>
+        <div className="space-y-2"><Label>{t("nrp.s3.fax")}</Label><Input value={contactFax} onChange={(e) => setContactFax(e.target.value)} placeholder={t("nrp.s3.telephonePlaceholder")} /></div>
+        <div className="space-y-2"><Label>{t("nrp.s3.email")} <span className="text-red-500">*</span></Label><Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="contact@exemple.dz" />{errors.contactEmail && <p className="text-sm text-red-500">{errors.contactEmail}</p>}</div>
       </div>
     </div>
   );
 
   // ── Step 4: Sites et activités (DOC1) ──
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <Label className="text-base font-semibold">Sites et activités <span className="text-red-500">*</span></Label>
-        <Button type="button" onClick={() => setSites((p) => [...p, { id: Date.now(), localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }])} size="sm" className="gap-2">
-          <Plus className="w-4 h-4" /> Ajouter un site
-        </Button>
-      </div>
-      {errors.sites && <p className="text-sm text-red-500">{errors.sites}</p>}
-      {sites.map((site) => (
-        <Card key={site.id} className="p-4">
-          <div className="space-y-4">
-            <div className="flex justify-between items-start">
-              <h4 className="font-medium text-sm">Site</h4>
-              {sites.length > 1 && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSites((p) => p.filter((s) => s.id !== site.id))} className="h-8 w-8 p-0">
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
+  const renderStep4 = () => {
+    if (siteType === "monosite") {
+      const site = sites[0];
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+            <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+            <p className="text-sm text-slate-600">
+              {t("nrp.s4.monoInfoText", { bold: t("nrp.s4.singleSite") }).split(t("nrp.s4.singleSite")).map((part, i, arr) =>
+                i < arr.length - 1 ? <>{part}<span className="font-semibold">{t("nrp.s4.singleSite")}</span></> : part
               )}
+            </p>
+          </div>
+          {errors.sites && <p className="text-sm text-red-500">{errors.sites}</p>}
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="space-y-2 md:col-span-2">
+              <Label>{t("nrp.s4.adresseSite")} <span className="text-red-500">*</span></Label>
+              <Textarea value={site.adresse} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, adresse: e.target.value } : s))} placeholder={t("nrp.s4.adresseSite")} rows={2} />
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-sm">Site/Localisation <span className="text-red-500">*</span></Label><Input value={site.localisation} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, localisation: e.target.value } : s))} placeholder="Nom du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Adresse <span className="text-red-500">*</span></Label><Input value={site.adresse} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, adresse: e.target.value } : s))} placeholder="Adresse du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Activités réalisées sur site <span className="text-red-500">*</span></Label><Input value={site.activites} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, activites: e.target.value } : s))} placeholder="Activités" /></div>
-              <div className="space-y-2"><Label className="text-sm">Activités sous-traitées</Label><Input value={site.soustraitance} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, soustraitance: e.target.value } : s))} placeholder="Sous-traitance" /></div>
-              <div className="space-y-2 md:col-span-2"><Label className="text-sm">EBMD avec nom de la structure</Label><Input value={site.ebmd} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, ebmd: e.target.value } : s))} placeholder="Examens de biologie médicale délocalisés" /></div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>{t("nrp.s4.activitesSite")} <span className="text-red-500">*</span></Label>
+              <Textarea value={site.activites} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, activites: e.target.value } : s))} placeholder={t("nrp.s4.activitesSitePlaceholder")} rows={2} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>{t("nrp.s4.soustraitance")}</Label>
+              <p className="text-xs text-slate-500">{t("nrp.s4.soustraitanceHelper")}</p>
+              <Input value={site.soustraitance} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, soustraitance: e.target.value } : s))} placeholder={t("nrp.s4.soustraitancePlaceholder")} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>{t("nrp.s4.ebmd")}</Label>
+              <p className="text-xs text-slate-500">{t("nrp.s4.ebmdHelper")}</p>
+              <Input value={site.ebmd} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, ebmd: e.target.value } : s))} placeholder={t("nrp.s4.ebmdPlaceholder")} />
             </div>
           </div>
-        </Card>
-      ))}
+        </div>
+      );
+    }
 
-      {siteType === "multisites" && renderMultisiteSection()}
-    </div>
-  );
+    // ── Multisites UI ──
+    return renderMultisiteSection();
+  };
 
-  // ── PRO 26: Section multisites (visible uniquement si siteType === "multisites") ──
+  // ── PRO 26: Section multisites ──
   const renderMultisiteSection = () => (
-    <div className="space-y-6 mt-6 pt-6 border-t-2 border-blue-200">
-      <div className="flex items-center gap-2">
-        <AlertCircle className="w-5 h-5 text-blue-600" />
-        <h3 className="text-lg font-semibold text-blue-900">Configuration multisites (PRO 26)</h3>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
+        <p className="text-sm text-blue-700">
+          {t("nrp.s4.multiInfoText", { bold: t("nrp.s4.multipleSites") }).split(t("nrp.s4.multipleSites")).map((part, i, arr) =>
+            i < arr.length - 1 ? <>{part}<span className="font-semibold">{t("nrp.s4.multipleSites")}</span></> : part
+          )}
+        </p>
       </div>
-      <p className="text-sm text-slate-600">
-        En tant qu'OEC multisites, vous devez fournir les informations sur le siège central, la liste
-        des sites satellites, et attester des critères de qualification définis dans la procédure PRO 26.
-      </p>
+      <h3 className="text-base font-semibold text-slate-800">{t("nrp.s4.multisitesTitle")}</h3>
 
       {/* Siège central */}
       <Card className="p-4">
-        <h4 className="font-medium text-sm mb-3">Siège central (siège social)</h4>
+        <h4 className="font-medium text-sm mb-3">{t("nrp.s4.headOffice")}</h4>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-sm">Nom du siège <span className="text-red-500">*</span></Label>
-            <Input value={msMainSiteName} onChange={(e) => setMsMainSiteName(e.target.value)} placeholder="Nom officiel du siège" />
+            <Label className="text-sm">{t("nrp.s4.siegeName")} <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteName} onChange={(e) => setMsMainSiteName(e.target.value)} placeholder={t("nrp.s4.siegeNamePlaceholder")} />
             {errors.msMainSiteName && <p className="text-xs text-red-500">{errors.msMainSiteName}</p>}
           </div>
           <div className="space-y-2">
-            <Label className="text-sm">Adresse <span className="text-red-500">*</span></Label>
-            <Input value={msMainSiteAddress} onChange={(e) => setMsMainSiteAddress(e.target.value)} placeholder="Adresse du siège" />
+            <Label className="text-sm">{t("nrp.s4.siegeAddress")} <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteAddress} onChange={(e) => setMsMainSiteAddress(e.target.value)} placeholder={t("nrp.s4.siegeAddressPlaceholder")} />
             {errors.msMainSiteAddress && <p className="text-xs text-red-500">{errors.msMainSiteAddress}</p>}
           </div>
           <div className="space-y-2">
-            <Label className="text-sm">Contact (nom) <span className="text-red-500">*</span></Label>
-            <Input value={msMainSiteContactName} onChange={(e) => setMsMainSiteContactName(e.target.value)} placeholder="Représentant légal" />
+            <Label className="text-sm">{t("nrp.s4.siegeContact")} <span className="text-red-500">*</span></Label>
+            <Input value={msMainSiteContactName} onChange={(e) => setMsMainSiteContactName(e.target.value)} placeholder={t("nrp.s4.siegeContactPlaceholder")} />
             {errors.msMainSiteContactName && <p className="text-xs text-red-500">{errors.msMainSiteContactName}</p>}
           </div>
           <div className="space-y-2">
-            <Label className="text-sm">Email du contact <span className="text-red-500">*</span></Label>
-            <Input type="email" value={msMainSiteContactEmail} onChange={(e) => setMsMainSiteContactEmail(e.target.value)} placeholder="email@siege.dz" />
+            <Label className="text-sm">{t("nrp.s4.siegeEmail")} <span className="text-red-500">*</span></Label>
+            <Input type="email" value={msMainSiteContactEmail} onChange={(e) => setMsMainSiteContactEmail(e.target.value)} placeholder={t("nrp.s4.siegeEmailPlaceholder")} />
             {errors.msMainSiteContactEmail && <p className="text-xs text-red-500">{errors.msMainSiteContactEmail}</p>}
           </div>
         </div>
         <div className="mt-4 space-y-2">
           <div className="flex items-center gap-2">
             <Checkbox id="ms-centralized" checked={msCentralizedSM} onCheckedChange={(v) => setMsCentralizedSM(Boolean(v))} />
-            <Label htmlFor="ms-centralized" className="text-sm cursor-pointer">SM commun centralisé sur l'ensemble du réseau (PRO 26 §5.1)</Label>
+            <Label htmlFor="ms-centralized" className="text-sm cursor-pointer">{t("nrp.s4.centralizedSM")}</Label>
           </div>
         </div>
         <div className="mt-4 space-y-2">
-          <Label className="text-sm">Description du Système de Management commun <span className="text-red-500">*</span></Label>
-          <Textarea value={msSMDescription} onChange={(e) => setMsSMDescription(e.target.value)} rows={3} placeholder="Manuel qualité, audit interne, revue de direction unique..." />
+          <Label className="text-sm">{t("nrp.s4.smDescriptionLabel")} <span className="text-red-500">*</span></Label>
+          <Textarea value={msSMDescription} onChange={(e) => setMsSMDescription(e.target.value)} rows={3} placeholder={t("nrp.s4.smDescriptionPlaceholder")} />
           {errors.msSMDescription && <p className="text-xs text-red-500">{errors.msSMDescription}</p>}
         </div>
         <div className="mt-4 space-y-2">
-          <Label className="text-sm">Modalités d'échanges entre sites <span className="text-red-500">*</span></Label>
-          <Textarea value={msInterSiteExchangesDoc} onChange={(e) => setMsInterSiteExchangesDoc(e.target.value)} rows={2} placeholder="Décrivez les flux d'informations, documents et moyens entre sites (PRO 26 §5.2-5)" />
+          <Label className="text-sm">{t("nrp.s4.interSiteLabel")} <span className="text-red-500">*</span></Label>
+          <Textarea value={msInterSiteExchangesDoc} onChange={(e) => setMsInterSiteExchangesDoc(e.target.value)} rows={2} placeholder={t("nrp.s4.interSitePlaceholder")} />
           {errors.msInterSiteExchangesDoc && <p className="text-xs text-red-500">{errors.msInterSiteExchangesDoc}</p>}
         </div>
       </Card>
@@ -985,10 +1009,10 @@ export default function NewRequestPage() {
       {/* Sites satellites */}
       <div>
         <div className="flex justify-between items-center mb-3">
-          <h4 className="font-medium text-sm">Sites satellites <span className="text-red-500">*</span></h4>
+          <h4 className="font-medium text-sm">{t("nrp.s4.satelliteTitle")} <span className="text-red-500">*</span></h4>
           <Button type="button" size="sm" className="gap-2"
             onClick={() => setSatelliteSites(p => [...p, { id: Date.now(), name: "", address: "", activities: "", personnel: "", isInScope: true }])}>
-            <Plus className="w-4 h-4" /> Ajouter
+            <Plus className="w-4 h-4" /> {t("nrp.add")}
           </Button>
         </div>
         {errors.satelliteSites && <p className="text-sm text-red-500 mb-2">{errors.satelliteSites}</p>}
@@ -996,15 +1020,15 @@ export default function NewRequestPage() {
           {satelliteSites.map((s) => (
             <Card key={s.id} className="p-3">
               <div className="grid md:grid-cols-2 gap-3">
-                <Input placeholder="Nom du site" value={s.name} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, name: e.target.value } : x))} />
-                <Input placeholder="Adresse" value={s.address} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, address: e.target.value } : x))} />
-                <Input placeholder="Activités du site" value={s.activities} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, activities: e.target.value } : x))} />
-                <Input placeholder="Personnel sur site (effectifs / postes)" value={s.personnel} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, personnel: e.target.value } : x))} />
+                <Input placeholder={t("nrp.s4.satelliteName")} value={s.name} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, name: e.target.value } : x))} />
+                <Input placeholder={t("nrp.s4.satelliteAddress")} value={s.address} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, address: e.target.value } : x))} />
+                <Input placeholder={t("nrp.s4.satelliteActivities")} value={s.activities} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, activities: e.target.value } : x))} />
+                <Input placeholder={t("nrp.s4.satellitePersonnel")} value={s.personnel} onChange={(e) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, personnel: e.target.value } : x))} />
               </div>
               <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-2">
                   <Checkbox id={`scope-${s.id}`} checked={s.isInScope} onCheckedChange={(v) => setSatelliteSites(p => p.map(x => x.id === s.id ? { ...x, isInScope: Boolean(v) } : x))} />
-                  <Label htmlFor={`scope-${s.id}`} className="text-xs cursor-pointer">Site inclus dans la portée d'accréditation</Label>
+                  <Label htmlFor={`scope-${s.id}`} className="text-xs cursor-pointer">{t("nrp.s4.satelliteInScope")}</Label>
                 </div>
                 {satelliteSites.length > 1 && (
                   <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
@@ -1020,22 +1044,22 @@ export default function NewRequestPage() {
 
       {/* Critères de qualification §5.1 */}
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h4 className="font-medium text-sm mb-3">Critères de qualification (PRO 26 §5.1) <span className="text-red-500">*</span></h4>
-        <p className="text-xs text-slate-600 mb-3">Cochez chaque critère et apportez une justification. Ces éléments seront vérifiés en recevabilité.</p>
+        <h4 className="font-medium text-sm mb-3">{t("nrp.s4.criteriaTitle")}<span className="text-red-500">*</span></h4>
+        <p className="text-xs text-slate-600 mb-3">{t("nrp.s4.criteriaNote")}</p>
         {errors.msCriteria && <p className="text-sm text-red-500 mb-2">{errors.msCriteria}</p>}
         <div className="space-y-3">
-          {MULTISITE_CRITERIA.map((c) => (
-            <div key={c.id} className="space-y-2 pb-3 border-b border-blue-100 last:border-0">
+          {MULTISITE_CRITERIA_KEYS.map((cid) => (
+            <div key={cid} className="space-y-2 pb-3 border-b border-blue-100 last:border-0">
               <div className="flex items-start gap-2">
-                <Checkbox id={`crit-${c.id}`} checked={msCriteria[c.id]?.checked || false}
-                  onCheckedChange={(v) => setMsCriteria(prev => ({ ...prev, [c.id]: { ...prev[c.id], checked: Boolean(v) } }))} />
-                <Label htmlFor={`crit-${c.id}`} className="text-sm cursor-pointer flex-1">{c.label}</Label>
+                <Checkbox id={`crit-${cid}`} checked={msCriteria[cid]?.checked || false}
+                  onCheckedChange={(v) => setMsCriteria(prev => ({ ...prev, [cid]: { ...prev[cid], checked: Boolean(v) } }))} />
+                <Label htmlFor={`crit-${cid}`} className="text-sm cursor-pointer flex-1">{t(`nrp.s4.criteria.${cid}`)}</Label>
               </div>
               <Textarea
-                placeholder="Justification / preuves disponibles…"
-                value={msCriteria[c.id]?.justification || ""}
+                placeholder={t("nrp.s4.justificationPlaceholder")}
+                value={msCriteria[cid]?.justification || ""}
                 rows={2}
-                onChange={(e) => setMsCriteria(prev => ({ ...prev, [c.id]: { ...prev[c.id], justification: e.target.value } }))}
+                onChange={(e) => setMsCriteria(prev => ({ ...prev, [cid]: { ...prev[cid], justification: e.target.value } }))}
               />
             </div>
           ))}
@@ -1049,18 +1073,18 @@ export default function NewRequestPage() {
     <div className="space-y-8">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Personnel par site <span className="text-red-500">*</span></Label>
+          <Label className="text-base font-semibold">{t("nrp.s5.personnelParSite")} <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={() => setPersonnelSites((p) => [...p, { id: Date.now(), site: "", permanents: "", vacataires: "" }])} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" /> Ajouter
+            <Plus className="w-4 h-4" /> {t("nrp.add")}
           </Button>
         </div>
         {errors.personnelSites && <p className="text-sm text-red-500">{errors.personnelSites}</p>}
         {personnelSites.map((ps) => (
           <Card key={ps.id} className="p-4">
             <div className="grid md:grid-cols-4 gap-4 items-end">
-              <div className="space-y-2"><Label className="text-sm">Site <span className="text-red-500">*</span></Label><Input value={ps.site} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, site: e.target.value } : x))} placeholder="Nom du site" /></div>
-              <div className="space-y-2"><Label className="text-sm">Personnel technique permanent <span className="text-red-500">*</span></Label><Input type="number" value={ps.permanents} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, permanents: e.target.value } : x))} placeholder="Nombre" /></div>
-              <div className="space-y-2"><Label className="text-sm">Personnel vacataire/extérieur</Label><Input type="number" value={ps.vacataires} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, vacataires: e.target.value } : x))} placeholder="Nombre" /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.siteName")} <span className="text-red-500">*</span></Label><Input value={ps.site} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, site: e.target.value } : x))} placeholder={t("nrp.s5.siteName")} /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.permanents")} <span className="text-red-500">*</span></Label><Input type="number" value={ps.permanents} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, permanents: e.target.value } : x))} placeholder="N" /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.vacataires")}</Label><Input type="number" value={ps.vacataires} onChange={(e) => setPersonnelSites((p) => p.map((x) => x.id === ps.id ? { ...x, vacataires: e.target.value } : x))} placeholder="N" /></div>
               {personnelSites.length > 1 && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setPersonnelSites((p) => p.filter((x) => x.id !== ps.id))} className="h-10"><Trash2 className="w-4 h-4 text-red-500" /></Button>
               )}
@@ -1071,18 +1095,18 @@ export default function NewRequestPage() {
 
       <div className="space-y-4 pt-6 border-t">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Responsable(s) technique(s) <span className="text-red-500">*</span></Label>
+          <Label className="text-base font-semibold">{t("nrp.s5.responsablesTechniques")} <span className="text-red-500">*</span></Label>
           <Button type="button" onClick={() => setResponsablesTechniques((p) => [...p, { id: Date.now(), nom: "", qualifications: "", experience: "" }])} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" /> Ajouter
+            <Plus className="w-4 h-4" /> {t("nrp.add")}
           </Button>
         </div>
         {errors.responsablesTechniques && <p className="text-sm text-red-500">{errors.responsablesTechniques}</p>}
         {responsablesTechniques.map((rt) => (
           <Card key={rt.id} className="p-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2"><Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label><Input value={rt.nom} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, nom: e.target.value } : x))} placeholder="Nom et prénom" /></div>
-              <div className="space-y-2"><Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label><Input value={rt.qualifications} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, qualifications: e.target.value } : x))} placeholder="Diplômes, certifications" /></div>
-              <div className="space-y-2"><Label className="text-sm">Années d'expérience <span className="text-red-500">*</span></Label><Input type="number" value={rt.experience} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, experience: e.target.value } : x))} placeholder="Années" /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")} <span className="text-red-500">*</span></Label><Input value={rt.nom} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, nom: e.target.value } : x))} placeholder={t("nrp.s5.nomCompletPlaceholder")} /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.qualifications")} <span className="text-red-500">*</span></Label><Input value={rt.qualifications} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, qualifications: e.target.value } : x))} placeholder={t("nrp.s5.qualificationsPlaceholder")} /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")} <span className="text-red-500">*</span></Label><Input type="number" value={rt.experience} onChange={(e) => setResponsablesTechniques((p) => p.map((x) => x.id === rt.id ? { ...x, experience: e.target.value } : x))} placeholder={t("nrp.s5.yearsExpPlaceholder")} /></div>
             </div>
             {responsablesTechniques.length > 1 && (
               <div className="flex justify-end mt-2">
@@ -1094,11 +1118,11 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-4 pt-6 border-t">
-        <Label className="text-base font-semibold">Responsable qualité <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s5.responsableQualite")} <span className="text-red-500">*</span></Label>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label className="text-sm">Nom complet <span className="text-red-500">*</span></Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder="Nom et prénom" />{errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">Qualifications <span className="text-red-500">*</span></Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder="Diplômes" />{errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">Années d'expérience <span className="text-red-500">*</span></Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder="Années" />{errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder={t("nrp.s5.nomCompletPlaceholder")} />{errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.diplomes")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder={t("nrp.s5.diplomesPlaceholder")} />{errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")} <span className="text-red-500">*</span></Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder={t("nrp.s5.yearsExpPlaceholder")} />{errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}</div>
         </div>
       </div>
     </div>
@@ -1108,12 +1132,12 @@ export default function NewRequestPage() {
   const renderStep6 = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-base font-semibold">L'organisme a-t-il eu recours à des prestations de conseil ? <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s6.question")} <span className="text-red-500">*</span></Label>
         {errors.prestationConseil && <p className="text-sm text-red-500">{errors.prestationConseil}</p>}
         <RadioGroup value={prestationConseil} onValueChange={setPrestationConseil}>
           <div className="flex gap-4">
-            <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="pc-oui" /><Label htmlFor="pc-oui">Oui</Label></div>
-            <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="pc-non" /><Label htmlFor="pc-non">Non</Label></div>
+            <div className="flex items-center space-x-2"><RadioGroupItem value="oui" id="pc-oui" /><Label htmlFor="pc-oui">{t("nrp.s2.oui")}</Label></div>
+            <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="pc-non" /><Label htmlFor="pc-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
       </div>
@@ -1121,16 +1145,16 @@ export default function NewRequestPage() {
       {prestationConseil === "oui" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <Label className="font-semibold">Détail des prestations</Label>
+            <Label className="font-semibold">{t("nrp.s6.prestationsTitle")}</Label>
             <Button type="button" onClick={() => setPrestations((p) => [...p, { id: Date.now(), types: [], prestataire: "", date: "", description: "", autrePrecision: "" }])} size="sm" className="gap-2">
-              <Plus className="w-4 h-4" /> Ajouter
+              <Plus className="w-4 h-4" /> {t("nrp.add")}
             </Button>
           </div>
           {prestations.map((pr) => (
             <Card key={pr.id} className="p-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Type(s) de prestation</Label>
+                  <Label className="text-sm">{t("nrp.s6.types")}</Label>
                   <div className="flex flex-wrap gap-3">
                     {TYPES_PRESTATION.map((tp) => (
                       <div key={tp.value} className="flex items-center space-x-2">
@@ -1144,22 +1168,22 @@ export default function NewRequestPage() {
                             ));
                           }}
                         />
-                        <Label htmlFor={`pr-${pr.id}-${tp.value}`} className="text-sm cursor-pointer">{tp.label}</Label>
+                        <Label htmlFor={`pr-${pr.id}-${tp.value}`} className="text-sm cursor-pointer">{t(`nrp.prestationTypes.${tp.value}`)}</Label>
                       </div>
                     ))}
                   </div>
                 </div>
                 {pr.types.includes("autre") && (
                   <div className="space-y-2">
-                    <Label className="text-sm">Précisez le type de prestation <span className="text-red-500">*</span></Label>
-                    <Input value={pr.autrePrecision || ""} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, autrePrecision: e.target.value } : x))} placeholder="Détaillez la prestation..." />
+                    <Label className="text-sm">{t("nrp.s6.autreType")} <span className="text-red-500">*</span></Label>
+                    <Input value={pr.autrePrecision || ""} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, autrePrecision: e.target.value } : x))} placeholder={t("nrp.s6.autrePlaceholder")} />
                   </div>
                 )}
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-sm">Prestataire</Label><Input value={pr.prestataire} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, prestataire: e.target.value } : x))} placeholder="Nom du prestataire" /></div>
-                  <div className="space-y-2"><Label className="text-sm">Date</Label><StringDatePicker value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
+                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.prestataire")}</Label><Input value={pr.prestataire} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, prestataire: e.target.value } : x))} placeholder={t("nrp.s6.prestatairePlaceholder")} /></div>
+                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.date")}</Label><StringDatePicker value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
                 </div>
-                <div className="space-y-2"><Label className="text-sm">Description</Label><Textarea value={pr.description} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, description: e.target.value } : x))} placeholder="Description de la prestation" rows={2} /></div>
+                <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.description")}</Label><Textarea value={pr.description} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, description: e.target.value } : x))} placeholder={t("nrp.s6.descriptionPlaceholder")} rows={2} /></div>
                 <div className="flex justify-end">
                   <Button type="button" variant="ghost" size="sm" onClick={() => setPrestations((p) => p.filter((x) => x.id !== pr.id))}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                 </div>
@@ -1176,17 +1200,17 @@ export default function NewRequestPage() {
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <Label className="text-base font-semibold">Reconnaissances / accréditations existantes</Label>
+          <Label className="text-base font-semibold">{t("nrp.s7.reconnaissances")}</Label>
           <Button type="button" onClick={() => setReconnaissances((p) => [...p, { id: Date.now(), organisation: "", domaine: "", validite: "" }])} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" /> Ajouter
+            <Plus className="w-4 h-4" /> {t("nrp.add")}
           </Button>
         </div>
         {reconnaissances.map((rec) => (
           <Card key={rec.id} className="p-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2"><Label className="text-sm">Organisation</Label><Input value={rec.organisation} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, organisation: e.target.value } : x))} placeholder="Organisme d'accréditation" /></div>
-              <div className="space-y-2"><Label className="text-sm">Domaine</Label><Input value={rec.domaine} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, domaine: e.target.value } : x))} placeholder="Domaine couvert" /></div>
-              <div className="space-y-2"><Label className="text-sm">Validité</Label><Input value={rec.validite} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, validite: e.target.value } : x))} placeholder="Date de validité" /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s7.organisation")}</Label><Input value={rec.organisation} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, organisation: e.target.value } : x))} placeholder={t("nrp.s7.organisationPlaceholder")} /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s7.domaine")}</Label><Input value={rec.domaine} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, domaine: e.target.value } : x))} placeholder={t("nrp.s7.domainePlaceholder")} /></div>
+              <div className="space-y-2"><Label className="text-sm">{t("nrp.s7.validite")}</Label><Input value={rec.validite} onChange={(e) => setReconnaissances((p) => p.map((x) => x.id === rec.id ? { ...x, validite: e.target.value } : x))} placeholder={t("nrp.s7.validitePlaceholder")} /></div>
             </div>
             {reconnaissances.length > 1 && (
               <div className="flex justify-end mt-2">
@@ -1199,8 +1223,8 @@ export default function NewRequestPage() {
 
       {typeDemande === "transfert" && (
         <div className="space-y-4 pt-6 border-t">
-          <Label className="text-base font-semibold">Motif du transfert <span className="text-red-500">*</span></Label>
-          <Textarea value={motifTransfert} onChange={(e) => setMotifTransfert(e.target.value)} placeholder="Décrivez le motif du transfert" rows={3} />
+          <Label className="text-base font-semibold">{t("nrp.s7.motifTransfert")} <span className="text-red-500">*</span></Label>
+          <Textarea value={motifTransfert} onChange={(e) => setMotifTransfert(e.target.value)} placeholder={t("nrp.s7.motifTransfertPlaceholder")} rows={3} />
           {errors.motifTransfert && <p className="text-sm text-red-500">{errors.motifTransfert}</p>}
         </div>
       )}
@@ -1597,14 +1621,14 @@ export default function NewRequestPage() {
   const renderStep8 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Formulaires techniques à remplir</h3>
-        <p className="text-sm text-slate-600 mb-4">Remplissez les formulaires techniques correspondant à vos activités sélectionnées, puis joignez les documents complémentaires requis.</p>
+        <h3 className="text-lg font-semibold mb-2">{t("nrp.s8.title")}</h3>
+        <p className="text-sm text-slate-600 mb-4">{t("nrp.s8.subtitle")}</p>
       </div>
 
       {activites.length === 0 ? (
         <div className="text-center py-8 text-slate-500">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          Veuillez sélectionner au moins une activité à l'étape 1
+          {t("nrp.s8.noActivities")}
         </div>
       ) : (
         <div className="space-y-8">
@@ -1620,8 +1644,8 @@ export default function NewRequestPage() {
 
           {/* Other documents to upload */}
           <div className="space-y-4 pt-6 border-t">
-            <h3 className="text-lg font-semibold">Documents complémentaires à joindre</h3>
-            <p className="text-sm text-slate-600">Cochez chaque document que vous inclurez et joignez le fichier correspondant.</p>
+            <h3 className="text-lg font-semibold">{t("nrp.s8.docsTitle")}</h3>
+            <p className="text-sm text-slate-600">{t("nrp.s8.docsSubtitle")}</p>
 
             {activites.map((activity) => {
               const label = TYPES_ACTIVITES.find((a) => a.value === activity)?.label || activity;
@@ -1695,8 +1719,8 @@ export default function NewRequestPage() {
   const renderStep9 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Documents administratifs</h3>
-        <p className="text-sm text-slate-600 mb-4">Cochez chaque document administratif que vous inclurez</p>
+        <h3 className="text-lg font-semibold mb-2">{t("nrp.s9.title")}</h3>
+        <p className="text-sm text-slate-600 mb-4">{t("nrp.s9.subtitle")}</p>
       </div>
       <div className="space-y-2">
         {DOCS_ADMIN.map((doc, idx) => (
@@ -1720,34 +1744,85 @@ export default function NewRequestPage() {
   // ── Step 10: Déclaration et signature ──
   const renderStep10 = () => (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-6 rounded-lg space-y-4">
-        <h3 className="font-semibold text-lg">Engagements du demandeur</h3>
-        <div className="text-sm leading-relaxed space-y-2 text-slate-700">
-          <p>En soumettant cette demande, je déclare que :</p>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>Toutes les informations fournies sont exactes et complètes</li>
-            <li>L'organisme s'engage à respecter toutes les exigences d'accréditation</li>
-            <li>L'organisme informera ALGERAC de tout changement significatif</li>
-            <li>L'organisme accepte de se soumettre aux évaluations prévues</li>
-            <li>L'organisme s'engage à payer les frais d'accréditation applicables</li>
-          </ul>
+      {/* Official declaration text */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4 text-sm text-slate-700 leading-relaxed">
+        <p>
+          <span className="font-bold">{t("nrp.s10.declareLabel")}</span>{" "}{t("nrp.s10.declareText")}{" "}
+          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">www.algerac.dz</a>
+        </p>
+
+        <div>
+          <p className="font-bold mb-2">{t("nrp.s10.commitTitle")}</p>
+          <ol className="list-[lower-alpha] pl-6 space-y-2">
+            <li>
+              <span className="font-bold">{t("nrp.s10.informLabel")}</span>{" "}{t("nrp.s10.informText")}
+            </li>
+            <li>
+              <span className="font-bold">{t("nrp.s10.transmitLabel")}</span>{" "}{t("nrp.s10.transmitText")}
+            </li>
+            <li>
+              <span className="font-bold">{t("nrp.s10.allowLabel")}</span>{" "}{t("nrp.s10.allowText")}
+            </li>
+          </ol>
         </div>
+
+        <p>
+          {t("nrp.s10.normesText")}{" "}
+          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">www.algerac.dz</a>{" "}
+          {t("nrp.s10.normesText2")}
+        </p>
+
+        <p>{t("nrp.s10.droitsText")}</p>
+
+        <p>
+          <span className="font-bold">{t("nrp.s10.authorizedLabel")}</span>{" "}{t("nrp.s10.authorizedBy")}{" "}
+          <Input
+            value={organismeSoumission}
+            onChange={(e) => setOrganismeSoumission(e.target.value)}
+            placeholder={t("nrp.s10.organismePlaceholder")}
+            className="inline-block w-64 h-7 text-sm mx-1 align-middle"
+          />{" "}
+          {t("nrp.s10.authorizedText2")}
+        </p>
       </div>
 
+      {/* Le Demandeur */}
       <div className="space-y-4">
-        <div className="space-y-2"><Label>Nom de l'organisme autorisant la soumission</Label><Input value={organismeSoumission} onChange={(e) => setOrganismeSoumission(e.target.value)} placeholder="Nom officiel de l'organisme" /></div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>Nom complet du demandeur <span className="text-red-500">*</span></Label><Input value={demandeurNom} onChange={(e) => setDemandeurNom(e.target.value)} placeholder="Nom et prénom" />{errors.demandeurNom && <p className="text-sm text-red-500">{errors.demandeurNom}</p>}</div>
-          <div className="space-y-2"><Label>Fonction <span className="text-red-500">*</span></Label><Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder="Fonction du demandeur" />{errors.demandeurFonction && <p className="text-sm text-red-500">{errors.demandeurFonction}</p>}</div>
-          <div className="space-y-2"><Label>Date <span className="text-red-500">*</span></Label><StringDatePicker value={demandeurDate} onChange={setDemandeurDate} />{errors.demandeurDate && <p className="text-sm text-red-500">{errors.demandeurDate}</p>}</div>
-          <div className="space-y-2"><Label>Signature (nom) <span className="text-red-500">*</span></Label><Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="Signature électronique" />{errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}</div>
+        <h3 className="font-semibold text-base border-b pb-2">{t("nrp.s10.demandeurTitle")}</h3>
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="space-y-2">
+            <Label>{t("nrp.s10.date")} <span className="text-red-500">*</span></Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={demandeurDate ? new Date(demandeurDate).toLocaleDateString("fr-DZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : ""}
+                readOnly
+                className="bg-slate-50 text-slate-600 cursor-default"
+              />
+              <span className="text-xs text-slate-400 whitespace-nowrap">{t("nrp.s10.dateAutoFill")}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("nrp.s10.nomPrenom")} <span className="text-red-500">*</span></Label>
+            <Input value={demandeurNom} onChange={(e) => setDemandeurNom(e.target.value)} placeholder={t("nrp.s10.nomPrenomPlaceholder")} />
+            {errors.demandeurNom && <p className="text-sm text-red-500">{errors.demandeurNom}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>{t("nrp.s10.fonction")} <span className="text-red-500">*</span></Label>
+            <Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder={t("nrp.s10.fonctionPlaceholder")} />
+            {errors.demandeurFonction && <p className="text-sm text-red-500">{errors.demandeurFonction}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>{t("nrp.s10.signature")} <span className="text-red-500">*</span></Label>
+            <Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder={t("nrp.s10.signaturePlaceholder")} />
+            {errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}
+          </div>
         </div>
       </div>
 
-      <div className={cn("flex items-start space-x-3 p-4 rounded-lg border-2", errors.engagements ? "border-red-300 bg-red-50" : "bg-slate-50")}>
+      <div className={cn("flex items-start space-x-3 p-4 rounded-lg border-2", errors.engagements ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50")}>
         <Checkbox id="engagements" checked={engagementsAcceptes} onCheckedChange={(checked) => setEngagementsAcceptes(!!checked)} />
         <Label htmlFor="engagements" className="cursor-pointer text-sm leading-relaxed">
-          J'accepte les engagements ci-dessus et confirme que j'ai l'autorité pour soumettre cette demande au nom de l'organisme
+          {t("nrp.s10.checkboxLabel")}
         </Label>
       </div>
       {errors.engagements && <p className="text-sm text-red-500">{errors.engagements}</p>}
@@ -1786,19 +1861,19 @@ export default function NewRequestPage() {
           <div className="container mx-auto max-w-4xl space-y-6">
 
             <div>
-              <h1 className="text-2xl font-bold">Nouvelle Demande d'Accréditation</h1>
-              <p className="text-muted-foreground mt-1">Remplissez le formulaire DOC 1 ci-dessous pour soumettre votre dossier</p>
+              <h1 className="text-2xl font-bold">{t("nrp.title")}</h1>
+              <p className="text-muted-foreground mt-1">{t("nrp.subtitle")}</p>
             </div>
 
             {/* Progress */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Étape {currentStep} sur {STEPS.length}</h2>
-                  <p className="text-sm text-slate-600">{STEPS[currentStep - 1].title}</p>
+                  <h2 className="text-lg font-semibold">{t("nrp.stepOf", { current: currentStep, total: STEPS.length })}</h2>
+                  <p className="text-sm text-slate-600">{t(`nrp.steps.${currentStep}`)}</p>
                 </div>
                 <span className="text-sm font-medium text-slate-500">
-                  {Math.round((currentStep / STEPS.length) * 100)}% complété
+                  {Math.round((currentStep / STEPS.length) * 100)}{t("nrp.pctCompleted")}
                 </span>
               </div>
               <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -1818,7 +1893,7 @@ export default function NewRequestPage() {
                     )}>
                       {step.id}
                     </div>
-                    <span className="text-[10px] mt-1 text-center hidden md:block max-w-[90px]">{step.title}</span>
+                    <span className="text-[10px] mt-1 text-center hidden md:block max-w-[90px]">{t(`nrp.steps.${step.id}`)}</span>
                   </div>
                 ))}
               </div>
@@ -1832,21 +1907,21 @@ export default function NewRequestPage() {
                 <div className="flex justify-between mt-8 pt-6 border-t">
                   {currentStep > 1 ? (
                     <Button type="button" variant="outline" onClick={prev} className="gap-2">
-                      <ChevronLeft className="w-4 h-4" /> Précédent
+                      <ChevronLeft className="w-4 h-4" /> {t("nrp.nav.prev")}
                     </Button>
                   ) : (
                     <Button type="button" variant="outline" onClick={() => setLocation("/oec/dashboard")}>
-                      Annuler
+                      {t("nrp.nav.cancel")}
                     </Button>
                   )}
 
                   {currentStep < STEPS.length ? (
                     <Button type="button" onClick={next} className="gap-2 ml-auto" style={{ backgroundColor: "#00A63E" }}>
-                      Suivant <ArrowRight className="w-4 h-4" />
+                      {t("nrp.nav.next")} <ArrowRight className="w-4 h-4" />
                     </Button>
                   ) : (
                     <Button type="button" onClick={handleSubmitClick} disabled={loading || submitted} className="ml-auto" style={{ backgroundColor: "#00A63E" }}>
-                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : submitted ? "Déjà soumise" : "Soumettre la demande"}
+                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : submitted ? t("nrp.nav.alreadySubmitted") : t("nrp.nav.submit")}
                     </Button>
                   )}
                 </div>
@@ -1863,17 +1938,17 @@ export default function NewRequestPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-700">
               <AlertCircle className="h-5 w-5" />
-              Confirmer la soumission
+              {t("nrp.dialogs.confirm.title")}
             </DialogTitle>
             <DialogDescription>
-              Une fois la demande soumise, vous ne pourrez plus la modifier. Voulez-vous vraiment confirmer la soumission ?
+              {t("nrp.dialogs.confirm.desc")}
             </DialogDescription>
           </DialogHeader>
           
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>Retour au formulaire</Button>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>{t("nrp.dialogs.confirm.backToForm")}</Button>
             <Button onClick={handleSubmit} disabled={loading} style={{ backgroundColor: "#00A63E" }}>
-              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi...</> : "Oui, confirmer la soumission"}
+              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : t("nrp.dialogs.confirm.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1885,10 +1960,10 @@ export default function NewRequestPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-700">
               <CheckCircle className="h-5 w-5" />
-              Demande soumise avec succès
+              {t("nrp.dialogs.success.title")}
             </DialogTitle>
             <DialogDescription>
-              Votre demande d'accréditation a été enregistrée et transmise à la Direction Technique.
+              {t("nrp.dialogs.success.desc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1914,7 +1989,7 @@ export default function NewRequestPage() {
               onClick={() => { setShowPaymentDialog(false); setLocation("/oec/mes-demandes"); }}
               className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}
             >
-              Voir mes demandes
+              {t("nrp.dialogs.success.viewRequests")}
             </Button>
           </DialogFooter>
         </DialogContent>

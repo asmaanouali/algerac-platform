@@ -313,4 +313,63 @@ public class GapManagementService {
     public List<Gap> getRequestGapsByType(Long requestId, GapType type) {
         return gapRepository.findByRequest_IdAndType(requestId, type);
     }
+
+    /**
+     * PRO 26 §5.5 — Analyse des écarts systémiques pour une demande multisites.
+     * Un écart est marqué "systémique" lorsque la même exigence est en défaut sur ≥ 2 sites
+     * (ou sur le siège + ≥1 satellite). Tous les écarts concernés sont alors flaggés
+     * isSystemic=true avec la liste des sites affectés (affectedSitesJson).
+     *
+     * @return nombre d'écarts marqués systémiques.
+     */
+    @Transactional
+    public int analyzeMultisiteSystemic(Long requestId) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        if (!Boolean.TRUE.equals(request.getIsMultisite())) return 0;
+
+        List<Gap> gaps = gapRepository.findByRequest_Id(requestId);
+        // Regrouper par exigence
+        java.util.Map<String, List<Gap>> byRequirement = new java.util.HashMap<>();
+        for (Gap g : gaps) {
+            if (g.getRequirement() == null || g.getRequirement().isBlank()) continue;
+            byRequirement.computeIfAbsent(g.getRequirement(), k -> new java.util.ArrayList<>()).add(g);
+        }
+
+        int flagged = 0;
+        for (java.util.Map.Entry<String, List<Gap>> e : byRequirement.entrySet()) {
+            List<Gap> bucket = e.getValue();
+            // Recenser les sites distincts touchés (HQ représenté par null id)
+            java.util.Set<Long> siteIds = new java.util.HashSet<>();
+            boolean hqHit = false;
+            for (Gap g : bucket) {
+                if (g.getIdentifiedAtSite() == null) hqHit = true;
+                else siteIds.add(g.getIdentifiedAtSite().getId());
+            }
+            int siteCount = siteIds.size() + (hqHit ? 1 : 0);
+            if (siteCount < 2) continue;
+
+            // Construire la liste JSON des sites affectés
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            if (hqHit) { sb.append("\"HQ\""); first = false; }
+            for (Long id : siteIds) {
+                if (!first) sb.append(",");
+                sb.append(id);
+                first = false;
+            }
+            sb.append("]");
+            String json = sb.toString();
+
+            for (Gap g : bucket) {
+                g.setIsSystemic(true);
+                g.setAffectedSitesJson(json);
+                gapRepository.save(g);
+                flagged++;
+            }
+            log.warn("PRO 26 §5.5 : écart systémique sur exigence '{}' (demande {}) — {} sites affectés",
+                e.getKey(), request.getReferenceNumber(), siteCount);
+        }
+        return flagged;
+    }
 }

@@ -25,6 +25,7 @@ public class QuotationService {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     
     /**
      * Créer une demande d'établissement du devis par le RA
@@ -135,6 +136,16 @@ public class QuotationService {
      */
     @Transactional
     public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments, User currentUser) {
+        return approveQuotationByDAG(quotationId, amount, comments, null, null, null, null, null, currentUser);
+    }
+
+    @Transactional
+    public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments,
+                                            java.util.Map<String, BigDecimal> breakdown,
+                                            String devisEstimatifNumber,
+                                            java.time.LocalDate devisEstimatifDate,
+                                            String siteName, String siteAddress,
+                                            User currentUser) {
         if (currentUser.getRole() != UserRole.DAG) {
             throw new RuntimeException("Seuls les DAG peuvent approuver les devis");
         }
@@ -155,6 +166,25 @@ public class QuotationService {
         quotation.setApprovedByDag(currentUser);
         quotation.setDagComments(comments);
         quotation.setApprovedByDagDate(LocalDateTime.now());
+        if (breakdown != null && !breakdown.isEmpty()) {
+            try {
+                quotation.setDevisBreakdownJson(objectMapper.writeValueAsString(breakdown));
+            } catch (Exception e) {
+                log.warn("Impossible de sérialiser le détail du devis: {}", e.getMessage());
+            }
+        }
+        if (devisEstimatifNumber != null && !devisEstimatifNumber.isBlank()) {
+            quotation.setDevisEstimatifNumber(devisEstimatifNumber);
+        }
+        if (devisEstimatifDate != null) {
+            quotation.setDevisEstimatifDate(devisEstimatifDate);
+        }
+        if (siteName != null && !siteName.isBlank()) {
+            quotation.setSiteName(siteName);
+        }
+        if (siteAddress != null && !siteAddress.isBlank()) {
+            quotation.setSiteAddress(siteAddress);
+        }
         quotation = quotationRepository.save(quotation);
         
         AccreditationRequest request = quotation.getRequest();
@@ -409,6 +439,10 @@ public class QuotationService {
      */
     public List<Quotation> getQuotationsByRequest(Long requestId) {
         return quotationRepository.findByRequest_Id(requestId);
+    }
+
+    public Quotation getQuotationById(Long id) {
+        return quotationRepository.findById(id).orElse(null);
     }
     
     /**

@@ -779,7 +779,7 @@ export default function SurveillanceManagementPage() {
                     <SelectContent>
                       <SelectItem value="SAME_TYPE">Même type (essais/étalonnages similaires)</SelectItem>
                       <SelectItem value="OTHER_TYPE">Autre type (nouvelles catégories)</SelectItem>
-                      <SelectItem value="OTHER_SITE">Autre site (PRO 26)</SelectItem>
+                      <SelectItem value="OTHER_SITE">Autre site</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

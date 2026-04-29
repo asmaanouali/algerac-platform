@@ -71,6 +71,7 @@ public class CASDecisionService {
         
         // Mettre à jour le statut de la demande selon la décision
         switch (decisionType) {
+            case GRANT:
             case GRANT_FULL:
             case GRANT_REDUCED:
             case GRANT_WITH_RESERVES:

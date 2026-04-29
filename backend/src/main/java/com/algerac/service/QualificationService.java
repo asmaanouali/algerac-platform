@@ -104,7 +104,8 @@ public class QualificationService {
 
         if (newStatus == QualificationStatus.QUALIFIED || newStatus == QualificationStatus.RENEWED) {
             q.setQualificationDate(LocalDate.now());
-            q.setExpiryDate(LocalDate.now().plusYears(3));
+            int years = "PERMANENT".equals(q.getEmploymentType()) ? 6 : 3;
+            q.setExpiryDate(LocalDate.now().plusYears(years));
             if (newStatus == QualificationStatus.RENEWED) {
                 q.setLastRenewalDate(LocalDate.now());
             }
@@ -192,13 +193,19 @@ public class QualificationService {
             case QUALIFICATION_INITIALE:
                 q.setStatus(QualificationStatus.QUALIFIED);
                 q.setQualificationDate(LocalDate.now());
-                q.setExpiryDate(LocalDate.now().plusYears(3));
+                {
+                    int years = "PERMANENT".equals(q.getEmploymentType()) ? 6 : 3;
+                    q.setExpiryDate(LocalDate.now().plusYears(years));
+                }
                 q.setMissionsCompletedCurrentCycle(0);
                 break;
             case RENOUVELLEMENT:
                 q.setStatus(QualificationStatus.RENEWED);
                 q.setLastRenewalDate(LocalDate.now());
-                q.setExpiryDate(LocalDate.now().plusYears(3));
+                {
+                    int years = "PERMANENT".equals(q.getEmploymentType()) ? 6 : 3;
+                    q.setExpiryDate(LocalDate.now().plusYears(years));
+                }
                 q.setMissionsCompletedCurrentCycle(0);
                 break;
             case EXTENSION:

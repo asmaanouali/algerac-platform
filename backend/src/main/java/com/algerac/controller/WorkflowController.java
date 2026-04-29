@@ -1814,7 +1814,7 @@ public class WorkflowController {
                     .orderNumber(orderNumber)
                     .missionDetails((String) body.get("missionDetails"))
                     .checklistTasks((String) body.get("checklistTasks"))
-                    .status(MissionOrderStatus.PENDING_DT_APPROVAL)
+                    .status(MissionOrderStatus.PENDING_DG_APPROVAL)
                     .build();
             missionOrderRepository.save(order);
 
@@ -1869,7 +1869,7 @@ public class WorkflowController {
 
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-            if (user.getRole() != UserRole.DT && user.getRole() != UserRole.DG) {
+            if (user.getRole() != UserRole.DG) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Droits insuffisants pour rejeter un ordre de mission"));
             }
@@ -1902,7 +1902,6 @@ public class WorkflowController {
     @GetMapping("/mission-orders/pending")
     public ResponseEntity<?> getPendingMissionOrders() {
         List<MissionOrder> pending = new ArrayList<>();
-        pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
         pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
         return ResponseEntity.ok(pending);
     }
@@ -1913,15 +1912,8 @@ public class WorkflowController {
         if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
         User user = userRepository.findById(userId).orElse(null);
         List<MissionOrder> pending = new ArrayList<>();
-        // DT sees orders needing DT approval; DG sees orders needing DG approval; others see all
-        if (user != null && user.getRole() == UserRole.DT) {
-            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
-        } else if (user != null && user.getRole() == UserRole.DG) {
-            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
-        } else {
-            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DT_APPROVAL));
-            pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
-        }
+        // Only DG signs mission orders — show pending DG approval orders
+        pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.PENDING_DG_APPROVAL));
         // Also include processed orders for history
         pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.FULLY_APPROVED));
         pending.addAll(missionOrderRepository.findByStatus(MissionOrderStatus.SENT_TO_MEMBER));
@@ -3484,6 +3476,16 @@ public class WorkflowController {
             map.put("specialite", ra.getSpecialite());
             map.put("domaineExpertise", ra.getDomaineExpertise());
             map.put("sousDomaineExpertise", ra.getSousDomaineExpertise());
+            map.put("experience", ra.getExperience());
+            if (ra.getDepartment() != null) {
+                map.put("departmentId", ra.getDepartment().getId());
+                map.put("departmentCode", ra.getDepartment().getCode());
+                map.put("departmentName", ra.getDepartment().getName());
+            } else {
+                map.put("departmentId", null);
+                map.put("departmentCode", null);
+                map.put("departmentName", null);
+            }
             List<AccreditationRequest> assigned = requestRepository.findByAssignedToRa_Id(ra.getId());
             map.put("assignedDossiers", assigned.size());
             long activeDossiers = assigned.stream().filter(r -> 

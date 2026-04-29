@@ -153,6 +153,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 <SelectItem value="CAS_MEMBER">Membre du CAS</SelectItem>
                 <SelectItem value="CAS_PRESIDENT">Président du CAS</SelectItem>
                 <SelectItem value="GES_COMPETENCES">Gestionnaire Compétences</SelectItem>
+                <SelectItem value="CONSOLIDATION">Service Consolidation</SelectItem>
               </SelectContent>
             </Select>
           </div>

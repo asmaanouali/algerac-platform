@@ -29,6 +29,7 @@ public class AccreditationDeliveryService {
     private final SurveillancePlanRepository surveillancePlanRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final com.algerac.repository.SatelliteSiteRepository satelliteSiteRepository;
 
     // ========== ÉTAPE 9 : RAPPORT D'ÉVALUATION ==========
 
@@ -385,6 +386,34 @@ public class AccreditationDeliveryService {
             .published(false)
             .build();
 
+        // PRO 26 §5.6 — pour un OEC multisites, populer les champs spécifiques et
+        // sélectionner le modèle FOR 16-1 (par défaut FOR 16). Le modèle FOR 16-3 (sites
+        // étrangers) sera à sélectionner manuellement par le DT le cas échéant.
+        if (Boolean.TRUE.equals(request.getIsMultisite())) {
+            certificate.setIsMultisite(true);
+            certificate.setHqNameAndAddress(
+                (request.getMainSiteName() == null ? "" : request.getMainSiteName()) + " — " +
+                (request.getMainSiteAddress() == null ? "" : request.getMainSiteAddress())
+            );
+            // Construire la liste JSON des sites accrédités (siege + satellites actifs en portée)
+            List<SatelliteSite> active = satelliteSiteRepository.findByRequest_IdAndStatus(
+                request.getId(), SatelliteSiteStatus.ACTIVE);
+            StringBuilder sb = new StringBuilder("[");
+            sb.append("{\"type\":\"HQ\",\"name\":\"").append(escapeJson(request.getMainSiteName())).append("\"")
+              .append(",\"address\":\"").append(escapeJson(request.getMainSiteAddress())).append("\"}");
+            for (SatelliteSite s : active) {
+                if (Boolean.FALSE.equals(s.getIsInScope())) continue;
+                sb.append(",{\"type\":\"SAT\",\"id\":").append(s.getId())
+                  .append(",\"name\":\"").append(escapeJson(s.getName())).append("\"")
+                  .append(",\"address\":\"").append(escapeJson(s.getAddress())).append("\"}");
+            }
+            sb.append("]");
+            certificate.setAccreditedSitesJson(sb.toString());
+            certificate.setCertificateTemplate(CertificateTemplate.FOR_16_1);
+        } else {
+            certificate.setCertificateTemplate(CertificateTemplate.FOR_16);
+        }
+
         certificate = certificateRepository.save(certificate);
 
         request.setStatus(RequestStatus.CERTIFICATE_PREPARATION);
@@ -643,5 +672,10 @@ public class AccreditationDeliveryService {
         for (User user : users) {
             notificationService.createNotification(user.getId(), title, message, type);
         }
+    }
+
+    private static String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

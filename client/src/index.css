@@ -114,6 +114,14 @@
   }
 }
 
+/* RTL layout: flip content offset when sidebar moves to the right */
+@media (min-width: 768px) {
+  [dir="rtl"] .md\:ml-64 {
+    margin-left: 0;
+    margin-right: 16rem;
+  }
+}
+
 /* Responsive utilities */
 @media (max-width: 640px) {
   /* Make tab lists wrap on mobile so they don't overflow */

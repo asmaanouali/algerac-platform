@@ -132,6 +132,41 @@ public class AccreditationRequest {
     private LocalDateTime submissionDate; // Date de soumission initiale par OEC
     private LocalDateTime nextActionDate;
     
+    // ─── PRO 26 : Multisites ─────────────────────────────────────────────
+    /** Demande multisites (siège + sites satellites). Si false, demande monosite standard. */
+    private Boolean isMultisite;
+
+    /** Siège central (PRO 26 §2 : « siège social »). Renseigné uniquement si isMultisite = true. */
+    private String mainSiteName;
+
+    @Column(columnDefinition = "TEXT")
+    private String mainSiteAddress;
+
+    private String mainSiteContactName;
+    private String mainSiteContactEmail;
+
+    /** SM commun centralisé (PRO 26 §5.1) */
+    private Boolean centralizedManagementSystem;
+
+    @Column(columnDefinition = "TEXT")
+    private String managementSystemDescription;
+
+    /** URL du document décrivant les modalités d'échanges entre sites (PRO 26 §5.2-5) */
+    @Column(columnDefinition = "TEXT")
+    private String interSiteExchangesDoc;
+
+    /** JSON : les 6 critères de qualification §5.1 cochés et justifiés par l'OEC (saisie). */
+    @Column(columnDefinition = "TEXT")
+    private String qualificationCriteriaJson;
+
+    /** JSON : revue des critères §5.1 par le RA en recevabilité (PRO 26 §5.2.1). */
+    @Column(columnDefinition = "TEXT")
+    private String multisiteCriteriaReviewJson;
+
+    /** Critères §5.1 vérifiés par RA/CD lors de la recevabilité (PRO 26 §5.2.1). */
+    private Boolean multisiteQualificationReviewed;
+    // ─────────────────────────────────────────────────────────────────────
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

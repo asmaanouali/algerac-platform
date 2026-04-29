@@ -47,6 +47,25 @@ public class Quotation {
     
     @Column(columnDefinition = "TEXT")
     private String dagComments; // Commentaires du DAG
+
+    /**
+     * Détail HT du devis (FOR 44 / 44-1 / 44-2) saisi par le DAG.
+     * Structure JSON souple : { "registrationFee": 1000, "analysisFeeP2": 500, ... }
+     */
+    @Column(columnDefinition = "TEXT")
+    private String devisBreakdownJson;
+
+    /** Numéro du devis estimatif (saisi par le DAG, optionnel). */
+    private String devisEstimatifNumber;
+
+    /** Date du devis estimatif (saisie par le DAG, optionnel). */
+    private java.time.LocalDate devisEstimatifDate;
+
+    /** Site (nom + adresse) figurant sur le devis estimatif. */
+    private String siteName;
+
+    @Column(columnDefinition = "TEXT")
+    private String siteAddress;
     
     // Composition équipe proposée par le RA (demande d'établissement du devis)
     @Column(nullable = false)
@@ -122,5 +141,19 @@ public class Quotation {
     
     public String getApprovedByDagName() {
         return approvedByDag != null ? approvedByDag.getFullName() : null;
+    }
+
+    public String getRequestReferenceNumber() {
+        return request != null ? request.getReferenceNumber() : null;
+    }
+
+    public String getRequestType() {
+        return request != null && request.getType() != null ? request.getType().name() : null;
+    }
+
+    public String getOecName() {
+        if (request == null || request.getOecForJson() == null) return null;
+        var dto = request.getOecForJson();
+        return dto.getOrganizationName() != null ? dto.getOrganizationName() : dto.getFullName();
     }
 }

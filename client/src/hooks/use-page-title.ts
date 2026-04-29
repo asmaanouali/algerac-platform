@@ -21,7 +21,6 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/notifications$/, "Notifications"],
   [/^\/dashboard$/, "Tableau de bord"],
   [/^\/users$/, "Utilisateurs"],
-  [/^\/risques-opportunites$/, "Risques & Opportunités"],
 
   [/^\/admin$/, "Administration"],
   [/^\/admin\/utilisateurs$/, "Utilisateurs"],

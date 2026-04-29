@@ -15,6 +15,7 @@ import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
+import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -67,6 +68,8 @@ export default function DashboardPage() {
       return <GesCompetencesDashboard />;
     case 'RQ':
       return <RQComplaintsDashboard />;
+    case 'CONSOLIDATION':
+      return <ConsolidationDashboard />;
     default:
       return (
         <div className="flex h-screen items-center justify-center">

@@ -16,4 +16,11 @@ public class ReceivabilityDecisionDTO {
     
     @NotBlank(message = "Les commentaires sont requis")
     private String comments;
+
+    /**
+     * PRO 26 §5.2.1 : revue des 6 critères §5.1 par le RA pour les demandes multisites.
+     * JSON : {"legalLink":{"verified":true,"comment":"…"}, "centralSM":{...}, ...}
+     * Obligatoire si la demande est multisites.
+     */
+    private String multisiteCriteriaReviewJson;
 }

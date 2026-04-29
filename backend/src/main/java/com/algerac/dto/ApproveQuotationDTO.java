@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -18,5 +20,16 @@ public class ApproveQuotationDTO {
     
     @NotNull(message = "Le montant du devis est obligatoire")
     @Positive(message = "Le montant doit être positif")
-    private BigDecimal amount; // Le DAG définit le montant du devis
+    private BigDecimal amount; // Le DAG définit le montant du devis (sous-total HT principal)
+
+    /**
+     * Détail HT par ligne du devis estimatif (FOR 44 / 44-1 / 44-2).
+     * Les clés dépendent du type de demande (initial/renouvellement, surveillance, extension).
+     */
+    private Map<String, BigDecimal> breakdown;
+
+    private String devisEstimatifNumber;
+    private LocalDate devisEstimatifDate;
+    private String siteName;
+    private String siteAddress;
 }

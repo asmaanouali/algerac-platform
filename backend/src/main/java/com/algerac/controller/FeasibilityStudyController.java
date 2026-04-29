@@ -128,4 +128,39 @@ public class FeasibilityStudyController {
             @PathVariable FeasibilityDecision decision) {
         return ResponseEntity.ok(feasibilityStudyService.getStudiesByDecision(decision));
     }
+
+    /**
+     * RA: Sauvegarder le brouillon intermédiaire (reprise après déconnexion)
+     */
+    @PutMapping("/draft/{requestId}")
+    public ResponseEntity<?> saveDraft(
+            @PathVariable Long requestId,
+            @RequestBody String draftJson,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        try {
+            feasibilityStudyService.saveDraft(requestId, userId, draftJson);
+            return ResponseEntity.ok(ApiResponse.success("Brouillon sauvegardé", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * RA: Récupérer le brouillon intermédiaire
+     */
+    @GetMapping("/draft/{requestId}")
+    public ResponseEntity<?> getDraft(
+            @PathVariable Long requestId,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        String draft = feasibilityStudyService.getDraft(requestId, userId);
+        return ResponseEntity.ok(draft != null ? draft : "{}");
+    }
 }

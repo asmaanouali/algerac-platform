@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -350,7 +350,12 @@ export default function CDManageRequestsPage() {
                               <p className="text-sm text-muted-foreground">Domaine : {request.domain}</p>
                               <p className="text-sm text-muted-foreground">Soumise le : {new Date(request.submissionDate).toLocaleDateString("fr-FR")}</p>
                             </div>
-                            <Button onClick={() => openAssignDialog(request)}><UserPlus className="h-4 w-4 mr-2" />Assigner</Button>
+                            <div className="flex gap-2">
+                              <Link href={`/cd/demande/${request.id}`}>
+                                <Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />Voir</Button>
+                              </Link>
+                              <Button onClick={() => openAssignDialog(request)}><UserPlus className="h-4 w-4 mr-2" />Assigner</Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -383,7 +388,12 @@ export default function CDManageRequestsPage() {
                               <p className="text-sm text-muted-foreground">Réf : {request.referenceNumber || `#${request.id}`}</p>
                               <p className="text-sm text-muted-foreground">RA : {request.assignedRa?.fullName || "—"}</p>
                             </div>
-                            <Button onClick={() => openReviewDialog(request)}><Eye className="h-4 w-4 mr-2" />Examiner</Button>
+                            <div className="flex gap-2">
+                              <Link href={`/cd/demande/${request.id}`}>
+                                <Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />Voir</Button>
+                              </Link>
+                              <Button onClick={() => openReviewDialog(request)}><Eye className="h-4 w-4 mr-2" />Examiner</Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -481,16 +491,21 @@ export default function CDManageRequestsPage() {
                   <CardHeader><CardTitle>Tous les dossiers</CardTitle></CardHeader>
                   <CardContent>
                     <Table>
-                      <TableHeader><TableRow><TableHead>Réf.</TableHead><TableHead>OEC</TableHead><TableHead>Domaine</TableHead><TableHead>Statut</TableHead><TableHead>RA</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow><TableHead>Réf.</TableHead><TableHead>OEC</TableHead><TableHead>Domaine</TableHead><TableHead>Statut</TableHead><TableHead>RA</TableHead><TableHead>Date</TableHead><TableHead></TableHead></TableRow></TableHeader>
                       <TableBody>
                         {allRequests.map((r) => (
                           <TableRow key={r.id}>
                             <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
-                            <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
-                            <TableCell>{r.domain}</TableCell>
-                            <TableCell><Badge variant={r.status === "CLOSED" ? "secondary" : r.status === "NOT_RECEIVABLE" ? "destructive" : "outline"}>{r.status.replace(/_/g, " ")}</Badge></TableCell>
-                            <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
-                            <TableCell className="text-sm">{r.submissionDate ? new Date(r.submissionDate).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                              <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
+                              <TableCell>{r.domain}</TableCell>
+                              <TableCell><Badge variant={r.status === "CLOSED" ? "secondary" : r.status === "NOT_RECEIVABLE" ? "destructive" : "outline"}>{r.status.replace(/_/g, " ")}</Badge></TableCell>
+                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell className="text-sm">{r.submissionDate ? new Date(r.submissionDate).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                              <TableCell>
+                                <Link href={`/cd/demande/${r.id}`}>
+                                  <Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />Voir</Button>
+                                </Link>
+                              </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -610,6 +625,7 @@ export default function CDManageRequestsPage() {
                               <div className="flex items-center gap-2">
                                 <span>{ra.fullName}</span>
                                 {isMatch && <Badge variant="default" className="text-xs py-0 px-1">Match</Badge>}
+                                <span className="text-muted-foreground text-xs">{ra.email}</span>
                                 <span className="text-muted-foreground text-xs">({ra.activeDossiers} actifs)</span>
                               </div>
                             </SelectItem>

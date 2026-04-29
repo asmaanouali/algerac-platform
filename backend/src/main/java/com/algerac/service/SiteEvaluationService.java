@@ -33,6 +33,7 @@ public class SiteEvaluationService {
     private final ComplementaryEvaluationRepository compEvalRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final SatelliteSiteRepository satelliteSiteRepository;
 
     // ========== ÉTAPE 6 : PRÉPARATION DE L'ÉVALUATION ==========
 
@@ -211,6 +212,21 @@ public class SiteEvaluationService {
             .createdByREE(LocalDateTime.now())
             .status(EvaluationPlanStatus.SUBMITTED_TO_CD)
             .build();
+
+        // PRO 26 §5.4 — pour une demande initiale multisites, marquer le plan comme couvrant tous les sites
+        if (Boolean.TRUE.equals(request.getIsMultisite()) && request.getType() == RequestType.INITIAL) {
+            List<SatelliteSite> active = satelliteSiteRepository.findByRequest_IdAndStatus(request.getId(), SatelliteSiteStatus.ACTIVE);
+            StringBuilder sb = new StringBuilder("[");
+            sb.append("{\"type\":\"HQ\",\"name\":\"").append(escape(request.getMainSiteName())).append("\"}");
+            for (SatelliteSite s : active) {
+                if (Boolean.FALSE.equals(s.getIsInScope())) continue;
+                sb.append(",{\"type\":\"SAT\",\"id\":").append(s.getId())
+                  .append(",\"name\":\"").append(escape(s.getName())).append("\"}");
+            }
+            sb.append("]");
+            plan.setSitesToEvaluateJson(sb.toString());
+            plan.setMultisiteAllSitesRequired(true);
+        }
 
         plan = evalPlanRepository.save(plan);
 
@@ -1008,5 +1024,10 @@ public class SiteEvaluationService {
         for (User user : users) {
             notificationService.createNotification(user.getId(), title, message, type);
         }
+    }
+
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

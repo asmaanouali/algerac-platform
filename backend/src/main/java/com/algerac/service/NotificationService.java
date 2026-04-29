@@ -29,6 +29,11 @@ public class NotificationService {
      */
     @Transactional
     public void createNotification(Long userId, String title, String message, String type) {
+        createNotification(userId, title, message, type, null);
+    }
+
+    @Transactional
+    public void createNotification(Long userId, String title, String message, String type, String link) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             log.warn("Cannot create notification: user {} not found", userId);
@@ -39,11 +44,34 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type(type != null ? type.toLowerCase() : "info")
+                .link(link)
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
         notificationRepository.save(notification);
         log.info("Notification created for user {}: {}", userId, title);
+    }
+
+    /**
+     * Returns the frontend route for a notification recipient + request.
+     */
+    private String requestLink(User recipient, AccreditationRequest request) {
+        if (recipient == null || request == null) return null;
+        UserRole role = recipient.getRole();
+        if (role == null) return null;
+        Long id = request.getId();
+        switch (role) {
+            case OEC:   return "/oec/demandes/" + id;
+            case RA:    return "/ra/dossiers/" + id;
+            case CD:    return "/cd/demande/" + id;
+            case DT:    return "/dt/demande/" + id;
+            case DAG:   return "/dag/dashboard";
+            case ADMIN: return "/admin";
+            case REE:
+            case ET:
+            case EQ:    return "/dashboard";
+            default:    return null;
+        }
     }
     
     @Transactional
@@ -58,6 +86,7 @@ public class NotificationService {
                             request.getReferenceNumber() != null ? request.getReferenceNumber() : "en attente",
                             request.getOec().getOrganizationName()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -80,6 +109,7 @@ public class NotificationService {
                         request.getReferenceNumber(),
                         request.getOec().getOrganizationName()))
                 .type("info")
+                .link(requestLink(ra, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -105,6 +135,7 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type(isReceivable ? "success" : "warning")
+                .link(requestLink(oec, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -177,6 +208,7 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type(approved ? "success" : "warning")
+                .link(requestLink(ra, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -196,6 +228,7 @@ public class NotificationService {
                         "Le responsable d'accréditation va maintenant préparer le devis et la convention.",
                         request.getReferenceNumber()))
                 .type("success")
+                .link(requestLink(oec, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -216,6 +249,7 @@ public class NotificationService {
                         "Raison : %s. Veuillez consulter votre compte pour plus de détails.",
                         request.getReferenceNumber(), reason))
                 .type("error")
+                .link(requestLink(oec, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -239,6 +273,7 @@ public class NotificationService {
                     .message(String.format("La demande de %s nécessite la fixation des frais d'enregistrement.",
                             request.getOec() != null ? request.getOec().getOrganizationName() : "OEC #" + request.getId()))
                     .type("action_required")
+                    .link("/dag/frais-enregistrement")
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -264,6 +299,7 @@ public class NotificationService {
                             request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId(),
                             request.getOec() != null ? request.getOec().getOrganizationName() : "OEC"))
                     .type("action_required")
+                    .link(requestLink(dt, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -286,9 +322,10 @@ public class NotificationService {
                     .user(cd)
                     .title("Demande validée par DT - RA à assigner")
                     .message(String.format("La demande %s de %s a été validée par la Direction Technique. Veuillez choisir un Responsable d'Accréditation.",
-                            request.getReferenceNumber(),
+                            request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId(),
                             request.getOec() != null ? request.getOec().getOrganizationName() : "OEC"))
                     .type("action_required")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -347,6 +384,7 @@ public class NotificationService {
                         request.getReferenceNumber(),
                         comments != null && !comments.isEmpty() ? comments : "Veuillez contacter ALGERAC pour plus de détails."))
                 .type("action_required")
+                .link(requestLink(oec, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -368,6 +406,7 @@ public class NotificationService {
                             quotation.getQuotationNumber(),
                             quotation.getRequest().getReferenceNumber()))
                     .type("info")
+                    .link("/dag/fixation-devis")
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -389,6 +428,7 @@ public class NotificationService {
                         "Vous pouvez maintenant l'envoyer à l'OEC avec la convention.",
                         quotation.getQuotationNumber()))
                 .type("success")
+                .link("/ra/quotes")
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -409,6 +449,7 @@ public class NotificationService {
                         "Veuillez les consulter et les valider.",
                         request.getReferenceNumber()))
                 .type("info")
+                .link(requestLink(oec, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -450,6 +491,7 @@ public class NotificationService {
                         request.getOec().getOrganizationName(),
                         request.getReferenceNumber()))
                 .type("info")
+                .link(requestLink(ra, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -470,6 +512,7 @@ public class NotificationService {
                         "Veuillez indiquer si vous acceptez cette visite.",
                         request.getReferenceNumber()))
                 .type("info")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -833,6 +876,7 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type("success")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -848,6 +892,7 @@ public class NotificationService {
                         "Vous avez un droit de recours.",
                         request.getReferenceNumber(), reason))
                 .type("error")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -863,6 +908,7 @@ public class NotificationService {
                         "Compléments requis: %s",
                         request.getReferenceNumber(), reason))
                 .type("warning")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -934,6 +980,7 @@ public class NotificationService {
                 .message(String.format("Votre certificat d'accréditation pour %s est disponible.",
                         request.getReferenceNumber()))
                 .type("success")
+                .link("/oec/certificates")
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();

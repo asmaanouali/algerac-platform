@@ -168,7 +168,7 @@ export default function OTPVerification() {
         <div className="rounded-2xl overflow-hidden shadow-2xl flex flex-col lg:flex-row">
 
           {/* ── Left panel ───────────────────────────────────────────── */}
-          <div className="lg:w-[44%] bg-gradient-to-br from-[#005a2b] via-[#006e35] to-[#004d28] p-8 lg:p-10 flex flex-col text-white relative overflow-hidden">
+          <div className="hidden lg:flex lg:w-[44%] bg-gradient-to-br from-[#005a2b] via-[#006e35] to-[#004d28] p-10 flex-col text-white relative overflow-hidden">
             <div
               className="absolute inset-0 opacity-[0.04] pointer-events-none"
               style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
@@ -210,7 +210,15 @@ export default function OTPVerification() {
           </div>
 
           {/* ── Right panel – OTP form ────────────────────────────────── */}
-          <div className="lg:w-[56%] bg-white dark:bg-slate-900 p-8 lg:p-10 flex flex-col justify-center">
+          <div className="lg:w-[56%] bg-white dark:bg-slate-900 p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
+            {/* Mobile-only brand header */}
+            <div className="lg:hidden flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 dark:border-white/10">
+              <img src="/logoalgerac.png" alt="ALGERAC" className="h-10 w-auto shrink-0" />
+              <div>
+                <span className="text-base font-bold text-slate-800 dark:text-white">ALGERAC</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t("auth.tagline")}</p>
+              </div>
+            </div>
             <div className="flex justify-center mb-6">
               <div className="w-14 h-14 rounded-full bg-[#00A63E]/15 border border-[#00A63E]/30 flex items-center justify-center">
                 <KeyRound className="w-7 h-7 text-[#00A63E]" />
@@ -223,13 +231,13 @@ export default function OTPVerification() {
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-1.5 sm:gap-3">
                 {otp.map((val, i) => (
                   <input
                     key={i}
                     type="text"
                     className={[
-                      "w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 outline-none transition-all duration-150",
+                      "w-9 h-11 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold rounded-xl border-2 outline-none transition-all duration-150",
                       "bg-slate-50 dark:bg-white/5",
                       val
                         ? "border-[#00A63E] bg-green-50 dark:bg-green-900/20 text-[#00A63E] dark:text-green-400 shadow-[0_0_0_3px_rgba(0,166,62,0.15)]"

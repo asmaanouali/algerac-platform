@@ -57,9 +57,31 @@ public class DocumentaryReview {
     private String teamResults;              // Résultats consolidés de l'équipe
     
     private LocalDateTime resultsSentToCd;   // Date envoi résultats au CD
-    
+
+    // ─── PRO doc-review v2 : décisions individuelles + synthèse REE ────
+    /** Date à laquelle le REE a soumis sa synthèse finale. */
+    private LocalDateTime reeSynthesisSubmittedAt;
+
+    /** Synthèse finale rédigée par le REE après réception des décisions individuelles des membres. */
     @Column(columnDefinition = "TEXT")
-    private String cdSynthesis;              // Synthèse rédigée par le CD
+    private String reeSynthesis;
+
+    /** Le REE a-t-il identifié un manquement à signaler à l'OEC ? */
+    private Boolean reeDeficienciesIdentified;
+
+    /** Date de transmission de la synthèse REE au RA. */
+    private LocalDateTime reeSynthesisSentToRA;
+
+    /** Notification envoyée à l'OEC (manquement OU "tout va bien"). */
+    private Boolean oecNotifiedOfDocReviewOutcome;
+    private LocalDateTime oecNotifiedAt;
+
+    /** Type de notification envoyée à l'OEC : "DEFICIENCY" ou "OK". */
+    private String oecNotificationType;
+    // ───────────────────────────────────────────────────────────────────
+
+    @Column(columnDefinition = "TEXT")
+    private String cdSynthesis;              // Legacy : synthèse CD (conservé pour compat)
     
     private Boolean cdSentAsIs;              // CD a envoyé résultats tels quels
     

@@ -8,7 +8,6 @@ import {
   AlertCircle,
   CreditCard,
   Award,
-  User,
   LogOut,
   ShieldAlert,
   Users,
@@ -33,21 +32,14 @@ import {
   DollarSign,
   UserMinus,
   Beaker,
-  Globe,
-  BookOpen,
   Network,
-  Video,
   ArrowRightLeft,
-  ShieldAlert as ShieldAlertIcon,
   ClipboardCheck,
   BarChart3,
   Eye,
   RefreshCw,
   Expand,
   GraduationCap,
-  Megaphone,
-  RotateCcw,
-  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -57,7 +49,7 @@ import { useTranslation } from "react-i18next";
 export function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   if (!user) return null;
 
@@ -75,10 +67,8 @@ export function Sidebar() {
       { href: "/oec/revue-ecarts", label: t('nav.gapReview'), icon: ShieldCheck },
       { href: "/oec/reponse-ecarts", label: t('nav.actionPlans'), icon: AlertCircle },
       { href: "/oec/certificates", label: t('nav.certificates'), icon: Award },
-      { href: "/oec/transfert", label: t('nav.accreditationTransfer'), icon: ArrowRightLeft },
       { href: "/oec/surveillance", label: t('nav.mySurveillances'), icon: Eye },
       { href: "/complaints/internal", label: t('nav.complaints'), icon: MessageSquareWarning },
-      { href: "/oec/profile", label: t('nav.profile'), icon: User },
     ],
     ra: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -95,7 +85,6 @@ export function Sidebar() {
       { href: "/ra/preparation-cas", label: t('nav.casPrep'), icon: Gavel },
       { href: "/ra/decision-accreditation", label: t('nav.decisionCertificate'), icon: Award },
       { href: "/ra/surveillance", label: t('nav.surveillance'), icon: Eye },
-      { href: "/ra/dossiers", label: t('nav.files'), icon: Files },
       { href: "/ra/planning", label: t('nav.planning'), icon: CalendarDays },
     ],
     dt: [
@@ -104,7 +93,6 @@ export function Sidebar() {
       { href: "/dt/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
       { href: "/dt/certificats", label: t('nav.certificates'), icon: Award },
       { href: "/dt/ordres-mission", label: t('nav.missionOrders'), icon: Stamp },
-      { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
     ],
     cd: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -116,12 +104,8 @@ export function Sidebar() {
       { href: "/cd/preparation-evaluation", label: t('nav.evaluationPrep'), icon: CalendarDays },
       { href: "/cd/traitement-ecarts", label: t('nav.gapTreatment'), icon: AlertCircle },
       { href: "/cd/echantillonnage", label: t('nav.samplingPage'), icon: Beaker },
-      { href: "/cd/developpement-domaines", label: t('nav.domainDev'), icon: Globe },
-      { href: "/cd/regles-reference", label: t('nav.referenceRules'), icon: BookOpen },
-      { href: "/cd/evaluation-distance", label: t('nav.remoteEval'), icon: Video },
       { href: "/cd/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
       { href: "/cd/surveillance", label: t('nav.surveillance'), icon: Eye },
-      { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
     ],
     dag: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -135,7 +119,6 @@ export function Sidebar() {
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/users", label: t('nav.users'), icon: Users },
       { href: "/admin/utilisateurs-pending", label: t('nav.candidatures'), icon: UserPlus },
-      { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
     ],
     expert: [
       { href: "/expert/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -192,7 +175,6 @@ export function Sidebar() {
       { href: "/dg/certificats", label: t('nav.certificates'), icon: Award },
       { href: "/dg/ordres-mission", label: t('nav.missionOrders'), icon: Stamp },
       { href: "/dg/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
-      { href: "/risques-opportunites", label: t('nav.riskOpportunities'), icon: ShieldAlertIcon },
     ],
     ges_competences: [
       { href: "/ges-competences/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -200,14 +182,7 @@ export function Sidebar() {
       { href: "/ges-competences/entretiens", label: t('nav.interviewPlanning'), icon: CalendarDays },
       { href: "/ges-competences/qualifications", label: t('nav.qualifications'), icon: Award },
       { href: "/ges-competences/ef-pipeline", label: t('nav.efPipeline'), icon: GraduationCap },
-      { href: "/ges-competences/commission", label: t('nav.commission'), icon: Users },
       { href: "/ges-competences/observations", label: t('nav.observations'), icon: ClipboardCheck },
-      { href: "/ges-competences/monitoring", label: t('nav.monitoring'), icon: ClipboardList },
-      { href: "/ges-competences/supervisors", label: t('nav.supervisors'), icon: ShieldCheck },
-      { href: "/ges-competences/supervision-plan", label: t('nav.supervisionPlan'), icon: CalendarDays },
-      { href: "/ges-competences/extensions", label: t('nav.extension'), icon: TrendingUp },
-      { href: "/ges-competences/requalification", label: t('nav.requalification'), icon: RotateCcw },
-      { href: "/ges-competences/bulletins", label: t('nav.regularInfo'), icon: Megaphone },
       { href: "/ges-competences/surveillance", label: t('nav.kpiSurveillance'), icon: BarChart3 },
     ],
     sup: [
@@ -282,23 +257,30 @@ export function Sidebar() {
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={() => logoutMutation.mutate()}
         >
-          <LogOut className="w-4 h-4 mr-2" />
+          <LogOut className="w-4 h-4 ltr:mr-2 rtl:ml-2" />
           {t('nav.logout')}
         </Button>
       </div>
     </>
   );
 
+  const isRtl = i18n.dir() === 'rtl';
+
   return (
     <>
       {/* Desktop sidebar */}
-      <div className="hidden md:flex w-64 bg-white dark:bg-[#0e1118] border-r dark:border-slate-700/60 h-screen flex-col fixed left-0 top-0 z-30 shadow-lg dark:shadow-slate-950/50">
+      <div className={cn(
+        "hidden md:flex w-64 bg-white dark:bg-[#0e1118] h-screen flex-col fixed top-0 z-30 shadow-lg dark:shadow-slate-950/50",
+        isRtl
+          ? "border-l dark:border-slate-700/60 right-0"
+          : "border-r dark:border-slate-700/60 left-0"
+      )}>
         {sidebarContent}
       </div>
 
       {/* Mobile sidebar drawer */}
       <Sheet open={isMobileOpen} onOpenChange={(open) => !open && closeMobile()}>
-        <SheetContent side="left" className="w-64 p-0 flex flex-col">
+        <SheetContent side={isRtl ? "right" : "left"} className="w-64 p-0 flex flex-col">
           {sidebarContent}
         </SheetContent>
       </Sheet>

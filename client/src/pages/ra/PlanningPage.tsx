@@ -40,7 +40,23 @@ export default function RAPlanningPage() {
         const planned = requests
           .filter((r: any) =>
             r.evaluationStartDate || r.evaluationEndDate || r.scheduledDate ||
-            ["team_proposed", "team_approved", "evaluation_in_progress", "mandate_meetings", "site_evaluation", "documentary_review_in_progress"].includes(r.status)
+            [
+              // Constitution équipe
+              "team_designation", "team_sent_to_cd", "team_cd_approved", "team_sent_to_oec",
+              "team_date_refused", "team_member_recused", "team_recused", "team_recusation_invalid", "team_validated",
+              // Revue documentaire
+              "doc_review_in_progress", "doc_review_results_submitted", "doc_review_results_sent_to_cd",
+              "doc_review_results_sent_to_oec", "awaiting_oec_doc_response", "doc_review_cd_decision", "documentary_review_completed",
+              // Préparation évaluation
+              "mandates_preparation", "mandates_pending_cd", "mandates_cd_modification", "mandates_sent_to_team",
+              "mission_orders_pending", "mission_orders_pending_dt", "mission_orders_pending_dg", "mission_orders_sent",
+              "evaluation_plan_preparation", "evaluation_plan_pending_ra", "evaluation_plan_ra_approved",
+              "evaluation_plan_pending_cd", "evaluation_plan_validation", "evaluation_planned",
+              // Évaluation
+              "evaluation_in_progress", "evaluation_opening_meeting", "evaluation_ongoing",
+              "evaluation_consensus", "evaluation_closing_meeting", "evaluation_gaps_sent_to_oec",
+              "evaluation_oec_review", "evaluation_oec_all_accepted", "evaluation_docs_transmitted", "evaluation_completed",
+            ].includes(r.status)
           )
           .map((r: any) => ({
             id: r.id,
@@ -63,12 +79,40 @@ export default function RAPlanningPage() {
 
   const statusBadge = (status: string) => {
     const map: Record<string, { label: string; className: string }> = {
-      team_proposed: { label: "Équipe proposée", className: "bg-blue-100 text-blue-800" },
-      team_approved: { label: "Équipe validée", className: "bg-green-100 text-green-800" },
+      // Constitution équipe
+      team_designation: { label: "Désignation équipe", className: "bg-blue-100 text-blue-800" },
+      team_sent_to_cd: { label: "Équipe → CD", className: "bg-blue-100 text-blue-800" },
+      team_cd_approved: { label: "Équipe validée CD", className: "bg-green-100 text-green-800" },
+      team_sent_to_oec: { label: "Équipe → OEC", className: "bg-teal-100 text-teal-800" },
+      team_validated: { label: "Équipe validée", className: "bg-green-100 text-green-800" },
+      team_date_refused: { label: "Date refusée", className: "bg-red-100 text-red-800" },
+      team_member_recused: { label: "Récusation", className: "bg-amber-100 text-amber-800" },
+      // Revue documentaire
+      doc_review_in_progress: { label: "Revue documentaire", className: "bg-yellow-100 text-yellow-800" },
+      doc_review_results_submitted: { label: "Résultats soumis", className: "bg-yellow-100 text-yellow-800" },
+      doc_review_results_sent_to_cd: { label: "Résultats → CD", className: "bg-yellow-100 text-yellow-800" },
+      doc_review_results_sent_to_oec: { label: "Résultats → OEC", className: "bg-yellow-100 text-yellow-800" },
+      awaiting_oec_doc_response: { label: "En attente OEC", className: "bg-amber-100 text-amber-800" },
+      documentary_review_completed: { label: "Revue terminée", className: "bg-green-100 text-green-800" },
+      // Préparation évaluation
+      mandates_preparation: { label: "Mandatements", className: "bg-indigo-100 text-indigo-800" },
+      mandates_pending_cd: { label: "Mandatements → CD", className: "bg-indigo-100 text-indigo-800" },
+      mandates_sent_to_team: { label: "Mandatements envoyés", className: "bg-indigo-100 text-indigo-800" },
+      mission_orders_pending: { label: "Ordres mission", className: "bg-violet-100 text-violet-800" },
+      mission_orders_pending_dg: { label: "Ordres → DG", className: "bg-violet-100 text-violet-800" },
+      mission_orders_sent: { label: "Ordres signés", className: "bg-violet-100 text-violet-800" },
+      evaluation_plan_preparation: { label: "Plan FOR 32", className: "bg-cyan-100 text-cyan-800" },
+      evaluation_plan_pending_cd: { label: "Plan → CD", className: "bg-cyan-100 text-cyan-800" },
+      evaluation_plan_validation: { label: "Plan validé", className: "bg-cyan-100 text-cyan-800" },
+      evaluation_planned: { label: "Évaluation planifiée", className: "bg-emerald-100 text-emerald-800" },
+      // Évaluation
       evaluation_in_progress: { label: "Évaluation en cours", className: "bg-purple-100 text-purple-800" },
-      mandate_meetings: { label: "Mandatements", className: "bg-indigo-100 text-indigo-800" },
-      site_evaluation: { label: "Évaluation sur site", className: "bg-orange-100 text-orange-800" },
-      documentary_review_in_progress: { label: "Revue documentaire", className: "bg-yellow-100 text-yellow-800" },
+      evaluation_opening_meeting: { label: "Réunion ouverture", className: "bg-purple-100 text-purple-800" },
+      evaluation_ongoing: { label: "Évaluation sur site", className: "bg-orange-100 text-orange-800" },
+      evaluation_consensus: { label: "Consensus", className: "bg-purple-100 text-purple-800" },
+      evaluation_closing_meeting: { label: "Réunion clôture", className: "bg-purple-100 text-purple-800" },
+      evaluation_gaps_sent_to_oec: { label: "Écarts → OEC", className: "bg-amber-100 text-amber-800" },
+      evaluation_completed: { label: "Évaluation terminée", className: "bg-green-100 text-green-800" },
     };
     const found = map[status];
     if (found) return <Badge className={found.className}>{found.label}</Badge>;

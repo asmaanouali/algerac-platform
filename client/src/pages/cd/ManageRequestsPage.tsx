@@ -27,7 +27,7 @@ interface AccreditationRequest {
   submissionDate: string;
   oecId: number;
   oec: { organizationName: string; email: string; fullName: string };
-  assignedRa?: { id: number; fullName: string };
+  assignedToRa?: { id: number; fullName: string; email?: string; domaineExpertise?: string };
 }
 
 interface RAWorkload {
@@ -386,7 +386,7 @@ export default function CDManageRequestsPage() {
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">Réf : {request.referenceNumber || `#${request.id}`}</p>
-                              <p className="text-sm text-muted-foreground">RA : {request.assignedRa?.fullName || "—"}</p>
+                              <p className="text-sm text-muted-foreground">RA : {request.assignedToRa?.fullName || "—"}</p>
                             </div>
                             <div className="flex gap-2">
                               <Link href={`/cd/demande/${request.id}`}>
@@ -499,7 +499,7 @@ export default function CDManageRequestsPage() {
                               <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
                               <TableCell>{r.domain}</TableCell>
                               <TableCell><Badge variant={r.status === "CLOSED" ? "secondary" : r.status === "NOT_RECEIVABLE" ? "destructive" : "outline"}>{r.status.replace(/_/g, " ")}</Badge></TableCell>
-                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell>{r.assignedToRa?.fullName || "—"}</TableCell>
                               <TableCell className="text-sm">{r.submissionDate ? new Date(r.submissionDate).toLocaleDateString("fr-FR") : "—"}</TableCell>
                               <TableCell>
                                 <Link href={`/cd/demande/${r.id}`}>
@@ -540,7 +540,7 @@ export default function CDManageRequestsPage() {
                               <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
                               <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
                               <TableCell>{r.domain}</TableCell>
-                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell>{r.assignedToRa?.fullName || "—"}</TableCell>
                               <TableCell className="space-x-2">
                                 <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { setSelectedTeamRequest(r); setTeamValidDialogOpen(true); }}>
                                   <CheckCircle className="h-4 w-4 mr-1" />Approuver
@@ -584,7 +584,7 @@ export default function CDManageRequestsPage() {
                               <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
                               <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
                               <TableCell>{r.domain}</TableCell>
-                              <TableCell>{r.assignedRa?.fullName || "—"}</TableCell>
+                              <TableCell>{r.assignedToRa?.fullName || "—"}</TableCell>
                               <TableCell>
                                 <Button size="sm" onClick={() => { setSelectedRecusation(r); setRecusDecisionReason(""); setRecusDialogOpen(true); }}>
                                   <Shield className="h-4 w-4 mr-1" />Examiner
@@ -698,7 +698,7 @@ export default function CDManageRequestsPage() {
                 <div className="space-y-4 py-4">
                   <Alert>
                     <AlertDescription>
-                      <strong>RA :</strong> {reviewRequest.assignedRa?.fullName || "—"}<br />
+                      <strong>RA :</strong> {reviewRequest.assignedToRa?.fullName || "—"}<br />
                       <strong>Domaine :</strong> {reviewRequest.domain}<br />
                       <strong>Proposition du RA :</strong>{" "}
                       <Badge className={(reviewRequest as any).isReceivable ? "bg-green-500" : "bg-red-500"}>
@@ -808,7 +808,7 @@ export default function CDManageRequestsPage() {
                   <AlertDescription>
                     <strong>Dossier :</strong> {selectedTeamRequest.referenceNumber || `#${selectedTeamRequest.id}`}<br />
                     <strong>OEC :</strong> {selectedTeamRequest.oec?.organizationName}<br />
-                    <strong>RA :</strong> {selectedTeamRequest.assignedRa?.fullName || "—"}
+                    <strong>RA :</strong> {selectedTeamRequest.assignedToRa?.fullName || "—"}
                   </AlertDescription>
                 </Alert>
               )}
@@ -865,7 +865,7 @@ export default function CDManageRequestsPage() {
                     <AlertDescription>
                       <strong>Dossier :</strong> {selectedRecusation.referenceNumber || `#${selectedRecusation.id}`}<br />
                       <strong>OEC :</strong> {selectedRecusation.oec?.organizationName}<br />
-                      <strong>RA :</strong> {selectedRecusation.assignedRa?.fullName || "—"}
+                      <strong>RA :</strong> {selectedRecusation.assignedToRa?.fullName || "—"}
                     </AlertDescription>
                   </Alert>
                   <Alert className="border-amber-200 bg-amber-50">

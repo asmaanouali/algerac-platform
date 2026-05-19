@@ -2,6 +2,7 @@
 const path = require('path');
 const root = 'client/src';
 const files = [];
+const locales = ['fr', 'en', 'ar'];
 
 function walk(d) {
     if (!fs.existsSync(d)) return;
@@ -15,13 +16,13 @@ function walk(d) {
 
 walk(root);
 
-const re = /\bt\(\s*['"]([^'"]+)['"]/g;
 const used = new Set();
 for (const f of files) {
     const c = fs.readFileSync(f, 'utf8');
+    const re = /\bt\(\s*(['"`])([^'"`$]+)\1/g;
     let m;
     while ((m = re.exec(c))) {
-        used.add(m[1]);
+        used.add(m[2]);
     }
 }
 
@@ -37,8 +38,9 @@ function flatten(obj, p = '', out = {}) {
     return out;
 }
 
-const locales = ['fr', 'en', 'ar'];
 console.log('USED_KEYS ' + used.size);
+
+let hasMissing = false;
 
 for (const l of locales) {
     const lp = path.join('client/src/locales', l + '.json');
@@ -49,8 +51,13 @@ for (const l of locales) {
         } catch (e) {}
     }
     const missing = Array.from(used).filter(k => !(k in subData)).sort();
+    if (missing.length > 0) hasMissing = true;
     console.log('MISSING_' + l.toUpperCase() + ' ' + missing.length);
     for (const k of missing) {
         console.log(k);
     }
+}
+
+if (hasMissing) {
+    process.exitCode = 1;
 }

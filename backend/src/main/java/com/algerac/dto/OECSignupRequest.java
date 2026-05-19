@@ -30,6 +30,14 @@ public class OECSignupRequest {
     @NotBlank(message = "L'email est requis")
     @Email(message = "Email invalide")
     private String email;
+
+    /**
+     * Mot de passe choisi par l'OEC lors de l'inscription publique. Optionnel pour
+     * compatibilité avec les anciens flux (ex: envoi via formulaire papier). S'il
+     * est fourni, il est utilisé directement. Sinon, un mot de passe temporaire
+     * aléatoire est généré.
+     */
+    private String password;
     
     @NotBlank(message = "Le nom du représentant est requis")
     private String nomRepresentant;

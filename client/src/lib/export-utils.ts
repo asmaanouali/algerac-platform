@@ -54,7 +54,7 @@ export function exportToXlsx(headers: string[], rows: string[][], filename: stri
   xml += '</Workbook>';
 
   const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  downloadBlob(blob, `${filename}.xlsx`);
+  downloadBlob(blob, `${filename}.xls`);
 }
 
 /**

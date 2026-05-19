@@ -4,6 +4,7 @@ import { type User, type LoginRequest } from "@shared/schema";
 import { api } from "@shared/routes";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 type AuthContextType = {
   user: User | null;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function useLogin() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: async (credentials: LoginRequest) => {
       try {
@@ -44,14 +46,23 @@ export function useLogin() {
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/auth/me"], user);
       toast({
-        title: "Connexion réussie",
-        description: `Bienvenue, ${user.fullName}`,
+        title: t("auth.loginSuccess"),
+        description: t("auth.welcomeUser", { name: user.fullName }),
       });
     },
     onError: (error: Error) => {
+      const code = error.message;
+      let description: string;
+      if (code === "EMAIL_NOT_FOUND") {
+        description = t("auth.emailNotFound");
+      } else if (code === "WRONG_PASSWORD") {
+        description = t("auth.wrongPassword");
+      } else {
+        description = code;
+      }
       toast({
-        title: "Erreur de connexion",
-        description: error.message,
+        title: t("auth.loginError"),
+        description,
         variant: "destructive",
       });
     },

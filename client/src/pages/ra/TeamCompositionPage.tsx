@@ -86,6 +86,16 @@ export default function TeamCompositionPage() {
 
   // Evaluation date
   const [evaluationDate, setEvaluationDate] = useState("");
+  const setAndPersistDate = (reqId: number | undefined, date: string) => {
+    setEvaluationDate(date);
+    if (reqId) {
+      if (date) {
+        localStorage.setItem(`ra-eval-date-${reqId}`, date);
+      } else {
+        localStorage.removeItem(`ra-eval-date-${reqId}`);
+      }
+    }
+  };
 
   useEffect(() => { loadData(); }, []);
 
@@ -112,17 +122,29 @@ export default function TeamCompositionPage() {
 
   const selectRequest = async (req: any) => {
     setSelectedRequest(req);
+    setEvaluationDate("");
     try {
       const res = await fetch(`/api/workflow/teams/by-request/${req.id}`, { credentials: "include" });
       if (res.ok) {
         const teams = await res.json();
         if (teams.length > 0) {
-          setTeam(teams[0]);
-          const memRes = await fetch(`/api/workflow/teams/${teams[0].id}/members`, { credentials: "include" });
+          const t = teams[0];
+          setTeam(t);
+          // Pre-fill: prefer DB value (set after sendToCD), then draft from localStorage
+          if (t.proposedEvaluationDate) {
+            setEvaluationDate(t.proposedEvaluationDate.split("T")[0]);
+          } else {
+            const draft = localStorage.getItem(`ra-eval-date-${req.id}`);
+            if (draft) setEvaluationDate(draft);
+          }
+          const memRes = await fetch(`/api/workflow/teams/${t.id}/members`, { credentials: "include" });
           if (memRes.ok) setMembers(await memRes.json());
         } else {
           setTeam(null);
           setMembers([]);
+          // Still restore draft even if team not created yet
+          const draft = localStorage.getItem(`ra-eval-date-${req.id}`);
+          if (draft) setEvaluationDate(draft);
         }
       }
     } catch (e) { }
@@ -189,6 +211,8 @@ export default function TeamCompositionPage() {
       });
       const data = await res.json();
       if (data.success) {
+        // Date is now persisted in DB — clear the localStorage draft
+        localStorage.removeItem(`ra-eval-date-${selectedRequest?.id}`);
         toast({ title: "Succes", description: "Fiche de composition et date d'evaluation envoyees au CD pour validation" });
         loadData();
       }
@@ -420,9 +444,27 @@ export default function TeamCompositionPage() {
                       {/* Evaluation date + Send to CD */}
                       {team.status === "DRAFT" && hasMinimumTeam && (
                         <div className="mt-6 space-y-4">
+                          {/* OEC's requested date from DOC1 */}
+                          {(() => {
+                            try {
+                              const desc = JSON.parse(selectedRequest?.description || "{}");
+                              if (desc.dateEvaluation) {
+                                return (
+                                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                                    <CalendarDays className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                                    <div>
+                                      <p className="text-sm font-medium text-blue-800">Date souhaitee par le client (DOC1)</p>
+                                      <p className="text-sm text-blue-700">{new Date(desc.dateEvaluation).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            } catch { }
+                            return null;
+                          })()}
                           <div className="space-y-2">
                             <Label className="font-medium">Date d'evaluation proposee *</Label>
-                            <StringDatePicker value={evaluationDate} onChange={(v) => setEvaluationDate(v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                            <StringDatePicker value={evaluationDate} onChange={(v) => setAndPersistDate(selectedRequest?.id, v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
                             <p className="text-xs text-muted-foreground">Le CD validera puis enverra a l'OEC</p>
                           </div>
                           <Button className="w-full" size="lg" onClick={sendToCD} disabled={!members.every(m => m.confidentialityAgreementSigned && m.impartialityAgreementSigned) || !evaluationDate}>
@@ -455,7 +497,7 @@ export default function TeamCompositionPage() {
                           </div>
                           <div className="space-y-2">
                             <Label className="font-medium">Nouvelle date d'evaluation proposee *</Label>
-                            <StringDatePicker value={evaluationDate} onChange={(v) => setEvaluationDate(v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
+                            <StringDatePicker value={evaluationDate} onChange={(v) => setAndPersistDate(selectedRequest?.id, v)} min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]} />
                           </div>
                           <Button className="w-full" size="lg" onClick={changeDate} disabled={!evaluationDate}>
                             <Send className="w-4 h-4 mr-2" />Proposer la nouvelle date (envoi au CD pour validation)

@@ -450,6 +450,79 @@ export default function NewRequestPage() {
   const updateRow = (setter: React.Dispatch<React.SetStateAction<ForRow[]>>, id: number, field: string, value: string) =>
     setter((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
 
+  // ── Demo Fill (dev only) ──
+  const fillDemo = (type: string) => {
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 6);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    // Step 1
+    setTypeDemande(type);
+    setDateEvaluation(futureDateStr);
+    setActivites(["inspection"]);
+    setSiteType("monosite");
+
+    // Step 2
+    setNomLegal("LABO DEMO SARL");
+    setAbreviation("LDEMO");
+    setSigle("LD");
+    setStatutJuridique("SARL");
+    setRegistreCommerce("16B1234567");
+    setCodesActivite("7120 – Services d'essais et analyses techniques");
+    setAdresseSiege("12 Rue des Labos, Alger");
+    setAdresseFacturation("12 Rue des Labos, Alger");
+    setEmailOrg("contact@labodemo.dz");
+    setSiteWeb("www.labodemo.dz");
+    setAppartientGroupe("non");
+
+    // Step 3
+    setContactNom("Ahmed Bensalem");
+    setContactFonction("Directeur Qualité");
+    setContactAdresse("12 Rue des Labos, Alger");
+    setContactTelephone("+213 555 123 456");
+    setContactFax("+213 21 123 456");
+    setContactEmail("ahmed.bensalem@labodemo.dz");
+
+    // Step 4
+    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non", ebmd: "Non" }]);
+
+    // Step 5
+    setPersonnelSites([{ id: 1, site: "Alger", permanents: "10", vacataires: "3" }]);
+    setResponsablesTechniques([{ id: 1, nom: "Karim Zouaoui", qualifications: "Ingénieur génie industriel", experience: "8 ans" }]);
+    setResponsableQualiteNom("Fatima Cherif");
+    setResponsableQualiteQualif("Master Qualité");
+    setResponsableQualiteExp("5 ans");
+
+    // Step 6
+    setPrestationConseil("non");
+
+    // Step 7
+    setReconnaissances([{ id: 1, organisation: "IAF", domaine: "Inspection industrielle", validite: "2025" }]);
+    if (type === "transfert") setMotifTransfert("Transfert suite à réorganisation interne de l'organisme.");
+    else setMotifTransfert("");
+
+    // Step 8 – FOR 04 (inspection)
+    setFor04Type("A");
+    setFor04Domaines([{ id: Date.now(), domaine: "Équipements sous pression", sousDomaine: "Chaudières", objetInspecte: "Chaudière industrielle", norme: "EN 13445", typeInspection: "Périodique" }]);
+    setFor04Inspecteurs([{ id: Date.now() + 1, nom: "Mourad Kaci", qualification: "Ingénieur mécanique", domaineHabilitation: "Équipements sous pression", experience: "6", statut: "Permanent" }]);
+    setFor04Equipements([{ id: Date.now() + 2, designation: "Étalon de pression", marqueModele: "Fluke 700", noSerie: "SN-001", gamme: "0–600 bar", dateEtalonnage: "2024-01-15" }]);
+
+    // Step 9 – no file uploads in demo
+    setDocsAdminChecked({});
+    setDocsChecked({});
+
+    // Step 10
+    setDemandeurNom("Ahmed Bensalem");
+    setDemandeurFonction("Directeur Général");
+    setDemandeurDate(new Date().toISOString().split("T")[0]);
+    setSignature("A. Bensalem");
+    setEngagementsAcceptes(true);
+    setOrganismeSoumission("LABO DEMO SARL");
+
+    setCurrentStep(1);
+    setErrors({});
+  };
+
   // ── Validation ──
   const validateRows = (rows: Array<Record<string, any>>, keys: string[]): boolean => {
     if (!rows || rows.length === 0) return false;
@@ -1863,6 +1936,24 @@ export default function NewRequestPage() {
             <div>
               <h1 className="text-2xl font-bold">{t("nrp.title")}</h1>
               <p className="text-muted-foreground mt-1">{t("nrp.subtitle")}</p>
+            </div>
+
+            {/* ── DEMO FILL BAR (dev only) ── */}
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-4 py-3">
+              <span className="text-xs font-semibold text-amber-700 mr-1">Demo :</span>
+              {TYPES_DEMANDE.map((td) => (
+                <Button
+                  key={td.value}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-amber-400 text-amber-800 hover:bg-amber-100"
+                  onClick={() => fillDemo(td.value)}
+                >
+                  {td.label}
+                </Button>
+              ))}
+              <span className="text-[10px] text-amber-500 ml-auto">Rempli automatiquement pour test</span>
             </div>
 
             {/* Progress */}

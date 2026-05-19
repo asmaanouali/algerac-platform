@@ -6,13 +6,28 @@ import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, ArrowLeft, FileText, Download, Printer,
-  Building2, User, Mail, Phone, MapPin, Globe, Briefcase, Calendar, ClipboardList, Users, Shield, FileDown,
+  Building2, User, Mail, Phone, MapPin, Globe, Briefcase, Calendar, ClipboardList, Users, Shield, FileDown, UserPlus,
 } from "lucide-react";
 
 interface ParsedRow { [k: string]: any }
+
+interface RAWorkload {
+  id: number;
+  fullName: string;
+  email: string;
+  domaineExpertise?: string;
+  specialite?: string;
+  activeDossiers: number;
+  assignedDossiers: number;
+}
 
 const Info = ({ icon: Icon, label, value }: { icon?: any; label: string; value?: string | null }) => (
   <div className="space-y-0.5">
@@ -71,20 +86,58 @@ export default function CDRequestDetailPage() {
   const params = useParams<{ requestId: string }>();
   const requestId = params.requestId;
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [parsed, setParsed] = useState<any>(null);
+  const [rasWorkload, setRasWorkload] = useState<RAWorkload[]>([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedRaId, setSelectedRaId] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => { if (requestId) load(); }, [requestId]);
+
+  const getBestRAs = (domain: string) => [...rasWorkload].sort((a, b) => {
+    const am = a.domaineExpertise?.toLowerCase().includes(domain?.toLowerCase()) ? 1 : 0;
+    const bm = b.domaineExpertise?.toLowerCase().includes(domain?.toLowerCase()) ? 1 : 0;
+    return am !== bm ? bm - am : a.activeDossiers - b.activeDossiers;
+  });
+
+  const handleAssign = async () => {
+    if (!selectedRaId) { toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un RA" }); return; }
+    try {
+      setAssigning(true);
+      const res = await apiRequest("POST", `/api/requests/${requestId}/assign`, { raId: parseInt(selectedRaId) });
+      const selectedRA = rasWorkload.find(r => r.id === parseInt(selectedRaId));
+      const result = await res.json();
+      const refNumber = result.data?.referenceNumber || "";
+      toast({ title: "Assignation réussie", description: `Demande assignée à ${selectedRA?.fullName || "RA"}. N° dossier : ${refNumber}` });
+      setAssignDialogOpen(false);
+      // Rechargement silencieux (sans spinner) pour avoir les données fraîches
+      try {
+        const fresh = await apiRequest("GET", `/api/requests/${requestId}/full-details`);
+        const freshData = await fresh.json();
+        setData(freshData);
+        const desc = freshData?.request?.description;
+        if (desc) { try { setParsed(JSON.parse(desc)); } catch { /* */ } }
+      } catch { /* garder l'état actuel */ }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setAssigning(false); }
+  };
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await apiRequest("GET", `/api/requests/${requestId}/full-details`);
-      const j = await res.json();
+      const [detailRes, raRes] = await Promise.all([
+        apiRequest("GET", `/api/requests/${requestId}/full-details`),
+        apiRequest("GET", "/api/workflow/ra-workload"),
+      ]);
+      const j = await detailRes.json();
       setData(j);
       const desc = j?.request?.description;
       if (desc) { try { setParsed(JSON.parse(desc)); } catch { setParsed(null); } }
+      try { setRasWorkload(await raRes.json()); } catch { setRasWorkload([]); }
     } finally {
       setLoading(false);
     }
@@ -396,18 +449,18 @@ export default function CDRequestDetailPage() {
           </Card>
 
           {/* Assigned RA */}
-          <Card className={req.assignedRa ? "border-blue-200 bg-blue-50/40" : "border-amber-200 bg-amber-50/40"}>
+          <Card className={req.assignedToRa ? "border-blue-200 bg-blue-50/40" : "border-amber-200 bg-amber-50/40"}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="w-4 h-4" /> Responsable d'accréditation (RA)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {req.assignedRa ? (
+              {req.assignedToRa ? (
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Info icon={User} label="Nom complet" value={req.assignedRa.fullName} />
-                  <Info icon={Mail} label="Email" value={req.assignedRa.email} />
-                  {req.assignedRa.domaineExpertise && <Info icon={Briefcase} label="Expertise" value={req.assignedRa.domaineExpertise} />}
+                  <Info icon={User} label="Nom complet" value={req.assignedToRa.fullName} />
+                  <Info icon={Mail} label="Email" value={req.assignedToRa.email} />
+                  {req.assignedToRa.domaineExpertise && <Info icon={Briefcase} label="Expertise" value={req.assignedToRa.domaineExpertise} />}
                 </div>
               ) : (
                 <p className="text-sm text-amber-700 font-medium">Aucun RA assigné — action requise</p>
@@ -613,8 +666,76 @@ export default function CDRequestDetailPage() {
             </Card>
           )}
 
+          {/* Assign action */}
+          {!req.assignedToRa && req.status === "PENDING_CD_ASSIGNMENT" && (
+            <div className="flex justify-end pb-4">
+              <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => { setSelectedRaId(""); setAssignDialogOpen(true); }}>
+                <UserPlus className="w-4 h-4 mr-2" /> Assigner
+              </Button>
+            </div>
+          )}
+
         </main>
       </div>
+
+      {/* Assign Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Assigner à un Responsable d'Accréditation</DialogTitle>
+            <DialogDescription>Seuls les RA de votre département sont proposés ci-dessous.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Alert><AlertDescription><strong>OEC :</strong> {oec.organizationName || req.oec?.organizationName}<br /><strong>Domaine :</strong> {req.domain}<br /><strong>Type :</strong> {req.type}</AlertDescription></Alert>
+            <div className="space-y-2">
+              <Label>Responsable d'accréditation (RA du département)</Label>
+              <Select value={selectedRaId} onValueChange={setSelectedRaId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionnez un RA" /></SelectTrigger>
+                <SelectContent>
+                  {getBestRAs(req.domain).map((ra) => {
+                    const isMatch = ra.domaineExpertise?.toLowerCase().includes(req.domain?.toLowerCase());
+                    return (
+                      <SelectItem key={ra.id} value={ra.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <span>{ra.fullName}</span>
+                          {isMatch && <Badge variant="default" className="text-xs py-0 px-1">Match</Badge>}
+                          <span className="text-muted-foreground text-xs">{ra.email}</span>
+                          <span className="text-muted-foreground text-xs">({ra.activeDossiers} actifs)</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {rasWorkload.length === 0 && (
+                <p className="text-xs text-amber-700">Aucun RA n'est rattaché à votre département. Contactez l'administrateur.</p>
+              )}
+            </div>
+            {selectedRaId && (() => {
+              const ra = rasWorkload.find(r => r.id === parseInt(selectedRaId));
+              if (!ra) return null;
+              return (
+                <div className="border rounded-lg p-4 bg-muted/50 space-y-2">
+                  <h4 className="font-medium text-sm">Profil du RA</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Expertise :</span><p className="font-medium">{ra.domaineExpertise || "—"}</p></div>
+                    <div><span className="text-muted-foreground">Spécialité :</span><p className="font-medium">{ra.specialite || "—"}</p></div>
+                    <div><span className="text-muted-foreground">Actifs :</span><p className="font-medium">{ra.activeDossiers}</p></div>
+                    <div><span className="text-muted-foreground">Total :</span><p className="font-medium">{ra.assignedDossiers}</p></div>
+                  </div>
+                  {ra.activeDossiers > 5 && <Alert variant="destructive"><AlertDescription>Charge élevée ({ra.activeDossiers} dossiers actifs)</AlertDescription></Alert>}
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)} disabled={assigning}>Annuler</Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={handleAssign} disabled={assigning || !selectedRaId}>
+              {assigning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assignation...</> : "Assigner"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

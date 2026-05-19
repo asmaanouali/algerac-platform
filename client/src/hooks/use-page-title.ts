@@ -1,5 +1,7 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
+import { translateHardcodedText } from "@/lib/hardcoded-i18n";
 
 const APP_NAME = "ALGERAC";
 
@@ -44,10 +46,7 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/oec\/revue-ecarts$/, "Revue des écarts"],
   [/^\/oec\/documents$/, "Documents"],
   [/^\/oec\/certificates$/, "Certificats"],
-  [/^\/oec\/transfert$/, "Transfert d'accréditation"],
-  [/^\/oec\/transfert\/nouveau$/, "Nouveau transfert"],
   [/^\/oec\/surveillance$/, "Surveillance"],
-  [/^\/oec\/profile$/, "Profil"],
 
   [/^\/ra\/?$/, "Tableau de bord RA"],
   [/^\/ra\/dashboard$/, "Tableau de bord RA"],
@@ -64,7 +63,6 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/ra\/surveillance$/, "Surveillance"],
   [/^\/ra\/experts$/, "Annuaire experts"],
   [/^\/ra\/quotes$/, "Devis"],
-  [/^\/ra\/dossiers$/, "Dossiers"],
   [/^\/ra\/planning$/, "Planning"],
   [/^\/ra\/entretiens-candidats$/, "Entretiens candidats"],
 
@@ -78,10 +76,7 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/cd\/preparation-evaluation$/, "Préparation évaluation"],
   [/^\/cd\/traitement-ecarts$/, "Traitement des écarts"],
   [/^\/cd\/echantillonnage$/, "Échantillonnage"],
-  [/^\/cd\/developpement-domaines$/, "Développement des domaines"],
-  [/^\/cd\/regles-reference$/, "Règles de référence"],
   [/^\/cd\/multi-sites$/, "Multi-sites"],
-  [/^\/cd\/evaluation-distance$/, "Évaluation à distance"],
   [/^\/cd\/transferts$/, "Transferts d'accréditation"],
   [/^\/cd\/surveillance$/, "Surveillance"],
   [/^\/cd\/entretiens-candidats$/, "Entretiens candidats"],
@@ -170,7 +165,6 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/ges-competences\/entretiens$/, "Planning entretiens"],
   [/^\/ges-competences\/entretien\/.+$/, "Évaluation entretien"],
   [/^\/ges-competences\/qualifications$/, "Qualifications"],
-  [/^\/ges-competences\/commission$/, "Commission CQ"],
   [/^\/ges-competences\/observations$/, "Observations FOR 71"],
   [/^\/ges-competences\/surveillance$/, "Surveillance & KPI"],
 
@@ -189,9 +183,13 @@ export function resolvePageTitle(pathname: string): string {
 
 export function usePageTitle() {
   const [location] = useLocation();
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     const title = resolvePageTitle(location);
-    document.title = title ? `${title} · ${APP_NAME}` : `${APP_NAME} - Plateforme d'Accréditation`;
-  }, [location]);
+    const language = i18n.resolvedLanguage || i18n.language;
+    const fallbackTitle = translateHardcodedText("Plateforme d'Accréditation", language);
+    const translatedTitle = title ? translateHardcodedText(title, language) : "";
+    document.title = translatedTitle ? `${translatedTitle} · ${APP_NAME}` : `${APP_NAME} - ${fallbackTitle}`;
+  }, [i18n.language, i18n.resolvedLanguage, location]);
 }

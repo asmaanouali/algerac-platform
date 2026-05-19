@@ -86,6 +86,7 @@ public class AccreditationRequestController {
             m.put("currentPhase", r.getCurrentPhase());
             m.put("currentStep", r.getCurrentStep());
             m.put("nextAction", r.getNextAction());
+            m.put("pendingWith", r.getPendingWith());
             m.put("isReceivable", r.getIsReceivable());
             m.put("receivabilityComments", r.getReceivabilityComments());
             m.put("receivabilityCorrectionNeeded", r.getReceivabilityCorrectionNeeded());

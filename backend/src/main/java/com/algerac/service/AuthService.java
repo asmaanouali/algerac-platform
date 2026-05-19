@@ -33,6 +33,7 @@ public class AuthService {
 
     private static final String EXPERT_PREFIX = "EXP";
     private static final String FORMATEUR_PREFIX = "FOR";
+    private static final String EVALUATEUR_PREFIX = "EVAL";
 
     /**
      * Génère un ID séquentiel unique par rôle (ex: EXP-0001)
@@ -42,6 +43,9 @@ public class AuthService {
         switch (userType != null ? userType.toUpperCase() : "") {
             case "FORMATEUR":
                 prefix = FORMATEUR_PREFIX;
+                break;
+            case "EVALUATEUR":
+                prefix = EVALUATEUR_PREFIX;
                 break;
             case "EXPERT":
             default:
@@ -69,7 +73,11 @@ public class AuthService {
         
         User user = User.builder()
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString())) // Secure temporary password
+                .password(passwordEncoder.encode(
+                        request.getPassword() != null && !request.getPassword().isBlank()
+                                ? request.getPassword()
+                                : java.util.UUID.randomUUID().toString()
+                ))
                 .fullName(request.getNomOrganisme())
                 .role(UserRole.OEC)
                 .organizationName(request.getNomOrganisme())
@@ -240,12 +248,12 @@ public class AuthService {
     public User authenticate(String email, String password) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            return null;
+            throw new RuntimeException("EMAIL_NOT_FOUND");
         }
         
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            return null;
+            throw new RuntimeException("WRONG_PASSWORD");
         }
         
         if (user.getStatus() != UserStatus.APPROVED) {

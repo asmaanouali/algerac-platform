@@ -61,16 +61,25 @@ public class NotificationService {
         if (role == null) return null;
         Long id = request.getId();
         switch (role) {
-            case OEC:   return "/oec/demandes/" + id;
-            case RA:    return "/ra/dossiers/" + id;
-            case CD:    return "/cd/demande/" + id;
-            case DT:    return "/dt/demande/" + id;
-            case DAG:   return "/dag/dashboard";
-            case ADMIN: return "/admin";
+            case OEC:            return "/oec/demandes/" + id;
+            case RA:             return "/ra/dossiers/" + id;
+            case CD:             return "/cd/demande/" + id;
+            case DT:             return "/dt/demande/" + id;
+            case DAG:            return "/dag/dashboard";
+            case ADMIN:          return "/admin";
+            case DG:             return "/dg/dashboard";
+            case CAS_PRESIDENT:  return "/cas/president/dashboard";
+            case CAS_MEMBER:     return "/cas/member/dashboard";
+            case GES_COMPETENCES:return "/ges_competences/dashboard";
+            case RQ:             return "/rq/dashboard";
+            case SUP:            return "/sup/dashboard";
+            case CONSOLIDATION:  return "/consolidation/dashboard";
+            case FORMATEUR:      return "/dashboard";
+            case EXPERT:
             case REE:
             case ET:
-            case EQ:    return "/dashboard";
-            default:    return null;
+            case EQ:             return "/dashboard";
+            default:             return null;
         }
     }
     
@@ -178,6 +187,7 @@ public class NotificationService {
                             request.getOec().getOrganizationName(),
                             decision))
                     .type("action_required")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -358,6 +368,7 @@ public class NotificationService {
                             orgName,
                             email))
                     .type("action_required")
+                    .link("/admin/utilisateurs-pending")
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -470,6 +481,7 @@ public class NotificationService {
                         quotation.getQuotationNumber(),
                         quotation.getRequest().getOec().getOrganizationName()))
                 .type("success")
+                .link(requestLink(ra, quotation.getRequest()))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -530,6 +542,7 @@ public class NotificationService {
                             accepted ? "accepté" : "refusé",
                             request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -545,6 +558,7 @@ public class NotificationService {
                 .message(String.format("La visite préliminaire pour votre demande %s est programmée le %s.",
                         request.getReferenceNumber(), date.toString()))
                 .type("info")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -564,6 +578,7 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type(hasBlockingElements ? "warning" : "info")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -580,6 +595,7 @@ public class NotificationService {
                     .message(String.format("L'OEC a levé les obstacles pour la demande %s. " +
                             "Vous pouvez continuer le processus.", request.getReferenceNumber()))
                     .type("success")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -598,6 +614,7 @@ public class NotificationService {
                         "pour la demande %s. Veuillez signer les engagements de confidentialité.",
                         request.getReferenceNumber()))
                 .type("info")
+                .link(requestLink(expert, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -615,6 +632,7 @@ public class NotificationService {
                             member.getExpert().getFullName(),
                             hasConflict ? "OUI" : "NON"))
                     .type(hasConflict ? "warning" : "success")
+                    .link(requestLink(cd, member.getTeam().getRequest()))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -630,6 +648,7 @@ public class NotificationService {
                 .message(String.format("La composition de l'équipe d'évaluation pour %s est disponible. " +
                         "Veuillez la valider sous 3 jours.", request.getReferenceNumber()))
                 .type("info")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -646,6 +665,7 @@ public class NotificationService {
                     .message(String.format("Le RA a soumis la composition de l'équipe d'évaluation et la date proposée pour %s. " +
                             "Veuillez valider et envoyer à l'OEC, ou demander des modifications.", request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -667,6 +687,7 @@ public class NotificationService {
                     .title(validated ? "Équipe validée" : "Récusation de membres")
                     .message(message)
                     .type(validated ? "success" : "warning")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -687,6 +708,7 @@ public class NotificationService {
                 .title("Décision sur récusation")
                 .message(message)
                 .type("info")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -704,6 +726,7 @@ public class NotificationService {
                         "Veuillez soumettre vos plans d'actions sous 10 jours.",
                         gapCount, request.getReferenceNumber()))
                 .type("warning")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -725,6 +748,7 @@ public class NotificationService {
                         "Veuillez procéder à la mise en œuvre.",
                         gapCode, request.getReferenceNumber()))
                 .type("success")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -740,6 +764,7 @@ public class NotificationService {
                         "Motif: %s. Veuillez proposer un nouveau plan.",
                         gapCode, request.getReferenceNumber(), reason))
                 .type("error")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -760,6 +785,7 @@ public class NotificationService {
                         "Veuillez fournir des compléments.",
                         gapCode, request.getReferenceNumber()))
                 .type("warning")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -777,6 +803,7 @@ public class NotificationService {
                             "sur une éventuelle évaluation complémentaire.",
                             gapCode, request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -796,6 +823,7 @@ public class NotificationService {
                     .message(String.format("Le rapport %s pour %s est disponible pour validation.",
                             reportNumber, request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -818,6 +846,7 @@ public class NotificationService {
                     .message(String.format("Le rapport %s pour %s a été corrigé et resoumis.",
                             reportNumber, request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(cd, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -838,6 +867,7 @@ public class NotificationService {
                     .message(String.format("Une réunion CAS est programmée le %s pour la demande %s.",
                             meetingDate.toString(), request.getReferenceNumber()))
                     .type("info")
+                    .link(requestLink(member, request))
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -858,6 +888,7 @@ public class NotificationService {
                         "Vous pouvez maintenant transmettre cette décision à l'OEC.",
                         request.getReferenceNumber(), decision))
                 .type("info")
+                .link(requestLink(ra, request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -923,6 +954,7 @@ public class NotificationService {
                 .message(String.format("Votre accréditation pour %s a été maintenue suite à la surveillance.",
                         request.getReferenceNumber()))
                 .type("success")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -937,6 +969,7 @@ public class NotificationService {
                 .message(String.format("Votre accréditation pour %s a été suspendue. Motif: %s",
                         request.getReferenceNumber(), reason))
                 .type("error")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -951,6 +984,7 @@ public class NotificationService {
                 .message(String.format("Votre accréditation pour %s a été retirée. Motif: %s",
                         request.getReferenceNumber(), reason))
                 .type("error")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -966,6 +1000,7 @@ public class NotificationService {
                         "Nouvelle portée: %s",
                         request.getReferenceNumber(), newScope))
                 .type("warning")
+                .link(requestLink(request.getOec(), request))
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build();

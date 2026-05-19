@@ -210,10 +210,7 @@ export default function For28SubmissionPage() {
                 {t("auth.platformIntro")}
               </p>
 
-              <div className="inline-flex items-center gap-2 w-fit px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-medium text-green-100 mb-8">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Formulaire FOR28 sécurisé</span>
-              </div>
+             
 
               <div className="space-y-3 mb-auto">
                 <div className="flex items-center gap-3">

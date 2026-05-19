@@ -106,10 +106,6 @@ public class AuthController {
         
         try {
             User user = authService.authenticate(request.getEmail(), request.getPassword());
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error("Email ou mot de passe incorrect"));
-            }
             
             // Store user in session
             session.setAttribute("userId", user.getId());

@@ -1057,7 +1057,7 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">{t("er.titles.formationAcademique")}</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.formationAcademique")} <span className="text-red-500">*</span></h3>
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
                   {t("er.labels.chronologicalHint")}
@@ -1318,7 +1318,7 @@ export default function ExpertRegisterWizard() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">{t("er.titles.experiencePro")}</h3>
+              <h3 className="font-semibold text-lg">{t("er.titles.experiencePro")} <span className="text-red-500">*</span></h3>
               <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium">
                   {t("er.labels.chronologicalHint")}

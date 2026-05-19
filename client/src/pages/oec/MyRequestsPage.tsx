@@ -235,7 +235,6 @@ export default function MyRequestsPage() {
             </div>
             <div className="text-right space-y-1">
               <Badge variant={config.variant}>{t(`mrd.status.${request.status}`, { defaultValue: config.label })}</Badge>
-              <p className="text-xs text-muted-foreground">{t(`mrd.phase.${STATUS_CONFIG[request.status]?.phase || "initial"}`)}</p>
             </div>
           </div>
         </CardHeader>

@@ -9,6 +9,7 @@ import { StatCard } from "@/components/stat-card";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Loader2, FileSearch, FileText, ArrowRight, ClipboardList, Users,
@@ -120,20 +121,26 @@ export default function RADashboard() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiRequest("GET", "/api/requests/assigned-to-me");
-        const data = await res.json();
-        setRequests(Array.isArray(data) ? data : []);
-      } catch {
-        setRequests([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadData();
   }, []);
+
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const res = await apiRequest("GET", "/api/requests/assigned-to-me");
+      const data = await res.json();
+      setRequests(Array.isArray(data) ? data : []);
+    } catch {
+      setRequests([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const newAssignments = requests.filter(r => r.status === "ASSIGNED_TO_RA");
   const actionRequired = requests.filter(r => RA_PENDING_STATUSES.has(r.status));
@@ -158,12 +165,12 @@ export default function RADashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">{t('ra.dashboardTitle', { defaultValue: "Tableau de bord RA" })}</h1>
-            <p className="text-muted-foreground mt-1">
-              {user?.fullName ? `${user.fullName} — ` : ""}{t('ra.dashboardSubtitle', { defaultValue: "Suivi de mes dossiers d'accréditation" })}
-            </p>
-          </div>
+          <DashboardHeader
+            title={t('ra.dashboardTitle', { defaultValue: "Tableau de bord RA" })}
+            subtitle={`${user?.fullName ? `${user.fullName} — ` : ""}${t('ra.dashboardSubtitle', { defaultValue: "Suivi de mes dossiers d'accréditation" })}`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

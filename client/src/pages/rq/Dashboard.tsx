@@ -51,20 +51,26 @@ export default function RQDashboard() {
   const { user } = useAuth();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiRequest("GET", "/api/complaints/all");
-        const data = await res.json();
-        setComplaints(Array.isArray(data) ? data : []);
-      } catch {
-        setComplaints([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadData();
   }, []);
+
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const res = await apiRequest("GET", "/api/complaints/all");
+      const data = await res.json();
+      setComplaints(Array.isArray(data) ? data : []);
+    } catch {
+      setComplaints([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const open = complaints.filter(c => !["RESOLVED", "REJECTED", "CLOSED"].includes(c.status));
   const newReceived = complaints.filter(c => c.status === "RECEIVED");
@@ -86,14 +92,12 @@ export default function RQDashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6 text-primary" /> {t('complaints.rq.title', { defaultValue: 'Gestion des Plaintes' })}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {user?.fullName ? `${user.fullName} — ` : ""}{t('complaints.rq.subtitle', { defaultValue: "Tableau de bord du Responsable Qualité — FOR 50 / FOR 02-1" })}
-            </p>
-          </div>
+          <DashboardHeader
+            title={<span className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-primary" /> {t('complaints.rq.title', { defaultValue: 'Gestion des Plaintes' })}</span>}
+            subtitle={`${user?.fullName ? `${user.fullName} — ` : ""}${t('complaints.rq.subtitle', { defaultValue: "Tableau de bord du Responsable Qualité — FOR 50 / FOR 02-1" })}`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

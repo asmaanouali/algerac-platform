@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck, CalendarCheck, FileText, AlertTriangle, CheckCircle2, ClipboardList } from "lucide-react";
@@ -14,11 +15,14 @@ export default function EQDashboard() {
   const [teams, setTeams] = useState<any[]>([]);
   const [missions, setMissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = async () => {
+  const loadData = async (isRefresh = false) => {
     try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const [teamsRes, missionsRes] = await Promise.all([
         fetch("/api/workflow/teams/my-teams", { credentials: "include" }),
         fetch("/api/workflow/mission-orders/my-orders", { credentials: "include" }),
@@ -26,7 +30,10 @@ export default function EQDashboard() {
       if (teamsRes.ok) setTeams(await teamsRes.json());
       if (missionsRes.ok) setMissions(await missionsRes.json());
     } catch (e) { }
-    setLoading(false);
+    finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   if (!user) return null;
@@ -40,12 +47,12 @@ export default function EQDashboard() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">{t('eq.dashboardTitle')}</h1>
-            <p className="text-muted-foreground mt-1">
-              {user.fullName} — Spécialité: {user.specialite || "Système de management qualité"}
-            </p>
-          </div>
+          <DashboardHeader
+            title={t('eq.dashboardTitle')}
+            subtitle={`${user.fullName} — Spécialité: ${user.specialite || "Système de management qualité"}`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>

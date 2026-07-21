@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ export default function DGDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [pendingValidation, setPendingValidation] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showValidation, setShowValidation] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -35,27 +37,32 @@ export default function DGDashboard() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [ordersRes, reqRes, pendingRes] = await Promise.all([
-          fetch("/api/workflow/mission-orders/pending-approval", { credentials: "include" }),
-          fetch("/api/requests", { credentials: "include" }),
-          fetch("/api/requests/pending-dg-validation", { credentials: "include" }),
-        ]);
-        if (ordersRes.ok) setOrders(await ordersRes.json());
-        if (reqRes.ok) {
-          const d = await reqRes.json();
-          setRequests(Array.isArray(d) ? d : []);
-        }
-        if (pendingRes.ok) {
-          const d = await pendingRes.json();
-          setPendingValidation(Array.isArray(d) ? d : []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadData();
   }, []);
+
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const [ordersRes, reqRes, pendingRes] = await Promise.all([
+        fetch("/api/workflow/mission-orders/pending-approval", { credentials: "include" }),
+        fetch("/api/requests", { credentials: "include" }),
+        fetch("/api/requests/pending-dg-validation", { credentials: "include" }),
+      ]);
+      if (ordersRes.ok) setOrders(await ordersRes.json());
+      if (reqRes.ok) {
+        const d = await reqRes.json();
+        setRequests(Array.isArray(d) ? d : []);
+      }
+      if (pendingRes.ok) {
+        const d = await pendingRes.json();
+        setPendingValidation(Array.isArray(d) ? d : []);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const handleReceivabilityValidation = async () => {
     if (!validationDecision || !selectedRequest) return;
@@ -94,10 +101,12 @@ export default function DGDashboard() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">{t('dg_page.dashboardTitle', { defaultValue: "Tableau de bord DG" })}</h1>
-            <p className="text-muted-foreground mt-1">{user.fullName} — Direction Générale d'ALGERAC</p>
-          </div>
+          <DashboardHeader
+            title={t('dg_page.dashboardTitle', { defaultValue: "Tableau de bord DG" })}
+            subtitle={`${user.fullName} — Direction Générale d'ALGERAC`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>

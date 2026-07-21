@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import {
   CheckCircle2, Calendar, AlertTriangle, TrendingUp, Download,
   Loader2, FileText, FileImage, AlertCircle, ArrowRight, Shield
@@ -130,13 +131,16 @@ export default function OECDashboard() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [nextSurveillance, setNextSurveillance] = useState<Surveillance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (isRefresh = false) => {
     try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const res = await apiRequest("GET", "/api/requests/my-requests");
       const data: MyRequest[] = await res.json();
       const reqs = Array.isArray(data) ? data : [];
@@ -207,6 +211,7 @@ export default function OECDashboard() {
       setRequests([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -242,10 +247,12 @@ export default function OECDashboard() {
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
 
-          {/* Page header */}
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{t("oec.dashboard.title")}</h1>
-          </div>
+          <DashboardHeader
+            title={t("oec.dashboard.title")}
+            subtitle={`Bienvenue, ${user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-20">

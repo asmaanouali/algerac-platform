@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,14 +41,16 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({ totalUsers: 0, oecCount: 0, expertCount: 0, raCount: 0, pendingOecAccounts: 0, totalRequests: 0, activeRequests: 0 });
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const [usersRes, oecAppsRes, requestsRes] = await Promise.all([
         apiRequest("GET", "/api/users"),
         apiRequest("GET", "/api/oec-applications/approved-for-admin"),
@@ -74,6 +77,7 @@ export default function AdminDashboard() {
       toast({ variant: "destructive", title: t('admin.loadError'), description: t('admin.loadError') });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -85,10 +89,12 @@ export default function AdminDashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="mb-2">
-            <h1 className="text-2xl font-bold">{t('admin.dashboardTitle')}</h1>
-            <p className="text-muted-foreground mt-1">{t('admin.dashboardSubtitle')}</p>
-          </div>
+          <DashboardHeader
+            title={t('admin.dashboardTitle')}
+            subtitle={t('admin.dashboardSubtitle')}
+            onRefresh={() => loadDashboardData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

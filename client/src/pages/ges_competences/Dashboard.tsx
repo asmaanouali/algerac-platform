@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "@/components/layout-sidebar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,15 +32,17 @@ export default function GesCompetencesDashboard() {
   const [candidatures, setCandidatures] = useState<Candidature[]>([]);
   const [interviews, setInterviews] = useState<Candidature[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     document.title = "Tableau de Bord - Gestion des Compétences | ALGERAC";
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       // Auto-expire unconfirmed interviews past 7-day deadline
       await fetch("/api/candidatures/experts/expire-unconfirmed", { method: "POST", credentials: "include" }).catch(() => {});
       
@@ -59,6 +62,7 @@ export default function GesCompetencesDashboard() {
     } catch (error) {
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -169,28 +173,12 @@ export default function GesCompetencesDashboard() {
           
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Tableau de Bord</h1>
-              <p className="text-muted-foreground mt-1">
-                Bienvenue, {user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/ges-competences/candidatures">
-                <Button variant="outline" className="gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Candidatures
-                </Button>
-              </Link>
-              <Link href="/ges-competences/entretiens">
-                <Button className="gap-2">
-                  <CalendarDays className="w-4 h-4" />
-                  Planning Entretiens
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <DashboardHeader
+            title="Tableau de Bord"
+            subtitle={`Bienvenue, ${user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.`}
+            onRefresh={() => fetchData(true)}
+            refreshing={refreshing}
+          />
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

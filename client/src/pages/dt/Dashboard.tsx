@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { apiRequest } from "@/lib/queryClient";
 
 interface OECApplication {
@@ -68,11 +69,14 @@ export default function DTDashboard() {
   const [requests, setRequests] = useState<AccreditationReq[]>([]);
   const [missionOrders, setMissionOrders] = useState<MissionOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = async () => {
+  const loadData = async (isRefresh = false) => {
     try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       const [pendingRes, allRes, reqsRes, moRes] = await Promise.all([
         apiRequest("GET", "/api/oec-applications/pending").catch(() => null),
         apiRequest("GET", "/api/oec-applications/all").catch(() => null),
@@ -91,6 +95,7 @@ export default function DTDashboard() {
       /* swallow — dashboard is best-effort */
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -114,12 +119,12 @@ export default function DTDashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64">
         <Navbar />
         <main className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">{t('dt_page.dashboardTitle', { defaultValue: "Tableau de bord DT" })}</h1>
-            <p className="text-muted-foreground mt-1">
-              Vue d'ensemble de l'activité technique : candidatures, demandes d'accréditation, ordres de mission.
-            </p>
-          </div>
+          <DashboardHeader
+            title={t('dt_page.dashboardTitle', { defaultValue: "Tableau de bord DT" })}
+            subtitle="Vue d'ensemble de l'activité technique : candidatures, demandes d'accréditation, ordres de mission."
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

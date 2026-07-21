@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout-sidebar";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -136,27 +137,15 @@ export default function CDDashboard() {
       <div className="flex-1 flex flex-col w-full md:ml-64 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold">{t('cd.dashboardTitle')}</h1>
-              <p className="text-muted-foreground mt-1">
-                {(user as any)?.departmentName
-                  ? `Département : ${(user as any).departmentName}`
-                  : t('cd.dashboardSubtitle')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {lastFetched && (
-                <span className="text-xs text-muted-foreground">
-                  Mis à jour : {lastFetched.toLocaleTimeString("fr-FR")}
-                </span>
-              )}
-              <Button size="sm" variant="outline" onClick={() => loadData()} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
-                Rafraîchir
-              </Button>
-            </div>
-          </div>
+          <DashboardHeader
+            title={t('cd.dashboardTitle')}
+            subtitle={
+              `${(user as any)?.departmentName ? `Département : ${(user as any).departmentName}` : t('cd.dashboardSubtitle')}`
+              + (lastFetched ? ` • Mis à jour : ${lastFetched.toLocaleTimeString("fr-FR")}` : "")
+            }
+            onRefresh={() => loadData()}
+            refreshing={refreshing}
+          />
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

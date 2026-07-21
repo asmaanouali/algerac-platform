@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Receipt, Send, CheckCircle2 } from "lucide-react";
@@ -15,6 +17,12 @@ import { FileText, Receipt, Send, CheckCircle2 } from "lucide-react";
  */
 export default function ConsolidationDashboard() {
   const { t } = useTranslation();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    window.location.reload();
+  };
 
   const tiles = [
     {
@@ -49,14 +57,12 @@ export default function ConsolidationDashboard() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {t("roles.CONSOLIDATION", "Service Consolidation")}
-        </h1>
-        <p className="text-muted-foreground">
-          Facturation et délivrance finale des rapports d'évaluation et des certificats d'accréditation.
-        </p>
-      </div>
+      <DashboardHeader
+        title={t("roles.CONSOLIDATION", "Service Consolidation")}
+        subtitle="Facturation et délivrance finale des rapports d'évaluation et des certificats d'accréditation."
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((t) => (

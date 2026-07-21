@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/stat-card";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -36,24 +37,30 @@ export default function DAGDashboard() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [apps, setApps] = useState<OECApp[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [qRes, appsRes] = await Promise.all([
-          apiRequest("GET", "/api/quotations/pending-approval").catch(() => null),
-          apiRequest("GET", "/api/oec-applications/dag/all").catch(() => null),
-        ]);
-        if (qRes) setQuotations(await qRes.json());
-        if (appsRes) {
-          const data = await appsRes.json();
-          setApps(Array.isArray(data) ? data : []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadData();
   }, []);
+
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const [qRes, appsRes] = await Promise.all([
+        apiRequest("GET", "/api/quotations/pending-approval").catch(() => null),
+        apiRequest("GET", "/api/oec-applications/dag/all").catch(() => null),
+      ]);
+      if (qRes) setQuotations(await qRes.json());
+      if (appsRes) {
+        const data = await appsRes.json();
+        setApps(Array.isArray(data) ? data : []);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const feeToSet = apps.filter(a => a.status === "AWAITING_DAG_FEE");
   const awaitingPayment = apps.filter(a => a.status === "FEE_SET_AWAITING_PAYMENT");
@@ -66,12 +73,12 @@ export default function DAGDashboard() {
         <Navbar />
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-bold">{t('dag_page.dashboardTitle', { defaultValue: "Tableau de bord DAG" })}</h1>
-              <p className="text-muted-foreground mt-1">
-                {user?.fullName ? `${user.fullName} — ` : ""}Suivi des frais d'enregistrement, devis et paiements.
-              </p>
-            </div>
+            <DashboardHeader
+              title={t('dag_page.dashboardTitle', { defaultValue: "Tableau de bord DAG" })}
+              subtitle={`${user?.fullName ? `${user.fullName} — ` : ""}Suivi des frais d'enregistrement, devis et paiements.`}
+              onRefresh={() => loadData(true)}
+              refreshing={refreshing}
+            />
 
             {loading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

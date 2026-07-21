@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -19,13 +20,28 @@ interface Plan {
 export default function SupDashboard() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     document.title = "Dashboard Superviseur | ALGERAC";
-    fetch("/api/competency/supervision-plans/my", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setPlans);
+    loadData();
   }, []);
+
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const res = await fetch("/api/competency/supervision-plans/my", { credentials: "include" });
+      const data = res.ok ? await res.json() : [];
+      setPlans(Array.isArray(data) ? data : []);
+    } catch {
+      setPlans([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const upcoming = plans.filter((p) => p.status === "PLANNED" || p.status === "ASSIGNED");
   const completed = plans.filter((p) => p.status === "COMPLETED");
@@ -37,12 +53,12 @@ export default function SupDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6 text-emerald-600" /> Espace Superviseur
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Bonjour {user?.fullName}, voici votre activité de supervision (PRO 06 §5.5).</p>
-          </div>
+          <DashboardHeader
+            title={<span className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-emerald-600" /> Espace Superviseur</span>}
+            subtitle={`Bonjour ${user?.fullName}, voici votre activité de supervision (PRO 06 §5.5).`}
+            onRefresh={() => loadData(true)}
+            refreshing={refreshing}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>

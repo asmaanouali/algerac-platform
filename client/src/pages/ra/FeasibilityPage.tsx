@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
+import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf } from "@/lib/pdf-documents";
 
 // Persist study progress in localStorage so RA can resume where they stopped.
 const storageKey = (requestId: number | string) => `ra-feasibility-${requestId}`;
@@ -263,6 +264,16 @@ export default function RAFeasibilityPage() {
     URL.revokeObjectURL(url);
   };
 
+  const openDoc1 = () => {
+    if (!selectedRequest) return;
+    openAccreditationDoc1Pdf({ request: selectedRequest, oecProfile: details?.oecProfile, parsed: parsedDescription });
+  };
+
+  const openTechnicalForm = () => {
+    if (!selectedRequest) return;
+    openAccreditationTechnicalFormPdf({ request: selectedRequest, oecProfile: details?.oecProfile, parsed: parsedDescription });
+  };
+
   if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
@@ -381,12 +392,12 @@ export default function RAFeasibilityPage() {
                           <CardContent className="space-y-2">
                             {/* Official generated PDFs */}
                             <div className="flex flex-wrap gap-2 mb-3">
-                              <a href={`/api/requests/${selectedRequest.id}/doc1.pdf`} target="_blank" rel="noopener noreferrer">
-                                <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />DOC 01 (PDF)</Button>
-                              </a>
-                              <a href={`/api/requests/${selectedRequest.id}/technical-form.pdf`} target="_blank" rel="noopener noreferrer">
-                                <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" />Formulaire technique (PDF)</Button>
-                              </a>
+                              <Button size="sm" variant="outline" onClick={openDoc1} disabled={!parsedDescription}>
+                                <Download className="w-3 h-3 mr-1" />DOC 01 (PDF)
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={openTechnicalForm} disabled={!parsedDescription?.technicalForms}>
+                                <Download className="w-3 h-3 mr-1" />Formulaire technique (PDF)
+                              </Button>
                             </div>
                             {loadingDetails ? (
                               <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin" /></div>

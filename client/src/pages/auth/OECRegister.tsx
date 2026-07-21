@@ -1891,9 +1891,14 @@ export default function OECRegister() {
     <AuthLayout hideFlagBar>
       <div className="w-full max-w-4xl mx-auto py-6 px-4 space-y-6">
 
-            <div>
-              <h1 className="text-2xl font-bold">{t("oecRegister.title")}</h1>
-              <p className="text-muted-foreground mt-1">{t("oecRegister.subtitle")}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold">{t("oecRegister.title")}</h1>
+                <p className="text-muted-foreground mt-1">{t("oecRegister.subtitle")}</p>
+              </div>
+              <Button type="button" variant="outline" onClick={fillDemoOEC} className="h-11 gap-2">
+                Demo
+              </Button>
             </div>
 
             {/* Progress */}

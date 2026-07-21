@@ -188,6 +188,8 @@ export default function ExpertRegisterWizard() {
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
 
+  const DEMO_PHOTO_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
+
   // Step 6 & 7 gate toggles
   const [hasEvaluations, setHasEvaluations] = useState<boolean | null>(null);
   const [hasFormationsDispensees, setHasFormationsDispensees] = useState<boolean | null>(null);
@@ -688,6 +690,71 @@ export default function ExpertRegisterWizard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fillDemo = () => {
+    setFormData({
+      userType: "EXPERT",
+      nom: "Demo",
+      prenom: "Expert",
+      dateNaissance: "1990-01-01",
+      nationalite: "algerian",
+      nationaliteAutre: "",
+      situationFamiliale: "single",
+      email: "demo.expert@algerac.dz",
+      telephone: "+213 21 23 45 67",
+      telephoneMobile: "+213 66 12 34 56",
+      fax: "+213 21 23 45 68",
+      adresseDomicile: "123 Rue de la République, Alger",
+      adresseEntreprise: "123 Rue de la République, Alger",
+      wilaya: "16 - Alger",
+      contactUrgenceNom: "Samir BENALI",
+      contactUrgenceTelephone: "+213 21 23 45 69",
+      contactUrgenceMobile: "+213 66 65 43 21",
+      informationsComplementaires: "Données de démonstration pour test.",
+    });
+    setFormations([
+      {
+        dateDebut: "2010-09",
+        dateFin: "2013-06",
+        universite: "Université d'Alger",
+        coursSpecialite: "Informatique",
+        diplome: "master1",
+      },
+    ]);
+    setAutresFormations([
+      {
+        dateDebut: "",
+        dateFin: "",
+        universite: "",
+        coursSpecialite: "",
+        diplome: "",
+      },
+    ]);
+    setExperiences([
+      {
+        dateDebut: "2014-01",
+        dateFin: "2024-03",
+        organisme: "ALGERAC",
+        posteOccupe: "Expert technique",
+        activitesPrincipales: "Evaluation et formation",
+        categorieCompetence: "Technique",
+        domaineCompetence: "Audit",
+        sousDomaineCompetence: "Qualité",
+      },
+    ]);
+    setHasEvaluations(false);
+    setHasFormationsDispensees(false);
+    setLangues([
+      { langue: "arabic", langueAutre: "", lu: "excellent", parle: "excellent", ecrit: "excellent" },
+      { langue: "french", langueAutre: "", lu: "veryGood", parle: "veryGood", ecrit: "veryGood" },
+    ]);
+    setPhoto(new File([""], "demo-photo.png", { type: "image/png" }));
+    setPhotoBase64(DEMO_PHOTO_BASE64);
+    setConsent1(true);
+    setConsent2(true);
+    setErrors({});
+    setApiError("");
   };
 
   // Helper functions for updating dynamic arrays
@@ -2183,6 +2250,11 @@ export default function ExpertRegisterWizard() {
         {/* Form Content */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60">
           <div className="p-6 md:p-10">
+            <div className="flex justify-end mb-6">
+              <Button type="button" variant="outline" className="gap-2" onClick={fillDemo}>
+                Demo
+              </Button>
+            </div>
             {renderStep()}
 
             {/* Navigation */}

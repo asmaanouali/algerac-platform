@@ -267,9 +267,9 @@ export default function OECDashboard() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">
                       <p className="text-sm text-slate-500 font-medium">{t("oec.dashboard.accreditationStatus")}</p>
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      <CheckCircle2 className={`h-5 w-5 ${activeReq ? "text-emerald-500" : "text-red-500"}`} />
                     </div>
-                    <p className="text-2xl font-bold text-emerald-600">
+                    <p className={`text-2xl font-bold ${activeReq ? "text-emerald-600" : "text-red-600"}`}>
                       {activeReq ? t("oec.dashboard.active") : t("oec.dashboard.inactive")}
                     </p>
                     {expiryDate ? (

@@ -462,7 +462,10 @@ public class CandidatureService {
         validateExpertType(user);
 
         // Set the role chosen by GES_COMPETENCES
-        if (role != null && !role.isBlank()) {
+        // Exception: un candidat EVALUATEUR reçoit toujours EF (Évaluateur en Formation)
+        if ("EVALUATEUR".equalsIgnoreCase(user.getUserType())) {
+            user.setRole(UserRole.EF);
+        } else if (role != null && !role.isBlank()) {
             user.setRole(UserRole.valueOf(role));
         }
 
@@ -583,6 +586,8 @@ public class CandidatureService {
     
     /**
      * Crée un compte pour un expert/évaluateur/formateur approuvé par GES_COMPETENCES
+     * Note : si le candidat est de type EVALUATEUR (pas EXPERT ni FORMATEUR),
+     *        le rôle attribué est EF (Évaluateur en Formation) et non ET.
      */
     @Transactional
     public String createExpertAccount(Long userId, Long adminUserId) {
@@ -598,6 +603,12 @@ public class CandidatureService {
         String generatedPassword = generateSecurePassword(12);
         user.setPassword(passwordEncoder.encode(generatedPassword));
         user.setStatus(UserStatus.APPROVED);
+        
+        // Un candidat EVALUATEUR reçoit le rôle EF (Évaluateur en Formation)
+        if ("EVALUATEUR".equalsIgnoreCase(user.getUserType())) {
+            user.setRole(UserRole.EF);
+            log.info("Candidat EVALUATEUR -> rôle EF attribué pour l'utilisateur {}", userId);
+        }
         
         userRepository.save(user);
         

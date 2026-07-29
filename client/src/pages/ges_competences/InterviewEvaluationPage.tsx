@@ -800,7 +800,8 @@ export default function InterviewEvaluationPage() {
                         className="h-auto py-4 bg-emerald-600 hover:bg-emerald-700"
                         onClick={() => {
                           // Pre-select role based on userType
-                          const typeMap: Record<string, string> = { EXPERT: "EXPERT", EVALUATEUR: "ET", FORMATEUR: "EXPERT" };
+                          // Exception : EVALUATEUR obtient automatiquement le rôle EF
+                          const typeMap: Record<string, string> = { EXPERT: "EXPERT", EVALUATEUR: "EF", FORMATEUR: "FORMATEUR" };
                           setAcceptRole(typeMap[candidature.userType] || "EXPERT");
                           setShowAcceptDialog(true);
                         }}
@@ -900,8 +901,10 @@ export default function InterviewEvaluationPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EXPERT">Expert</SelectItem>
+                  <SelectItem value="EF">Évaluateur en Formation</SelectItem>
                   <SelectItem value="ET">Évaluateur Technique</SelectItem>
                   <SelectItem value="EQ">Évaluateur Qualité</SelectItem>
+                  <SelectItem value="FORMATEUR">Formateur</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -16,6 +16,8 @@ import DGDashboard from "@/pages/dg/Dashboard";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
+import SupDashboard from "@/pages/sup/Dashboard";
+import EFDashboard from "@/pages/ef/Dashboard";
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -70,6 +72,10 @@ export default function DashboardPage() {
       return <RQComplaintsDashboard />;
     case 'CONSOLIDATION':
       return <ConsolidationDashboard />;
+    case 'SUP':
+      return <SupDashboard />;
+    case 'EF':
+      return <EFDashboard />;
     default:
       return (
         <div className="flex h-screen items-center justify-center">

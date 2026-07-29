@@ -66,7 +66,7 @@ export default function AdminDashboard() {
       setStats({
         totalUsers: allUsers.length,
         oecCount: allUsers.filter((u: any) => u.role === "OEC").length,
-        expertCount: allUsers.filter((u: any) => ["EXPERT", "EVALUATEUR", "FORMATEUR", "ET", "EQ", "REE"].includes(u.role)).length,
+        expertCount: allUsers.filter((u: any) => ["EXPERT", "EVALUATEUR", "FORMATEUR", "ET", "EQ", "REE", "EF"].includes(u.role)).length,
         raCount: allUsers.filter((u: any) => u.role === "RA").length,
         pendingOecAccounts: Array.isArray(pendingOec) ? pendingOec.length : 0,
         totalRequests: allRequests.length,

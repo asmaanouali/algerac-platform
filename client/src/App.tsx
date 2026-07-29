@@ -81,6 +81,7 @@ import MyQualificationJourneyPage from "@/pages/shared/MyQualificationJourneyPag
 import SupDashboard from "@/pages/sup/Dashboard";
 import SupMyPlanPage from "@/pages/sup/MyPlanPage";
 import SupervisionFormPage from "@/pages/sup/SupervisionFormPage";
+import EFDashboard from "@/pages/ef/Dashboard";
 
 // Phase II - Évaluation sur site
 import SiteEvaluationPage from "@/pages/ree/SiteEvaluationPage";
@@ -334,7 +335,9 @@ function Router() {
       <Route path="/sup/supervision/:id">{() => <ProtectedRoute component={SupervisionFormPage} allowedRoles={["sup"]} />}</Route>
 
       {/* EF (Évaluateurs en Formation) — accessible to evaluator roles */}
-      <Route path="/exp/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["expert"]} />}</Route>
+      <Route path="/ef">{() => <ProtectedRoute component={EFDashboard} allowedRoles={["ef"]} />}</Route>
+      <Route path="/ef/dashboard">{() => <ProtectedRoute component={EFDashboard} allowedRoles={["ef"]} />}</Route>
+      <Route path="/exp/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["expert", "ef"]} />}</Route>
       <Route path="/et/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["et"]} />}</Route>
       <Route path="/ree/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["ree"]} />}</Route>
       <Route path="/eq/qualification">{() => <ProtectedRoute component={MyQualificationJourneyPage} allowedRoles={["eq"]} />}</Route>

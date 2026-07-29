@@ -69,6 +69,17 @@ interface Surveillance {
   scheduledDate?: string;
 }
 
+interface PendingPayment {
+  id: number;
+  requestId: number;
+  requestReferenceNumber?: string | null;
+  amount: number;
+  currency?: string;
+  paymentType: string;
+  status: string;
+  dagComments?: string | null;
+}
+
 const OPEN_GAP_STATUSES = new Set([
   "IDENTIFIED", "SENT_TO_REE", "KEPT_BY_REE", "SENT_TO_OEC", "OEC_ACCEPTED",
   "AWAITING_ACTION_PLAN", "PLAN_SUBMITTED", "PLAN_REJECTED",
@@ -130,6 +141,7 @@ export default function OECDashboard() {
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [nextSurveillance, setNextSurveillance] = useState<Surveillance | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -190,6 +202,13 @@ export default function OECDashboard() {
         } catch { /* ignore */ }
       }
 
+      // Fetch payments requiring OEC action (fees to pay or proof rejected by DAG)
+      try {
+        const payRes = await apiRequest("GET", "/api/payments/my-pending");
+        const payData = await payRes.json();
+        setPendingPayments(Array.isArray(payData) ? payData : []);
+      } catch { setPendingPayments([]); }
+
       // Fetch surveillances to find next one
       try {
         const survRes = await fetch("/api/workflow/surveillance/all", { credentials: "include" });
@@ -216,7 +235,9 @@ export default function OECDashboard() {
   };
 
   const activeReq = requests.find(r => r.status === "ACTIVE" || r.status === "CERTIFICATE_ISSUED");
-  const pendingActions = requests.filter(r => r.pendingWith === "OEC");
+  // Requests already surfaced as a dedicated payment action below are excluded here to avoid duplicates.
+  const pendingPaymentRequestIds = new Set(pendingPayments.map(p => p.requestId));
+  const pendingActions = requests.filter(r => r.pendingWith === "OEC" && !pendingPaymentRequestIds.has(r.id));
 
   const openGapsCount = gaps.filter(g => OPEN_GAP_STATUSES.has(g.status)).length;
   const resolvedCount = gaps.filter(g => RESOLVED_GAP_STATUSES.has(g.status)).length;
@@ -409,7 +430,7 @@ export default function OECDashboard() {
                 </Card>
 
                 {/* Actions Requises */}
-                <Card className={pendingActions.length > 0 || awaitingActionPlanGaps.length > 0 ? "border border-red-100" : "border border-slate-200"}>
+                <Card className={pendingActions.length > 0 || awaitingActionPlanGaps.length > 0 || pendingPayments.length > 0 ? "border border-red-100" : "border border-slate-200"}>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-800">
                       <AlertCircle className="h-4 w-4 text-red-500" />
@@ -417,6 +438,32 @@ export default function OECDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {/* Payments requiring action (fee to pay or proof rejected) */}
+                    {pendingPayments.map(pay => (
+                      <div key={`pay-${pay.id}`} className="p-4 rounded-xl border border-red-100 bg-red-50/50">
+                        <div className="flex items-start gap-3">
+                          <span className="mt-1.5 flex-shrink-0 h-2 w-2 rounded-full bg-red-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800">
+                              {pay.status === "DAG_REJECTED"
+                                ? t("oec.dashboard.paymentRejected")
+                                : t("oec.dashboard.paymentDue")}
+                              {pay.requestReferenceNumber ? ` — ${pay.requestReferenceNumber}` : ""}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {t("oec.dashboard.amountDue", { amount: pay.amount, currency: pay.currency || "DZD" })}
+                              {pay.status === "DAG_REJECTED" && pay.dagComments ? ` — ${pay.dagComments}` : ""}
+                            </p>
+                            <Link href={`/oec/paiement/${pay.requestId}`}>
+                              <Button size="sm" className="mt-3 bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3">
+                                {t("oec.dashboard.payNow")}
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
                     {/* Gaps awaiting action plan */}
                     {awaitingActionPlanGaps.length > 0 && (
                       <div className="p-4 rounded-xl border border-red-100 bg-red-50/50">
@@ -457,7 +504,7 @@ export default function OECDashboard() {
                       </div>
                     ))}
 
-                    {awaitingActionPlanGaps.length === 0 && pendingActions.length === 0 && (
+                    {awaitingActionPlanGaps.length === 0 && pendingActions.length === 0 && pendingPayments.length === 0 && (
                       <div className="py-6 text-center">
                         <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
                         <p className="text-sm text-slate-500">{t("oec.dashboard.noActions")}</p>

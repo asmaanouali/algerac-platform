@@ -73,6 +73,14 @@ public class AccreditationRequest {
     private User assignedToRa; // RA assigné par le CD
     
     private LocalDateTime assignmentDate; // Date d'assignation au RA
+
+    // Refus d'assignation par le RA (avant confirmation du dossier)
+    @Column(columnDefinition = "TEXT")
+    private String raRefusalReason; // Motif du refus donné par le RA
+
+    private LocalDateTime raRefusalDate; // Date du refus
+
+    private String refusedByRaName; // Nom du RA ayant refusé (conservé après désassignation)
     
     // DT review
     @Column(columnDefinition = "TEXT")

@@ -31,6 +31,7 @@ interface Request {
 const STATUS_COLORS: Record<string, string> = {
   PAYMENT_COMPLETED: "bg-amber-100 text-amber-700",
   ASSIGNED_TO_RA: "bg-blue-100 text-blue-700",
+  RA_ASSIGNMENT_REFUSED: "bg-red-100 text-red-700",
   RECEIVABILITY_STUDY: "bg-indigo-100 text-indigo-700",
   RECEIVABLE: "bg-emerald-100 text-emerald-700",
   NOT_RECEIVABLE: "bg-red-100 text-red-700",
@@ -82,20 +83,30 @@ export default function CDDashboard() {
     color: STATUS_COLORS[status] || "bg-slate-100 text-slate-700",
   });
 
-  const pendingAssignment = requests.filter(r => r.status === "PAYMENT_COMPLETED" || r.status === "PENDING_CD_ASSIGNMENT");
+  const pendingAssignment = requests.filter(r => r.status === "PAYMENT_COMPLETED" || r.status === "PENDING_CD_ASSIGNMENT" || r.status === "RA_ASSIGNMENT_REFUSED");
+  const refusedByRa = requests.filter(r => r.status === "RA_ASSIGNMENT_REFUSED");
   const teamComposition = requests.filter(r => r.status === "TEAM_COMPOSITION");
   const quotationPrep = requests.filter(r => r.status === "QUOTATION_PREPARATION");
   const receivabilityStudy = requests.filter(r => r.status === "RECEIVABILITY_STUDY");
 
   const requiredActions = [
-    ...(pendingAssignment.length > 0 ? [{
+    ...(refusedByRa.length > 0 ? [{
+      label: "Dossiers refusés par un RA",
+      description: "Réassigner à un autre responsable d'accréditation",
+      href: "/cd/manage-requests",
+      icon: AlertCircle,
+      badgeColor: "bg-red-100 text-red-800",
+      borderColor: "border-l-red-500",
+      requests: refusedByRa,
+    }] : []),
+    ...(pendingAssignment.filter(r => r.status !== "RA_ASSIGNMENT_REFUSED").length > 0 ? [{
       label: "Demandes sans RA affecté",
       description: "Affecter un responsable d'accréditation",
       href: "/cd/manage-requests",
       icon: UserPlus,
       badgeColor: "bg-amber-100 text-amber-800",
       borderColor: "border-l-amber-500",
-      requests: pendingAssignment,
+      requests: pendingAssignment.filter(r => r.status !== "RA_ASSIGNMENT_REFUSED"),
     }] : []),
     ...(receivabilityStudy.length > 0 ? [{
       label: "Études de recevabilité",
@@ -128,7 +139,7 @@ export default function CDDashboard() {
 
   const totalActionCount = requiredActions.reduce((sum, a) => sum + a.requests.length, 0);
 
-  const inProgress = requests.filter(r => !["PAYMENT_COMPLETED", "PENDING_CD_ASSIGNMENT", "CERTIFICATE_ISSUED", "CLOSED", "WITHDRAWN", "CAS_DECISION_GRANT"].includes(r.status));
+  const inProgress = requests.filter(r => !["PAYMENT_COMPLETED", "PENDING_CD_ASSIGNMENT", "RA_ASSIGNMENT_REFUSED", "CERTIFICATE_ISSUED", "CLOSED", "WITHDRAWN", "CAS_DECISION_GRANT"].includes(r.status));
   const completed = requests.filter(r => r.status === "CERTIFICATE_ISSUED" || r.status === "CAS_DECISION_GRANT");
 
   return (

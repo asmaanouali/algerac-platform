@@ -464,6 +464,19 @@ public class PaymentService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * OEC: paiements nécessitant une action de sa part (frais fixés à payer, ou
+     * preuve rejetée par le DAG à corriger). Utilisé pour les "actions requises"
+     * du tableau de bord OEC.
+     */
+    public List<PaymentDTO> getPendingPaymentsForOec(Long oecId) {
+        return paymentRepository.findByRequest_Oec_Id(oecId)
+                .stream()
+                .filter(p -> p.getStatus() == PaymentStatus.PENDING || p.getStatus() == PaymentStatus.DAG_REJECTED)
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
     
     public Payment getPaymentById(Long paymentId) {
         return paymentRepository.findById(paymentId)

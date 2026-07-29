@@ -71,6 +71,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   PAYMENT_COMPLETED:    { label: "Paiement validé",             color: "bg-amber-100 text-amber-700" },
   PENDING_CD_ASSIGNMENT:{ label: "En attente d'assignation",    color: "bg-amber-100 text-amber-700" },
   ASSIGNED_TO_RA:       { label: "Assignée au RA",              color: "bg-blue-100 text-blue-700" },
+  RA_ASSIGNMENT_REFUSED:{ label: "Refusée par le RA",           color: "bg-red-100 text-red-700" },
   RECEIVABILITY_STUDY:  { label: "Étude de recevabilité",        color: "bg-indigo-100 text-indigo-700" },
   RECEIVABLE:           { label: "Recevable",                   color: "bg-emerald-100 text-emerald-700" },
   NOT_RECEIVABLE:       { label: "Non recevable",               color: "bg-red-100 text-red-700" },
@@ -237,19 +238,27 @@ export default function CDRequestDetailPage() {
           </Card>
 
           {/* Assigned RA */}
-          <Card className={req.assignedToRa ? "border-blue-200 bg-blue-50/40" : "border-amber-200 bg-amber-50/40"}>
+          <Card className={req.assignedToRa ? "border-blue-200 bg-blue-50/40" : req.status === "RA_ASSIGNMENT_REFUSED" ? "border-red-200 bg-red-50/40" : "border-amber-200 bg-amber-50/40"}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="w-4 h-4" /> Responsable d'accréditation (RA)
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               {req.assignedToRa ? (
                 <div className="grid md:grid-cols-3 gap-4">
                   <Info icon={User} label="Nom complet" value={req.assignedToRa.fullName} />
                   <Info icon={Mail} label="Email" value={req.assignedToRa.email} />
                   {req.assignedToRa.domaineExpertise && <Info icon={Briefcase} label="Expertise" value={req.assignedToRa.domaineExpertise} />}
                 </div>
+              ) : req.status === "RA_ASSIGNMENT_REFUSED" ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    <strong>{req.refusedByRaName || "Le RA"}</strong> a refusé ce dossier{req.raRefusalDate ? ` le ${new Date(req.raRefusalDate).toLocaleDateString("fr-FR")}` : ""}.
+                    <br /><strong>Motif :</strong> {req.raRefusalReason || "—"}
+                    <br />Veuillez réassigner ce dossier à un autre RA.
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <p className="text-sm text-amber-700 font-medium">Aucun RA assigné — action requise</p>
               )}
@@ -455,10 +464,10 @@ export default function CDRequestDetailPage() {
           )}
 
           {/* Assign action */}
-          {!req.assignedToRa && req.status === "PENDING_CD_ASSIGNMENT" && (
+          {!req.assignedToRa && (req.status === "PENDING_CD_ASSIGNMENT" || req.status === "RA_ASSIGNMENT_REFUSED") && (
             <div className="flex justify-end pb-4">
               <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => { setSelectedRaId(""); setAssignDialogOpen(true); }}>
-                <UserPlus className="w-4 h-4 mr-2" /> Assigner
+                <UserPlus className="w-4 h-4 mr-2" /> {req.status === "RA_ASSIGNMENT_REFUSED" ? "Réassigner" : "Assigner"}
               </Button>
             </div>
           )}

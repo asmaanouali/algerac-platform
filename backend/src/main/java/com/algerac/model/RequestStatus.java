@@ -13,6 +13,7 @@ public enum RequestStatus {
     PAYMENT_PROOF_SUBMITTED,            // OEC a soumis preuve de paiement, en attente validation DAG
     PAYMENT_COMPLETED,                  // Paiement validé par le DAG, en attente d'assignation CD
     ASSIGNED_TO_RA,                     // Assignée à un RA par le CD
+    RA_ASSIGNMENT_REFUSED,              // RA a refusé le dossier (avec motif) - CD doit réassigner
     
     // Phase recevabilité
     RECEIVABILITY_STUDY,                // En étude de recevabilité par RA

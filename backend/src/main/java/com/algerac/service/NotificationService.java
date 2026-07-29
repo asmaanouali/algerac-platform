@@ -126,6 +126,29 @@ public class NotificationService {
         notificationRepository.save(notification);
         log.info("Notification envoyée au RA {} pour la demande {}", ra.getFullName(), request.getReferenceNumber());
     }
+
+    @Transactional
+    public void notifyCDRaRefused(AccreditationRequest request, String raName, String reason) {
+        User cd = request.getAssignedToCd();
+        if (cd == null) return;
+
+        Notification notification = Notification.builder()
+                .user(cd)
+                .title("Dossier refusé par le RA")
+                .message(String.format("%s a refusé le dossier %s de %s. Motif : %s. Veuillez réassigner ce dossier à un autre RA.",
+                        raName,
+                        request.getReferenceNumber(),
+                        request.getOec().getOrganizationName(),
+                        reason))
+                .type("warning")
+                .link(requestLink(cd, request))
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(notification);
+        log.info("Notification envoyée au CD {} : refus du RA {} pour la demande {}", cd.getFullName(), raName, request.getReferenceNumber());
+    }
     
     @Transactional
     public void notifyOECReceivabilityDecision(AccreditationRequest request, boolean isReceivable) {

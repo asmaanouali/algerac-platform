@@ -16,6 +16,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByRequest_IdAndPaymentType(Long requestId, String paymentType);
     
     List<Payment> findByStatus(PaymentStatus status);
+
+    // Tous les paiements des demandes appartenant à un OEC donné — utilisé pour
+    // lister les actions requises (paiements en attente) sur son tableau de bord.
+    List<Payment> findByRequest_Oec_Id(Long oecId);
     
     Optional<Payment> findByTransactionId(String transactionId);
 }

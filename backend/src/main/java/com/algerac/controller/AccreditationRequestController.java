@@ -543,6 +543,37 @@ public class AccreditationRequestController {
     }
     
     /**
+     * RA: Refuser un dossier fraîchement assigné, avec motif obligatoire.
+     * Le dossier repart chez le CD pour réassignation à un autre RA.
+     */
+    @PostMapping("/{id}/refuse-assignment")
+    public ResponseEntity<ApiResponse> refuseAssignment(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            String reason = body.get("reason");
+            AccreditationRequest request = requestService.refuseAssignment(id, reason, currentUser);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Dossier refusé. Le Chef de Département a été notifié pour réassignation.",
+                    request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * RA: Commencer l'étude de recevabilité
      */
     @PostMapping("/{id}/start-study")

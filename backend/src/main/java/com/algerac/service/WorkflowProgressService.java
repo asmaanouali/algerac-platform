@@ -27,6 +27,7 @@ public class WorkflowProgressService {
             Map.entry(RequestStatus.PAYMENT_PROOF_SUBMITTED, new WorkflowState(8, "INITIAL", "Phase Initiale", "Preuve de paiement soumise")),
             Map.entry(RequestStatus.PAYMENT_COMPLETED, new WorkflowState(8, "INITIAL", "Phase Initiale", "Paiement validé")),
             Map.entry(RequestStatus.ASSIGNED_TO_RA, new WorkflowState(9, "INITIAL", "Phase Initiale", "Assignée au RA")),
+            Map.entry(RequestStatus.RA_ASSIGNMENT_REFUSED, new WorkflowState(8, "INITIAL", "Phase Initiale", "Refusée par le RA - réassignation nécessaire")),
 
             // Phase I - Recevabilité (10-20%)
             Map.entry(RequestStatus.RECEIVABILITY_STUDY, new WorkflowState(10, "RECEVABILITE", "Phase I - Recevabilité", "Étude de recevabilité")),

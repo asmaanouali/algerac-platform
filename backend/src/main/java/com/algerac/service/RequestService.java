@@ -372,7 +372,9 @@ public class RequestService {
         AccreditationRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
         
-        if (request.getStatus() != RequestStatus.PENDING_CD_ASSIGNMENT && request.getStatus() != RequestStatus.PAYMENT_COMPLETED) {
+        if (request.getStatus() != RequestStatus.PENDING_CD_ASSIGNMENT
+                && request.getStatus() != RequestStatus.PAYMENT_COMPLETED
+                && request.getStatus() != RequestStatus.RA_ASSIGNMENT_REFUSED) {
             throw new RuntimeException("Cette demande n'est pas en attente d'assignation");
         }
         
@@ -390,8 +392,12 @@ public class RequestService {
         request.setProgress(15);
         request.setCurrentPhase("INITIAL");
         request.setCurrentStep("Assignée au RA");
-        request.setNextAction("RA doit commencer l'étude de recevabilité");
+        request.setNextAction("RA doit confirmer ou refuser le dossier, puis commencer l'étude de recevabilité");
         request.setPendingWith("RA");
+        // Clear any previous refusal trail — this is a fresh assignment
+        request.setRaRefusalReason(null);
+        request.setRaRefusalDate(null);
+        request.setRefusedByRaName(null);
 
         // Générer automatiquement la référence AC/<domaine>/<seq>/<année> à l'assignation
         if (request.getReferenceNumber() == null || request.getReferenceNumber().isBlank()) {
@@ -480,6 +486,51 @@ public class RequestService {
         log.info("Étude de recevabilité commencée pour la demande {} par {}", 
                 request.getReferenceNumber(), currentUser.getFullName());
         
+        return request;
+    }
+
+    /**
+     * RA : refuser un dossier qui vient de lui être assigné, avec motif obligatoire.
+     * Le dossier repart chez le CD (qui l'avait assigné) pour être réassigné à un autre RA.
+     */
+    @Transactional
+    public AccreditationRequest refuseAssignment(Long requestId, String reason, User currentUser) {
+        if (currentUser.getRole() != UserRole.RA) {
+            throw new RuntimeException("Seuls les RAs peuvent refuser un dossier assigné");
+        }
+
+        if (reason == null || reason.isBlank()) {
+            throw new RuntimeException("Un motif de refus est obligatoire");
+        }
+
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        if (request.getAssignedToRa() == null || !request.getAssignedToRa().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Cette demande ne vous est pas assignée");
+        }
+
+        if (request.getStatus() != RequestStatus.ASSIGNED_TO_RA) {
+            throw new RuntimeException("Seul un dossier fraîchement assigné (non encore démarré) peut être refusé");
+        }
+
+        String raName = request.getAssignedToRa().getFullName();
+
+        request.setRaRefusalReason(reason.trim());
+        request.setRaRefusalDate(LocalDateTime.now());
+        request.setRefusedByRaName(raName);
+        request.setAssignedToRa(null);
+        request.setAssignmentDate(null);
+        request.setStatus(RequestStatus.RA_ASSIGNMENT_REFUSED);
+        request.setCurrentStep("Assignation refusée par le RA");
+        request.setNextAction("Le RA a refusé le dossier — réassigner à un autre RA");
+        request.setPendingWith("CD");
+
+        request = requestRepository.save(request);
+        log.info("Le RA {} a refusé la demande {} (motif: {})", raName, request.getReferenceNumber(), reason);
+
+        notificationService.notifyCDRaRefused(request, raName, reason.trim());
+
         return request;
     }
     

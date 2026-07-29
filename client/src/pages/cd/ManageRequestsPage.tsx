@@ -28,6 +28,9 @@ interface AccreditationRequest {
   oecId: number;
   oec: { organizationName: string; email: string; fullName: string };
   assignedToRa?: { id: number; fullName: string; email?: string; domaineExpertise?: string };
+  raRefusalReason?: string;
+  raRefusalDate?: string;
+  refusedByRaName?: string;
 }
 
 interface RAWorkload {
@@ -100,14 +103,18 @@ export default function CDManageRequestsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [pendingRes, allRes, raRes, recevRes, cdValRes] = await Promise.all([
+      const [pendingRes, refusedRes, allRes, raRes, recevRes, cdValRes] = await Promise.all([
         apiRequest("GET", "/api/requests/status/PENDING_CD_ASSIGNMENT"),
+        apiRequest("GET", "/api/requests/status/RA_ASSIGNMENT_REFUSED").catch(() => ({ json: () => [] } as any)),
         apiRequest("GET", "/api/requests"),
         apiRequest("GET", "/api/workflow/ra-workload"),
         apiRequest("GET", "/api/requests/status/RECEIVABILITY_PENDING_CD_REVIEW"),
         apiRequest("GET", "/api/quotations/pending-cd-validation").catch(() => ({ json: () => [] })),
       ]);
-      setPendingRequests(await pendingRes.json());
+      const pendingAssignment = await pendingRes.json();
+      const refusedByRa = await refusedRes.json();
+      // Dossiers refusés par un RA remontent en tête de la liste "En attente" pour réassignation prioritaire.
+      setPendingRequests([...(refusedByRa || []), ...(pendingAssignment || [])]);
       const allData = await allRes.json();
       const allReqs = allData.data || allData;
       setAllRequests(allReqs);
@@ -287,7 +294,7 @@ export default function CDManageRequestsPage() {
     } finally { setRecusProcessing(false); }
   };
 
-  const assignedCount = allRequests.filter(r => !["DRAFT","PENDING_DT_REVIEW","DT_REJECTED","PENDING_CD_ASSIGNMENT","PENDING_PAYMENT","PAYMENT_COMPLETED","CLOSED","REJECTED"].includes(r.status)).length;
+  const assignedCount = allRequests.filter(r => !["DRAFT","PENDING_DT_REVIEW","DT_REJECTED","PENDING_CD_ASSIGNMENT","RA_ASSIGNMENT_REFUSED","PENDING_PAYMENT","PAYMENT_COMPLETED","CLOSED","REJECTED"].includes(r.status)).length;
   const closedCount = allRequests.filter(r => r.status === "CLOSED").length;
   const nonReceivableRequests = allRequests.filter(r => r.status === "NOT_RECEIVABLE");
 
@@ -341,21 +348,34 @@ export default function CDManageRequestsPage() {
                     ) : (
                       <div className="space-y-4">
                         {pendingRequests.map((request) => (
-                          <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-3">
-                                <h3 className="font-semibold">{request.oec?.organizationName || request.oec?.fullName}</h3>
-                                <Badge variant="outline">{request.type}</Badge>
+                          <div key={request.id} className={`p-4 border rounded-lg hover:bg-accent transition-colors ${request.status === "RA_ASSIGNMENT_REFUSED" ? "border-red-200 bg-red-50/40" : ""}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-3">
+                                  <h3 className="font-semibold">{request.oec?.organizationName || request.oec?.fullName}</h3>
+                                  <Badge variant="outline">{request.type}</Badge>
+                                  {request.status === "RA_ASSIGNMENT_REFUSED" && (
+                                    <Badge className="bg-red-100 text-red-700 border-red-200" variant="outline">Refusée par le RA</Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">Domaine : {request.domain}</p>
+                                <p className="text-sm text-muted-foreground">Soumise le : {new Date(request.submissionDate).toLocaleDateString("fr-FR")}</p>
                               </div>
-                              <p className="text-sm text-muted-foreground">Domaine : {request.domain}</p>
-                              <p className="text-sm text-muted-foreground">Soumise le : {new Date(request.submissionDate).toLocaleDateString("fr-FR")}</p>
+                              <div className="flex gap-2">
+                                <Link href={`/cd/demande/${request.id}`}>
+                                  <Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />Voir</Button>
+                                </Link>
+                                <Button onClick={() => openAssignDialog(request)}><UserPlus className="h-4 w-4 mr-2" />{request.status === "RA_ASSIGNMENT_REFUSED" ? "Réassigner" : "Assigner"}</Button>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Link href={`/cd/demande/${request.id}`}>
-                                <Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />Voir</Button>
-                              </Link>
-                              <Button onClick={() => openAssignDialog(request)}><UserPlus className="h-4 w-4 mr-2" />Assigner</Button>
-                            </div>
+                            {request.status === "RA_ASSIGNMENT_REFUSED" && request.raRefusalReason && (
+                              <Alert variant="destructive" className="mt-3">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  <strong>{request.refusedByRaName || "Le RA"}</strong> a refusé ce dossier{request.raRefusalDate ? ` le ${new Date(request.raRefusalDate).toLocaleDateString("fr-FR")}` : ""} — <em>{request.raRefusalReason}</em>
+                                </AlertDescription>
+                              </Alert>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -498,7 +518,7 @@ export default function CDManageRequestsPage() {
                             <TableCell className="font-mono">{r.referenceNumber || `#${r.id}`}</TableCell>
                               <TableCell>{r.oec?.organizationName || r.oec?.fullName}</TableCell>
                               <TableCell>{r.domain}</TableCell>
-                              <TableCell><Badge variant={r.status === "CLOSED" ? "secondary" : r.status === "NOT_RECEIVABLE" ? "destructive" : "outline"}>{r.status.replace(/_/g, " ")}</Badge></TableCell>
+                              <TableCell><Badge variant={r.status === "CLOSED" ? "secondary" : (r.status === "NOT_RECEIVABLE" || r.status === "RA_ASSIGNMENT_REFUSED") ? "destructive" : "outline"}>{r.status.replace(/_/g, " ")}</Badge></TableCell>
                               <TableCell>{r.assignedToRa?.fullName || "—"}</TableCell>
                               <TableCell className="text-sm">{r.submissionDate ? new Date(r.submissionDate).toLocaleDateString("fr-FR") : "—"}</TableCell>
                               <TableCell>

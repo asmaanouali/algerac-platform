@@ -33,6 +33,19 @@ public class PaymentController {
     public ResponseEntity<List<PaymentDTO>> getPaymentsByRequest(@PathVariable Long requestId) {
         return ResponseEntity.ok(paymentService.getPaymentsByRequest(requestId));
     }
+
+    /**
+     * OEC: paiements nécessitant une action de sa part (à payer ou preuve rejetée),
+     * toutes demandes confondues — alimente les "actions requises" du tableau de bord.
+     */
+    @GetMapping("/my-pending")
+    public ResponseEntity<List<PaymentDTO>> getMyPendingPayments(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(paymentService.getPendingPaymentsForOec(userId));
+    }
     
     @GetMapping("/{id}")
     public ResponseEntity<Payment> getPayment(@PathVariable Long id) {

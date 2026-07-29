@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -85,20 +86,33 @@ export default function RAFeasibilityPage() {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [paymentValidationDate, setPaymentValidationDate] = useState<string | null>(null);
 
+  const [refuseDialogOpen, setRefuseDialogOpen] = useState(false);
+  const [refuseReason, setRefuseReason] = useState("");
+  const [refusing, setRefusing] = useState(false);
+
   // Debounce timer for backend draft saves
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Depend on the user id (a stable primitive) rather than the whole `user`
+  // object — some auth consumers derive a new `user` object reference on each
+  // render, which would otherwise re-trigger this effect and re-flash the
+  // full-page loader on every unrelated re-render.
+  const userId = (user as any)?.id;
   useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
-    else if (user && !authLoading) loadRequests();
-  }, [user, authLoading]);
+    if (!authLoading && !userId) setLocation("/");
+    else if (userId && !authLoading) loadRequests(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, authLoading]);
 
   if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   if (!user) return null;
 
-  const loadRequests = async () => {
+  const loadRequests = async (isInitial = false) => {
     try {
-      setLoading(true);
+      // Only show the blocking full-page loader on the very first load —
+      // subsequent refreshes (e.g. after starting a study) should not blank
+      // the whole page and reset the user's scroll position/selection.
+      if (isInitial) setLoading(true);
       const res = await apiRequest("GET", "/api/requests/assigned-to-me");
       const data = await res.json();
       const filtered = data.filter((r: any) => ["ASSIGNED_TO_RA", "RECEIVABILITY_STUDY", "RESOURCE_CHECK", "RECEIVABILITY_PENDING_CD_REVIEW"].includes(r.status));
@@ -194,11 +208,26 @@ export default function RAFeasibilityPage() {
     if (!selectedRequest) return;
     try {
       await apiRequest("POST", `/api/requests/${selectedRequest.id}/start-study`);
-      toast({ title: "Étude démarrée" });
+      toast({ title: "Dossier confirmé", description: "Étude de recevabilité démarrée." });
       loadRequests();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     }
+  };
+
+  const refuseAssignment = async () => {
+    if (!selectedRequest || !refuseReason.trim()) return;
+    try {
+      setRefusing(true);
+      await apiRequest("POST", `/api/requests/${selectedRequest.id}/refuse-assignment`, { reason: refuseReason.trim() });
+      toast({ title: "Dossier refusé", description: "Le Chef de Département a été notifié pour réassignation." });
+      setRefuseDialogOpen(false);
+      setRefuseReason("");
+      setSelectedRequest(null);
+      loadRequests();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setRefusing(false); }
   };
 
   const handleSubmitDecision = async () => {
@@ -362,9 +391,14 @@ export default function RAFeasibilityPage() {
                   {!selectedRequest ? (
                     <p className="text-center text-muted-foreground py-8">Sélectionnez un dossier à gauche</p>
                   ) : selectedRequest.status === "ASSIGNED_TO_RA" ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">Démarrez l'étude de recevabilité pour ce dossier</p>
-                      <Button onClick={startStudy}><FileText className="mr-2 h-4 w-4" />Démarrer l'étude</Button>
+                    <div className="text-center py-8 space-y-4">
+                      <p className="text-muted-foreground">Ce dossier vous a été assigné par le CD. Confirmez-le pour démarrer l'étude de recevabilité, ou refusez-le en indiquant un motif.</p>
+                      <div className="flex items-center justify-center gap-3">
+                        <Button onClick={startStudy}><CheckCircle className="mr-2 h-4 w-4" />Confirmer & démarrer l'étude</Button>
+                        <Button variant="destructive" onClick={() => { setRefuseReason(""); setRefuseDialogOpen(true); }}>
+                          <XCircle className="mr-2 h-4 w-4" />Refuser le dossier
+                        </Button>
+                      </div>
                     </div>
                   ) : selectedRequest.status === "RECEIVABILITY_PENDING_CD_REVIEW" ? (
                     <div className="text-center py-8 space-y-4">
@@ -580,6 +614,27 @@ export default function RAFeasibilityPage() {
           </div>
         </main>
       </div>
+
+      <Dialog open={refuseDialogOpen} onOpenChange={setRefuseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refuser ce dossier</DialogTitle>
+            <DialogDescription>
+              Le dossier repartira chez le Chef de Département pour être réassigné à un autre RA. Un motif est obligatoire.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Motif du refus *</Label>
+            <Textarea rows={4} value={refuseReason} onChange={(e) => setRefuseReason(e.target.value)} placeholder="Expliquez pourquoi vous refusez ce dossier..." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefuseDialogOpen(false)} disabled={refusing}>Annuler</Button>
+            <Button variant="destructive" onClick={refuseAssignment} disabled={refusing || !refuseReason.trim()}>
+              {refusing ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Envoi...</> : <><XCircle className="w-4 h-4 mr-1" />Confirmer le refus</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

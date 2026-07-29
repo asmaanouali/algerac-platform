@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
-  ASSIGNED_TO_RA: "Assigné",
+  ASSIGNED_TO_RA: "À confirmer/refuser",
   RECEIVABILITY_STUDY: "Étude en cours",
   RESOURCE_CHECK: "Vérification ressources",
   PRELIMINARY_VISIT_PROPOSED: "Visite proposée",
@@ -101,7 +101,7 @@ const RA_PENDING_STATUSES = new Set([
 ]);
 
 const NEXT_STEP_LINK: Record<string, { href: (id: number | string) => string; label: string }> = {
-  ASSIGNED_TO_RA: { href: () => "/ra/faisabilite", label: "Étude de recevabilité" },
+  ASSIGNED_TO_RA: { href: () => "/ra/faisabilite", label: "Confirmer ou refuser" },
   RECEIVABILITY_STUDY: { href: () => "/ra/faisabilite", label: "Continuer l'étude" },
   RESOURCE_CHECK: { href: () => "/ra/faisabilite", label: "Décider visite préliminaire" },
   PRELIMINARY_VISIT_COMPLETED: { href: () => "/ra/faisabilite", label: "Préparer dossier DG" },

@@ -45,6 +45,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   PENDING_PAYMENT: { label: "En attente de paiement", variant: "outline", phase: "initial" },
   PAYMENT_COMPLETED: { label: "Paiement effectué", variant: "default", phase: "initial" },
   ASSIGNED_TO_RA: { label: "Assignee", variant: "default", phase: "study" },
+  RA_ASSIGNMENT_REFUSED: { label: "Réassignation en cours", variant: "outline", phase: "study" },
   RECEIVABILITY_STUDY: { label: "Etude de recevabilite", variant: "default", phase: "study" },
   RESOURCE_CHECK: { label: "Verification des ressources", variant: "default", phase: "study" },
   FOREIGN_EXPERT_PROPOSED: { label: "Expert etranger propose", variant: "outline", phase: "study" },

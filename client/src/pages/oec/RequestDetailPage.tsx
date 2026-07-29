@@ -68,6 +68,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   PENDING_PAYMENT: { label: "En attente de paiement", color: "bg-yellow-100 text-yellow-800" },
   PAYMENT_COMPLETED: { label: "Paiement validé", color: "bg-green-100 text-green-800" },
   ASSIGNED_TO_RA: { label: "Assignée à un RA", color: "bg-blue-100 text-blue-800" },
+  RA_ASSIGNMENT_REFUSED: { label: "Réassignation en cours", color: "bg-amber-100 text-amber-800" },
   RECEIVABILITY_STUDY: { label: "Étude de recevabilité", color: "bg-purple-100 text-purple-800" },
   RECEIVABILITY_PENDING_CD_REVIEW: { label: "En attente validation CD", color: "bg-purple-100 text-purple-800" },
   RECEIVABLE: { label: "Recevable", color: "bg-green-100 text-green-800" },

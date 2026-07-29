@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, ReactNode, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type User, type LoginRequest } from "@shared/schema";
 import { api } from "@shared/routes";
@@ -101,19 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('algerac-active-role');
   });
 
-  // Parse available roles from user data
-  // Backend returns roles as comma-separated string or single role
-  const availableRoles: string[] = (() => {
+  // Parse available roles from user data.
+  // Backend returns roles as comma-separated string or single role. Memoized on
+  // the underlying primitive fields so the array keeps a stable identity across
+  // re-renders (an inline IIFE would otherwise create a new array every render,
+  // which cascades into unstable `user`/context values and re-triggers effects
+  // that depend on them across the app).
+  const availableRoles: string[] = useMemo(() => {
     if (!user) return [];
     const u = user as any;
-    // Check if user has multiple roles (comma-separated in role field or a roles array)
     if (u.roles && Array.isArray(u.roles)) return u.roles;
     if (u.role && typeof u.role === 'string') {
-      const roles = u.role.split(',').map((r: string) => r.trim()).filter(Boolean);
-      return roles;
+      return u.role.split(',').map((r: string) => r.trim()).filter(Boolean);
     }
     return [];
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user && (user as any).roles ? JSON.stringify((user as any).roles) : (user as any)?.role]);
 
   const needsRoleSelection = availableRoles.length > 1 && !activeRole;
 
@@ -157,26 +160,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [availableRoles, activeRole, setActiveRole]);
 
-  // Create a user object with the effective role for downstream consumers
-  const effectiveUser = user && effectiveRole ? { ...user, role: effectiveRole } as User : user;
+  // Create a user object with the effective role for downstream consumers.
+  // Memoized so its identity only changes when the underlying user or role
+  // actually changes — otherwise every AuthProvider render (e.g. triggered by
+  // an unrelated mutation elsewhere) produces a brand-new object, which
+  // re-triggers any page effect declared as `useEffect(() => {...}, [user])`.
+  const effectiveUser = useMemo(() => {
+    return user && effectiveRole ? ({ ...user, role: effectiveRole } as User) : user ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, effectiveRole]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user: effectiveUser ?? null,
-        isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        activeRole: effectiveRole,
-        availableRoles,
-        setActiveRole,
-        needsRoleSelection,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo<AuthContextType>(() => ({
+    user: effectiveUser,
+    isLoading,
+    error,
+    loginMutation,
+    logoutMutation,
+    activeRole: effectiveRole,
+    availableRoles,
+    setActiveRole,
+    needsRoleSelection,
+  }), [effectiveUser, isLoading, error, loginMutation, logoutMutation, effectiveRole, availableRoles, setActiveRole, needsRoleSelection]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

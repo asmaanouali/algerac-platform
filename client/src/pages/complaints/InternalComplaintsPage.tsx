@@ -209,8 +209,8 @@ export default function InternalComplaintsPage() {
               <Alert className="border-blue-200 bg-blue-50">
                 <Shield className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                  Votre plainte sera transmise au Responsable Qualité (RQ) pour analyse. 
-                  Vous serez notifié(e) de la décision (FOR 50).
+                  Votre plainte sera transmise au Département Qualité pour analyse. 
+                  Vous serez notifié(e) de la décision.
                 </AlertDescription>
               </Alert>
 

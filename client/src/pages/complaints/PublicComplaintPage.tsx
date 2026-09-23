@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle, ArrowLeft, Shield, FileText, Upload, X } from "lucide-react";
+import { Loader2, CheckCircle, ArrowLeft, Shield, FileText, Upload, X, Wand2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,6 +80,22 @@ export default function PublicComplaintPage() {
 
   const removeFile = (index: number) => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Quick-fill valid sample data so the form can be tested without typing
+  const fillDemoData = () => {
+    setFormData({
+      complainantName: "Ahmed Benali",
+      complainantEmail: "ahmed.benali@example.com",
+      complainantPhone: "+213 555 123 456",
+      complainantOrganization: "SARL Benali Import Export",
+      targetOrganization: "Organisme de certification XYZ",
+      category: "quality",
+      subject: "Retard important dans le traitement du dossier de certification",
+      description: "Nous avons soumis notre dossier de certification il y a plus de trois mois et nous n'avons reçu aucune mise à jour malgré plusieurs relances. Ce retard impacte fortement nos activités commerciales.",
+      expectedResolution: "Nous souhaitons un traitement accéléré de notre dossier ainsi qu'une communication régulière sur son avancement.",
+    });
+    setErrors({});
   };
 
   const validate = () => {
@@ -189,9 +205,14 @@ export default function PublicComplaintPage() {
         </Alert>
 
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{t('complaints.public.formTitle')}</CardTitle>
-            <CardDescription>{t('complaints.public.formDescription')}</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{t('complaints.public.formTitle')}</CardTitle>
+              <CardDescription>{t('complaints.public.formDescription')}</CardDescription>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={fillDemoData} className="shrink-0">
+              <Wand2 className="w-4 h-4 mr-2" />{t('complaints.public.demoFill')}
+            </Button>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Complainant Info */}

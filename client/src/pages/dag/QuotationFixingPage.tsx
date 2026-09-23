@@ -7,16 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Loader2, FileText, Download, DollarSign, Search, AlertTriangle, Send, ClipboardCheck,
+  Loader2, FileText, Download, DollarSign, Search, AlertTriangle, Send, ClipboardCheck, Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
+import { DevisSheetEditor } from "@/components/DevisSheetEditor";
+import {
+  type DevisSheet,
+  buildSheetForType,
+  serializeDevisPayload,
+  sheetMainTotal,
+  sheetToBreakdown,
+} from "@/lib/devis-sheet";
 
 interface Quotation {
   id: number;
@@ -31,19 +40,22 @@ interface Quotation {
   reeCount?: number;
   etCount?: number;
   eqCount?: number;
+  evaluationDurationDays?: number;
   daysCount?: number;
+  approvedByDagDate?: string;
   createdAt?: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  DRAFT:                       { label: "Brouillon", color: "bg-slate-200 text-slate-700" },
-  SENT_TO_DAG:                 { label: "En attente DAG", color: "bg-amber-500 text-white" },
-  AMOUNT_SET_PENDING_CD:       { label: "Montant fixé - attente CD", color: "bg-blue-500 text-white" },
-  PENDING_CD_VALIDATION:       { label: "Validation CD", color: "bg-indigo-500 text-white" },
-  VALIDATED_BY_CD:             { label: "Validé CD", color: "bg-teal-600 text-white" },
-  SENT_TO_OEC:                 { label: "Envoyé à l'OEC", color: "bg-violet-600 text-white" },
-  ACCEPTED_BY_OEC:             { label: "Accepté", color: "bg-emerald-600 text-white" },
-  REJECTED_BY_OEC:             { label: "Refusé", color: "bg-red-500 text-white" },
+  DRAFT:                 { label: "Brouillon", color: "bg-slate-200 text-slate-700" },
+  SENT_TO_DAG:           { label: "En attente DAG", color: "bg-amber-500 text-white" },
+  APPROVED_BY_DAG:       { label: "Établi par DAG", color: "bg-blue-500 text-white" },
+  PENDING_CD_VALIDATION: { label: "Validation CD", color: "bg-indigo-500 text-white" },
+  CD_VALIDATED:          { label: "Validé CD", color: "bg-teal-600 text-white" },
+  SENT_TO_OEC:           { label: "Envoyé à l'OEC", color: "bg-violet-600 text-white" },
+  VALIDATED_BY_OEC:      { label: "Accepté OEC", color: "bg-emerald-600 text-white" },
+  REJECTED_BY_OEC:       { label: "Refusé OEC", color: "bg-red-500 text-white" },
+  EXPIRED:               { label: "Expiré", color: "bg-slate-500 text-white" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -51,33 +63,42 @@ function StatusBadge({ status }: { status: string }) {
   return cfg ? <Badge className={cfg.color}>{cfg.label}</Badge> : <Badge variant="outline">{status}</Badge>;
 }
 
+function formatAmount(amount?: number) {
+  if (amount == null) return "—";
+  return new Intl.NumberFormat("fr-DZ", { style: "currency", currency: "DZD", maximumFractionDigits: 0 }).format(amount);
+}
+
 export default function DAGQuotationFixingPage() {
   const { toast } = useToast();
-  const [items, setItems] = useState<Quotation[]>([]);
+  const [pending, setPending] = useState<Quotation[]>([]);
+  const [established, setEstablished] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Quotation | null>(null);
   const [comments, setComments] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("pending");
 
-  // Champs d'en-tête du devis estimatif
   const [devisEstimatifNumber, setDevisEstimatifNumber] = useState("");
   const [devisEstimatifDate, setDevisEstimatifDate] = useState<string>("");
   const [siteName, setSiteName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
-
-  // Détail HT par ligne
-  const [breakdown, setBreakdown] = useState<Record<string, string>>({});
+  const [sheet, setSheet] = useState<DevisSheet>(() => buildSheetForType("INITIAL"));
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await apiRequest("GET", "/api/quotations/pending-approval");
-      const json = await res.json();
-      setItems(Array.isArray(json) ? json : []);
+      const [pendingRes, establishedRes] = await Promise.all([
+        apiRequest("GET", "/api/quotations/pending-approval"),
+        apiRequest("GET", "/api/quotations/established"),
+      ]);
+      const pendingJson = await pendingRes.json();
+      const establishedJson = await establishedRes.json();
+      setPending(Array.isArray(pendingJson) ? pendingJson : []);
+      setEstablished(Array.isArray(establishedJson) ? establishedJson : []);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err?.message || "Chargement impossible" });
     } finally {
@@ -85,15 +106,31 @@ export default function DAGQuotationFixingPage() {
     }
   };
 
-  const filtered = useMemo(() => {
+  const filteredPending = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((i) =>
+    if (!q) return pending;
+    return pending.filter((i) =>
       (i.quotationNumber || "").toLowerCase().includes(q) ||
       (i.requestReferenceNumber || "").toLowerCase().includes(q) ||
       (i.oecName || "").toLowerCase().includes(q)
     );
-  }, [items, search]);
+  }, [pending, search]);
+
+  const filteredEstablished = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = !q
+      ? established
+      : established.filter((i) =>
+          (i.quotationNumber || "").toLowerCase().includes(q) ||
+          (i.requestReferenceNumber || "").toLowerCase().includes(q) ||
+          (i.oecName || "").toLowerCase().includes(q)
+        );
+    return [...list].sort((a, b) => {
+      const da = a.approvedByDagDate || a.createdAt || "";
+      const db = b.approvedByDagDate || b.createdAt || "";
+      return db.localeCompare(da);
+    });
+  }, [established, search]);
 
   const openFix = (q: Quotation) => {
     setSelected(q);
@@ -102,50 +139,33 @@ export default function DAGQuotationFixingPage() {
     setDevisEstimatifDate(new Date().toISOString().slice(0, 10));
     setSiteName("");
     setSiteAddress("");
-    setBreakdown({});
+    setSheet(buildSheetForType(q.requestType || "INITIAL"));
     setDialogOpen(true);
-  };
-
-  const setAmt = (key: string, value: string) => setBreakdown((prev) => ({ ...prev, [key]: value }));
-  const num = (key: string) => {
-    const v = Number(breakdown[key]);
-    return Number.isFinite(v) && v > 0 ? v : 0;
   };
 
   const submitAmount = async () => {
     if (!selected) return;
-    const type = (selected.requestType || "INITIAL").toUpperCase();
 
-    // Construire la map des montants HT renseignés
-    const breakdownMap: Record<string, number> = {};
-    Object.entries(breakdown).forEach(([k, v]) => {
-      const n = Number(v);
-      if (Number.isFinite(n) && n > 0) breakdownMap[k] = n;
-    });
-
-    // Calcul du sous-total principal selon le type (sert de "amount" backend)
-    let mainTotal = 0;
-    if (type === "SURVEILLANCE") {
-      mainTotal = num("analysisFeeP1") + num("evaluationFeeP1") + num("casFeeP2");
-    } else if (type === "EXTENSION") {
-      mainTotal = num("analysisFeeP1") + num("evaluationFeeP1") + num("certModFeeP2");
-    } else {
-      // INITIAL / RENOUVELLEMENT : Phase II + Phase III + (frais d'inscription si initial)
-      mainTotal = num("analysisFeeP2") + num("evaluationFeeP2") + num("certificateFeeP3");
-      if (type === "INITIAL") mainTotal += num("registrationFee");
-    }
+    const breakdownMap = sheetToBreakdown(sheet);
+    const mainTotal = sheetMainTotal(sheet);
 
     if (mainTotal <= 0) {
-      toast({ variant: "destructive", title: "Montants requis", description: "Veuillez saisir au moins un montant HT positif pour les frais principaux." });
+      toast({
+        variant: "destructive",
+        title: "Montants requis",
+        description: "Saisissez au moins un montant HT positif sur une ligne comptée dans le montant principal.",
+      });
       return;
     }
 
     setSaving(true);
     try {
+      const payload = serializeDevisPayload(sheet);
       const res = await apiRequest("POST", `/api/quotations/${selected.id}/approve`, {
         amount: mainTotal,
         comments: comments || undefined,
         breakdown: breakdownMap,
+        sheet: payload.sheet,
         devisEstimatifNumber: devisEstimatifNumber || undefined,
         devisEstimatifDate: devisEstimatifDate || undefined,
         siteName: siteName || undefined,
@@ -159,15 +179,66 @@ export default function DAGQuotationFixingPage() {
         title: "Devis fixé",
         description: "Le devis a été fixé. Le PDF est en cours de téléchargement.",
       });
-      // Ouvre le PDF généré
       window.open(`/api/quotations/${selected.id}/devis.pdf`, "_blank", "noopener,noreferrer");
       setDialogOpen(false);
+      setActiveTab("established");
       await load();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err?.message || "Impossible de fixer le devis" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const renderQuotationCard = (q: Quotation, mode: "pending" | "established") => {
+    const days = q.evaluationDurationDays ?? q.daysCount;
+    return (
+      <Card key={q.id} className={`border-l-4 ${mode === "pending" ? "border-l-primary" : "border-l-emerald-500"}`}>
+        <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold">{q.quotationNumber || `Devis #${q.id}`}</p>
+              <StatusBadge status={q.status} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Dossier : {q.requestReferenceNumber || `#${q.requestId}`}
+              {q.oecName && <> · OEC : {q.oecName}</>}
+              {days ? <> · {days} jour(s)</> : null}
+            </p>
+            {mode === "established" && (
+              <p className="text-sm font-medium mt-1">
+                Montant : {formatAmount(q.amount)}
+                {q.approvedByDagDate && (
+                  <span className="text-muted-foreground font-normal">
+                    {" "}· Établi le {new Date(q.approvedByDagDate).toLocaleDateString("fr-FR")}
+                  </span>
+                )}
+              </p>
+            )}
+            {q.details && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{q.details}</p>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href={`/api/requests/${q.requestId}/doc1.pdf`} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="outline"><Download className="h-3 w-3 mr-1" /> DOC 1</Button>
+            </a>
+            <a href={`/api/requests/${q.requestId}/technical-form.pdf`} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="outline"><Download className="h-3 w-3 mr-1" /> FOR technique</Button>
+            </a>
+            {mode === "pending" ? (
+              <Button size="sm" onClick={() => openFix(q)}>
+                <Send className="h-3 w-3 mr-1" /> Fixer le montant
+              </Button>
+            ) : (
+              <a href={`/api/quotations/${q.id}/devis.pdf`} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="secondary">
+                  <Eye className="h-3 w-3 mr-1" /> Voir le devis PDF
+                </Button>
+              </a>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -181,7 +252,7 @@ export default function DAGQuotationFixingPage() {
               <DollarSign className="h-7 w-7 text-primary" /> Fixation des devis
             </h1>
             <p className="text-muted-foreground mt-1">
-              Fixez le montant des devis préparés par les RA et transmettez-les au CD pour validation.
+              Fixez le montant des devis préparés par les RA, puis consultez l&apos;historique des devis établis.
             </p>
           </div>
 
@@ -189,8 +260,12 @@ export default function DAGQuotationFixingPage() {
             <CardHeader>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" /> Devis en attente ({filtered.length})</CardTitle>
-                  <CardDescription>Seuls les devis envoyés par un RA à la DAG sont affichés ici.</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <ClipboardCheck className="h-5 w-5" /> Devis
+                  </CardTitle>
+                  <CardDescription>
+                    Devis envoyés par les RA et devis déjà établis par la DAG.
+                  </CardDescription>
                 </div>
                 <div className="relative w-full md:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -201,40 +276,33 @@ export default function DAGQuotationFixingPage() {
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : filtered.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Aucun devis à traiter</p>
               ) : (
-                <div className="space-y-3">
-                  {filtered.map((q) => (
-                    <Card key={q.id} className="border-l-4 border-l-primary">
-                      <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold">{q.quotationNumber || `Devis #${q.id}`}</p>
-                            <StatusBadge status={q.status} />
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Dossier : {q.requestReferenceNumber || `#${q.requestId}`}
-                            {q.oecName && <> · OEC : {q.oecName}</>}
-                            {q.daysCount ? <> · {q.daysCount} jour(s)</> : null}
-                          </p>
-                          {q.details && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{q.details}</p>}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <a href={`/api/requests/${q.requestId}/doc1.pdf`} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline"><Download className="h-3 w-3 mr-1" /> DOC 1</Button>
-                          </a>
-                          <a href={`/api/requests/${q.requestId}/technical-form.pdf`} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline"><Download className="h-3 w-3 mr-1" /> FOR technique</Button>
-                          </a>
-                          <Button size="sm" onClick={() => openFix(q)}>
-                            <Send className="h-3 w-3 mr-1" /> Fixer le montant
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="pending" className="gap-2">
+                      En attente ({filteredPending.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="established" className="gap-2">
+                      Établis ({filteredEstablished.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="pending" className="space-y-3">
+                    {filteredPending.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">Aucun devis à traiter</p>
+                    ) : (
+                      filteredPending.map((q) => renderQuotationCard(q, "pending"))
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="established" className="space-y-3">
+                    {filteredEstablished.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">Aucun devis établi pour le moment</p>
+                    ) : (
+                      filteredEstablished.map((q) => renderQuotationCard(q, "established"))
+                    )}
+                  </TabsContent>
+                </Tabs>
               )}
             </CardContent>
           </Card>
@@ -242,12 +310,12 @@ export default function DAGQuotationFixingPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Devis estimatif — Fixation des montants HT</DialogTitle>
+            <DialogTitle>Devis estimatif — Feuille de fixation</DialogTitle>
             <DialogDescription>
-              Renseignez les montants HT par phase. La TVA (19%) et les sous-totaux sont calculés automatiquement.
-              Un PDF du devis estimatif (FOR 44 / 44-1 / 44-2) sera généré à la validation.
+              La feuille est préremplie selon le type de dossier. Modifiez les cases, ajoutez ou supprimez
+              des lignes et colonnes, puis validez pour générer le PDF.
             </DialogDescription>
           </DialogHeader>
           {selected && (
@@ -263,8 +331,8 @@ export default function DAGQuotationFixingPage() {
               setSiteName={setSiteName}
               siteAddress={siteAddress}
               setSiteAddress={setSiteAddress}
-              breakdown={breakdown}
-              setAmt={setAmt}
+              sheet={sheet}
+              setSheet={setSheet}
             />
           )}
           <DialogFooter>
@@ -279,12 +347,6 @@ export default function DAGQuotationFixingPage() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sous-composant : formulaire devis estimatif (FOR 44 / 44-1 / 44-2)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const TVA = 0.19;
-
 type DevisFormProps = {
   selected: Quotation;
   comments: string;
@@ -297,26 +359,20 @@ type DevisFormProps = {
   setSiteName: (v: string) => void;
   siteAddress: string;
   setSiteAddress: (v: string) => void;
-  breakdown: Record<string, string>;
-  setAmt: (key: string, value: string) => void;
+  sheet: DevisSheet;
+  setSheet: (s: DevisSheet) => void;
 };
 
 function DevisForm(props: DevisFormProps) {
-  const { selected, comments, setComments,
+  const {
+    selected, comments, setComments,
     devisEstimatifNumber, setDevisEstimatifNumber,
     devisEstimatifDate, setDevisEstimatifDate,
     siteName, setSiteName, siteAddress, setSiteAddress,
-    breakdown, setAmt } = props;
+    sheet, setSheet,
+  } = props;
 
   const type = (selected.requestType || "INITIAL").toUpperCase();
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-  const num = (key: string) => {
-    const v = Number(breakdown[key]);
-    return Number.isFinite(v) && v >= 0 ? v : 0;
-  };
-  const ttc = (ht: number) => ht * (1 + TVA);
 
   const formCode =
     type === "SURVEILLANCE" ? "FOR 44-1 Rév 04/23-01-2017" :
@@ -344,7 +400,6 @@ function DevisForm(props: DevisFormProps) {
         <div className="font-semibold">{formTitle}</div>
       </div>
 
-      {/* En-tête devis */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>N° Devis estimatif</Label>
@@ -364,30 +419,7 @@ function DevisForm(props: DevisFormProps) {
         </div>
       </div>
 
-      {/* Tableau des phases */}
-      <div className="rounded border overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-slate-100 font-semibold">
-            <tr>
-              <th className="text-left p-2 w-24">Phases</th>
-              <th className="text-left p-2">Désignation</th>
-              <th className="text-right p-2 w-40">Montant HT (DA)</th>
-              <th className="text-right p-2 w-32">Montant TTC (DA)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {type === "SURVEILLANCE" && (
-              <SurveillanceRows num={num} setAmt={setAmt} fmt={fmt} ttc={ttc} breakdown={breakdown} />
-            )}
-            {type === "EXTENSION" && (
-              <ExtensionRows num={num} setAmt={setAmt} fmt={fmt} ttc={ttc} breakdown={breakdown} />
-            )}
-            {(type === "INITIAL" || type === "RENOUVELLEMENT") && (
-              <InitialRows isInitial={type === "INITIAL"} num={num} setAmt={setAmt} fmt={fmt} ttc={ttc} breakdown={breakdown} />
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DevisSheetEditor sheet={sheet} onChange={setSheet} />
 
       <Separator />
       <div className="space-y-2">
@@ -395,229 +427,8 @@ function DevisForm(props: DevisFormProps) {
         <Textarea rows={3} value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Hypothèses retenues, remarques..." />
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <FileText className="w-3 h-3" /> TVA = 19% (modifiable selon réglementation). Frais d'hébergement et de transport à la charge de l'OEC.
+        <FileText className="w-3 h-3" /> TVA = 19% (modifiable selon réglementation). Frais d&apos;hébergement et de transport à la charge de l&apos;OEC.
       </div>
     </div>
-  );
-}
-
-type RowsProps = {
-  num: (k: string) => number;
-  setAmt: (k: string, v: string) => void;
-  fmt: (n: number) => string;
-  ttc: (n: number) => number;
-  breakdown: Record<string, string>;
-};
-
-function HtInput({ k, breakdown, setAmt }: { k: string; breakdown: Record<string, string>; setAmt: (k: string, v: string) => void; }) {
-  return (
-    <Input
-      type="number" min="0" step="0.01"
-      className="h-8 text-right"
-      value={breakdown[k] ?? ""}
-      onChange={(e) => setAmt(k, e.target.value)}
-      placeholder="0.00"
-    />
-  );
-}
-
-function InitialRows({ isInitial, num, setAmt, fmt, ttc, breakdown }: RowsProps & { isInitial: boolean }) {
-  const p2Analyse = num("analysisFeeP2");
-  const p2Eval = num("evaluationFeeP2");
-  const p2Sub = p2Analyse + p2Eval;
-  const p3Cert = num("certificateFeeP3");
-  const totalP2P3 = p2Sub + p3Cert;
-  const annual = num("annualFeeP4");
-  const p5A = num("analysisFeeP5");
-  const p5E = num("evaluationFeeP5");
-  const p5C = num("casFeeP5");
-  const totalSurv = p5A + p5E + p5C;
-
-  return (
-    <>
-      {isInitial && (
-        <tr className="border-t">
-          <td className="p-2 font-semibold align-middle text-center" rowSpan={1}>Phase I</td>
-          <td className="p-2">Frais d'inscription du dossier (1)</td>
-          <td className="p-2"><HtInput k="registrationFee" breakdown={breakdown} setAmt={setAmt} /></td>
-          <td className="p-2 text-right">{fmt(ttc(num("registrationFee")))}</td>
-        </tr>
-      )}
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={3}>Phase II</td>
-        <td className="p-2">Frais d'analyse documentaire</td>
-        <td className="p-2"><HtInput k="analysisFeeP2" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p2Analyse))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'évaluation (2)</td>
-        <td className="p-2"><HtInput k="evaluationFeeP2" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p2Eval))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">S/Total frais d'Accréditation. Phase II</td>
-        <td className="p-2 text-right">{fmt(p2Sub)}</td>
-        <td className="p-2 text-right">{fmt(ttc(p2Sub))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={2}>Phase III</td>
-        <td className="p-2">Frais de délivrance du certificat et annexes</td>
-        <td className="p-2"><HtInput k="certificateFeeP3" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p3Cert))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">Total frais d'Accréditation. Phase II + Phase III</td>
-        <td className="p-2 text-right">{fmt(totalP2P3)}</td>
-        <td className="p-2 text-right">{fmt(ttc(totalP2P3))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center">Phase IV</td>
-        <td className="p-2">Redevance annuelle (Par année)</td>
-        <td className="p-2"><HtInput k="annualFeeP4" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(annual))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={5}>Phase V</td>
-        <td className="p-2 italic bg-slate-50" colSpan={3}>Évaluation de surveillance (Par année)</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'Analyse documentaire</td>
-        <td className="p-2"><HtInput k="analysisFeeP5" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p5A))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'évaluation (2)</td>
-        <td className="p-2"><HtInput k="evaluationFeeP5" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p5E))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais de modification du certificat et annexes (CAS) (3)</td>
-        <td className="p-2"><HtInput k="casFeeP5" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p5C))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">Total Frais de Surveillance</td>
-        <td className="p-2 text-right">{fmt(totalSurv)}</td>
-        <td className="p-2 text-right">{fmt(ttc(totalSurv))}</td>
-      </tr>
-    </>
-  );
-}
-
-function SurveillanceRows({ num, setAmt, fmt, ttc, breakdown }: RowsProps) {
-  const a = num("analysisFeeP1");
-  const e = num("evaluationFeeP1");
-  const sub = a + e;
-  const cas = num("casFeeP2");
-  const total = sub + cas;
-  return (
-    <>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={3}>Phase I</td>
-        <td className="p-2">Frais Analyse documentaire</td>
-        <td className="p-2"><HtInput k="analysisFeeP1" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(a))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'évaluation (1)</td>
-        <td className="p-2"><HtInput k="evaluationFeeP1" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(e))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">S/TOTAL frais de surveillance</td>
-        <td className="p-2 text-right">{fmt(sub)}</td>
-        <td className="p-2 text-right">{fmt(ttc(sub))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center">Phase II</td>
-        <td className="p-2">Frais de modification du certificat et annexes (CAS) (2)</td>
-        <td className="p-2"><HtInput k="casFeeP2" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(cas))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2" colSpan={2}>Total Frais de surveillance (Phase I + Phase II)</td>
-        <td className="p-2 text-right">{fmt(total)}</td>
-        <td className="p-2 text-right">{fmt(ttc(total))}</td>
-      </tr>
-    </>
-  );
-}
-
-function ExtensionRows({ num, setAmt, fmt, ttc, breakdown }: RowsProps) {
-  const p1A = num("analysisFeeP1");
-  const p1E = num("evaluationFeeP1");
-  const p1Sub = p1A + p1E;
-  const p2Cert = num("certModFeeP2");
-  const annualExt = num("annualExtensionFeeP3");
-  const nextAnnual = num("nextAnnualFeeP3");
-  const p4A = num("analysisFeeP4");
-  const p4E = num("evaluationFeeP4");
-  const p4C = num("casFeeP4");
-  const totalSurv = p4A + p4E + p4C;
-  return (
-    <>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={3}>Phase I</td>
-        <td className="p-2">Frais analyse documentaire</td>
-        <td className="p-2"><HtInput k="analysisFeeP1" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p1A))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'évaluation (1)</td>
-        <td className="p-2"><HtInput k="evaluationFeeP1" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p1E))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">S/Total Frais d'extension (Phase I)</td>
-        <td className="p-2 text-right">{fmt(p1Sub)}</td>
-        <td className="p-2 text-right">{fmt(ttc(p1Sub))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={2}>Phase II</td>
-        <td className="p-2">Frais de modification du certificat ou annexes</td>
-        <td className="p-2"><HtInput k="certModFeeP2" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p2Cert))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2">S/Total Frais d'extension (Phase II)</td>
-        <td className="p-2 text-right">{fmt(p2Cert)}</td>
-        <td className="p-2 text-right">{fmt(ttc(p2Cert))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={2}>Phase III</td>
-        <td className="p-2">Redevance annuelle sur extension (par année) (2)</td>
-        <td className="p-2"><HtInput k="annualExtensionFeeP3" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(annualExt))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Prochaine redevance (INITIALE + EXTENSIONS)</td>
-        <td className="p-2"><HtInput k="nextAnnualFeeP3" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(nextAnnual))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2 font-semibold align-middle text-center" rowSpan={4}>Phase IV</td>
-        <td className="p-2 italic bg-slate-50" colSpan={3}>Prochaine Évaluation de surveillance (INITIALE + EXTENSIONS) (par année)</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais Analyse documentaire</td>
-        <td className="p-2"><HtInput k="analysisFeeP4" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p4A))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais d'évaluation (1)</td>
-        <td className="p-2"><HtInput k="evaluationFeeP4" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p4E))}</td>
-      </tr>
-      <tr className="border-t">
-        <td className="p-2">Frais de modification du certificat et annexes (CAS) (3)</td>
-        <td className="p-2"><HtInput k="casFeeP4" breakdown={breakdown} setAmt={setAmt} /></td>
-        <td className="p-2 text-right">{fmt(ttc(p4C))}</td>
-      </tr>
-      <tr className="border-t bg-slate-50 font-semibold">
-        <td className="p-2" colSpan={2}>Total Frais de surveillance</td>
-        <td className="p-2 text-right">{fmt(totalSurv)}</td>
-        <td className="p-2 text-right">{fmt(ttc(totalSurv))}</td>
-      </tr>
-    </>
   );
 }

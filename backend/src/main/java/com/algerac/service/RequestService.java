@@ -66,6 +66,7 @@ public class RequestService {
         AccreditationRequest.AccreditationRequestBuilder builder = AccreditationRequest.builder()
                 .oec(currentUser)
                 .type(dto.getType())
+                .isNewOec(false)
                 .domain(dto.getDomain())
                 .description(dto.getDescription())
                 .status(RequestStatus.DRAFT)
@@ -120,13 +121,14 @@ public class RequestService {
         AccreditationRequest request = AccreditationRequest.builder()
                 .oec(pendingOec)
                 .type(type != null ? type : RequestType.INITIAL)
+                .isNewOec(true)
                 .domain(domain != null && !domain.isBlank() ? domain : "À définir")
                 .description(description)
                 .status(RequestStatus.PENDING_DT_REVIEW)
                 .progress(5)
                 .currentPhase("INITIAL")
-                .currentStep("En attente de vérification DT")
-                .nextAction("Le dossier doit être vérifié par la Direction Technique")
+                .currentStep("Dossier en cours d'examen")
+                .nextAction("Votre dossier est en cours d'examen par ALGERAC.")
                 .pendingWith("DT")
                 .submissionDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
@@ -163,7 +165,8 @@ public class RequestService {
         request.setStatus(RequestStatus.PENDING_DT_REVIEW);
         request.setSubmissionDate(LocalDateTime.now());
         request.setProgress(5);
-        request.setNextAction("Votre dossier est en cours d'examen par la Direction Technique");
+        request.setCurrentStep("Dossier en cours d'examen");
+        request.setNextAction("Votre dossier est en cours d'examen par ALGERAC.");
         request.setPendingWith("DT");
 
         // At submission we only assign a simple sequential number.

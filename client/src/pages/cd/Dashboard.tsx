@@ -8,7 +8,7 @@ import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, RefreshCw, UserPlus, FileSearch, BarChart3 } from "lucide-react";
+import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, UserPlus, FileSearch, BarChart3, FileText, Shield } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -28,25 +28,57 @@ interface Request {
   createdAt: string;
 }
 
+interface ActionItem {
+  id: number;
+  referenceNumber: string | null;
+  oecName: string | null;
+}
+
+interface RequiredActionGroup {
+  label: string;
+  description: string;
+  href: string;
+  icon: typeof AlertCircle;
+  badgeColor: string;
+  borderColor: string;
+  requests: ActionItem[];
+}
+
 const STATUS_COLORS: Record<string, string> = {
   PAYMENT_COMPLETED: "bg-amber-100 text-amber-700",
+  PENDING_CD_ASSIGNMENT: "bg-amber-100 text-amber-700",
   ASSIGNED_TO_RA: "bg-blue-100 text-blue-700",
   RA_ASSIGNMENT_REFUSED: "bg-red-100 text-red-700",
+  RECEIVABILITY_PENDING_CD_REVIEW: "bg-indigo-100 text-indigo-700",
   RECEIVABILITY_STUDY: "bg-indigo-100 text-indigo-700",
   RECEIVABLE: "bg-emerald-100 text-emerald-700",
   NOT_RECEIVABLE: "bg-red-100 text-red-700",
-  TEAM_COMPOSITION: "bg-purple-100 text-purple-700",
-  QUOTATION_PREPARATION: "bg-cyan-100 text-cyan-700",
+  QUOTATION_CONVENTION_PENDING_CD: "bg-cyan-100 text-cyan-700",
+  TEAM_SENT_TO_CD: "bg-purple-100 text-purple-700",
+  TEAM_MEMBER_RECUSED: "bg-orange-100 text-orange-700",
+  TEAM_RECUSED: "bg-orange-100 text-orange-700",
+  DOC_REVIEW_RESULTS_SENT_TO_CD: "bg-violet-100 text-violet-700",
+  DOC_REVIEW_CD_DECISION: "bg-violet-100 text-violet-700",
+  MANDATES_PENDING_CD: "bg-sky-100 text-sky-700",
+  EVALUATION_PLAN_PENDING_CD: "bg-sky-100 text-sky-700",
+  EVALUATION_PLAN_VALIDATION: "bg-sky-100 text-sky-700",
+  REPORT_VALIDATION: "bg-orange-100 text-orange-700",
   QUOTATION_SENT_TO_OEC: "bg-teal-100 text-teal-700",
   EVALUATION_IN_PROGRESS: "bg-violet-100 text-violet-700",
   CAS_DECISION_GRANT: "bg-emerald-100 text-emerald-700",
   CERTIFICATE_ISSUED: "bg-green-100 text-green-800",
 };
 
+function byStatuses(requests: Request[], statuses: string[]): ActionItem[] {
+  return requests.filter(r => statuses.includes(r.status));
+}
+
 export default function CDDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
+  const [samplingPending, setSamplingPending] = useState<ActionItem[]>([]);
+  const [surveillancePending, setSurveillancePending] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -54,12 +86,47 @@ export default function CDDashboard() {
   const loadData = async (isBackground = false) => {
     if (!isBackground) setRefreshing(true);
     try {
-      const reqRes = await apiRequest("GET", "/api/requests");
+      const [reqRes, samplingRes, surveillanceRes] = await Promise.all([
+        apiRequest("GET", "/api/requests"),
+        fetch("/api/sampling/pending", { credentials: "include" }).catch(() => null),
+        fetch("/api/workflow/surveillance/all", { credentials: "include" }).catch(() => null),
+      ]);
       const reqData = await reqRes.json();
       setRequests(Array.isArray(reqData) ? reqData : Array.isArray(reqData?.data) ? reqData.data : []);
+
+      if (samplingRes?.ok) {
+        const payload = await samplingRes.json();
+        const plans = Array.isArray(payload) ? payload : (payload?.data || []);
+        const pending = plans
+          .filter((p: any) => p.status === "SUBMITTED_TO_CD")
+          .map((p: any) => ({
+            id: p.id,
+            referenceNumber: p.planCode || p.planNumber || `Plan #${p.id}`,
+            oecName: p.request?.oecName || p.request?.referenceNumber || p.oecName || null,
+          }));
+        setSamplingPending(pending);
+      }
+
+      if (surveillanceRes?.ok) {
+        const payload = await surveillanceRes.json();
+        const evals = Array.isArray(payload) ? payload : (payload?.data || []);
+        const pending = evals
+          .filter((e: any) => e.status === "REPORT_VALIDATION")
+          .map((e: any) => ({
+            id: e.id,
+            referenceNumber: e.referenceNumber || e.certificate?.certificateNumber || `Surveillance #${e.id}`,
+            oecName: e.oecName || e.request?.oecName || null,
+          }));
+        setSurveillancePending(pending);
+      }
+
       setLastFetched(new Date());
     } catch {
-      if (!isBackground) setRequests([]);
+      if (!isBackground) {
+        setRequests([]);
+        setSamplingPending([]);
+        setSurveillancePending([]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -83,59 +150,122 @@ export default function CDDashboard() {
     color: STATUS_COLORS[status] || "bg-slate-100 text-slate-700",
   });
 
-  const pendingAssignment = requests.filter(r => r.status === "PAYMENT_COMPLETED" || r.status === "PENDING_CD_ASSIGNMENT" || r.status === "RA_ASSIGNMENT_REFUSED");
-  const refusedByRa = requests.filter(r => r.status === "RA_ASSIGNMENT_REFUSED");
-  const teamComposition = requests.filter(r => r.status === "TEAM_COMPOSITION");
-  const quotationPrep = requests.filter(r => r.status === "QUOTATION_PREPARATION");
-  const receivabilityStudy = requests.filter(r => r.status === "RECEIVABILITY_STUDY");
+  const pendingAssignment = requests.filter(r =>
+    r.status === "PAYMENT_COMPLETED" || r.status === "PENDING_CD_ASSIGNMENT" || r.status === "RA_ASSIGNMENT_REFUSED"
+  );
+  const refusedByRa = byStatuses(requests, ["RA_ASSIGNMENT_REFUSED"]);
+  const awaitingRaAssignment = pendingAssignment.filter(r => r.status !== "RA_ASSIGNMENT_REFUSED");
+  const receivabilityPending = byStatuses(requests, ["RECEIVABILITY_PENDING_CD_REVIEW"]);
+  const quotationPending = byStatuses(requests, ["QUOTATION_CONVENTION_PENDING_CD"]);
+  const teamPending = byStatuses(requests, ["TEAM_SENT_TO_CD"]);
+  const recusationPending = byStatuses(requests, ["TEAM_MEMBER_RECUSED", "TEAM_RECUSED"]);
+  const docReviewPending = byStatuses(requests, ["DOC_REVIEW_RESULTS_SENT_TO_CD", "DOC_REVIEW_CD_DECISION"]);
+  const evalPrepPending = byStatuses(requests, ["MANDATES_PENDING_CD", "EVALUATION_PLAN_PENDING_CD", "EVALUATION_PLAN_VALIDATION"]);
+  const reportPending = byStatuses(requests, ["REPORT_VALIDATION"]);
 
-  const requiredActions = [
-    ...(refusedByRa.length > 0 ? [{
+  const actionGroups: Array<Omit<RequiredActionGroup, "requests"> & { requests: ActionItem[] }> = [
+    {
       label: "Dossiers refusés par un RA",
       description: "Réassigner à un autre responsable d'accréditation",
-      href: "/cd/manage-requests",
+      href: "/cd/manage-requests?tab=pending",
       icon: AlertCircle,
       badgeColor: "bg-red-100 text-red-800",
       borderColor: "border-l-red-500",
       requests: refusedByRa,
-    }] : []),
-    ...(pendingAssignment.filter(r => r.status !== "RA_ASSIGNMENT_REFUSED").length > 0 ? [{
+    },
+    {
       label: "Demandes sans RA affecté",
       description: "Affecter un responsable d'accréditation",
-      href: "/cd/manage-requests",
+      href: "/cd/manage-requests?tab=pending",
       icon: UserPlus,
       badgeColor: "bg-amber-100 text-amber-800",
       borderColor: "border-l-amber-500",
-      requests: pendingAssignment.filter(r => r.status !== "RA_ASSIGNMENT_REFUSED"),
-    }] : []),
-    ...(receivabilityStudy.length > 0 ? [{
-      label: "Études de recevabilité",
-      description: "Décision de recevabilité à rendre",
-      href: "/cd/revue-documentaire",
+      requests: awaitingRaAssignment,
+    },
+    {
+      label: "Recevabilité à valider",
+      description: "Valider l'étude de recevabilité réalisée par le RA",
+      href: "/cd/manage-requests?tab=receivability-review",
       icon: FileSearch,
       badgeColor: "bg-indigo-100 text-indigo-800",
       borderColor: "border-l-indigo-500",
-      requests: receivabilityStudy,
-    }] : []),
-    ...(teamComposition.length > 0 ? [{
-      label: "Compositions d'équipe",
-      description: "Valider la composition de l'équipe d'audit",
-      href: "/cd/pilotage-evaluation",
-      icon: Users,
-      badgeColor: "bg-purple-100 text-purple-800",
-      borderColor: "border-l-purple-500",
-      requests: teamComposition,
-    }] : []),
-    ...(quotationPrep.length > 0 ? [{
-      label: "Devis à préparer",
-      description: "Préparer et envoyer le devis à l'OEC",
-      href: "/cd/pilotage-evaluation",
+      requests: receivabilityPending,
+    },
+    {
+      label: "Devis & convention à valider",
+      description: "Valider le devis et la convention préparés par le RA",
+      href: "/cd/manage-requests?tab=cd-validation",
       icon: BarChart3,
       badgeColor: "bg-cyan-100 text-cyan-800",
       borderColor: "border-l-cyan-500",
-      requests: quotationPrep,
-    }] : []),
+      requests: quotationPending,
+    },
+    {
+      label: "Compositions d'équipe à valider",
+      description: "Valider la composition d'équipe proposée par le RA",
+      href: "/cd/manage-requests?tab=team-validation",
+      icon: Users,
+      badgeColor: "bg-purple-100 text-purple-800",
+      borderColor: "border-l-purple-500",
+      requests: teamPending,
+    },
+    {
+      label: "Récusations à examiner",
+      description: "Examiner la récusation d'un membre d'équipe",
+      href: "/cd/manage-requests?tab=recusations",
+      icon: AlertCircle,
+      badgeColor: "bg-orange-100 text-orange-800",
+      borderColor: "border-l-orange-500",
+      requests: recusationPending,
+    },
+    {
+      label: "Revue documentaire à traiter",
+      description: "Traiter les résultats de revue documentaire transmis par le RA",
+      href: "/cd/revue-documentaire",
+      icon: FileSearch,
+      badgeColor: "bg-violet-100 text-violet-800",
+      borderColor: "border-l-violet-500",
+      requests: docReviewPending,
+    },
+    {
+      label: "Préparation évaluation à valider",
+      description: "Valider les mandatements ou le plan d'évaluation (FOR 32)",
+      href: "/cd/preparation-evaluation",
+      icon: ClipboardList,
+      badgeColor: "bg-sky-100 text-sky-800",
+      borderColor: "border-l-sky-500",
+      requests: evalPrepPending,
+    },
+    {
+      label: "Rapports d'évaluation à valider",
+      description: "Valider le rapport d'évaluation soumis",
+      href: "/cd/demande/:id",
+      icon: FileText,
+      badgeColor: "bg-orange-100 text-orange-800",
+      borderColor: "border-l-orange-500",
+      requests: reportPending,
+    },
+    {
+      label: "Plans d'échantillonnage à valider",
+      description: "Valider le plan d'échantillonnage soumis",
+      href: "/cd/echantillonnage",
+      icon: ClipboardList,
+      badgeColor: "bg-teal-100 text-teal-800",
+      borderColor: "border-l-teal-500",
+      requests: samplingPending,
+    },
+    {
+      label: "Rapports de surveillance à valider",
+      description: "Valider le rapport de surveillance",
+      href: "/cd/surveillance",
+      icon: Shield,
+      badgeColor: "bg-rose-100 text-rose-800",
+      borderColor: "border-l-rose-500",
+      requests: surveillancePending,
+    },
   ];
+
+  const requiredActions: RequiredActionGroup[] = actionGroups.filter(a => a.requests.length > 0);
 
   const totalActionCount = requiredActions.reduce((sum, a) => sum + a.requests.length, 0);
 
@@ -200,17 +330,22 @@ export default function CDDashboard() {
                               <Badge className={`${action.badgeColor} text-xs`}>{action.requests.length}</Badge>
                             </div>
                             <div className="flex flex-col gap-2">
-                              {action.requests.map((req) => (
-                                <Link key={req.id} href={`${action.href}?id=${req.id}`}>
-                                  <div className={`flex items-center justify-between px-4 py-3 rounded-lg border-l-4 bg-white border border-slate-100 hover:shadow-md transition-shadow cursor-pointer ${action.borderColor}`}>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="font-semibold text-sm">{req.referenceNumber ?? `#${req.id}`}</span>
-                                      <span className="text-xs text-muted-foreground truncate">{req.oecName ?? "OEC non renseigné"} — {action.description}</span>
+                              {action.requests.map((req) => {
+                                const href = action.href.includes(":id")
+                                  ? action.href.replace(":id", String(req.id))
+                                  : `${action.href}${action.href.includes("?") ? "&" : "?"}id=${req.id}`;
+                                return (
+                                  <Link key={`${action.label}-${req.id}`} href={href}>
+                                    <div className={`flex items-center justify-between px-4 py-3 rounded-lg border-l-4 bg-white border border-slate-100 hover:shadow-md transition-shadow cursor-pointer ${action.borderColor}`}>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-semibold text-sm">{req.referenceNumber ?? `#${req.id}`}</span>
+                                        <span className="text-xs text-muted-foreground truncate">{req.oecName ?? "OEC non renseigné"} — {action.description}</span>
+                                      </div>
+                                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-3" />
                                     </div>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-3" />
-                                  </div>
-                                </Link>
-                              ))}
+                                  </Link>
+                                );
+                              })}
                             </div>
                           </div>
                         );

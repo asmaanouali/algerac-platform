@@ -1,5 +1,6 @@
 package com.algerac.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -17,24 +18,30 @@ public class SurveillanceEvaluation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    // LAZY: eager graph (cert→CAS→report→request→users…) exceeds PostgreSQL 1664-column limit
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "request_id", nullable = false)
+    @JsonIgnoreProperties({"oec", "assignedToCd", "assignedToRa", "department", "hibernateLazyInitializer", "handler"})
     private AccreditationRequest request;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "certificate_id", nullable = false)
+    @JsonIgnoreProperties({"request", "casDecision", "consolidationUser", "hibernateLazyInitializer", "handler"})
     private AccreditationCertificate certificate;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "surveillance_plan_id")
+    @JsonIgnoreProperties({"certificate", "draftedByRA", "hibernateLazyInitializer", "handler"})
     private SurveillancePlan surveillancePlan;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "risk_analysis_id")
+    @JsonIgnoreProperties({"request", "surveillancePlan", "hibernateLazyInitializer", "handler"})
     private RiskAnalysisForm riskAnalysis;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id")
+    @JsonIgnoreProperties({"request", "members", "hibernateLazyInitializer", "handler"})
     private EvaluationTeam team;
 
     @Column(nullable = false, unique = true)

@@ -4,6 +4,13 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Clock, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  getOecNextAction,
+  getOecPhaseLabel,
+  getOecPendingLabel,
+  getOecStatusDisplay,
+  isOecActionPending,
+} from "@/lib/oec-request-display";
 
 const PENDING_WITH_LABELS: Record<string, string> = {
   DT:  "Direction Technique",
@@ -18,50 +25,21 @@ const PENDING_WITH_LABELS: Record<string, string> = {
   RQ:  "Responsable Qualité",
 };
 
-function formatPendingWith(raw: string): string {
+function formatPendingWith(raw: string, audience: "oec" | "staff"): string {
+  if (audience === "oec") {
+    return getOecPendingLabel(raw) || "ALGERAC";
+  }
   return PENDING_WITH_LABELS[raw.trim()] ?? raw;
 }
-
-const PHASE_ORDER = [
-  "INITIAL",
-  "RECEVABILITE",
-  "VISITE_PREALABLE",
-  "CONTRACTUALISATION",
-  "CONSTITUTION_EQUIPE",
-  "REVUE_DOCUMENTAIRE",
-  "PREPARATION_EVALUATION",
-  "EVALUATION",
-  "TRAITEMENT_ECARTS",
-  "RAPPORT",
-  "DECISION_CAS",
-  "POST_DECISION",
-  "ACTIVE",
-  "SURVEILLANCE",
-];
-
-const PHASE_RANGES: Record<string, [number, number]> = {
-  INITIAL: [0, 10],
-  RECEVABILITE: [10, 20],
-  VISITE_PREALABLE: [15, 20],
-  CONTRACTUALISATION: [20, 35],
-  CONSTITUTION_EQUIPE: [35, 45],
-  REVUE_DOCUMENTAIRE: [45, 55],
-  PREPARATION_EVALUATION: [55, 65],
-  EVALUATION: [65, 75],
-  TRAITEMENT_ECARTS: [75, 82],
-  RAPPORT: [82, 87],
-  DECISION_CAS: [87, 95],
-  POST_DECISION: [95, 100],
-  ACTIVE: [100, 100],
-  SURVEILLANCE: [100, 100],
-};
 
 interface WorkflowTimelineProps {
   requestId: number;
   compact?: boolean;
+  /** OEC: libellés clients sans jargon interne. Staff: libellés techniques. */
+  audience?: "oec" | "staff";
 }
 
-export function WorkflowTimeline({ requestId, compact = false }: WorkflowTimelineProps) {
+export function WorkflowTimeline({ requestId, compact = false, audience = "oec" }: WorkflowTimelineProps) {
   const { t } = useTranslation();
   const { data: progress, isLoading } = useWorkflowProgress(requestId);
 
@@ -74,19 +52,37 @@ export function WorkflowTimeline({ requestId, compact = false }: WorkflowTimelin
     );
   }
 
-  const currentPhaseIndex = PHASE_ORDER.indexOf(progress.phase);
+  const status = (progress as { status?: string }).status;
+  const oecDisplay = getOecStatusDisplay(status);
+  const phaseLabel = audience === "oec"
+    ? getOecPhaseLabel(progress.phase, status)
+    : progress.phaseLabel;
+  const stepLabel = audience === "oec"
+    ? oecDisplay.label
+    : progress.stepLabel;
+  const nextAction = audience === "oec"
+    ? getOecNextAction({
+        status,
+        nextAction: progress.nextAction,
+        currentStep: progress.currentStep,
+        pendingWith: progress.pendingWith,
+      })
+    : progress.nextAction;
+  const showPendingWith = audience === "staff"
+    ? Boolean(progress.pendingWith)
+    : isOecActionPending(progress.pendingWith);
 
   if (compact) {
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">{progress.phaseLabel}</span>
+          <span className="font-medium">{phaseLabel}</span>
           <Badge variant={progress.progress >= 100 ? "default" : "secondary"}>
             {progress.progress}%
           </Badge>
         </div>
         <Progress value={progress.progress} className="h-2" />
-        <p className="text-xs text-muted-foreground">{progress.stepLabel}</p>
+        <p className="text-xs text-muted-foreground">{stepLabel}</p>
       </div>
     );
   }
@@ -107,26 +103,35 @@ export function WorkflowTimeline({ requestId, compact = false }: WorkflowTimelin
       <CardContent className="space-y-4">
         <Progress value={progress.progress} className="h-3" />
 
-        {/* Current status */}
         <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
-            <span className="font-medium text-sm">{progress.phaseLabel}</span>
+            <span className="font-medium text-sm">{phaseLabel}</span>
           </div>
-          <p className="text-sm text-muted-foreground">{progress.stepLabel}</p>
+          <p className="text-sm text-muted-foreground">{stepLabel}</p>
 
-          {progress.nextAction && (
+          {nextAction && (
             <div className="flex items-start gap-2 pt-1 border-t">
               <ArrowRight className="h-3.5 w-3.5 mt-0.5 text-blue-500" />
-              <span className="text-xs">{progress.nextAction}</span>
+              <span className="text-xs">{nextAction}</span>
             </div>
           )}
 
-          {progress.pendingWith && (
+          {showPendingWith && progress.pendingWith && (
             <div className="flex items-center gap-2">
               <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
               <span className="text-xs text-muted-foreground">
-                {t("workflow.pendingWith", "En attente de")} : <strong>{formatPendingWith(progress.pendingWith)}</strong>
+                {t("workflow.pendingWith", "En attente de")} :{" "}
+                <strong>{formatPendingWith(progress.pendingWith, audience)}</strong>
+              </span>
+            </div>
+          )}
+
+          {audience === "oec" && !isOecActionPending(progress.pendingWith) && progress.pendingWith && (
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-xs text-muted-foreground">
+                En cours de traitement par <strong>ALGERAC</strong>
               </span>
             </div>
           )}

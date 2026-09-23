@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
+import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

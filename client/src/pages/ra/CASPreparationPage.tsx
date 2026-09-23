@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Gavel, CalendarDays, Users, Vote, Send, FileCheck, Play, ShieldCheck, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 export default function CASPreparationPage() {
   const { user } = useAuth();
@@ -40,9 +41,11 @@ export default function CASPreparationPage() {
       ]);
       if (reqRes.ok) {
         const all = await reqRes.json();
-        setRequests(all.filter((r: any) =>
+        const filtered = all.filter((r: any) =>
           ["REPORT_VALIDATED", "CAS_PREPARATION", "CAS_SCHEDULED", "CAS_DECISION_GRANT", "CAS_DECISION_REFUSAL", "CAS_DECISION_POSTPONEMENT"].includes(r.status)
-        ));
+        );
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
       if (expRes.ok) setExperts(await expRes.json());
     } catch (e) { }

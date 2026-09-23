@@ -37,6 +37,9 @@ export function Navbar() {
       DG: '/dg/dashboard',
       GES_COMPETENCES: '/ges-competences/dashboard',
       RQ: '/rq/dashboard',
+      SUP: '/sup/dashboard',
+      CONSOLIDATION: '/consolidation/dashboard',
+      EF: '/ef/dashboard',
     };
     setLocation(rolePaths[role] || '/dashboard');
   };

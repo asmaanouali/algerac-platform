@@ -22,6 +22,7 @@ interface RequestRow {
   status: string;
   submissionDate?: string;
   createdAt?: string;
+  isNewOec?: boolean | null;
   oec?: {
     id?: number;
     organizationName?: string;
@@ -32,7 +33,8 @@ interface RequestRow {
   };
 }
 
-const isNewOec = (r: RequestRow) => !!(r.oec?.typeDemande && r.oec.typeDemande.trim());
+const isNewOec = (r: RequestRow) =>
+  r.isNewOec === true || !!(r.oec?.typeDemande && r.oec.typeDemande.trim());
 
 async function fetchJson(url: string, timeoutMs = 10000): Promise<any[]> {
   const controller = new AbortController();

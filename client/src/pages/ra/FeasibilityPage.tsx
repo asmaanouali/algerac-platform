@@ -20,6 +20,7 @@ import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
 import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf } from "@/lib/pdf-documents";
+import { getSearchRequestId } from "@/lib/ra-resume";
 
 // Persist study progress in localStorage so RA can resume where they stopped.
 const storageKey = (requestId: number | string) => `ra-feasibility-${requestId}`;
@@ -115,12 +116,19 @@ export default function RAFeasibilityPage() {
       if (isInitial) setLoading(true);
       const res = await apiRequest("GET", "/api/requests/assigned-to-me");
       const data = await res.json();
-      const filtered = data.filter((r: any) => ["ASSIGNED_TO_RA", "RECEIVABILITY_STUDY", "RESOURCE_CHECK", "RECEIVABILITY_PENDING_CD_REVIEW"].includes(r.status));
+      const filtered = data.filter((r: any) => [
+        "ASSIGNED_TO_RA", "RECEIVABILITY_STUDY", "RESOURCE_CHECK",
+        "RECEIVABILITY_PENDING_CD_REVIEW", "RECEIVABILITY_RESUBMITTED",
+        "PRELIMINARY_VISIT_PROPOSED", "PRELIMINARY_VISIT_ACCEPTED", "PRELIMINARY_VISIT_DECLINED",
+        "PRELIMINARY_VISIT_SCHEDULED", "PRELIMINARY_VISIT_COMPLETED", "PRELIMINARY_VISIT_REPORT_PENDING",
+        "PENDING_DG_VALIDATION", "DG_VALIDATED", "NOT_RECEIVABLE",
+      ].includes(r.status));
       setRequests(filtered);
-      // Auto-select last active request so RA can resume seamlessly after reconnect
-      const lastId = localStorage.getItem("ra-feasibility-last-request");
+      // Prefer dashboard deep-link, then last opened dossier
+      const deepLinkId = getSearchRequestId();
+      const lastId = deepLinkId != null ? String(deepLinkId) : localStorage.getItem("ra-feasibility-last-request");
       if (lastId) {
-        const last = filtered.find((r: any) => String(r.id) === lastId && r.status === "RECEIVABILITY_STUDY");
+        const last = filtered.find((r: any) => String(r.id) === lastId);
         if (last) selectRequest(last);
       }
     } catch (err: any) {

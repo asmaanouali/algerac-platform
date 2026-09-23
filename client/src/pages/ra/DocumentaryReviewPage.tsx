@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from "@/components/ui/separator";
 import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 const DOC_TYPES = [
   { key: "dossier_candidature", label: "Dossier de demande (FOR-01)", icon: FileText, category: "Administratif" },
@@ -31,6 +32,8 @@ const DOC_TYPES = [
 
 const DOC_REVIEW_STATUSES = [
   "TEAM_VALIDATED", "TEAM_RECUSATION_INVALID",
+  "DOC_REVIEW_AWAITING_FEE", "DOC_REVIEW_FEE_PENDING_PAYMENT",
+  "DOC_REVIEW_PAYMENT_SUBMITTED", "DOC_REVIEW_PAYMENT_VALIDATED",
   "DOC_REVIEW_IN_PROGRESS", "DOC_REVIEW_RESULTS_SUBMITTED",
   "DOC_REVIEW_RESULTS_SENT_TO_CD", "DOC_REVIEW_RESULTS_SENT_TO_OEC",
   "DOC_REVIEW_CD_DECISION", "AWAITING_OEC_DOC_RESPONSE",
@@ -70,7 +73,9 @@ export default function DocumentaryReviewPage() {
       const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const all = await res.json();
-        setRequests(all.filter((r: any) => DOC_REVIEW_STATUSES.includes(r.status)));
+        const filtered = all.filter((r: any) => DOC_REVIEW_STATUSES.includes(r.status));
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
     } catch (e) { }
     setLoading(false);

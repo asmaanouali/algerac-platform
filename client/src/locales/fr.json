@@ -280,7 +280,19 @@
     "interviewCandidates": "Entretiens Candidats",
     "raTeam": "Équipe RA",
     "logout": "Déconnexion",
-    "quotationFixing": "Fixation des frais"
+    "quotationFixing": "Fixation des devis",
+    "rolesPermissions": "Rôles & Permissions",
+    "system": "Système",
+    "adminNotifications": "Notifications",
+    "directories": "Répertoirs",
+    "securityPrivacy": "Sécurité & Confidentialité",
+    "database": "Base de Données",
+    "documentsArchives": "Documents & Archives",
+    "systemMonitoring": "Monitoring",
+    "logsAudit": "Logs & Audit",
+    "adminReports": "Rapports",
+    "technicalSupport": "Support Technique",
+    "maintenance": "Maintenance"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -369,7 +381,8 @@
       "trackingCode": "Code de suivi",
       "trackingNote": "Conservez ce code pour suivre l'avancement de votre plainte.",
       "backToLogin": "Retour à l'accueil",
-      "newComplaint": "Nouvelle plainte"
+      "newComplaint": "Nouvelle plainte",
+      "demoFill": "Remplir (démo)"
     },
     "internal": {
       "title": "Plaintes",

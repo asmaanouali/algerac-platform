@@ -50,7 +50,8 @@ public class Quotation {
 
     /**
      * Détail HT du devis (FOR 44 / 44-1 / 44-2) saisi par le DAG.
-     * Structure JSON souple : { "registrationFee": 1000, "analysisFeeP2": 500, ... }
+     * Format legacy : { "registrationFee": 1000, ... }
+     * Format feuille : { "amounts": {...}, "sheet": { "columns": [...], "rows": [...] } }
      */
     @Column(columnDefinition = "TEXT")
     private String devisBreakdownJson;

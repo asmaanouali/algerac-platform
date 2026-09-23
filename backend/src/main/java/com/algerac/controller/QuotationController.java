@@ -73,6 +73,51 @@ public class QuotationController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    /**
+     * RA: Modifier une demande de devis encore en brouillon
+     */
+    @PostMapping("/{id}/update")
+    public ResponseEntity<ApiResponse> updateDraftQuotation(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateQuotationDTO dto,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            Quotation quotation = quotationService.updateDraftQuotation(
+                    id,
+                    dto.getReeCount(),
+                    dto.getEtCount(),
+                    dto.getEqCount(),
+                    dto.getObsCount(),
+                    dto.getSupCount(),
+                    dto.getExpCount(),
+                    dto.getEvaluationDurationDays(),
+                    dto.getReeDurationDays(),
+                    dto.getEtDurationDays(),
+                    dto.getEqDurationDays(),
+                    dto.getObsDurationDays(),
+                    dto.getSupDurationDays(),
+                    dto.getExpDurationDays(),
+                    dto.getCdHelpRequested(),
+                    dto.getCdHelpMessage(),
+                    dto.getDetails(),
+                    currentUser
+            );
+
+            return ResponseEntity.ok(ApiResponse.success("Devis mis à jour avec succès", quotation));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
     
     /**
      * RA: Envoyer le devis au DAG
@@ -105,6 +150,7 @@ public class QuotationController {
                     dto.getAmount(),
                     dto.getComments(),
                     dto.getBreakdown(),
+                    dto.getSheet(),
                     dto.getDevisEstimatifNumber(),
                     dto.getDevisEstimatifDate(),
                     dto.getSiteName(),
@@ -222,6 +268,24 @@ public class QuotationController {
     @GetMapping("/pending-approval")
     public ResponseEntity<List<Quotation>> getPendingDAGApprovalQuotations() {
         return ResponseEntity.ok(quotationService.getPendingDAGApprovalQuotations());
+    }
+
+    /**
+     * DAG: Obtenir tous les devis déjà établis (montant fixé par la DAG)
+     */
+    @GetMapping("/established")
+    public ResponseEntity<?> getEstablishedByDAGQuotations(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Non authentifié"));
+        }
+        User currentUser = userRepository.findById(userId).orElse(null);
+        if (currentUser == null || currentUser.getRole() != UserRole.DAG) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès réservé à la DAG"));
+        }
+        return ResponseEntity.ok(quotationService.getEstablishedByDAGQuotations());
     }
 
     /**

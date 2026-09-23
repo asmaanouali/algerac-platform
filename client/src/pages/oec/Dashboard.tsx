@@ -13,6 +13,7 @@ import {
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { getOecNextAction } from "@/lib/oec-request-display";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -406,7 +407,7 @@ export default function OECDashboard() {
                                 <Badge key={tag} variant="secondary" className="text-xs font-normal">{tag}</Badge>
                               ))}
                               {scopeTags.length > 3 && (
-                                <Link href="/oec/certificats">
+                                <Link href="/oec/certificates">
                                   <button className="text-xs text-primary underline-offset-2 hover:underline">
                                     {t("oec.dashboard.moreScope", { count: scopeTags.length - 3 })}
                                   </button>
@@ -415,7 +416,7 @@ export default function OECDashboard() {
                             </div>
                           </div>
                         )}
-                        <Link href="/oec/certificats">
+                        <Link href="/oec/certificates">
                           <button className="text-xs text-primary underline-offset-2 hover:underline">
                             {t("oec.dashboard.viewAllScope")}
                           </button>
@@ -474,7 +475,7 @@ export default function OECDashboard() {
                               {t("oec.dashboard.gapsNeedActionPlan", { count: awaitingActionPlanGaps.length })}
                             </p>
                             <p className="text-xs text-slate-500 mt-0.5">{t("oec.dashboard.tenDayDeadline")}</p>
-                            <Link href="/oec/ecarts">
+                            <Link href="/oec/reponse-ecarts">
                               <Button size="sm" className="mt-3 bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3">
                                 {t("oec.dashboard.handleNow")}
                               </Button>
@@ -493,7 +494,14 @@ export default function OECDashboard() {
                             <p className="text-sm font-medium text-slate-800">
                               {req.referenceNumber || `Demande #${req.id}`}
                             </p>
-                            <p className="text-xs text-slate-500 mt-0.5">{req.nextAction || req.currentStep}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {getOecNextAction({
+                                status: req.status,
+                                nextAction: req.nextAction,
+                                currentStep: req.currentStep,
+                                pendingWith: req.pendingWith,
+                              })}
+                            </p>
                             <Link href={`/oec/demandes/${req.id}`}>
                               <Button size="sm" variant="outline" className="mt-3 text-xs h-7 px-3 gap-1 border-amber-300 text-amber-700 hover:bg-amber-50">
                                 {t("oec.dashboard.handle")} <ArrowRight className="h-3 w-3" />

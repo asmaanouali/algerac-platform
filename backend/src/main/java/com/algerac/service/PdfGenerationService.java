@@ -1133,12 +1133,17 @@ public class PdfGenerationService {
             document.add(new Paragraph("U = DA")
                     .setFont(boldFont).setFontSize(9).setTextAlignment(TextAlignment.RIGHT).setMarginTop(2).setMarginBottom(4));
 
-            // ── Tableau principal selon le type ──
-            java.util.Map<String, java.math.BigDecimal> b = parseBreakdown(quotation.getDevisBreakdownJson());
-            switch (type) {
-                case SURVEILLANCE -> document.add(buildSurveillanceTable(b, font, boldFont));
-                case EXTENSION -> document.add(buildExtensionTable(b, font, boldFont));
-                default -> document.add(buildInitialTable(b, type, font, boldFont));
+            // ── Tableau principal : feuille DAG si présente, sinon gabarit FOR 44 ──
+            java.util.Map<String, Object> sheet = parseDevisSheet(quotation.getDevisBreakdownJson());
+            if (sheet != null) {
+                document.add(buildFromSheet(sheet, font, boldFont));
+            } else {
+                java.util.Map<String, java.math.BigDecimal> b = parseBreakdown(quotation.getDevisBreakdownJson());
+                switch (type) {
+                    case SURVEILLANCE -> document.add(buildSurveillanceTable(b, font, boldFont));
+                    case EXTENSION -> document.add(buildExtensionTable(b, font, boldFont));
+                    default -> document.add(buildInitialTable(b, type, font, boldFont));
+                }
             }
 
             // ── N.B. ──
@@ -1185,12 +1190,19 @@ public class PdfGenerationService {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private java.util.Map<String, java.math.BigDecimal> parseBreakdown(String json) {
         java.util.LinkedHashMap<String, java.math.BigDecimal> out = new java.util.LinkedHashMap<>();
         if (json == null || json.isBlank()) return out;
         try {
             Map<String, Object> raw = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
-            for (Map.Entry<String, Object> e : raw.entrySet()) {
+            Object amountsObj = raw.get("amounts");
+            Map<String, Object> source = raw;
+            if (amountsObj instanceof Map<?, ?> amountsMap) {
+                source = (Map<String, Object>) amountsMap;
+            }
+            for (Map.Entry<String, Object> e : source.entrySet()) {
+                if ("amounts".equals(e.getKey()) || "sheet".equals(e.getKey())) continue;
                 if (e.getValue() == null) continue;
                 try {
                     out.put(e.getKey(), new java.math.BigDecimal(e.getValue().toString()));
@@ -1200,6 +1212,185 @@ public class PdfGenerationService {
             log.warn("Devis breakdown JSON illisible: {}", ex.getMessage());
         }
         return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.Map<String, Object> parseDevisSheet(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            Map<String, Object> raw = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+            Object sheetObj = raw.get("sheet");
+            if (sheetObj instanceof Map<?, ?> sheetMap) {
+                Map<String, Object> sheet = (Map<String, Object>) sheetMap;
+                if (sheet.get("columns") instanceof java.util.List && sheet.get("rows") instanceof java.util.List) {
+                    return sheet;
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Devis sheet JSON illisible: {}", ex.getMessage());
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Table buildFromSheet(java.util.Map<String, Object> sheet, PdfFont font, PdfFont bold) {
+        java.util.List<Map<String, Object>> columns = (java.util.List<Map<String, Object>>) sheet.get("columns");
+        java.util.List<Map<String, Object>> rows = (java.util.List<Map<String, Object>>) sheet.get("rows");
+        if (columns == null) columns = java.util.List.of();
+        if (rows == null) rows = java.util.List.of();
+
+        // Colonnes visibles PDF : phase, label, custom, ht, ttc (pas d'actions)
+        java.util.List<Map<String, Object>> visibleCols = new java.util.ArrayList<>();
+        for (Map<String, Object> c : columns) {
+            String kind = str(c.get("kind"));
+            if ("phase".equals(kind) || "label".equals(kind) || "ht".equals(kind)
+                    || "ttc".equals(kind) || "text".equals(kind) || "number".equals(kind)) {
+                visibleCols.add(c);
+            }
+        }
+        if (visibleCols.isEmpty()) {
+            return mainTable(); // fallback header only
+        }
+
+        float[] widths = new float[visibleCols.size()];
+        for (int i = 0; i < visibleCols.size(); i++) {
+            String kind = str(visibleCols.get(i).get("kind"));
+            widths[i] = switch (kind) {
+                case "phase" -> 12f;
+                case "label" -> 40f;
+                case "ht", "ttc" -> 16f;
+                default -> 14f;
+            };
+        }
+
+        Table t = new Table(UnitValue.createPercentArray(widths)).useAllAvailableWidth();
+        com.itextpdf.kernel.colors.DeviceRgb hdr = new com.itextpdf.kernel.colors.DeviceRgb(200, 215, 230);
+        for (Map<String, Object> c : visibleCols) {
+            t.addHeaderCell(new Cell()
+                    .add(new Paragraph(str(c.get("label"))).setFont(bold).setFontSize(9).setTextAlignment(TextAlignment.CENTER))
+                    .setBackgroundColor(hdr).setPadding(3));
+        }
+
+        // Pré-calcul HT par id de ligne + rowSpan phase
+        java.util.Map<String, java.math.BigDecimal> htById = new java.util.HashMap<>();
+        for (Map<String, Object> row : rows) {
+            String kind = str(row.get("kind"));
+            String id = str(row.get("id"));
+            if ("line".equals(kind)) {
+                htById.put(id, toBd(row.get("ht")));
+            }
+        }
+        for (Map<String, Object> row : rows) {
+            if (!"subtotal".equals(str(row.get("kind")))) continue;
+            java.math.BigDecimal sum = java.math.BigDecimal.ZERO;
+            Object sumIds = row.get("sumRowIds");
+            if (sumIds instanceof java.util.List<?> ids) {
+                for (Object oid : ids) {
+                    java.math.BigDecimal v = htById.get(String.valueOf(oid));
+                    if (v != null) sum = sum.add(v);
+                }
+            }
+            htById.put(str(row.get("id")), sum);
+        }
+
+        java.util.List<Integer> phaseSpans = computePhaseRowSpans(rows);
+
+        for (int ri = 0; ri < rows.size(); ri++) {
+            Map<String, Object> row = rows.get(ri);
+            String rowKind = str(row.get("kind"));
+            boolean isSub = "subtotal".equals(rowKind);
+            boolean isSec = "section".equals(rowKind);
+            java.math.BigDecimal ht = htById.getOrDefault(str(row.get("id")), java.math.BigDecimal.ZERO);
+            Map<String, Object> extra = row.get("extra") instanceof Map<?, ?>
+                    ? (Map<String, Object>) row.get("extra") : java.util.Map.of();
+
+            for (int ci = 0; ci < visibleCols.size(); ci++) {
+                Map<String, Object> col = visibleCols.get(ci);
+                String kind = str(col.get("kind"));
+                String colId = str(col.get("id"));
+
+                if ("phase".equals(kind)) {
+                    int span = phaseSpans.get(ri);
+                    if (span <= 0) continue; // covered by rowspan
+                    if (isSec) {
+                        t.addCell(phaseCell(str(row.get("phase")), span, bold));
+                    } else if (str(row.get("phase")).isBlank() && isSub) {
+                        t.addCell(new Cell(span, 1).setPadding(3));
+                    } else {
+                        t.addCell(phaseCell(str(row.get("phase")), span, bold));
+                    }
+                    continue;
+                }
+
+                if (isSec) {
+                    // Une seule cellule libellé qui occupe le reste des colonnes
+                    if ("label".equals(kind)) {
+                        int rest = visibleCols.size() - ci;
+                        t.addCell(new Cell(1, rest)
+                                .add(new Paragraph(str(row.get("label"))).setFont(bold).setFontSize(9).setItalic())
+                                .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(225, 225, 225))
+                                .setPadding(3));
+                        break;
+                    }
+                    continue;
+                }
+
+                if ("label".equals(kind)) {
+                    if (isSub) {
+                        t.addCell(subtotalLabel(str(row.get("label")), 1, bold));
+                    } else {
+                        t.addCell(labelCell(str(row.get("label")), font));
+                    }
+                } else if ("ht".equals(kind)) {
+                    if (isSub) t.addCell(subtotalAmount(ht, bold));
+                    else t.addCell(amountCell(ht, font));
+                } else if ("ttc".equals(kind)) {
+                    java.math.BigDecimal ttcVal = ttc(ht);
+                    if (isSub) t.addCell(subtotalAmount(ttcVal, bold));
+                    else t.addCell(amountCell(ttcVal, font));
+                } else {
+                    String val = extra.get(colId) != null ? String.valueOf(extra.get(colId)) : "";
+                    if (isSub) {
+                        t.addCell(new Cell().add(new Paragraph("").setFont(font).setFontSize(9))
+                                .setBackgroundColor(new com.itextpdf.kernel.colors.DeviceRgb(225, 225, 225)).setPadding(3));
+                    } else {
+                        t.addCell(labelCell(val, font));
+                    }
+                }
+            }
+        }
+        return t;
+    }
+
+    private java.util.List<Integer> computePhaseRowSpans(java.util.List<Map<String, Object>> rows) {
+        java.util.ArrayList<Integer> spans = new java.util.ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) spans.add(0);
+        int i = 0;
+        while (i < rows.size()) {
+            String phase = str(rows.get(i).get("phase")).trim();
+            if (phase.isEmpty()) {
+                spans.set(i, 1);
+                i++;
+                continue;
+            }
+            int j = i + 1;
+            while (j < rows.size() && phase.equals(str(rows.get(j).get("phase")).trim())) j++;
+            spans.set(i, j - i);
+            for (int k = i + 1; k < j; k++) spans.set(k, 0);
+            i = j;
+        }
+        return spans;
+    }
+
+    private java.math.BigDecimal toBd(Object o) {
+        if (o == null) return java.math.BigDecimal.ZERO;
+        try {
+            String s = String.valueOf(o).trim().replace(",", ".");
+            if (s.isEmpty()) return java.math.BigDecimal.ZERO;
+            return new java.math.BigDecimal(s);
+        } catch (Exception e) {
+            return java.math.BigDecimal.ZERO;
+        }
     }
 
     private java.math.BigDecimal getOrZero(java.util.Map<String, java.math.BigDecimal> b, String key) {

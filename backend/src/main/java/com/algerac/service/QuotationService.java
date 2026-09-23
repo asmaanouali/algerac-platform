@@ -97,6 +97,61 @@ public class QuotationService {
         
         return quotation;
     }
+
+    /**
+     * RA: modifier une demande de devis encore en brouillon (avant envoi au DAG)
+     */
+    @Transactional
+    public Quotation updateDraftQuotation(Long quotationId, Integer reeCount, Integer etCount,
+                                          Integer eqCount, Integer obsCount, Integer supCount,
+                                          Integer expCount, Double evaluationDurationDays,
+                                          Double reeDurationDays, Double etDurationDays,
+                                          Double eqDurationDays, Double obsDurationDays,
+                                          Double supDurationDays, Double expDurationDays,
+                                          Boolean cdHelpRequested, String cdHelpMessage,
+                                          String details, User currentUser) {
+        Quotation quotation = quotationRepository.findById(quotationId)
+                .orElseThrow(() -> new RuntimeException("Devis non trouvé"));
+
+        if (quotation.getPreparedByRa() != null &&
+                !quotation.getPreparedByRa().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à modifier ce devis");
+        }
+
+        if (quotation.getStatus() != QuotationStatus.DRAFT) {
+            throw new RuntimeException("Ce devis ne peut plus être modifié car il a déjà été envoyé au DAG");
+        }
+
+        boolean newlyRequestedCdHelp = Boolean.TRUE.equals(cdHelpRequested)
+                && !Boolean.TRUE.equals(quotation.getCdHelpRequested());
+
+        quotation.setReeCount(reeCount != null ? reeCount : 1);
+        quotation.setEtCount(etCount != null ? etCount : 1);
+        quotation.setEqCount(eqCount != null ? eqCount : 0);
+        quotation.setObsCount(obsCount != null ? obsCount : 0);
+        quotation.setSupCount(supCount != null ? supCount : 0);
+        quotation.setExpCount(expCount != null ? expCount : 0);
+        quotation.setEvaluationDurationDays(evaluationDurationDays);
+        quotation.setReeDurationDays(reeDurationDays);
+        quotation.setEtDurationDays(etDurationDays);
+        quotation.setEqDurationDays(eqDurationDays);
+        quotation.setObsDurationDays(obsDurationDays);
+        quotation.setSupDurationDays(supDurationDays);
+        quotation.setExpDurationDays(expDurationDays);
+        quotation.setCdHelpRequested(cdHelpRequested != null ? cdHelpRequested : false);
+        quotation.setCdHelpMessage(Boolean.TRUE.equals(cdHelpRequested) ? cdHelpMessage : null);
+        quotation.setDetails(details);
+        quotation = quotationRepository.save(quotation);
+
+        if (newlyRequestedCdHelp) {
+            notifyCDHelpRequested(quotation.getRequest(), currentUser, cdHelpMessage);
+        }
+
+        log.info("Demande d'établissement du devis {} mise à jour par {}",
+                quotation.getQuotationNumber(), currentUser.getFullName());
+
+        return quotation;
+    }
     
     /**
      * Envoyer le devis au DAG pour approbation
@@ -136,7 +191,7 @@ public class QuotationService {
      */
     @Transactional
     public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments, User currentUser) {
-        return approveQuotationByDAG(quotationId, amount, comments, null, null, null, null, null, currentUser);
+        return approveQuotationByDAG(quotationId, amount, comments, null, null, null, null, null, null, currentUser);
     }
 
     @Transactional
@@ -146,29 +201,48 @@ public class QuotationService {
                                             java.time.LocalDate devisEstimatifDate,
                                             String siteName, String siteAddress,
                                             User currentUser) {
+        return approveQuotationByDAG(quotationId, amount, comments, breakdown, null,
+                devisEstimatifNumber, devisEstimatifDate, siteName, siteAddress, currentUser);
+    }
+
+    @Transactional
+    public Quotation approveQuotationByDAG(Long quotationId, BigDecimal amount, String comments,
+                                            java.util.Map<String, BigDecimal> breakdown,
+                                            java.util.Map<String, Object> sheet,
+                                            String devisEstimatifNumber,
+                                            java.time.LocalDate devisEstimatifDate,
+                                            String siteName, String siteAddress,
+                                            User currentUser) {
         if (currentUser.getRole() != UserRole.DAG) {
             throw new RuntimeException("Seuls les DAG peuvent approuver les devis");
         }
-        
+
         Quotation quotation = quotationRepository.findById(quotationId)
                 .orElseThrow(() -> new RuntimeException("Devis non trouvé"));
-        
+
         if (quotation.getStatus() != QuotationStatus.SENT_TO_DAG) {
             throw new RuntimeException("Ce devis n'est pas en attente d'approbation");
         }
-        
+
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("Le montant du devis doit être positif");
         }
-        
+
         quotation.setAmount(amount);
         quotation.setStatus(QuotationStatus.APPROVED_BY_DAG);
         quotation.setApprovedByDag(currentUser);
         quotation.setDagComments(comments);
         quotation.setApprovedByDagDate(LocalDateTime.now());
-        if (breakdown != null && !breakdown.isEmpty()) {
+        if ((breakdown != null && !breakdown.isEmpty()) || (sheet != null && !sheet.isEmpty())) {
             try {
-                quotation.setDevisBreakdownJson(objectMapper.writeValueAsString(breakdown));
+                if (sheet != null && !sheet.isEmpty()) {
+                    java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+                    payload.put("amounts", breakdown != null ? breakdown : java.util.Map.of());
+                    payload.put("sheet", sheet);
+                    quotation.setDevisBreakdownJson(objectMapper.writeValueAsString(payload));
+                } else {
+                    quotation.setDevisBreakdownJson(objectMapper.writeValueAsString(breakdown));
+                }
             } catch (Exception e) {
                 log.warn("Impossible de sérialiser le détail du devis: {}", e.getMessage());
             }
@@ -450,6 +524,20 @@ public class QuotationService {
      */
     public List<Quotation> getPendingDAGApprovalQuotations() {
         return quotationRepository.findByStatus(QuotationStatus.SENT_TO_DAG);
+    }
+
+    /**
+     * Obtenir tous les devis établis par la DAG (montant fixé).
+     */
+    public List<Quotation> getEstablishedByDAGQuotations() {
+        return quotationRepository.findByApprovedByDagIsNotNull();
+    }
+
+    /**
+     * Obtenir les devis établis par un DAG donné.
+     */
+    public List<Quotation> getQuotationsByDAG(Long dagId) {
+        return quotationRepository.findByApprovedByDag_Id(dagId);
     }
     
     /**

@@ -72,6 +72,15 @@ public class Payment {
 
     // Numéro de facture (format: FACT-YYYY-NNNN)
     private String invoiceNumber;
+
+    /**
+     * Distingue un OEC nouvellement inscrit (candidature) d'un OEC déjà existant.
+     * true  = nouvel OEC (inscription publique, compte pas encore pleinement actif)
+     * false = OEC existant (nouvelle demande d'accréditation)
+     */
+    @Column(name = "is_new_oec")
+    @Builder.Default
+    private Boolean isNewOec = false;
     
     @Column(nullable = false)
     private LocalDateTime createdAt;

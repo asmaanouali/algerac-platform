@@ -49,9 +49,12 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
     private final CASVoteRepository casVoteRepository;
     private final CASDecisionRepository casDecisionRepository;
     private final AccreditationCertificateRepository certificateRepository;
+    private final AccreditationTransferRepository transferRepository;
     private final SurveillancePlanRepository surveillancePlanRepository;
+    private final SurveillanceEvaluationRepository surveillanceEvaluationRepository;
     private final DocumentRepository documentRepository;
     private final NotificationRepository notificationRepository;
+    private final ComplaintRepository complaintRepository;
 
     // Cached users (loaded once)
     private User oec1, oec2, oec3, oec4, oec5;
@@ -67,17 +70,25 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (requestRepository.existsByReferenceNumber("D-2025-001")) {
-            log.info("WorkflowTestDataSeeder: test data already exists, skipping.");
-            return;
-        }
-
-        log.info("WorkflowTestDataSeeder: seeding comprehensive PRO 12 workflow data...");
-
         if (!loadUsers()) {
             log.warn("WorkflowTestDataSeeder: required users not found, skipping.");
             return;
         }
+
+        // Always ensure oec1→oec5 demo scenarios exist (idempotent).
+        try {
+            seedOec1ToOec5Scenarios();
+        } catch (Exception e) {
+            log.error("WorkflowTestDataSeeder: error seeding oec1→oec5 scenarios - {}", e.getMessage(), e);
+        }
+
+        if (requestRepository.existsByReferenceNumber("D-2025-001")
+                || requestRepository.existsByReferenceNumber("SEED-OEC1-INITIAL")) {
+            log.info("WorkflowTestDataSeeder: base/demo data already exists, skipping bulk seed.");
+            return;
+        }
+
+        log.info("WorkflowTestDataSeeder: seeding comprehensive PRO 12 workflow data...");
 
         try {
             seedRequest01_Active();
@@ -98,11 +109,12 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
     }
 
     private boolean loadUsers() {
-        oec1 = findUser("oec.test@algeractestapp.dz");
-        oec2 = findUser("oec.labo1@algeractestapp.dz");
-        oec3 = findUser("oec.inspect1@algeractestapp.dz");
-        oec4 = findUser("oec.certif1@algeractestapp.dz");
-        oec5 = findUser("oec.calibration1@algeractestapp.dz");
+        // Prefer seed-data.sql emails; fall back to enrich-test-profiles aliases if present.
+        oec1 = firstUser("oec1@algeractestapp.dz", "oec.test@algeractestapp.dz");
+        oec2 = firstUser("oec2@algeractestapp.dz", "oec.labo1@algeractestapp.dz");
+        oec3 = firstUser("oec3@algeractestapp.dz", "oec.inspect1@algeractestapp.dz");
+        oec4 = firstUser("oec4@algeractestapp.dz", "oec.certif1@algeractestapp.dz");
+        oec5 = firstUser("oec5@algeractestapp.dz", "oec.calibration1@algeractestapp.dz");
 
         ra1 = findUser("ra.d1.01@algeractestapp.dz");
         ra2 = findUser("ra.d2.01@algeractestapp.dz");
@@ -138,6 +150,14 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
 
     private User findUser(String email) {
         return userRepository.findByEmail(email).orElse(null);
+    }
+
+    private User firstUser(String... emails) {
+        for (String email : emails) {
+            User user = findUser(email);
+            if (user != null) return user;
+        }
+        return null;
     }
 
     // ============================================================
@@ -499,7 +519,7 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
 
         AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
                 .referenceNumber("D-2025-002")
-                .oec(safe(oec2, oec1)).assignedToRa(safe(ra2, ra1))
+                .oec(safe(oec3, oec1)).assignedToRa(safe(ra2, ra1))
                 .type(RequestType.INITIAL)
                 .domain("Organisme d'Inspection - Équipements sous Pression")
                 .description("Accréditation initiale ISO/IEC 17020 type A pour inspection d'équipements sous pression.")
@@ -920,7 +940,7 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
 
         AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
                 .referenceNumber("D-2025-009")
-                .oec(safe(oec2, oec1)).assignedToRa(ra1)
+                .oec(safe(oec4, oec1)).assignedToRa(ra1)
                 .type(RequestType.INITIAL)
                 .domain("Laboratoire d'Essais - Géotechnique")
                 .description("Accréditation ISO/IEC 17025 pour essais géotechniques: sols, fondations, terrassements.")
@@ -1096,6 +1116,595 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
                 .build());
 
         log.info("  ✓ D-2025-010: SURVEILLANCE_SCHEDULED");
+    }
+
+    // ============================================================
+    // OEC1→OEC5 demo scenarios (idempotent)
+    // oec1 INITIAL submitted | oec2 EXTENSION submitted |
+    // oec3 RENOUVELLEMENT submitted | oec4 ACTIVE + transfer |
+    // oec5 ACTIVE ready for surveillance
+    // ============================================================
+    private void seedOec1ToOec5Scenarios() {
+        seedOec1InitialSubmitted();
+        seedOec1TeamValidationPending();
+        seedOec1CasDecisionPending();
+        seedOec2ExtensionSubmitted();
+        seedOec3RenewalSubmitted();
+        seedOec4ActiveWithTransfer();
+        seedOec5ActiveForSurveillance();
+        seedDemoComplaints();
+    }
+
+    private void seedOec1InitialSubmitted() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC1-INITIAL") || oec1 == null) return;
+
+        requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC1-INITIAL")
+                .oec(oec1)
+                .type(RequestType.INITIAL)
+                .domain("Laboratoire d'Essais - Essais Physiques et Chimiques")
+                .description("Demande d'accréditation initiale ISO/IEC 17025 pour essais physiques et chimiques sur matériaux de construction. Formulaire rempli par l'OEC, en attente de vérification DT.")
+                .status(RequestStatus.PENDING_DT_REVIEW)
+                .progress(5)
+                .submissionDate(LocalDateTime.now().minusDays(2))
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .pendingWith("DT")
+                .currentPhase("INITIAL")
+                .currentStep("Dossier en cours d'examen")
+                .nextAction("Votre dossier est en cours d'examen par ALGERAC.")
+                .isNewOec(false)
+                .build());
+        log.info("  ✓ SEED-OEC1-INITIAL: PENDING_DT_REVIEW");
+    }
+
+    /**
+     * OEC1 — Demande INITIALE jusqu'à validation de l'équipe d'évaluation par l'OEC.
+     */
+    private void seedOec1TeamValidationPending() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC1-TEAM-VAL") || oec1 == null || ra1 == null) return;
+
+        LocalDateTime baseDate = LocalDateTime.now().minusMonths(2);
+        User cd = safe(cd1, cd2);
+
+        AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC1-TEAM-VAL")
+                .oec(oec1)
+                .assignedToRa(ra1)
+                .assignedToCd(cd)
+                .type(RequestType.INITIAL)
+                .domain("Laboratoire d'Essais - Essais Environnementaux")
+                .description("Demande d'accréditation initiale ISO/IEC 17025 pour essais environnementaux (eaux, air, sols). Composition de l'équipe envoyée à l'OEC pour validation.")
+                .status(RequestStatus.TEAM_SENT_TO_OEC)
+                .progress(35)
+                .submissionDate(baseDate)
+                .assignmentDate(baseDate.plusDays(3))
+                .receivabilityDecisionDate(baseDate.plusDays(12))
+                .isReceivable(true)
+                .currentPhase("CONSTITUTION_EQUIPE")
+                .currentStep("team_sent_to_oec")
+                .nextAction("OEC doit valider la composition de l'équipe d'évaluation (3 jours)")
+                .pendingWith("OEC")
+                .createdAt(baseDate)
+                .isNewOec(false)
+                .build());
+
+        feasibilityStudyRepository.save(FeasibilityStudy.builder()
+                .request(req)
+                .responsableAccreditation(ra1)
+                .decision(FeasibilityDecision.RECEIVABLE)
+                .comments("Dossier recevable. Portée essais environnementaux couverte.")
+                .technicalAnalysis("Normes applicables: ISO 5667, NF EN ISO 17025.")
+                .studyStartDate(baseDate.plusDays(4))
+                .studyCompletionDate(baseDate.plusDays(10))
+                .createdAt(baseDate.plusDays(4))
+                .build());
+
+        quotationRepository.save(Quotation.builder()
+                .request(req)
+                .quotationNumber("DEV-SEED-OEC1-TEAM")
+                .preparedByRa(ra1)
+                .approvedByDag(dag)
+                .status(QuotationStatus.VALIDATED_BY_OEC)
+                .amount(new BigDecimal("450000.00"))
+                .details("Évaluation initiale: 4 jours. 1 REE + 2 ET.")
+                .reeCount(1).etCount(2).eqCount(0).expCount(0)
+                .evaluationDurationDays(4.0)
+                .sentToDagDate(baseDate.plusDays(18))
+                .approvedByDagDate(baseDate.plusDays(20))
+                .sentToOecDate(baseDate.plusDays(21))
+                .validatedByOecDate(baseDate.plusDays(28))
+                .createdAt(baseDate.plusDays(15))
+                .build());
+
+        conventionRepository.save(Convention.builder()
+                .request(req)
+                .conventionNumber("CONV-SEED-OEC1-TEAM")
+                .preparedByRa(ra1)
+                .status(ConventionStatus.VALIDATED_BY_OEC)
+                .sentToOecDate(baseDate.plusDays(21))
+                .validatedByOecDate(baseDate.plusDays(28))
+                .createdAt(baseDate.plusDays(15))
+                .build());
+
+        EvaluationTeam team = evaluationTeamRepository.save(EvaluationTeam.builder()
+                .request(req)
+                .teamCode("EQ-SEED-OEC1-TEAM")
+                .compositionSheetFOR26("FOR 26 - Composition équipe essais environnementaux")
+                .proposedEvaluationDate(LocalDate.now().plusMonths(1).plusDays(10))
+                .sentToOEC(LocalDateTime.now().minusDays(1))
+                .oecResponseDeadline(LocalDateTime.now().plusDays(2))
+                .status(TeamStatus.SENT_TO_OEC)
+                .createdAt(LocalDateTime.now().minusDays(4))
+                .build());
+
+        saveMember(team, safe(ree1, ra1), TeamRole.REE, "Essais environnementaux", true, true);
+        saveMember(team, safe(et1, et2), TeamRole.ET, "Analyses eaux / sols", true, true);
+        if (et2 != null) saveMember(team, et2, TeamRole.ET, "Qualité air ambiant", true, true);
+
+        notificationRepository.save(Notification.builder()
+                .user(oec1)
+                .title("Composition d'équipe à valider")
+                .message("La composition de l'équipe d'évaluation pour SEED-OEC1-TEAM-VAL vous a été transmise. Merci de valider ou récuser sous 3 jours.")
+                .type("warning")
+                .link("/oec/demandes")
+                .read(false)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build());
+
+        log.info("  ✓ SEED-OEC1-TEAM-VAL: TEAM_SENT_TO_OEC (validation OEC en attente)");
+    }
+
+    /**
+     * OEC1 — Demande INITIALE jusqu'à la partie CAS (décision pas encore rendue).
+     */
+    private void seedOec1CasDecisionPending() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC1-CAS-PENDING") || oec1 == null || ra1 == null) return;
+
+        LocalDateTime baseDate = LocalDateTime.now().minusMonths(5);
+        User cd = safe(cd1, cd2);
+        User ra = safe(ra1, ra2);
+
+        AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC1-CAS-PENDING")
+                .oec(oec1)
+                .assignedToRa(ra)
+                .assignedToCd(cd)
+                .type(RequestType.INITIAL)
+                .domain("Laboratoire d'Essais - Essais Non Destructifs (END)")
+                .description("Demande d'accréditation initiale ISO/IEC 17025 pour essais non destructifs (UT, MT, PT). Rapport validé ; réunion CAS programmée, décision non encore rendue.")
+                .status(RequestStatus.CAS_SCHEDULED)
+                .progress(89)
+                .submissionDate(baseDate)
+                .assignmentDate(baseDate.plusDays(3))
+                .receivabilityDecisionDate(baseDate.plusDays(12))
+                .isReceivable(true)
+                .evaluationStartDate(baseDate.plusMonths(3))
+                .evaluationEndDate(baseDate.plusMonths(3).plusDays(4))
+                .currentPhase("DECISION_CAS")
+                .currentStep("cas_scheduled")
+                .nextAction("Réunion CAS programmée — décision à rendre")
+                .pendingWith("CAS")
+                .createdAt(baseDate)
+                .isNewOec(false)
+                .build());
+
+        feasibilityStudyRepository.save(FeasibilityStudy.builder()
+                .request(req)
+                .responsableAccreditation(ra)
+                .decision(FeasibilityDecision.RECEIVABLE)
+                .comments("Dossier recevable pour accréditation END.")
+                .technicalAnalysis("Domaine END couvert. Personnel certifié niveaux II/III.")
+                .studyStartDate(baseDate.plusDays(4))
+                .studyCompletionDate(baseDate.plusDays(10))
+                .createdAt(baseDate.plusDays(4))
+                .build());
+
+        quotationRepository.save(Quotation.builder()
+                .request(req)
+                .quotationNumber("DEV-SEED-OEC1-CAS")
+                .preparedByRa(ra)
+                .approvedByDag(dag)
+                .status(QuotationStatus.VALIDATED_BY_OEC)
+                .amount(new BigDecimal("520000.00"))
+                .details("Évaluation initiale END: 5 jours. 1 REE + 2 ET + 1 Expert.")
+                .reeCount(1).etCount(2).eqCount(0).expCount(1)
+                .evaluationDurationDays(5.0)
+                .sentToDagDate(baseDate.plusDays(18))
+                .approvedByDagDate(baseDate.plusDays(20))
+                .sentToOecDate(baseDate.plusDays(21))
+                .validatedByOecDate(baseDate.plusDays(28))
+                .createdAt(baseDate.plusDays(15))
+                .build());
+
+        conventionRepository.save(Convention.builder()
+                .request(req)
+                .conventionNumber("CONV-SEED-OEC1-CAS")
+                .preparedByRa(ra)
+                .status(ConventionStatus.VALIDATED_BY_OEC)
+                .sentToOecDate(baseDate.plusDays(21))
+                .validatedByOecDate(baseDate.plusDays(28))
+                .createdAt(baseDate.plusDays(15))
+                .build());
+
+        EvaluationTeam team = evaluationTeamRepository.save(EvaluationTeam.builder()
+                .request(req)
+                .teamCode("EQ-SEED-OEC1-CAS")
+                .proposedEvaluationDate(baseDate.plusMonths(3).toLocalDate())
+                .evaluationDateAccepted(true)
+                .oecValidated(true)
+                .hasRecusation(false)
+                .finalValidationDate(baseDate.plusMonths(2))
+                .status(TeamStatus.ACTIVE)
+                .createdAt(baseDate.plusMonths(1).plusDays(5))
+                .build());
+
+        saveMember(team, safe(ree1, ra), TeamRole.REE, "Essais non destructifs", true, true);
+        saveMember(team, safe(et1, et2), TeamRole.ET, "Ultrasons / Magnétoscopie", true, true);
+        if (et2 != null) saveMember(team, et2, TeamRole.ET, "Ressuage", true, true);
+        if (exp1 != null) saveMember(team, exp1, TeamRole.EXP, "Expertise END niveau III", true, true);
+
+        EvaluationReport report = evaluationReportRepository.save(EvaluationReport.builder()
+                .request(req)
+                .team(team)
+                .reportNumber("RAP-SEED-OEC1-CAS")
+                .type(ReportType.FOR_09_LABORATORY)
+                .conclusionAndRecommendation("RECOMMANDATION FAVORABLE - Portée END complète demandée.")
+                .gapsSummary("2 écarts non critiques résolus.")
+                .strengths("Compétence technique END démontrée. Équipements étalonnés.")
+                .status(EvaluationReportStatus.VALIDATED)
+                .evaluationClosureDate(baseDate.plusMonths(3).plusDays(4))
+                .draftedByREE(baseDate.plusMonths(3).plusDays(20))
+                .validatedByCD(true)
+                .validationDate(baseDate.plusMonths(4).plusDays(5))
+                .createdAt(baseDate.plusMonths(3).plusDays(20))
+                .build());
+
+        LocalDateTime meetingDate = LocalDateTime.now().plusDays(7);
+        casMeetingRepository.save(CASMeeting.builder()
+                .request(req)
+                .meetingCode("CAS-SEED-OEC1-PENDING")
+                .meetingDate(meetingDate)
+                .location("Salle CAS - ALGERAC, Alger")
+                .agenda("Examen du dossier SEED-OEC1-CAS-PENDING — Essais Non Destructifs")
+                .dossierSummary("Rapport " + report.getReportNumber() + " validé. Recommandation favorable.")
+                .status(CASMeetingStatus.SUMMONS_SENT)
+                .summonsSentAt(LocalDateTime.now().minusDays(3))
+                .dossierSentAt(LocalDateTime.now().minusDays(2))
+                .quorumRequired(3)
+                .attendeesConfirmed(0)
+                .quorumReached(false)
+                .dossierReadOnly(true)
+                .dossierDownloadDisabled(true)
+                .createdAt(LocalDateTime.now().minusDays(5))
+                .build());
+
+        notificationRepository.save(Notification.builder()
+                .user(oec1)
+                .title("Dossier transmis au CAS")
+                .message("Votre demande SEED-OEC1-CAS-PENDING a été programmée pour une réunion CAS. La décision n'a pas encore été rendue.")
+                .type("info")
+                .link("/oec/demandes")
+                .read(false)
+                .createdAt(LocalDateTime.now().minusDays(3))
+                .build());
+
+        log.info("  ✓ SEED-OEC1-CAS-PENDING: CAS_SCHEDULED (décision CAS non encore faite)");
+    }
+
+    /**
+     * Plaintes démo : une déposée par oec2, une par une personne externe (publique).
+     */
+    private void seedDemoComplaints() {
+        if (complaintRepository.findByTrackingCode("PLT-SEED-OEC2").isEmpty() && oec2 != null) {
+            complaintRepository.save(Complaint.builder()
+                    .trackingCode("PLT-SEED-OEC2")
+                    .complainantName(oec2.getFullName() != null ? oec2.getFullName() : "Bureau d'Inspection Algérien")
+                    .complainantEmail(oec2.getEmail())
+                    .complainantPhone(oec2.getPhone())
+                    .complainantOrganization(oec2.getOrganizationName())
+                    .targetOrganization("ALGERAC")
+                    .category("delay")
+                    .subject("Délai excessif de traitement d'une demande d'extension")
+                    .description("Nous constatons un délai anormalement long dans le traitement de notre demande d'extension de portée (appareils de levage). Aucune communication formelle n'a été reçue depuis plus de 30 jours.")
+                    .expectedResolution("Obtenir un échéancier clair et une reprise du traitement du dossier dans les meilleurs délais.")
+                    .isPublic(false)
+                    .submittedByUser(oec2)
+                    .submittedByRole(oec2.getRole() != null ? oec2.getRole().name() : "OEC")
+                    .status(ComplaintStatus.RECEIVED)
+                    .createdAt(LocalDateTime.now().minusDays(3))
+                    .build());
+            log.info("  ✓ PLT-SEED-OEC2: plainte interne déposée par oec2");
+        }
+
+        if (complaintRepository.findByTrackingCode("PLT-SEED-PUBLIC").isEmpty()) {
+            complaintRepository.save(Complaint.builder()
+                    .trackingCode("PLT-SEED-PUBLIC")
+                    .complainantName("Karim Benali")
+                    .complainantEmail("karim.benali.externe@example.dz")
+                    .complainantPhone("0555123456")
+                    .complainantOrganization("Entreprise BENALI Travaux Publics")
+                    .targetOrganization("Laboratoire National d'Essais")
+                    .category("quality")
+                    .subject("Résultats d'essais non conformes à la méthodologie annoncée")
+                    .description("En tant que client externe, nous contestons la qualité des essais réalisés sur des échantillons de béton. La méthodologie appliquée ne correspond pas à celle indiquée sur le rapport d'essais fourni.")
+                    .expectedResolution("Révision des résultats, éventuelle contre-expertise, et mesures correctives auprès de l'organisme concerné.")
+                    .isPublic(true)
+                    .status(ComplaintStatus.RECEIVED)
+                    .createdAt(LocalDateTime.now().minusDays(1))
+                    .build());
+            log.info("  ✓ PLT-SEED-PUBLIC: plainte publique (personne externe)");
+        }
+    }
+
+    private void seedOec2ExtensionSubmitted() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC2-EXTENSION") || oec2 == null) return;
+
+        requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC2-EXTENSION")
+                .oec(oec2)
+                .type(RequestType.EXTENSION)
+                .domain("Organisme d'Inspection - Extension ESP / Levage")
+                .description("Demande d'extension de portée ISO/IEC 17020 pour inclure l'inspection des appareils de levage. Formulaire rempli par l'OEC.")
+                .status(RequestStatus.PENDING_DT_REVIEW)
+                .progress(5)
+                .submissionDate(LocalDateTime.now().minusDays(1))
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .pendingWith("DT")
+                .currentPhase("INITIAL")
+                .currentStep("Dossier en cours d'examen")
+                .nextAction("Votre dossier est en cours d'examen par ALGERAC.")
+                .isNewOec(false)
+                .build());
+        log.info("  ✓ SEED-OEC2-EXTENSION: PENDING_DT_REVIEW");
+    }
+
+    private void seedOec3RenewalSubmitted() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC3-RENEWAL") || oec3 == null) return;
+
+        requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC3-RENEWAL")
+                .oec(oec3)
+                .type(RequestType.RENOUVELLEMENT)
+                .domain("Organisme de Certification - Renouvellement produits")
+                .description("Demande de renouvellement d'accréditation ISO/IEC 17065 pour certification de produits. Cycle de 4 ans arrivé à échéance. Formulaire rempli par l'OEC.")
+                .status(RequestStatus.PENDING_DT_REVIEW)
+                .progress(5)
+                .submissionDate(LocalDateTime.now().minusHours(12))
+                .createdAt(LocalDateTime.now().minusHours(12))
+                .pendingWith("DT")
+                .currentPhase("INITIAL")
+                .currentStep("Dossier en cours d'examen")
+                .nextAction("Votre dossier est en cours d'examen par ALGERAC.")
+                .isNewOec(false)
+                .build());
+        log.info("  ✓ SEED-OEC3-RENEWAL: PENDING_DT_REVIEW");
+    }
+
+    private void seedOec4ActiveWithTransfer() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC4-ACTIVE") || oec4 == null) return;
+
+        User ra = safe(ra3, ra1);
+        User cd = safe(cd1, cd2);
+        LocalDateTime issueDate = LocalDateTime.now().minusMonths(18);
+        LocalDateTime baseDate = issueDate.minusMonths(5);
+
+        AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC4-ACTIVE")
+                .oec(oec4)
+                .assignedToRa(ra)
+                .assignedToCd(cd)
+                .type(RequestType.INITIAL)
+                .domain("Laboratoire d'Étalonnage - Métrologie dimensionnelle et masse")
+                .description("Accréditation ISO/IEC 17025 délivrée. Demande de transfert initiée (PRO 31).")
+                .status(RequestStatus.TRANSFER_INITIATED)
+                .progress(100)
+                .submissionDate(baseDate)
+                .assignmentDate(baseDate.plusDays(3))
+                .receivabilityDecisionDate(baseDate.plusDays(12))
+                .isReceivable(true)
+                .evaluationStartDate(baseDate.plusMonths(3))
+                .evaluationEndDate(baseDate.plusMonths(3).plusDays(4))
+                .casDecisionDate(baseDate.plusMonths(5))
+                .certificateIssueDate(issueDate)
+                .certificateExpirationDate(issueDate.plusYears(4))
+                .currentPhase("TRANSFERT")
+                .currentStep("Transfert en cours d'examen")
+                .nextAction("Votre demande de transfert est en cours d'examen par ALGERAC.")
+                .pendingWith("DT")
+                .createdAt(baseDate)
+                .isNewOec(false)
+                .build());
+
+        EvaluationReport report = evaluationReportRepository.save(EvaluationReport.builder()
+                .request(req)
+                .reportNumber("RAP-SEED-OEC4")
+                .type(ReportType.FOR_09_LABORATORY)
+                .conclusionAndRecommendation("FAVORABLE - Accréditation recommandée portée complète.")
+                .status(EvaluationReportStatus.VALIDATED)
+                .validatedByCD(true)
+                .createdAt(baseDate.plusMonths(4))
+                .build());
+
+        CASDecision decision = casDecisionRepository.save(CASDecision.builder()
+                .request(req)
+                .report(report)
+                .decisionNumber("DEC-CAS-SEED-OEC4")
+                .decisionType(CASDecisionType.GRANT_FULL)
+                .meetingDate(baseDate.plusMonths(5))
+                .justification("Conformité démontrée aux exigences ISO/IEC 17025.")
+                .scope("Étalonnage dimensionnel et masse")
+                .appealRightNotified(true)
+                .createdAt(baseDate.plusMonths(5))
+                .build());
+
+        AccreditationCertificate cert = certificateRepository.save(AccreditationCertificate.builder()
+                .request(req)
+                .casDecision(decision)
+                .certificateNumber("CERT-ALGERAC-SEED-OEC4")
+                .issueDate(issueDate)
+                .expirationDate(issueDate.plusYears(4))
+                .oecIdentity("Centre d'Étalonnage Algérien")
+                .scope("Étalonnage dimensionnel et masse selon ISO/IEC 17025")
+                .technicalDomains("Métrologie - dimensions et masse")
+                .methodsAndStandards("ISO/IEC 17025:2017")
+                .accreditationStandardReference("ISO/IEC 17025:2017")
+                .signedByDG(true)
+                .signedByDT(true)
+                .published(true)
+                .createdAt(issueDate)
+                .build());
+
+        transferRepository.save(AccreditationTransfer.builder()
+                .transferCode("TRF-SEED-OEC4")
+                .originalRequest(req)
+                .originalCertificate(cert)
+                .sourceOec(oec4)
+                .sourceOrganizationName("Centre d'Étalonnage Algérien")
+                .sourceOrganizationDetails("OEC accrédité souhaitant transférer son accréditation suite à restructuration.")
+                .targetOrganizationName("Centre d'Étalonnage Algérien - Filiale Métrologie Sud")
+                .targetOrganizationDetails("Nouvelle entité juridique (filiale) destinataire du transfert de portée.")
+                .targetIsNewEntity(true)
+                .reason(TransferReason.SUBSIDIARY_CREATION)
+                .reasonDetails("Création d'une filiale pour séparer l'activité d'étalonnage du siège.")
+                .transferredScope("Portée complète - étalonnage dimensionnel et masse")
+                .fullScopeTransfer(true)
+                .riskAnalysis("Risques maîtrisés: même personnel technique, mêmes équipements, même SMQ.")
+                .impartialityCompliance(true)
+                .assessmentMethodsContinuity(true)
+                .lastEvaluationStatus("Aucun écart ouvert. Dernière évaluation favorable.")
+                .financialRegularized(true)
+                .continuityAssessment("Continuité assurée: SMQ, personnel clé et équipements transférés à la filiale.")
+                .managementSystemContinuity(true)
+                .personnelContinuity(true)
+                .equipmentContinuity(true)
+                .status(TransferStatus.DOCUMENTS_SUBMITTED)
+                .accreditationNumber(cert.getCertificateNumber())
+                .originalExpirationDate(cert.getExpirationDate())
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build());
+
+        notificationRepository.save(Notification.builder()
+                .user(oec4)
+                .title("Demande de transfert enregistrée")
+                .message("Votre demande de transfert d'accréditation (TRF-SEED-OEC4) a été soumise. En attente d'examen ALGERAC.")
+                .type("info")
+                .link("/oec/transfers")
+                .read(false)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build());
+
+        log.info("  ✓ SEED-OEC4-ACTIVE: TRANSFER_INITIATED + TRF-SEED-OEC4");
+    }
+
+    private void seedOec5ActiveForSurveillance() {
+        if (requestRepository.existsByReferenceNumber("SEED-OEC5-ACTIVE") || oec5 == null) return;
+
+        User ra = safe(ra2, ra1);
+        User cd = safe(cd2, cd1);
+        LocalDateTime issueDate = LocalDateTime.now().minusMonths(11);
+        LocalDateTime baseDate = issueDate.minusMonths(5);
+        LocalDateTime evalDate = LocalDateTime.now().plusDays(45);
+
+        AccreditationRequest req = requestRepository.save(AccreditationRequest.builder()
+                .referenceNumber("SEED-OEC5-ACTIVE")
+                .oec(oec5)
+                .assignedToRa(ra)
+                .assignedToCd(cd)
+                .type(RequestType.INITIAL)
+                .domain("Laboratoire de Biologie Médicale - Analyses médicales")
+                .description("Accréditation ISO 15189 délivrée après cycle CBN complet. Phase de surveillance périodique.")
+                .status(RequestStatus.ACTIVE)
+                .progress(100)
+                .submissionDate(baseDate)
+                .assignmentDate(baseDate.plusDays(3))
+                .receivabilityDecisionDate(baseDate.plusDays(12))
+                .isReceivable(true)
+                .evaluationStartDate(baseDate.plusMonths(3))
+                .evaluationEndDate(baseDate.plusMonths(3).plusDays(4))
+                .casDecisionDate(baseDate.plusMonths(5))
+                .certificateIssueDate(issueDate)
+                .certificateExpirationDate(issueDate.plusYears(4))
+                .currentPhase("SURVEILLANCE")
+                .currentStep("surveillance_scheduled")
+                .nextAction("Prochaine évaluation de surveillance prévue")
+                .pendingWith("ALGERAC")
+                .createdAt(baseDate)
+                .isNewOec(false)
+                .build());
+
+        EvaluationReport report = evaluationReportRepository.save(EvaluationReport.builder()
+                .request(req)
+                .reportNumber("RAP-SEED-OEC5")
+                .type(ReportType.FOR_09_1_BIOMEDICAL)
+                .conclusionAndRecommendation("FAVORABLE - Accréditation recommandée portée complète.")
+                .status(EvaluationReportStatus.VALIDATED)
+                .validatedByCD(true)
+                .createdAt(baseDate.plusMonths(4))
+                .build());
+
+        CASDecision decision = casDecisionRepository.save(CASDecision.builder()
+                .request(req)
+                .report(report)
+                .decisionNumber("DEC-CAS-SEED-OEC5")
+                .decisionType(CASDecisionType.GRANT_FULL)
+                .meetingDate(baseDate.plusMonths(5))
+                .justification("L'OEC a démontré sa conformité aux exigences ISO 15189.")
+                .scope("Analyses de biologie médicale - portée complète")
+                .appealRightNotified(true)
+                .createdAt(baseDate.plusMonths(5))
+                .build());
+
+        AccreditationCertificate cert = certificateRepository.save(AccreditationCertificate.builder()
+                .request(req)
+                .casDecision(decision)
+                .certificateNumber("CERT-ALGERAC-SEED-OEC5")
+                .issueDate(issueDate)
+                .expirationDate(issueDate.plusYears(4))
+                .oecIdentity("Laboratoire Médical Pasteur")
+                .scope("Analyses de biologie médicale selon ISO 15189")
+                .technicalDomains("Biologie médicale")
+                .methodsAndStandards("ISO 15189:2022")
+                .accreditationStandardReference("ISO 15189:2022")
+                .signedByDG(true)
+                .signedByDT(true)
+                .published(true)
+                .createdAt(issueDate)
+                .build());
+
+        surveillancePlanRepository.save(SurveillancePlan.builder()
+                .certificate(cert)
+                .planCode("SURV-SEED-OEC5")
+                .surveillanceCalendar("S1 à 12 mois, S2 à 24 mois, S3 à 36 mois")
+                .frequency("Annuelle")
+                .scopeSampling("S1: hématologie + biochimie; S2: microbiologie; S3: portée complète")
+                .estimatedDurationPerEvaluation(3)
+                .cycleNumber(1)
+                .cycleDurationYears(3)
+                .surveillanceCount(2)
+                .nextSurveillanceDate(evalDate)
+                .draftedByRA(ra)
+                .draftedAt(issueDate.plusDays(5))
+                .submittedToCDAt(issueDate.plusDays(7))
+                .validatedByCD(true)
+                .cdValidationDate(issueDate.plusDays(10))
+                .sentToOECAt(issueDate.plusDays(12))
+                .oecAcknowledged(true)
+                .oecAcknowledgedAt(issueDate.plusDays(15))
+                .satisfactionFormFOR22Sent(true)
+                .createdAt(issueDate.plusDays(5))
+                .build());
+
+        notificationRepository.save(Notification.builder()
+                .user(oec5)
+                .title("Accréditation active — surveillance à venir")
+                .message("Votre accréditation CERT-ALGERAC-SEED-OEC5 est active. La surveillance S1 est prévue dans ~45 jours.")
+                .type("info")
+                .link("/oec/surveillance")
+                .read(false)
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .build());
+
+        log.info("  ✓ SEED-OEC5-ACTIVE: ACTIVE + plan surveillance (S1 ~45j)");
     }
 
     // ============================================================

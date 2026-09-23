@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, FileText, CheckCircle, XCircle, Edit, Clock, BookOpen } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Brouillon", color: "bg-gray-100 text-gray-800" },
@@ -42,9 +43,11 @@ export default function ReportValidationPage() {
       const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const all = await res.json();
-        setRequests(all.filter((r: any) =>
-          ["REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED", "REPORT_DT_VALIDATED", "REPORT_CONSOLIDATION"].includes(r.status)
-        ));
+        const filtered = all.filter((r: any) =>
+          ["GAPS_RESOLVED", "REPORT_DRAFTING", "REPORT_VALIDATION", "REPORT_VALIDATED", "REPORT_DT_VALIDATED", "REPORT_CONSOLIDATION"].includes(r.status)
+        );
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
     } catch (e) { }
     setLoading(false);

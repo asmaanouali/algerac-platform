@@ -159,6 +159,7 @@ public class ComplaintService {
         boolean valid = switch (newStatus) {
             case UNDER_REVIEW -> current == ComplaintStatus.RECEIVED;
             case INVESTIGATION -> current == ComplaintStatus.UNDER_REVIEW || current == ComplaintStatus.ASSIGNED;
+            case CORRECTIVE_ACTIONS -> current == ComplaintStatus.FOUNDED;
             default -> false;
         };
         if (!valid) {
@@ -173,17 +174,61 @@ public class ComplaintService {
         complaint = complaintRepository.save(complaint);
         log.info("Complaint {} status updated: {} → {}", complaint.getTrackingCode(), current, newStatus);
 
-        // Notify complainant if platform user
-        if (complaint.getSubmittedByUser() != null) {
+        notifyComplainantOfStatusChange(complaint, newStatus);
+
+        return complaint;
+    }
+
+    /**
+     * Notify the complainant (in-app + email) whenever the complaint's status changes.
+     * PRO_21 requires the complainant to be kept informed of progress (in progress, completed...).
+     * Set skipInAppNotification when the caller already sent a more specific in-app notification.
+     */
+    private void notifyComplainantOfStatusChange(Complaint complaint, ComplaintStatus newStatus) {
+        notifyComplainantOfStatusChange(complaint, newStatus, false);
+    }
+
+    private void notifyComplainantOfStatusChange(Complaint complaint, ComplaintStatus newStatus, boolean skipInAppNotification) {
+        String statusLabelFr = switch (newStatus) {
+            case UNDER_REVIEW -> "en cours d'examen par le Responsable Qualité";
+            case ASSIGNED -> "assignée à un investigateur";
+            case INVESTIGATION -> "en cours d'investigation";
+            case CORRECTIVE_ACTIONS -> "fondée - actions correctives en cours de traitement";
+            case RESOLVED -> "traitement terminé";
+            case CLOSED -> "clôturée";
+            default -> newStatus.name();
+        };
+
+        if (!skipInAppNotification && complaint.getSubmittedByUser() != null) {
             notificationService.createNotification(
                     complaint.getSubmittedByUser().getId(),
                     "Mise à jour de votre plainte " + complaint.getTrackingCode(),
-                    String.format("Votre plainte \"%s\" est passée au statut : %s.", complaint.getSubject(), newStatus.name()),
+                    String.format("Votre plainte \"%s\" est passée au statut : %s.", complaint.getSubject(), statusLabelFr),
                     "info"
             );
         }
 
-        return complaint;
+        try {
+            String subject = "Suivi de votre plainte " + complaint.getTrackingCode() + " | ALGERAC";
+            String body = String.format("""
+                    <p>Bonjour <strong>%s</strong>,</p>
+                    <p>Nous vous informons de l'état d'avancement du traitement de votre plainte <strong>%s</strong>
+                       (objet : « %s »).</p>
+                    <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 10px; padding: 20px; margin: 25px 0;">
+                        <p style="font-size: 16px; font-weight: bold; color: #1d4ed8; margin: 0;">État d'avancement : %s</p>
+                    </div>
+                    <p>Vous pouvez suivre votre plainte à tout moment avec le code de suivi <strong>%s</strong>.</p>
+                    <p style="color: #666; font-size: 13px; margin-top: 30px;">
+                        Pour toute question, contactez-nous à <a href="mailto:support@algerac.dz" style="color: #00A63E;">support@algerac.dz</a>
+                    </p>
+                    """,
+                    complaint.getComplainantName(), complaint.getTrackingCode(), complaint.getSubject(),
+                    statusLabelFr, complaint.getTrackingCode()
+            );
+            emailService.sendGenericEmail(complaint.getComplainantEmail(), subject, body);
+        } catch (Exception e) {
+            log.warn("Failed to send status update email for complaint {}: {}", complaint.getTrackingCode(), e.getMessage());
+        }
     }
 
     /**
@@ -220,11 +265,16 @@ public class ComplaintService {
 
     /**
      * Make a decision on a complaint (founded/unfounded)
+     * Requires the RQ to have completed their examination ("bilan") beforehand.
      */
     @Transactional
     public Complaint makeDecision(Long complaintId, Map<String, Object> data) {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new RuntimeException("Plainte non trouvée"));
+
+        if (!Boolean.TRUE.equals(complaint.getReviewCompleted())) {
+            throw new RuntimeException("L'examen de la plainte doit être terminé avant de pouvoir prendre une décision.");
+        }
 
         String statusStr = (String) data.get("status");
         ComplaintStatus newStatus = ComplaintStatus.valueOf(statusStr);
@@ -293,6 +343,8 @@ public class ComplaintService {
                     "success"
             );
         }
+
+        notifyComplainantOfStatusChange(complaint, ComplaintStatus.RESOLVED, true);
 
         return complaint;
     }
@@ -463,6 +515,59 @@ public class ComplaintService {
      */
     public Complaint findByTrackingCode(String trackingCode) {
         return complaintRepository.findByTrackingCode(trackingCode).orElse(null);
+    }
+
+    /**
+     * Get a single complaint by id
+     */
+    public Complaint getById(Long complaintId) {
+        return complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new RuntimeException("Plainte non trouvée"));
+    }
+
+    /**
+     * Save/update the RQ's examination report ("bilan") and its attachments.
+     * Does not mark the review as completed - the RQ can keep editing it.
+     */
+    @Transactional
+    public Complaint saveReview(Long complaintId, String reviewReport, Object attachments) {
+        Complaint complaint = getById(complaintId);
+        complaint.setReviewReport(reviewReport);
+        if (attachments != null) {
+            try {
+                complaint.setReviewAttachmentsJson(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(attachments));
+            } catch (Exception e) {
+                log.warn("Could not serialize review attachments: {}", e.getMessage());
+            }
+        }
+        complaint.setReviewUpdatedAt(LocalDateTime.now());
+
+        // Move the complaint out of RECEIVED as soon as the RQ starts examining it
+        if (complaint.getStatus() == ComplaintStatus.RECEIVED) {
+            complaint.setStatus(ComplaintStatus.UNDER_REVIEW);
+        }
+
+        return complaintRepository.save(complaint);
+    }
+
+    /**
+     * Mark the RQ's examination as completed, unlocking the decision step.
+     */
+    @Transactional
+    public Complaint completeReview(Long complaintId) {
+        Complaint complaint = getById(complaintId);
+        if (complaint.getReviewReport() == null || complaint.getReviewReport().isBlank()) {
+            throw new RuntimeException("Le bilan de l'examen ne peut pas être vide.");
+        }
+
+        if (complaint.getStatus() == ComplaintStatus.RECEIVED) {
+            complaint.setStatus(ComplaintStatus.UNDER_REVIEW);
+        }
+        complaint.setReviewCompleted(true);
+        complaint.setReviewCompletedAt(LocalDateTime.now());
+        complaint = complaintRepository.save(complaint);
+        log.info("Review completed for complaint {}", complaint.getTrackingCode());
+        return complaint;
     }
 
     /**

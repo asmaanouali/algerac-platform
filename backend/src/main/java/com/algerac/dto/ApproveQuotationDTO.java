@@ -28,6 +28,12 @@ public class ApproveQuotationDTO {
      */
     private Map<String, BigDecimal> breakdown;
 
+    /**
+     * Feuille éditable saisie par le DAG (colonnes + lignes).
+     * Persistée avec le breakdown dans devisBreakdownJson.
+     */
+    private Map<String, Object> sheet;
+
     private String devisEstimatifNumber;
     private LocalDate devisEstimatifDate;
     private String siteName;

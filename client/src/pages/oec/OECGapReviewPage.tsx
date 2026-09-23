@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
+import { getOecStatusLabel } from "@/lib/oec-request-display";
 
 /**
  * OEC Gap Review Page — Étape 7
@@ -120,7 +121,7 @@ export default function OECGapReviewPage() {
                     <div key={r.id} onClick={() => loadGaps(r)}
                       className={`p-3 rounded-lg cursor-pointer border transition-colors ${selectedRequest?.id === r.id ? "bg-primary/10 border-primary" : "hover:bg-gray-50"}`}>
                       <p className="font-medium text-sm">{r.referenceNumber}</p>
-                      <Badge variant="outline" className="text-xs mt-1">{r.status?.replace(/_/g, " ")}</Badge>
+                      <Badge variant="outline" className="text-xs mt-1">{getOecStatusLabel(r.status)}</Badge>
                     </div>
                   ))}
                 </CardContent>

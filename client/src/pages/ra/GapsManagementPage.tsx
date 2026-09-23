@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, Send, Eye, ShieldCheck, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 const GAP_STATUS_LABELS: Record<string, string> = {
   IDENTIFIED: "Identifié", AWAITING_ACTION_PLAN: "Att. plan d'action", PLAN_SUBMITTED: "Plan soumis",
@@ -49,12 +50,16 @@ export default function GapsManagementPage() {
       const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const all = await res.json();
-        setRequests(all.filter((r: any) =>
-          ["EVALUATION_COMPLETED", "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION",
+        const filtered = all.filter((r: any) =>
+          ["EVALUATION_COMPLETED", "EVALUATION_OEC_ALL_ACCEPTED", "EVALUATION_DOCS_TRANSMITTED",
+           "EVALUATION_GAPS_SENT_TO_OEC", "EVALUATION_OEC_REVIEW",
+           "AWAITING_ACTION_PLANS", "ACTION_PLANS_EVALUATION",
            "ACTION_PLANS_IMPLEMENTATION", "COMPLEMENTARY_EVALUATION_NEEDED",
            "COMPLEMENTARY_EVALUATION_PLANNED", "COMPLEMENTARY_EVALUATION_PROGRESS",
            "GAPS_RESOLVED"].includes(r.status)
-        ));
+        );
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
     } catch (e) { }
     setLoading(false);

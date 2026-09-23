@@ -31,4 +31,9 @@ public class PaymentDTO {
     private String oecName;
     private String oecEmail;
     private String requestRef;
+    /** true = nouvel OEC (candidature), false = OEC existant */
+    private Boolean isNewOec;
+    private LocalDateTime feeSetDate;
+    private String currency;
+    private String invoiceNumber;
 }

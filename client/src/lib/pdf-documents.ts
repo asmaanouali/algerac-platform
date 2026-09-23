@@ -503,3 +503,94 @@ export function openAccreditationTechnicalFormPdf({ request, oecProfile, parsed 
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
 }
+
+interface ComplaintReviewPdfContext {
+  complaint: any;
+  reviewReport: string;
+  reviewedBy?: string;
+}
+
+export function openComplaintReviewPdf({ complaint, reviewReport, reviewedBy }: ComplaintReviewPdfContext) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = 210;
+  const margin = 14;
+  const usableW = pageW - margin * 2;
+  let y = 16;
+
+  const checkPage = (needed = 8) => {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = 16;
+    }
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(GREEN);
+  doc.text("Bilan d'examen de plainte", margin, y);
+  y += 6;
+  doc.setDrawColor(GREEN);
+  doc.line(margin, y, margin + usableW, y);
+  y += 8;
+
+  const section = (title: string) => {
+    checkPage(12);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(GREEN);
+    doc.text(title, margin, y);
+    doc.setDrawColor("#dddddd");
+    doc.line(margin, y + 1, margin + usableW, y + 1);
+    doc.setTextColor("#111111");
+    y += 7;
+  };
+
+  const field = (label: string, value: string) => {
+    checkPage(8);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor("#777777");
+    doc.text(label, margin, y);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor("#111111");
+    const lines = doc.splitTextToSize(value, usableW);
+    doc.text(lines, margin, y + 4);
+    y += 4 + lines.length * 4 + 2;
+  };
+
+  section("Identification de la plainte");
+  field("Code de suivi", ro(complaint.trackingCode));
+  field("Objet", ro(complaint.subject));
+  field("Plaignant", ro(complaint.complainantName));
+  field("Catégorie", ro(complaint.category));
+  field("Date de dépôt", fmtDate(complaint.createdAt));
+  field("Description de la plainte", ro(complaint.description));
+
+  section("Bilan d'examen rédigé par le Responsable Qualité");
+  field("Rédigé par", ro(reviewedBy));
+  field("Date d'édition", fmtDate(new Date()));
+  checkPage(8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor("#111111");
+  const bodyLines = doc.splitTextToSize(reviewReport || "—", usableW);
+  for (const line of bodyLines) {
+    checkPage(6);
+    doc.text(line, margin, y);
+    y += 5;
+  }
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor("#aaaaaa");
+    doc.text(`Page ${i} / ${totalPages}`, pageW - margin, 290, { align: "right" });
+  }
+
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}

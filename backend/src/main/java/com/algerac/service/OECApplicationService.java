@@ -36,6 +36,7 @@ public class OECApplicationService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
+    private final PaymentService paymentService;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
     
@@ -138,23 +139,50 @@ public class OECApplicationService {
         application.setReviewedByDtAt(LocalDateTime.now());
         application.setReviewedByDtUserId(dtUserId);
         
-        application = oecApplicationRepository.save(application);
+        final OECApplication savedApp = oecApplicationRepository.save(application);
         log.info("Candidature OEC approuvée par DT - ID: {}, Organisme: {} → envoyée au DAG", 
-                application.getId(), application.getNomOrganisme());
+                savedApp.getId(), savedApp.getNomOrganisme());
+
+        // Unifier avec « Frais d'enregistrement » : créer le paiement REGISTRATION_FEE
+        // sur la demande d'accréditation liée (même écran DAG, colonne is_new_oec).
+        try {
+            userRepository.findByEmail(savedApp.getEmail()).ifPresent(oecUser -> {
+                List<AccreditationRequest> requests = requestRepository.findByOec_Id(oecUser.getId());
+                AccreditationRequest linked = requests.stream()
+                        .filter(r -> r.getStatus() != RequestStatus.DT_REJECTED)
+                        .findFirst()
+                        .orElse(null);
+                if (linked != null) {
+                    linked.setIsNewOec(true);
+                    requestRepository.save(linked);
+                    try {
+                        paymentService.createRegistrationFeePayment(linked.getId());
+                        log.info("Paiement frais d'enregistrement créé pour nouvel OEC {} (demande {})",
+                                savedApp.getNomOrganisme(), linked.getId());
+                    } catch (RuntimeException ex) {
+                        log.warn("Paiement déjà existant ou erreur pour demande {}: {}",
+                                linked.getId(), ex.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.warn("Impossible de créer le paiement unifié pour candidature {}: {}",
+                    savedApp.getId(), e.getMessage());
+        }
         
-        // Notifier tous les DAG pour fixer les frais de dépôt
+        // Notifier tous les DAG pour fixer les frais d'enregistrement
         List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
         for (User dag : dagUsers) {
             notificationService.createNotification(
                 dag.getId(),
-                "Candidature OEC approuvée - Frais de dépôt à fixer",
+                "Frais d'enregistrement à fixer — Nouvel OEC",
                 String.format("La candidature de l'organisme \"%s\" a été approuvée par la Direction Technique. " +
-                        "Veuillez fixer les frais de dépôt.", application.getNomOrganisme()),
+                        "Veuillez fixer les frais d'enregistrement.", savedApp.getNomOrganisme()),
                 "ACTION_REQUIRED"
             );
         }
         
-        return application;
+        return savedApp;
     }
     
     /**
@@ -224,6 +252,7 @@ public class OECApplicationService {
             AccreditationRequest request = AccreditationRequest.builder()
                     .oec(oecUser)
                     .type(requestType)
+                    .isNewOec(true)
                     .domain(saved.getPorteeAccreditation() != null ? saved.getPorteeAccreditation() : "À définir")
                     .description(String.format("Demande d'accréditation %s - %s (%s)", 
                             typeLabel,

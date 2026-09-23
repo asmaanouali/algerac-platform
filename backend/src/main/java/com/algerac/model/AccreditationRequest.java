@@ -31,6 +31,14 @@ public class AccreditationRequest {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestType type;
+
+    /**
+     * true  = demande issue d'un nouvel OEC (inscription publique)
+     * false = demande d'un OEC déjà existant / compte actif
+     */
+    @Column(name = "is_new_oec")
+    @Builder.Default
+    private Boolean isNewOec = false;
     
     @Column(nullable = false)
     private String domain; // e.g., "Laboratoire Essais", "Inspection"

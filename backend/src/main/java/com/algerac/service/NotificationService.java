@@ -62,15 +62,15 @@ public class NotificationService {
         Long id = request.getId();
         switch (role) {
             case OEC:            return "/oec/demandes/" + id;
-            case RA:             return "/ra/dossiers/" + id;
+            case RA:             return "/ra/dashboard";
             case CD:             return "/cd/demande/" + id;
             case DT:             return "/dt/demande/" + id;
             case DAG:            return "/dag/dashboard";
             case ADMIN:          return "/admin";
             case DG:             return "/dg/dashboard";
-            case CAS_PRESIDENT:  return "/cas/president/dashboard";
-            case CAS_MEMBER:     return "/cas/member/dashboard";
-            case GES_COMPETENCES:return "/ges_competences/dashboard";
+            case CAS_PRESIDENT:  return "/cas-president/dashboard";
+            case CAS_MEMBER:     return "/cas/dashboard";
+            case GES_COMPETENCES:return "/ges-competences/dashboard";
             case RQ:             return "/rq/dashboard";
             case SUP:            return "/sup/dashboard";
             case CONSOLIDATION:  return "/consolidation/dashboard";

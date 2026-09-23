@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Send, FileText, CheckCircle, ArrowRight, AlertTriangle, Users, HelpCircle, Clock } from "lucide-react";
+import { Loader2, Send, FileText, CheckCircle, ArrowRight, ArrowLeft, AlertTriangle, Users, HelpCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -114,6 +114,28 @@ export default function QuotationAndConventionPage() {
     } catch (err) { }
   };
 
+  const populateFormFromQuotation = (q: any) => {
+    setEtCount(q.etCount || 1);
+    setEqCount(q.eqCount || 0);
+    setObsCount(q.obsCount || 0);
+    setSupCount(q.supCount || 0);
+    setExpCount(q.expCount || 0);
+    setReeDuration(q.reeDurationDays != null ? String(q.reeDurationDays) : "");
+    setEtDuration(q.etDurationDays != null ? String(q.etDurationDays) : "");
+    setEqDuration(q.eqDurationDays != null ? String(q.eqDurationDays) : "");
+    setObsDuration(q.obsDurationDays != null ? String(q.obsDurationDays) : "");
+    setSupDuration(q.supDurationDays != null ? String(q.supDurationDays) : "");
+    setExpDuration(q.expDurationDays != null ? String(q.expDurationDays) : "");
+    setQuotationDetails(q.details || "");
+    setCdHelpRequested(!!q.cdHelpRequested);
+    setCdHelpMessage(q.cdHelpMessage || "");
+  };
+
+  const handleBackToEdit = () => {
+    if (quotationData) populateFormFromQuotation(quotationData);
+    setQuotationCreated(false);
+  };
+
   const totalTeamMembers = reeCount + etCount + eqCount + obsCount + supCount + expCount;
 
   // Calculate total duration from per-member durations
@@ -154,7 +176,7 @@ export default function QuotationAndConventionPage() {
 
     try {
       setCreatingQuotation(true);
-      const res = await apiRequest("POST", "/api/quotations/create", {
+      const payload = {
         requestId: parseInt(requestId!),
         reeCount,
         etCount,
@@ -172,12 +194,23 @@ export default function QuotationAndConventionPage() {
         cdHelpRequested,
         cdHelpMessage: cdHelpRequested ? cdHelpMessage : null,
         details: quotationDetails,
-      });
+      };
+      const isUpdate = !!quotationId && !cdModification;
+      const res = await apiRequest(
+        "POST",
+        isUpdate ? `/api/quotations/${quotationId}/update` : "/api/quotations/create",
+        payload
+      );
       const result = await res.json();
-      setQuotationId(result.data?.id || result.id);
+      setQuotationId(result.data?.id || result.id || quotationId);
       setQuotationData(result.data || result);
       setQuotationCreated(true);
-      toast({ title: "Demande créée", description: "La demande d'établissement du devis a été créée avec succès" });
+      toast({
+        title: isUpdate ? "Modifications enregistrées" : "Demande créée",
+        description: isUpdate
+          ? "La demande d'établissement du devis a été mise à jour"
+          : "La demande d'établissement du devis a été créée avec succès",
+      });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setCreatingQuotation(false); }
@@ -349,9 +382,14 @@ export default function QuotationAndConventionPage() {
                           <CardDescription>Le DAG définira le montant du devis</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <Button className="w-full" onClick={handleSendToDAG} disabled={sendingToDAG}>
-                            {sendingToDAG ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer au DAG</>}
-                          </Button>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Button variant="outline" className="sm:flex-1" onClick={handleBackToEdit} disabled={sendingToDAG}>
+                              <ArrowLeft className="mr-2 h-4 w-4" />Retour
+                            </Button>
+                            <Button className="sm:flex-1" onClick={handleSendToDAG} disabled={sendingToDAG}>
+                              {sendingToDAG ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer au DAG</>}
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -501,9 +539,22 @@ export default function QuotationAndConventionPage() {
                       <Textarea placeholder="Précisions sur la composition, justifications..." value={quotationDetails} onChange={(e) => setQuotationDetails(e.target.value)} rows={4} />
                     </div>
 
-                    <Button className="w-full" onClick={handleCreateQuotation} disabled={creatingQuotation}>
-                      {creatingQuotation ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</> : <><FileText className="mr-2 h-4 w-4" />Créer la demande d'établissement du devis</>}
-                    </Button>
+                    {quotationId && !cdModification ? (
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button variant="outline" className="sm:flex-1" onClick={() => setQuotationCreated(true)} disabled={creatingQuotation}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />Annuler
+                        </Button>
+                        <Button className="sm:flex-1" onClick={handleCreateQuotation} disabled={creatingQuotation}>
+                          {creatingQuotation
+                            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enregistrement...</>
+                            : <><FileText className="mr-2 h-4 w-4" />Enregistrer les modifications</>}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button className="w-full" onClick={handleCreateQuotation} disabled={creatingQuotation}>
+                        {creatingQuotation ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</> : <><FileText className="mr-2 h-4 w-4" />Créer la demande d'établissement du devis</>}
+                      </Button>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -598,7 +649,7 @@ export default function QuotationAndConventionPage() {
               <Alert className="border-amber-200 bg-amber-50">
                 <Clock className="h-4 w-4" />
                 <AlertDescription className="text-amber-800">
-                  <strong>En attente du DAG.</strong> La convention est prête, mais le devis n'est pas encore approuvé par le DAG.
+                  <strong>En attente du DAG.</strong> La convention est prête, mais le devis n'est pas encore établi par le DAG.
                   Vous pourrez demander la validation du CD dès que le DAG aura établi le montant.
                 </AlertDescription>
               </Alert>

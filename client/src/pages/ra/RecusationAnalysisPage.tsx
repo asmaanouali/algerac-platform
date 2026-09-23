@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 interface RecusationRequest {
   id: number;
@@ -79,7 +80,12 @@ export default function RecusationAnalysisPage() {
       const res = await apiRequest("GET", "/api/workflow/recusations");
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setRecusations(data);
+      const list = Array.isArray(data) ? data : [];
+      setRecusations(list);
+      consumeDeepLinkedRequest(list, (item) => {
+        setSelectedRecusation(item);
+        setDetailsOpen(true);
+      }, "requestId");
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur de chargement", description: err.message || "Impossible de charger les récusations." });
     } finally { setLoading(false); }

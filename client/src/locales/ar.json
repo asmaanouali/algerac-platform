@@ -280,7 +280,19 @@
     "interviewCandidates": "مقابلات المرشحين",
     "raTeam": "فريق RA",
     "logout": "تسجيل الخروج",
-    "quotationFixing": "تحديد الرسوم"
+    "quotationFixing": "تحديد الرسوم",
+    "rolesPermissions": "الأدوار والصلاحيات",
+    "system": "النظام",
+    "adminNotifications": "الإشعارات",
+    "directories": "الدلائل",
+    "securityPrivacy": "الأمان والخصوصية",
+    "database": "قاعدة البيانات",
+    "documentsArchives": "الوثائق والأرشيف",
+    "systemMonitoring": "المراقبة",
+    "logsAudit": "السجلات والتدقيق",
+    "adminReports": "التقارير",
+    "technicalSupport": "الدعم التقني",
+    "maintenance": "الصيانة"
   },
   "dashboard": {
     "title": "لوحة القيادة",
@@ -369,7 +381,8 @@
       "trackingCode": "رمز التتبع",
       "trackingNote": "احتفظ بهذا الرمز لمتابعة تقدم شكواك.",
       "backToLogin": "العودة إلى الصفحة الرئيسية",
-      "newComplaint": "شكوى جديدة"
+      "newComplaint": "شكوى جديدة",
+      "demoFill": "تعبئة (تجريبي)"
     },
     "internal": {
       "title": "الشكاوى",

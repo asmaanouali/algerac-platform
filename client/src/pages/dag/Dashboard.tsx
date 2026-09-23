@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Loader2, Clock, BadgeDollarSign, DollarSign, CheckCircle, Receipt,
-  ArrowRight, Building2, FileText,
+  ArrowRight, Building2,
 } from "lucide-react";
 
 interface Quotation {
@@ -24,18 +24,22 @@ interface Quotation {
   request: { referenceNumber: string; domain: string; oec: { organizationName: string } };
 }
 
-interface OECApp {
+interface FeePayment {
   id: number;
   status: string;
-  nomOrganisme: string;
+  oecName: string;
   createdAt: string;
+  isNewOec?: boolean;
+  paymentType?: string;
+  requestReferenceNumber?: string;
+  requestId?: number;
 }
 
 export default function DAGDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [apps, setApps] = useState<OECApp[]>([]);
+  const [fees, setFees] = useState<FeePayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -47,14 +51,19 @@ export default function DAGDashboard() {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
-      const [qRes, appsRes] = await Promise.all([
+      const [qRes, feesRes] = await Promise.all([
         apiRequest("GET", "/api/quotations/pending-approval").catch(() => null),
-        apiRequest("GET", "/api/oec-applications/dag/all").catch(() => null),
+        apiRequest("GET", "/api/payments/all").catch(() => null),
       ]);
       if (qRes) setQuotations(await qRes.json());
-      if (appsRes) {
-        const data = await appsRes.json();
-        setApps(Array.isArray(data) ? data : []);
+      if (feesRes) {
+        const data = await feesRes.json();
+        const registrationFees = Array.isArray(data)
+          ? data.filter((p: FeePayment) =>
+              p.paymentType === "REGISTRATION_FEE" || p.status === "AWAITING_FEE_SETTING"
+            )
+          : [];
+        setFees(registrationFees);
       }
     } finally {
       setLoading(false);
@@ -62,9 +71,9 @@ export default function DAGDashboard() {
     }
   };
 
-  const feeToSet = apps.filter(a => a.status === "AWAITING_DAG_FEE");
-  const awaitingPayment = apps.filter(a => a.status === "FEE_SET_AWAITING_PAYMENT");
-  const verified = apps.filter(a => a.status === "PAYMENT_VERIFIED" || a.status === "ACCOUNT_CREATED");
+  const feeToSet = fees.filter(p => p.status === "AWAITING_FEE_SETTING");
+  const awaitingPayment = fees.filter(p => p.status === "PENDING" || p.status === "PROOF_SUBMITTED");
+  const verified = fees.filter(p => p.status === "DAG_VALIDATED" || p.status === "COMPLETED");
 
   return (
     <div className="flex h-screen bg-background">
@@ -93,11 +102,11 @@ export default function DAGDashboard() {
                     className={quotations.length > 0 ? "border-l-amber-500" : ""}
                   />
                   <StatCard
-                    title="Frais à définir"
+                    title="Actions requises"
                     value={feeToSet.length}
                     icon={BadgeDollarSign}
-                    description="Inscription OEC"
-                    className={feeToSet.length > 0 ? "border-l-blue-500" : ""}
+                    description="Frais d'enregistrement à fixer"
+                    className={feeToSet.length > 0 ? "border-l-amber-500" : ""}
                   />
                   <StatCard
                     title="Paiements en cours"
@@ -150,16 +159,19 @@ export default function DAGDashboard() {
                   <Card className="border-blue-200 bg-blue-50">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base text-blue-800 flex items-center gap-2">
-                        <Building2 className="h-5 w-5" /> {feeToSet.length} candidature(s) OEC en attente de frais
+                        <Building2 className="h-5 w-5" /> {feeToSet.length} dossier(s) — frais d'enregistrement à fixer
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      {feeToSet.slice(0, 5).map(a => (
-                        <div key={a.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100">
+                      {feeToSet.slice(0, 5).map(p => (
+                        <div key={p.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100">
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate">{a.nomOrganisme}</p>
-                            <p className="text-xs text-blue-700">
-                              Soumise le {new Date(a.createdAt).toLocaleDateString("fr-FR")}
+                            <p className="font-medium text-sm truncate">{p.oecName}</p>
+                            <p className="text-xs text-blue-700 flex items-center gap-2 flex-wrap">
+                              <span>{p.requestReferenceNumber || `#${p.requestId}`}</span>
+                              <Badge className={p.isNewOec ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-800"}>
+                                {p.isNewOec ? "Nouvel OEC" : "OEC existant"}
+                              </Badge>
                             </p>
                           </div>
                           <Link href="/dag/frais-enregistrement">
@@ -173,7 +185,7 @@ export default function DAGDashboard() {
                   </Card>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <Link href="/dag/fixation-devis">
                     <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                       <CardContent className="p-6 text-center">
@@ -188,7 +200,7 @@ export default function DAGDashboard() {
                       <CardContent className="p-6 text-center">
                         <BadgeDollarSign className="w-10 h-10 mx-auto mb-3 text-blue-600" />
                         <h3 className="font-semibold">Frais d'enregistrement</h3>
-                        <p className="text-xs text-muted-foreground mt-1">Candidatures OEC</p>
+                        <p className="text-xs text-muted-foreground mt-1">Nouveaux & existants</p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -198,15 +210,6 @@ export default function DAGDashboard() {
                         <DollarSign className="w-10 h-10 mx-auto mb-3 text-emerald-600" />
                         <h3 className="font-semibold">Suivi des paiements</h3>
                         <p className="text-xs text-muted-foreground mt-1">Vérification virements</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                  <Link href="/dag/tarifs">
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
-                      <CardContent className="p-6 text-center">
-                        <FileText className="w-10 h-10 mx-auto mb-3 text-purple-600" />
-                        <h3 className="font-semibold">Grille tarifaire</h3>
-                        <p className="text-xs text-muted-foreground mt-1">Référentiel des tarifs</p>
                       </CardContent>
                     </Card>
                   </Link>

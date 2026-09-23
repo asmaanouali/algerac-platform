@@ -389,6 +389,17 @@ public class AccreditationRequestController {
             String comments = (String) body.getOrDefault("comments", "");
             
             AccreditationRequest request = requestService.dtReviewRequest(id, approved, comments, currentUser);
+
+            // Nouvel OEC : créer immédiatement les frais d'enregistrement pour le DAG
+            // (même écran que les OEC existants, discriminant is_new_oec).
+            if (approved && Boolean.TRUE.equals(request.getIsNewOec())) {
+                try {
+                    paymentService.createRegistrationFeePayment(request.getId());
+                } catch (Exception paymentEx) {
+                    log.warn("Paiement frais d'enregistrement déjà existant ou erreur (demande {}): {}",
+                            request.getId(), paymentEx.getMessage());
+                }
+            }
             
             String message = approved 
                     ? "Documents validés. La demande a été transmise au Chef de Département."

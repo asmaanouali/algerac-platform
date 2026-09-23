@@ -443,4 +443,92 @@ public class ComplaintController {
         List<Map<String, Object>> staff = complaintService.getAssignableStaff();
         return ResponseEntity.ok(ApiResponse.success("Personnel disponible", staff));
     }
+
+    /**
+     * Get a single complaint by id (RQ/DG/ADMIN only - used by the review/bilan page)
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getComplaint(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        try {
+            Complaint complaint = complaintService.getById(id);
+            return ResponseEntity.ok(ApiResponse.success("Plainte trouvée", complaint));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Save/update the RQ's examination report ("bilan") - can be called repeatedly while drafting
+     */
+    @PutMapping("/{id}/review")
+    public ResponseEntity<ApiResponse> saveReview(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> data,
+            HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Seul le Responsable Qualité peut rédiger le bilan"));
+        }
+
+        try {
+            String reviewReport = (String) data.get("reviewReport");
+            Object attachments = data.get("attachments");
+            Complaint complaint = complaintService.saveReview(id, reviewReport, attachments);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Bilan enregistré",
+                    Map.of("id", complaint.getId(), "status", complaint.getStatus().name())
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error saving review for complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Mark the examination as completed - unlocks the decision step
+     */
+    @PostMapping("/{id}/review/complete")
+    public ResponseEntity<ApiResponse> completeReview(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        UserRole role = (UserRole) session.getAttribute("userRole");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentification requise"));
+        }
+        if (role != UserRole.RQ && role != UserRole.DG && role != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Accès non autorisé"));
+        }
+
+        try {
+            Complaint complaint = complaintService.completeReview(id);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Examen terminé, la décision peut être prise",
+                    Map.of("id", complaint.getId(), "reviewCompleted", true)
+            ));
+        } catch (Exception e) {
+            log.error("[COMPLAINT] Error completing review for complaint {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Erreur: " + e.getMessage()));
+        }
+    }
 }

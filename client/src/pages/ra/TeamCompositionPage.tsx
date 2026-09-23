@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2, Calendar, Search, Filter, CalendarDays, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 interface Expert {
   id: number;
@@ -107,13 +108,14 @@ export default function TeamCompositionPage() {
       ]);
       if (reqRes.ok) {
         const allReqs = await reqRes.json();
-        setRequests(allReqs.filter((r: any) =>
-          ["QUOTATION_VALIDATED", "QUOTATION_APPROVED_BY_DAG", "QUOTATION_SENT_TO_OEC",
+        const filtered = allReqs.filter((r: any) =>
+          ["QUOTATION_VALIDATED", "CONVENTION_VALIDATED",
            "TEAM_DESIGNATION", "TEAM_SENT_TO_CD", "TEAM_CD_APPROVED", "TEAM_CD_CHANGES_REQUESTED",
            "TEAM_SENT_TO_OEC", "TEAM_DATE_REFUSED", "TEAM_MEMBER_RECUSED", "TEAM_RECUSED",
-           "TEAM_RECUSATION_INVALID",
-           "FEASIBILITY_APPROVED", "RECEIVABLE"].includes(r.status)
-        ));
+           "TEAM_RECUSATION_INVALID"].includes(r.status)
+        );
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
       if (expRes.ok) setExperts(await expRes.json());
     } catch (e) { }

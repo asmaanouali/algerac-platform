@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, Upload, X, ArrowLeft, Send, Shield, CheckCircle, Clock, Eye } from "lucide-react";
+import { Loader2, FileText, Upload, X, ArrowLeft, Send, Shield, CheckCircle, Clock, Eye, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -138,6 +138,18 @@ export default function InternalComplaintsPage() {
 
   const removeFile = (index: number) => setAttachedFiles(prev => prev.filter((_, i) => i !== index));
 
+  // Quick-fill valid sample data so the form can be tested without typing
+  const fillDemoData = () => {
+    setFormData({
+      targetOrganization: "Organisme de certification XYZ",
+      category: "delay",
+      subject: "Retard important dans le traitement de notre dossier",
+      description: "Notre dossier a été déposé il y a plus de deux mois sans aucune mise à jour de la part de l'organisme malgré plusieurs relances par email et téléphone. Ce retard compromet nos délais contractuels avec nos clients.",
+      expectedResolution: "Nous demandons un traitement prioritaire ainsi qu'un point de contact dédié pour le suivi de notre dossier.",
+    });
+    setErrors({});
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.category) newErrors.category = "Catégorie requise";
@@ -215,9 +227,14 @@ export default function InternalComplaintsPage() {
               </Alert>
 
               <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle>Déposer une plainte</CardTitle>
-                  <CardDescription>Remplissez le formulaire ci-dessous. Les champs marqués * sont obligatoires.</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Déposer une plainte</CardTitle>
+                    <CardDescription>Remplissez le formulaire ci-dessous. Les champs marqués * sont obligatoires.</CardDescription>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={fillDemoData} className="shrink-0">
+                    <Wand2 className="w-4 h-4 mr-2" />Remplir (démo)
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">

@@ -9,6 +9,7 @@ import { Navbar } from "@/components/navbar";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { WorkflowTimeline } from "@/components/WorkflowTimeline";
+import { getOecStatusDisplay } from "@/lib/oec-request-display";
 import {
   Loader2, ArrowLeft, FileText, Building2, User, Mail, Phone,
   MapPin, Briefcase, Globe, Calendar, Shield, CheckCircle, Clock,
@@ -60,40 +61,6 @@ interface RequestDetail {
   };
   oecProfile: OECProfile;
 }
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "Brouillon", color: "bg-gray-100 text-gray-800" },
-  SUBMITTED: { label: "Soumise", color: "bg-blue-100 text-blue-800" },
-  AWAITING_REGISTRATION_FEE: { label: "En attente frais", color: "bg-yellow-100 text-yellow-800" },
-  PENDING_PAYMENT: { label: "En attente de paiement", color: "bg-yellow-100 text-yellow-800" },
-  PAYMENT_COMPLETED: { label: "Paiement validé", color: "bg-green-100 text-green-800" },
-  ASSIGNED_TO_RA: { label: "Assignée à un RA", color: "bg-blue-100 text-blue-800" },
-  RA_ASSIGNMENT_REFUSED: { label: "Réassignation en cours", color: "bg-amber-100 text-amber-800" },
-  RECEIVABILITY_STUDY: { label: "Étude de recevabilité", color: "bg-purple-100 text-purple-800" },
-  RECEIVABILITY_PENDING_CD_REVIEW: { label: "En attente validation CD", color: "bg-purple-100 text-purple-800" },
-  RECEIVABLE: { label: "Recevable", color: "bg-green-100 text-green-800" },
-  NOT_RECEIVABLE: { label: "Non recevable", color: "bg-red-100 text-red-800" },
-  QUOTATION_PREPARATION: { label: "Préparation du devis", color: "bg-blue-100 text-blue-800" },
-  QUOTATION_SENT_TO_OEC: { label: "Devis reçu - À valider", color: "bg-orange-100 text-orange-800" },
-  QUOTATION_VALIDATED: { label: "Devis validé", color: "bg-green-100 text-green-800" },
-  TEAM_DESIGNATION: { label: "Constitution équipe", color: "bg-blue-100 text-blue-800" },
-  TEAM_SENT_TO_OEC: { label: "Équipe à valider", color: "bg-orange-100 text-orange-800" },
-  TEAM_VALIDATED: { label: "Équipe validée", color: "bg-green-100 text-green-800" },
-  DOC_REVIEW_IN_PROGRESS: { label: "Revue documentaire en cours", color: "bg-blue-100 text-blue-800" },
-  DOC_REVIEW_RESULTS_SENT_TO_OEC: { label: "Résultats de revue disponibles", color: "bg-orange-100 text-orange-800" },
-  AWAITING_OEC_DOC_RESPONSE: { label: "Réponse aux manquements requise", color: "bg-orange-100 text-orange-800" },
-  DOC_REVIEW_CD_DECISION: { label: "Décision CD en cours", color: "bg-yellow-100 text-yellow-800" },
-  DOCUMENTARY_REVIEW_COMPLETED: { label: "Revue documentaire terminée", color: "bg-green-100 text-green-800" },
-  EVALUATION_PLANNED: { label: "Évaluation planifiée", color: "bg-blue-100 text-blue-800" },
-  EVALUATION_IN_PROGRESS: { label: "Évaluation en cours", color: "bg-blue-100 text-blue-800" },
-  EVALUATION_COMPLETED: { label: "Évaluation terminée", color: "bg-green-100 text-green-800" },
-  CAS_DECISION_GRANT: { label: "Accréditation accordée", color: "bg-green-100 text-green-800" },
-  CAS_DECISION_REFUSAL: { label: "Refusée", color: "bg-red-100 text-red-800" },
-  CERTIFICATE_ISSUED: { label: "Certificat délivré", color: "bg-green-100 text-green-800" },
-  ACTIVE: { label: "Active", color: "bg-green-100 text-green-800" },
-  SUSPENDED: { label: "Suspendue", color: "bg-red-100 text-red-800" },
-  CLOSED: { label: "Classée", color: "bg-gray-100 text-gray-800" },
-};
 
 const TYPE_LABELS: Record<string, string> = {
   INITIAL: "Accréditation initiale",
@@ -157,7 +124,7 @@ export default function RequestDetailPage() {
   }
 
   const { request: req, oecProfile } = data;
-  const statusInfo = STATUS_LABELS[req.status] || { label: req.status, color: "bg-gray-100 text-gray-800" };
+  const statusInfo = getOecStatusDisplay(req.status);
   const documents: Array<{ name: string; url?: string }> = [];
   if (oecProfile?.documentsJson) {
     try { 
@@ -200,7 +167,7 @@ export default function RequestDetailPage() {
           </div>
 
           {/* Progress - Workflow Timeline */}
-          <WorkflowTimeline requestId={req.id} />
+          <WorkflowTimeline requestId={req.id} audience="oec" />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Request Info */}

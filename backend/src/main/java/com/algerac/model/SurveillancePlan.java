@@ -16,7 +16,7 @@ public class SurveillancePlan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "certificate_id", nullable = false)
     private AccreditationCertificate certificate;
     

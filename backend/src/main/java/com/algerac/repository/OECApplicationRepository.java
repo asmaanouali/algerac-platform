@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OECApplicationRepository extends JpaRepository<OECApplication, Long> {
@@ -17,4 +18,6 @@ public interface OECApplicationRepository extends JpaRepository<OECApplication, 
     List<OECApplication> findAllByOrderByCreatedAtDesc();
     
     boolean existsByEmail(String email);
+
+    Optional<OECApplication> findByEmail(String email);
 }

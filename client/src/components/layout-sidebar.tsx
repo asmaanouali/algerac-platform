@@ -16,7 +16,6 @@ import {
   Briefcase,
   UserCheck,
   FileCheck,
-  Building2,
   UserPlus,
   ClipboardList,
   FileSearch,
@@ -40,6 +39,11 @@ import {
   RefreshCw,
   Expand,
   GraduationCap,
+  Shield,
+  Settings,
+  Bell,
+  List,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -109,16 +113,25 @@ export function Sidebar() {
     ],
     dag: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
-      { href: "/dag/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
       { href: "/dag/frais-enregistrement", label: t('nav.registrationFees'), icon: FileText },
       { href: "/dag/fixation-devis", label: t('nav.quotationFixing', { defaultValue: 'Fixation des devis' }), icon: DollarSign },
-      { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
-      { href: "/dag/tarifs", label: t('nav.pricing'), icon: CreditCard },
+      { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: CreditCard },
     ],
     admin: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/users", label: t('nav.users'), icon: Users },
-      { href: "/admin/utilisateurs-pending", label: t('nav.candidatures'), icon: UserPlus },
+      { href: "/admin/roles", label: t('nav.rolesPermissions'), icon: Shield },
+      { href: "/admin/systeme", label: t('nav.system'), icon: Settings },
+      { href: "/admin/notifications", label: t('nav.adminNotifications'), icon: Bell },
+      { href: "/admin/repertoirs", label: t('nav.directories'), icon: List },
+      { href: "/admin/securite", label: t('nav.securityPrivacy'), icon: ShieldCheck },
+      { href: "/admin/base-de-donnees", label: t('nav.database'), icon: Database },
+      { href: "/admin/documents", label: t('nav.documentsArchives'), icon: FileText },
+      { href: "/admin/monitoring", label: t('nav.systemMonitoring'), icon: Activity },
+      { href: "/admin/logs", label: t('nav.logsAudit'), icon: FileSearch },
+      { href: "/admin/rapports", label: t('nav.adminReports'), icon: BarChart3 },
+      { href: "/admin/support", label: t('nav.technicalSupport'), icon: AlertCircle },
+      { href: "/admin/maintenance", label: t('nav.maintenance'), icon: Wrench },
     ],
     expert: [
       { href: "/expert/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -240,7 +253,7 @@ export function Sidebar() {
             <div
               className={cn(
                 "sidebar-link cursor-pointer",
-                location === item.href && "active"
+                (location === item.href || (item.href !== '/dashboard' && item.href !== '/users' && location.startsWith(item.href))) && "active"
               )}
               onClick={closeMobile}
             >

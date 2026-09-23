@@ -14,8 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2, Search, Eye, CheckCircle, XCircle, Clock, AlertTriangle,
-  MessageSquareWarning, BarChart3, Download, UserPlus, ArrowRight,
-  ShieldCheck, Timer, Ban
+  MessageSquareWarning, BarChart3, Download,
+  ShieldCheck, Timer, Ban, Paperclip, FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -46,15 +46,27 @@ interface Complaint {
   decisionDate?: string;
   rqNotes?: string;
   correctiveActions?: string;
+  attachmentsJson?: string;
+  reviewCompleted?: boolean;
+  reviewCompletedAt?: string;
   createdAt: string;
   updatedAt?: string;
 }
 
-interface StaffMember {
-  id: number;
-  fullName: string;
-  role: string;
-  email: string;
+interface ComplaintAttachment {
+  name: string;
+  base64: string;
+  mimeType?: string;
+}
+
+function parseAttachments(attachmentsJson?: string): ComplaintAttachment[] {
+  if (!attachmentsJson) return [];
+  try {
+    const parsed = JSON.parse(attachmentsJson);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 const COLORS = ["#3b82f6", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
@@ -94,20 +106,16 @@ export default function RQComplaintsDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [decisionDialog, setDecisionDialog] = useState(false);
-  const [assignDialog, setAssignDialog] = useState(false);
   const [resolveDialog, setResolveDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [decisionForm, setDecisionForm] = useState({ decision: "", notes: "", correctiveActions: "" });
-  const [assignableStaff, setAssignableStaff] = useState<StaffMember[]>([]);
-  const [selectedInvestigator, setSelectedInvestigator] = useState("");
   const [resolveNotes, setResolveNotes] = useState("");
   const [closeFinalResponse, setCloseFinalResponse] = useState("");
 
   useEffect(() => {
     if (user && !authLoading) {
       loadComplaints();
-      loadStaff();
     }
   }, [user, authLoading]);
 
@@ -127,29 +135,6 @@ export default function RQComplaintsDashboard() {
     } finally { setLoading(false); }
   };
 
-  const loadStaff = async () => {
-    try {
-      const res = await apiRequest("GET", "/api/complaints/assignable-staff");
-      const json = await res.json();
-      const staff = Array.isArray(json) ? json : (json.data && Array.isArray(json.data) ? json.data : []);
-      setAssignableStaff(staff);
-    } catch {
-      setAssignableStaff([]);
-    }
-  };
-
-  const handleStatusUpdate = async (complaintId: number, newStatus: string) => {
-    setProcessing(true);
-    try {
-      await apiRequest("POST", `/api/complaints/${complaintId}/status`, { status: newStatus });
-      toast({ title: "Statut mis à jour", description: `Plainte: ${statusConfig[newStatus]?.label || newStatus}` });
-      setDetailsOpen(false);
-      loadComplaints();
-    } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour." });
-    } finally { setProcessing(false); }
-  };
-
   const handleDecision = async (founded: boolean) => {
     if (!selectedComplaint) return;
     setProcessing(true);
@@ -166,20 +151,6 @@ export default function RQComplaintsDashboard() {
       loadComplaints();
     } catch {
       toast({ variant: "destructive", title: "Erreur", description: "Impossible d'enregistrer la décision." });
-    } finally { setProcessing(false); }
-  };
-
-  const handleAssign = async () => {
-    if (!selectedComplaint || !selectedInvestigator) return;
-    setProcessing(true);
-    try {
-      await apiRequest("POST", `/api/complaints/${selectedComplaint.id}/assign`, { investigatorId: parseInt(selectedInvestigator) });
-      toast({ title: "Plainte assignée", description: "Investigateur notifié. Deadline: 3 mois." });
-      setAssignDialog(false);
-      setDetailsOpen(false);
-      loadComplaints();
-    } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'assigner." });
     } finally { setProcessing(false); }
   };
 
@@ -300,28 +271,22 @@ export default function RQComplaintsDashboard() {
     overdue: complaints.filter(c => isOverdue(c.investigationDeadline) && !["RESOLVED", "CLOSED", "UNFOUNDED"].includes(c.status)).length,
   };
 
-  const getActions = (c: Complaint) => {
-    const actions: { label: string; icon: React.ReactNode; action: () => void }[] = [];
-    if (c.status === "RECEIVED") {
-      actions.push({ label: "Passer en examen", icon: <ArrowRight className="w-4 h-4 mr-1" />, action: () => handleStatusUpdate(c.id, "UNDER_REVIEW") });
-    }
-    if (c.status === "UNDER_REVIEW" || c.status === "ASSIGNED") {
-      actions.push({ label: "Lancer investigation", icon: <Search className="w-4 h-4 mr-1" />, action: () => handleStatusUpdate(c.id, "INVESTIGATION") });
-    }
-    if (["RECEIVED", "UNDER_REVIEW"].includes(c.status)) {
-      actions.push({ label: "Assigner", icon: <UserPlus className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setSelectedInvestigator(""); setAssignDialog(true); } });
-    }
-    if (["RECEIVED", "UNDER_REVIEW", "ASSIGNED", "INVESTIGATION"].includes(c.status)) {
-      actions.push({ label: "Décider", icon: <ShieldCheck className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setDecisionForm({ decision: "", notes: "", correctiveActions: "" }); setDecisionDialog(true); } });
-    }
-    if (["FOUNDED", "CORRECTIVE_ACTIONS"].includes(c.status)) {
-      actions.push({ label: "Résoudre", icon: <CheckCircle className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setResolveNotes(""); setResolveDialog(true); } });
-    }
-    if (["RESOLVED", "UNFOUNDED"].includes(c.status)) {
-      actions.push({ label: "Clôturer", icon: <Ban className="w-4 h-4 mr-1" />, action: () => { setSelectedComplaint(c); setCloseFinalResponse(""); setCloseDialog(true); } });
-    }
-    return actions;
+  // Complaints not yet decided show the dedicated "Examiner" / "Décider" buttons
+  const isPendingDecision = (c: Complaint) => ["RECEIVED", "UNDER_REVIEW", "ASSIGNED", "INVESTIGATION"].includes(c.status);
+  const canResolve = (c: Complaint) => ["FOUNDED", "CORRECTIVE_ACTIONS"].includes(c.status);
+  const canClose = (c: Complaint) => ["RESOLVED", "UNFOUNDED"].includes(c.status);
+
+  const openReviewPage = (c: Complaint) => setLocation(`/rq/plaintes/${c.id}/examen`);
+
+  const openDecisionDialog = (c: Complaint) => {
+    if (!c.reviewCompleted) return;
+    setSelectedComplaint(c);
+    setDecisionForm({ decision: "", notes: "", correctiveActions: "" });
+    setDecisionDialog(true);
   };
+
+  const openResolveDialog = (c: Complaint) => { setSelectedComplaint(c); setResolveNotes(""); setResolveDialog(true); };
+  const openCloseDialog = (c: Complaint) => { setSelectedComplaint(c); setCloseFinalResponse(""); setCloseDialog(true); };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -405,71 +370,91 @@ export default function RQComplaintsDashboard() {
                   ) : filteredComplaints.length === 0 ? (
                     <p className="text-center py-8 text-muted-foreground">Aucune plainte trouvée</p>
                   ) : (
-                    <div className="w-full max-w-full">
-                      <Table className="text-xs md:text-sm">
+                    <div className="w-full max-w-full overflow-hidden">
+                      <Table className="table-fixed text-xs md:text-sm">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Code</TableHead>
-                            <TableHead>Plaignant</TableHead>
-                            <TableHead>Objet</TableHead>
-                            <TableHead>Catégorie</TableHead>
-                            <TableHead>Source</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead>Deadline</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="w-[9%] px-2 py-2">Code</TableHead>
+                            <TableHead className="w-[18%] px-2 py-2">Plaignant</TableHead>
+                            <TableHead className="w-[22%] px-2 py-2">Objet</TableHead>
+                            <TableHead className="w-[14%] px-2 py-2">Catégorie</TableHead>
+                            <TableHead className="w-[13%] px-2 py-2">Dates</TableHead>
+                            <TableHead className="w-[10%] px-2 py-2">Statut</TableHead>
+                            <TableHead className="w-[14%] px-2 py-2 text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredComplaints.map((c) => (
                             <TableRow key={c.id} className={isOverdue(c.investigationDeadline) && !["RESOLVED", "CLOSED", "UNFOUNDED"].includes(c.status) ? "bg-red-50/50" : ""}>
-                              <TableCell className="font-mono text-xs break-all">{c.trackingCode}</TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{c.complainantName}</p>
-                                  <p className="text-xs text-muted-foreground">{c.complainantEmail}</p>
+                              <TableCell className="px-2 py-2 font-mono text-xs break-all">{c.trackingCode}</TableCell>
+                              <TableCell className="px-2 py-2">
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{c.complainantName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{c.complainantEmail}</p>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[180px] break-words">{c.subject}</TableCell>
-                              <TableCell><Badge variant="outline">{categoryLabels[c.category] || c.category}</Badge></TableCell>
-                              <TableCell>
-                                {c.isPublic
-                                  ? <Badge variant="outline" className="border-green-300 text-green-700">Public</Badge>
-                                  : <Badge variant="outline" className="border-blue-300 text-blue-700">{c.submittedByRole || "Interne"}</Badge>
-                                }
+                              <TableCell className="px-2 py-2 break-words">{c.subject}</TableCell>
+                              <TableCell className="px-2 py-2">
+                                <div className="flex flex-col gap-1 items-start">
+                                  <Badge variant="outline" className="max-w-full truncate">{categoryLabels[c.category] || c.category}</Badge>
+                                  {c.isPublic
+                                    ? <Badge variant="outline" className="border-green-300 text-green-700">Public</Badge>
+                                    : <Badge variant="outline" className="border-blue-300 text-blue-700 max-w-full truncate">{c.submittedByRole || "Interne"}</Badge>
+                                  }
+                                </div>
                               </TableCell>
-                              <TableCell className="text-sm">{new Date(c.createdAt).toLocaleDateString("fr-FR")}</TableCell>
-                              <TableCell>{getStatusBadge(c.status)}</TableCell>
-                              <TableCell>
+                              <TableCell className="px-2 py-2 text-xs">
+                                <p>{new Date(c.createdAt).toLocaleDateString("fr-FR")}</p>
                                 {c.investigationDeadline ? (
-                                  <span className={`text-xs ${isOverdue(c.investigationDeadline) ? "text-red-600 font-bold" : isDeadlineApproaching(c.investigationDeadline) ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                                  <p className={isOverdue(c.investigationDeadline) ? "text-red-600 font-bold" : isDeadlineApproaching(c.investigationDeadline) ? "text-amber-600 font-medium" : "text-muted-foreground"}>
                                     {new Date(c.investigationDeadline).toLocaleDateString("fr-FR")}
-                                  </span>
+                                  </p>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">{"—"}</span>
+                                  <p className="text-muted-foreground">{"—"}</p>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex gap-1 justify-end flex-wrap">
+                              <TableCell className="px-2 py-2">{getStatusBadge(c.status)}</TableCell>
+                              <TableCell className="px-2 py-2 text-right">
+                                <div className="flex gap-1 justify-end flex-wrap items-center">
                                   <Button variant="ghost" size="sm" onClick={() => { setSelectedComplaint(c); setDetailsOpen(true); }}>
                                     <Eye className="w-4 h-4" />
                                   </Button>
-                                  {getActions(c).length > 0 && (
-                                    <Select onValueChange={(val) => {
-                                      const action = getActions(c).find((_, i) => i.toString() === val);
-                                      action?.action();
-                                    }}>
-                                      <SelectTrigger className="h-8 w-[110px] text-xs">
-                                        <SelectValue placeholder="Actions" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {getActions(c).map((action, i) => (
-                                          <SelectItem key={i} value={i.toString()}>
-                                            {action.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                  {isPendingDecision(c) && (
+                                    <>
+                                      <Button
+                                        variant={c.reviewCompleted ? "outline" : "default"}
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        onClick={() => openReviewPage(c)}
+                                      >
+                                        <Search className="w-3.5 h-3.5 mr-1" />Examiner
+                                      </Button>
+                                      <Button
+                                        variant={c.reviewCompleted ? "default" : "outline"}
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        disabled={!c.reviewCompleted}
+                                        title={!c.reviewCompleted ? "Terminez d'abord l'examen de la plainte" : undefined}
+                                        onClick={() => openDecisionDialog(c)}
+                                      >
+                                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />Décider
+                                      </Button>
+                                    </>
+                                  )}
+                                  {!isPendingDecision(c) && (
+                                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => openReviewPage(c)}>
+                                      <FileText className="w-3.5 h-3.5 mr-1" />Bilan
+                                    </Button>
+                                  )}
+                                  {canResolve(c) && (
+                                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openResolveDialog(c)}>
+                                      <CheckCircle className="w-3.5 h-3.5 mr-1" />Résoudre
+                                    </Button>
+                                  )}
+                                  {canClose(c) && (
+                                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openCloseDialog(c)}>
+                                      <Ban className="w-3.5 h-3.5 mr-1" />Clôturer
+                                    </Button>
                                   )}
                                 </div>
                               </TableCell>
@@ -622,6 +607,29 @@ export default function RQComplaintsDashboard() {
                   <p className="mt-1 text-sm bg-slate-50 p-3 rounded border">{selectedComplaint.expectedResolution}</p>
                 </div>
               )}
+              {parseAttachments(selectedComplaint.attachmentsJson).length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground flex items-center gap-1">
+                    <Paperclip className="w-3.5 h-3.5" />Pièces justificatives
+                  </Label>
+                  <div className="mt-1 space-y-2">
+                    {parseAttachments(selectedComplaint.attachmentsJson).map((file, i) => (
+                      <a
+                        key={i}
+                        href={`data:${file.mimeType || "application/octet-stream"};base64,${file.base64}`}
+                        download={file.name}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 rounded border hover:bg-slate-100 transition-colors"
+                      >
+                        <span className="flex items-center gap-2 text-sm">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          {file.name}
+                        </span>
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               {selectedComplaint.decision && (
                 <Alert className={["FOUNDED", "CORRECTIVE_ACTIONS"].includes(selectedComplaint.status) ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"}>
                   <AlertDescription>
@@ -640,13 +648,44 @@ export default function RQComplaintsDashboard() {
                   <p className="mt-1 text-sm whitespace-pre-wrap bg-yellow-50 p-3 rounded border border-yellow-200">{selectedComplaint.rqNotes}</p>
                 </div>
               )}
-              {getActions(selectedComplaint).length > 0 && (
-                <div className="pt-4 border-t flex flex-wrap gap-2">
-                  {getActions(selectedComplaint).map((action, i) => (
-                    <Button key={i} variant="outline" size="sm" onClick={action.action} disabled={processing}>
-                      {action.icon}{action.label}
+              {isPendingDecision(selectedComplaint) && (
+                <div className="pt-4 border-t flex flex-wrap gap-2 items-center">
+                  <Button
+                    variant={selectedComplaint.reviewCompleted ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => openReviewPage(selectedComplaint)}
+                  >
+                    <Search className="w-4 h-4 mr-1" />Examiner
+                  </Button>
+                  <Button
+                    variant={selectedComplaint.reviewCompleted ? "default" : "outline"}
+                    size="sm"
+                    disabled={!selectedComplaint.reviewCompleted}
+                    title={!selectedComplaint.reviewCompleted ? "Terminez d'abord l'examen de la plainte" : undefined}
+                    onClick={() => openDecisionDialog(selectedComplaint)}
+                  >
+                    <ShieldCheck className="w-4 h-4 mr-1" />Décider
+                  </Button>
+                  {!selectedComplaint.reviewCompleted && (
+                    <span className="text-xs text-muted-foreground">L'examen doit être terminé avant de décider.</span>
+                  )}
+                </div>
+              )}
+              {!isPendingDecision(selectedComplaint) && (
+                <div className="pt-2 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openReviewPage(selectedComplaint)}>
+                    <FileText className="w-4 h-4 mr-1" />Voir le bilan d'examen
+                  </Button>
+                  {canResolve(selectedComplaint) && (
+                    <Button variant="outline" size="sm" onClick={() => openResolveDialog(selectedComplaint)} disabled={processing}>
+                      <CheckCircle className="w-4 h-4 mr-1" />Résoudre
                     </Button>
-                  ))}
+                  )}
+                  {canClose(selectedComplaint) && (
+                    <Button variant="outline" size="sm" onClick={() => openCloseDialog(selectedComplaint)} disabled={processing}>
+                      <Ban className="w-4 h-4 mr-1" />Clôturer
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -687,44 +726,6 @@ export default function RQComplaintsDashboard() {
             </Button>
             <Button className="bg-red-600 hover:bg-red-700" onClick={() => handleDecision(true)} disabled={processing || !decisionForm.decision.trim()}>
               {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}Fondée
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Dialog */}
-      <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Assigner un investigateur</DialogTitle>
-            <DialogDescription>
-              {selectedComplaint?.trackingCode} — PRO 21 : la personne ne doit pas être impliquée dans l'activité objet de la plainte.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Investigateur <span className="text-red-500">*</span></Label>
-              <Select value={selectedInvestigator} onValueChange={setSelectedInvestigator}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un agent..." /></SelectTrigger>
-                <SelectContent>
-                  {assignableStaff.map(s => (
-                    <SelectItem key={s.id} value={s.id.toString()}>
-                      {s.fullName} — {s.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertDescription className="text-sm text-amber-800">
-                Délai de <strong>3 mois</strong> automatique (PRO 21). L'investigateur sera notifié.
-              </AlertDescription>
-            </Alert>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialog(false)} disabled={processing}>Annuler</Button>
-            <Button onClick={handleAssign} disabled={processing || !selectedInvestigator}>
-              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}Assigner
             </Button>
           </DialogFooter>
         </DialogContent>

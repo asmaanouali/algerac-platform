@@ -13,5 +13,7 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
     List<Quotation> findByRequest_Id(Long requestId);
     List<Quotation> findByStatus(QuotationStatus status);
     List<Quotation> findByPreparedByRa_Id(Long raId);
+    List<Quotation> findByApprovedByDag_Id(Long dagId);
+    List<Quotation> findByApprovedByDagIsNotNull();
     List<Quotation> findByStatusIn(List<QuotationStatus> statuses);
 }

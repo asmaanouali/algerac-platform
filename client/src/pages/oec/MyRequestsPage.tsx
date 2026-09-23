@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
+import { getOecStatusDisplay } from "@/lib/oec-request-display";
 
 interface AccreditationRequest {
   id: number;
@@ -33,75 +34,6 @@ interface AccreditationRequest {
   receivabilityAttempts?: number;
   dtReviewComments?: string;
 }
-
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; phase: string }> = {
-  DRAFT: { label: "Brouillon", variant: "secondary", phase: "initial" },
-  SUBMITTED: { label: "Soumise", variant: "default", phase: "initial" },
-  PENDING_DT_REVIEW: { label: "Vérification en cours", variant: "outline", phase: "initial" },
-  DT_APPROVED: { label: "Validée", variant: "default", phase: "initial" },
-  DT_REJECTED: { label: "Rejetée - Correction requise", variant: "destructive", phase: "initial" },
-  PENDING_CD_ASSIGNMENT: { label: "En attente d'assignation", variant: "outline", phase: "initial" },
-  AWAITING_REGISTRATION_FEE: { label: "En attente frais d'enregistrement", variant: "outline", phase: "initial" },
-  PENDING_PAYMENT: { label: "En attente de paiement", variant: "outline", phase: "initial" },
-  PAYMENT_COMPLETED: { label: "Paiement effectué", variant: "default", phase: "initial" },
-  ASSIGNED_TO_RA: { label: "Assignee", variant: "default", phase: "study" },
-  RA_ASSIGNMENT_REFUSED: { label: "Réassignation en cours", variant: "outline", phase: "study" },
-  RECEIVABILITY_STUDY: { label: "Etude de recevabilite", variant: "default", phase: "study" },
-  RESOURCE_CHECK: { label: "Verification des ressources", variant: "default", phase: "study" },
-  FOREIGN_EXPERT_PROPOSED: { label: "Expert etranger propose", variant: "outline", phase: "study" },
-  PRELIMINARY_VISIT_PROPOSED: { label: "Visite preliminaire proposee", variant: "outline", phase: "study" },
-  PRELIMINARY_VISIT_ACCEPTED: { label: "Visite acceptee", variant: "default", phase: "study" },
-  PRELIMINARY_VISIT_SCHEDULED: { label: "Visite programmee", variant: "default", phase: "study" },
-  PRELIMINARY_VISIT_COMPLETED: { label: "Visite effectuee", variant: "default", phase: "study" },
-  PROCESS_SUSPENDED_OBSTACLES: { label: "Suspendu - Obstacles", variant: "destructive", phase: "study" },
-  PENDING_DG_VALIDATION: { label: "Validation en cours", variant: "default", phase: "study" },
-  DG_VALIDATED: { label: "Validee", variant: "default", phase: "study" },
-  RECEIVABLE: { label: "Recevable", variant: "default", phase: "study" },
-  NOT_RECEIVABLE: { label: "Non recevable", variant: "destructive", phase: "study" },
-  RECEIVABILITY_CORRECTION: { label: "En correction", variant: "outline", phase: "study" },
-  RECEIVABILITY_RESUBMITTED: { label: "Re-soumise", variant: "default", phase: "study" },
-  DAG_APPROVED: { label: "Approuvee par le DAG", variant: "default", phase: "contract" },
-  QUOTATION_PREPARATION: { label: "Preparation du devis", variant: "default", phase: "contract" },
-  QUOTATION_SENT_TO_OEC: { label: "Devis recu - A valider", variant: "outline", phase: "contract" },
-  QUOTATION_VALIDATED: { label: "Devis valide", variant: "default", phase: "contract" },
-  TEAM_DESIGNATION: { label: "Constitution equipe", variant: "default", phase: "team" },
-  TEAM_SENT_TO_OEC: { label: "Equipe a valider", variant: "outline", phase: "team" },
-  TEAM_VALIDATED: { label: "Equipe validee", variant: "default", phase: "team" },
-  TEAM_RECUSED: { label: "Membres recuses", variant: "destructive", phase: "team" },
-  DOCUMENTARY_REVIEW: { label: "Revue documentaire", variant: "default", phase: "eval" },
-  AWAITING_OEC_DOC_RESPONSE: { label: "Reponse attendue", variant: "outline", phase: "eval" },
-  DOCUMENTARY_REVIEW_COMPLETED: { label: "Revue completee", variant: "default", phase: "eval" },
-  EVALUATION_PLANNED: { label: "Evaluation planifiee", variant: "default", phase: "eval" },
-  EVALUATION_IN_PROGRESS: { label: "Evaluation en cours", variant: "default", phase: "eval" },
-  EVALUATION_COMPLETED: { label: "Evaluation terminee", variant: "default", phase: "eval" },
-  OBSTACLES_IDENTIFIED: { label: "Obstacles identifies", variant: "destructive", phase: "eval" },
-  AWAITING_ACTION_PLANS: { label: "Plans d'actions requis", variant: "outline", phase: "eval" },
-  ACTION_PLANS_IMPLEMENTATION: { label: "Actions en cours", variant: "default", phase: "eval" },
-  GAPS_RESOLVED: { label: "Ecarts resolus", variant: "default", phase: "eval" },
-  CAS_SCHEDULED: { label: "Reunion CAS programmee", variant: "default", phase: "decision" },
-  CAS_DECISION_GRANT: { label: "Accreditee!", variant: "default", phase: "decision" },
-  CAS_DECISION_REFUSAL: { label: "Refusee", variant: "destructive", phase: "decision" },
-  CAS_DECISION_POSTPONEMENT: { label: "Ajournee", variant: "outline", phase: "decision" },
-  CERTIFICATE_ISSUED: { label: "Certificat delivre", variant: "default", phase: "final" },
-  ACTIVE: { label: "Active", variant: "default", phase: "final" },
-  SUSPENDED: { label: "Suspendue", variant: "destructive", phase: "final" },
-  WITHDRAWN: { label: "Retiree", variant: "destructive", phase: "final" },
-  CLOSED: { label: "Classee", variant: "secondary", phase: "final" },
-};
-
-const getPhaseLabel = (status: string): string => {
-  const phase = STATUS_CONFIG[status]?.phase || "initial";
-  const map: Record<string, string> = {
-    initial: "Soumission",
-    study: "Etude de recevabilite",
-    contract: "Contractualisation",
-    team: "Constitution equipe",
-    eval: "Evaluation",
-    decision: "Decision",
-    final: "Final",
-  };
-  return map[phase] || phase;
-};
 
 // Prefer the authoritative backend progress (computed by WorkflowProgressService)
 // so it matches the RequestDetailPage / WorkflowTimeline. Only fall back if absent.
@@ -221,7 +153,7 @@ export default function MyRequestsPage() {
   };
 
   const renderRequestCard = (request: AccreditationRequest) => {
-    const config = STATUS_CONFIG[request.status] || { label: request.status, variant: "default" as const, phase: "initial" };
+    const config = getOecStatusDisplay(request.status);
     const progress = getProgress(request);
     return (
       <Card key={request.id} className="hover:shadow-md transition-shadow">
@@ -235,7 +167,7 @@ export default function MyRequestsPage() {
               <CardDescription>{request.domain} &mdash; {request.type}</CardDescription>
             </div>
             <div className="text-right space-y-1">
-              <Badge variant={config.variant}>{t(`mrd.status.${request.status}`, { defaultValue: config.label })}</Badge>
+              <Badge variant={config.variant}>{config.label}</Badge>
             </div>
           </div>
         </CardHeader>

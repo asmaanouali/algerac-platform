@@ -90,6 +90,19 @@ public class Complaint {
     @Column(columnDefinition = "TEXT")
     private String attachmentsJson;
 
+    // Review ("bilan") written by the RQ after examining the complaint - required before a decision can be made
+    @Column(columnDefinition = "TEXT")
+    private String reviewReport;
+
+    @Column(columnDefinition = "TEXT")
+    private String reviewAttachmentsJson;
+
+    private Boolean reviewCompleted;
+
+    private LocalDateTime reviewCompletedAt;
+
+    private LocalDateTime reviewUpdatedAt;
+
     // Timestamps
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -101,6 +114,7 @@ public class Complaint {
         createdAt = LocalDateTime.now();
         if (status == null) status = ComplaintStatus.RECEIVED;
         if (isPublic == null) isPublic = true;
+        if (reviewCompleted == null) reviewCompleted = false;
     }
 
     @PreUpdate

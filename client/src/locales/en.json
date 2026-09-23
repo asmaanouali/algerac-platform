@@ -280,7 +280,19 @@
     "interviewCandidates": "Candidate Interviews",
     "raTeam": "RA Team",
     "logout": "Logout",
-    "quotationFixing": "Quotation fixing"
+    "quotationFixing": "Quotation fixing",
+    "rolesPermissions": "Roles & Permissions",
+    "system": "System",
+    "adminNotifications": "Notifications",
+    "directories": "Directories",
+    "securityPrivacy": "Security & Privacy",
+    "database": "Database",
+    "documentsArchives": "Documents & Archives",
+    "systemMonitoring": "Monitoring",
+    "logsAudit": "Logs & Audit",
+    "adminReports": "Reports",
+    "technicalSupport": "Technical Support",
+    "maintenance": "Maintenance"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -369,7 +381,8 @@
       "trackingCode": "Tracking code",
       "trackingNote": "Keep this code to track the progress of your complaint.",
       "backToLogin": "Back to home",
-      "newComplaint": "New complaint"
+      "newComplaint": "New complaint",
+      "demoFill": "Fill (demo)"
     },
     "internal": {
       "title": "Complaints",

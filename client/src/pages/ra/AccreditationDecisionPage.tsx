@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
 import { StringDatePicker, StringDateTimePicker } from "@/components/ui/date-time-picker";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +71,7 @@ export default function AccreditationDecisionPage() {
          "ACTIVE", "SUSPENDED", "SURVEILLANCE_SCHEDULED"].includes(r.status)
       );
       setRequests(relevant);
+      consumeDeepLinkedRequest(relevant, (req) => { void selectRequest(req); });
     } catch (err) { }
     setLoading(false);
   };

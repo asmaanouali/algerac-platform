@@ -7,6 +7,9 @@ import com.algerac.repository.QuotationRepository;
 import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.repository.DocumentaryReviewRepository;
+import com.algerac.repository.OECApplicationRepository;
+import com.algerac.model.OECApplication;
+import com.algerac.model.OECApplication.ApplicationStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class PaymentService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final DocumentaryReviewRepository docReviewRepository;
+    private final OECApplicationRepository oecApplicationRepository;
     
     /**
      * Créer un paiement en attente de fixation des frais par le DAG.
@@ -42,22 +46,51 @@ public class PaymentService {
         if (paymentRepository.findByRequest_IdAndPaymentType(requestId, "REGISTRATION_FEE").isPresent()) {
             throw new RuntimeException("Un paiement existe déjà pour cette demande");
         }
+
+        boolean isNewOec = resolveIsNewOec(request);
+        if (request.getIsNewOec() == null) {
+            request.setIsNewOec(isNewOec);
+            requestRepository.save(request);
+        }
         
         Payment payment = Payment.builder()
                 .request(request)
                 .amount(BigDecimal.ZERO) // Le montant sera fixé par le DAG
                 .paymentType("REGISTRATION_FEE")
                 .status(PaymentStatus.AWAITING_FEE_SETTING)
+                .isNewOec(isNewOec)
                 .createdAt(LocalDateTime.now())
                 .build();
         
         payment = paymentRepository.save(payment);
-        log.info("Paiement créé (en attente de fixation des frais par DAG) pour la demande {}", request.getReferenceNumber());
+        log.info("Paiement créé (en attente de fixation des frais par DAG) pour la demande {} — nouvel OEC: {}",
+                request.getReferenceNumber(), isNewOec);
         
         // Notifier le DAG qu'un nouveau dossier nécessite la fixation des frais
         notifyDAGNewRequestFees(request);
         
         return payment;
+    }
+
+    /**
+     * Nouvel OEC = demande marquée is_new_oec, ou utilisateur encore PENDING /
+     * avec un typeDemande renseigné à l'inscription publique.
+     */
+    private boolean resolveIsNewOec(AccreditationRequest request) {
+        if (Boolean.TRUE.equals(request.getIsNewOec())) {
+            return true;
+        }
+        if (Boolean.FALSE.equals(request.getIsNewOec())) {
+            return false;
+        }
+        User oec = request.getOec();
+        if (oec == null) {
+            return false;
+        }
+        if (oec.getStatus() != null && oec.getStatus() != UserStatus.APPROVED) {
+            return true;
+        }
+        return oec.getTypeDemande() != null && !oec.getTypeDemande().isBlank();
     }
 
     /**
@@ -190,6 +223,25 @@ public class PaymentService {
         
         // Notifier l'OEC qu'il doit se connecter pour payer
         notifyOECPaymentRequired(request, amount);
+
+        // Nouvel OEC : aligner la candidature (historique / admin)
+        if ("REGISTRATION_FEE".equals(payment.getPaymentType())
+                && Boolean.TRUE.equals(resolveIsNewOec(request))) {
+            String email = request.getOecEmail();
+            if (email != null && !email.isBlank()) {
+                oecApplicationRepository.findByEmail(email).ifPresent(app -> {
+                    if (app.getStatus() == ApplicationStatus.AWAITING_DAG_FEE
+                            || app.getStatus() == ApplicationStatus.FEE_SET_AWAITING_PAYMENT) {
+                        app.setDepositFeeAmount(amount);
+                        app.setFeeSetAt(LocalDateTime.now());
+                        app.setFeeSetByUserId(dagUserId);
+                        app.setPaymentDeadline(LocalDateTime.now().plusMonths(1));
+                        app.setStatus(ApplicationStatus.FEE_SET_AWAITING_PAYMENT);
+                        oecApplicationRepository.save(app);
+                    }
+                });
+            }
+        }
         
         return payment;
     }
@@ -350,8 +402,43 @@ public class PaymentService {
             log.info("Paiement validé par le DAG {} pour la demande {} - Transaction: {}", 
                     dagUserId, payment.getRequest().getReferenceNumber(), payment.getTransactionId());
         }
+
+        // Nouvel OEC : synchroniser la candidature pour que l'admin puisse créer le compte
+        if ("REGISTRATION_FEE".equals(payment.getPaymentType())
+                && Boolean.TRUE.equals(resolveIsNewOec(payment.getRequest()))) {
+            syncNewOecApplicationPaymentVerified(payment.getRequest(), dagUserId);
+        }
         
         return payment;
+    }
+
+    private void syncNewOecApplicationPaymentVerified(AccreditationRequest request, Long dagUserId) {
+        String email = request.getOecEmail();
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        oecApplicationRepository.findByEmail(email).ifPresent(app -> {
+            if (app.getStatus() == ApplicationStatus.AWAITING_DAG_FEE
+                    || app.getStatus() == ApplicationStatus.FEE_SET_AWAITING_PAYMENT) {
+                app.setStatus(ApplicationStatus.PAYMENT_VERIFIED);
+                app.setPaymentVerifiedAt(LocalDateTime.now());
+                app.setPaymentVerifiedByUserId(dagUserId);
+                oecApplicationRepository.save(app);
+                log.info("Candidature OEC {} marquée PAYMENT_VERIFIED (frais d'enregistrement validés)",
+                        app.getId());
+
+                List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+                for (User admin : admins) {
+                    notificationService.createNotification(
+                            admin.getId(),
+                            "Paiement validé — Création de compte OEC",
+                            String.format("Le paiement des frais d'enregistrement de \"%s\" a été validé. "
+                                    + "Vous pouvez créer le compte.", app.getNomOrganisme()),
+                            "ACTION_REQUIRED"
+                    );
+                }
+            }
+        });
     }
     
     /**
@@ -483,65 +570,10 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
     }
 
-    /**
-     * PRO_18 §5 - DAG: Créer un paiement de tout type pour un dossier.
-     * Permet au DAG de facturer directement : redevance annuelle, surveillance,
-     * renouvellement, extension, levée de suspension, transfert, etc.
-     * @param paymentType  ex: ANNUAL_FEE, SURVEILLANCE_FEE, RENEWAL_FEE, EXTENSION_FEE,
-     *                         SUSPENSION_LIFT_FEE, TRANSFER_FEE, CERTIFICATE_DELIVERY_FEE,
-     *                         COMPLEMENTARY_EVAL_FEE, ADDITIONAL_EVAL_FEE, MULTISITE_FEE
-     * @param amount       Montant en devises
-     * @param currency     "DZD" pour nationaux, "EUR"/"USD" pour étrangers (PRO18-1)
-     * @param dueDays      Délai de paiement : 20j évaluation, 60j redevance annuelle (PRO18 §6)
-     * @param invoiceNumber Numéro de facture (si null, auto-généré)
-     */
-    @Transactional
-    public Payment createArbitraryFeePayment(Long requestId, String paymentType, BigDecimal amount,
-            String currency, Integer dueDays, String invoiceNumber, Long dagUserId) {
-        User dagUser = userRepository.findById(dagUserId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
-        if (dagUser.getRole() != UserRole.DAG) {
-            throw new RuntimeException("Seul le DAG peut créer des paiements");
-        }
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Le montant doit être positif");
-        }
-
-        AccreditationRequest request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
-
-        int effectiveDueDays = dueDays != null ? dueDays : 20;
-        LocalDateTime dueDate = LocalDateTime.now().plusDays(effectiveDueDays);
-
-        String generatedInvoiceNumber = invoiceNumber != null ? invoiceNumber
-                : "FACT-" + java.time.Year.now().getValue() + "-" + String.format("%05d", System.nanoTime() % 100000);
-
-        Payment payment = Payment.builder()
-                .request(request)
-                .amount(amount)
-                .paymentType(paymentType)
-                .currency(currency != null ? currency : "DZD")
-                .status(PaymentStatus.PENDING)
-                .feeSetDate(LocalDateTime.now())
-                .feeSetById(dagUserId)
-                .dueDate(dueDate)
-                .invoiceNumber(generatedInvoiceNumber)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        payment = paymentRepository.save(payment);
-
-        log.info("Paiement {} ({} {}) créé par DAG {} pour la demande {} — Échéance: {}",
-                paymentType, amount, currency, dagUserId, request.getReferenceNumber(), dueDate);
-
-        // Notifier l'OEC qu'une nouvelle facture est disponible
-        notifyOECNewInvoice(request, paymentType, amount, currency, dueDate, generatedInvoiceNumber);
-
-        return payment;
-    }
-
-    
     private PaymentDTO convertToDTO(Payment payment) {
+        boolean isNewOec = payment.getIsNewOec() != null
+                ? payment.getIsNewOec()
+                : resolveIsNewOec(payment.getRequest());
         return PaymentDTO.builder()
                 .id(payment.getId())
                 .requestId(payment.getRequestId())
@@ -560,6 +592,10 @@ public class PaymentService {
                 .oecName(payment.getRequest().getOecOrganizationName())
                 .oecEmail(payment.getRequest().getOecEmail())
                 .requestRef(payment.getRequest().getReferenceNumber())
+                .isNewOec(isNewOec)
+                .feeSetDate(payment.getFeeSetDate())
+                .currency(payment.getCurrency())
+                .invoiceNumber(payment.getInvoiceNumber())
                 .build();
     }
     

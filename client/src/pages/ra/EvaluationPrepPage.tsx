@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil, Rocket } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
 const EVAL_PREP_STATUSES = [
   "DOCUMENTARY_REVIEW_COMPLETED",
@@ -55,7 +56,9 @@ export default function EvaluationPrepPage() {
       const res = await fetch("/api/requests/assigned-to-me", { credentials: "include" });
       if (res.ok) {
         const all = await res.json();
-        setRequests(all.filter((r: any) => EVAL_PREP_STATUSES.includes(r.status)));
+        const filtered = all.filter((r: any) => EVAL_PREP_STATUSES.includes(r.status));
+        setRequests(filtered);
+        consumeDeepLinkedRequest(filtered, (req) => { void selectRequest(req); });
       }
     } catch (e) { }
     setLoading(false);

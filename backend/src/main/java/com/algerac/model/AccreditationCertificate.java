@@ -16,11 +16,11 @@ public class AccreditationCertificate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "request_id", nullable = false)
     private AccreditationRequest request;
     
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cas_decision_id")
     private CASDecision casDecision;
     

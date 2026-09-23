@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users, ClipboardCheck, Eye, Send, AlertTriangle, Shield, Calendar } from "lucide-react";
+import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users, ClipboardCheck, Eye, Send, AlertTriangle, Shield, Calendar, Download, FileSignature } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,10 +44,29 @@ interface RAWorkload {
   activeDossiers: number;
 }
 
+const MANAGE_TABS = [
+  "pending",
+  "receivability-review",
+  "cd-validation",
+  "non-receivable",
+  "team-validation",
+  "recusations",
+  "all",
+] as const;
+
+type ManageTab = (typeof MANAGE_TABS)[number];
+
+function resolveManageTab(search: string): ManageTab {
+  const tab = new URLSearchParams(search).get("tab");
+  return MANAGE_TABS.includes(tab as ManageTab) ? (tab as ManageTab) : "pending";
+}
+
 export default function CDManageRequestsPage() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<ManageTab>(() => resolveManageTab(search));
   const [pendingRequests, setPendingRequests] = useState<AccreditationRequest[]>([]);
   const [allRequests, setAllRequests] = useState<AccreditationRequest[]>([]);
   const [rasWorkload, setRasWorkload] = useState<RAWorkload[]>([]);
@@ -75,6 +94,9 @@ export default function CDManageRequestsPage() {
   const [cdModifComments, setCdModifComments] = useState("");
   const [cdValidating, setCdValidating] = useState(false);
   const [cdRequesting, setCdRequesting] = useState(false);
+  const [cdConventionDialogOpen, setCdConventionDialogOpen] = useState(false);
+  const [cdConvention, setCdConvention] = useState<any>(null);
+  const [cdConventionLoading, setCdConventionLoading] = useState(false);
 
   // Team composition validation (RA → CD → OEC)
   const [pendingTeamValidation, setPendingTeamValidation] = useState<any[]>([]);
@@ -96,6 +118,16 @@ export default function CDManageRequestsPage() {
     if (!authLoading && !user) setLocation("/");
     else if (user && !authLoading) loadData();
   }, [user, authLoading]);
+
+  useEffect(() => {
+    setActiveTab(resolveManageTab(search));
+  }, [search]);
+
+  const handleTabChange = (tab: string) => {
+    const next = resolveManageTab(`?tab=${tab}`);
+    setActiveTab(next);
+    setLocation(next === "pending" ? "/cd/manage-requests" : `/cd/manage-requests?tab=${next}`);
+  };
 
   if (authLoading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   if (!user) return null;
@@ -191,6 +223,29 @@ export default function CDManageRequestsPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setClosing(false); }
+  };
+
+  const openConventionView = async (q: any) => {
+    const requestId = q.request?.id || q.requestId;
+    if (!requestId) {
+      toast({ variant: "destructive", title: "Erreur", description: "Demande introuvable pour cette convention" });
+      return;
+    }
+    setCdSelectedQuotation(q);
+    setCdConvention(null);
+    setCdConventionDialogOpen(true);
+    setCdConventionLoading(true);
+    try {
+      const res = await apiRequest("GET", `/api/conventions/by-request/${requestId}`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      setCdConvention(list[0] || null);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err?.message || "Impossible de charger la convention" });
+      setCdConvention(null);
+    } finally {
+      setCdConventionLoading(false);
+    }
   };
 
   const handleCDValidate = async () => {
@@ -328,7 +383,7 @@ export default function CDManageRequestsPage() {
               <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Classés</CardTitle><Archive className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-slate-500">{closedCount}</div></CardContent></Card>
             </div>
 
-            <Tabs defaultValue="pending" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
               <TabsList className="flex flex-wrap h-auto gap-1 justify-start w-full p-1">
                 <TabsTrigger value="pending" className="text-xs md:text-sm">En attente ({pendingRequests.length})</TabsTrigger>
                 <TabsTrigger value="receivability-review" className="text-xs md:text-sm"><ClipboardCheck className="h-4 w-4 mr-1" />Études à valider ({receivabilityRequests.length})</TabsTrigger>
@@ -427,8 +482,7 @@ export default function CDManageRequestsPage() {
                   <CardHeader>
                     <CardTitle>Devis & Convention à valider</CardTitle>
                     <CardDescription>
-                      Validez le devis et la convention avant l'envoi à l'OEC. Vous pouvez approuver ou demander des modifications au RA.
-                      <br /><strong className="text-amber-600">Note : Le montant du devis n'est pas visible. Seuls le DAG et l'OEC y ont accès.</strong>
+                      Consultez le devis et la convention, puis validez avant l&apos;envoi à l&apos;OEC — ou demandez des modifications au RA.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -438,9 +492,9 @@ export default function CDManageRequestsPage() {
                       <div className="space-y-4">
                         {pendingCDValidation.map((q: any) => (
                           <div key={q.id} className="p-4 border rounded-lg hover:bg-accent transition-colors">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2 flex-1">
-                                <div className="flex items-center gap-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-2 flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-3">
                                   <h3 className="font-semibold">{q.quotationNumber}</h3>
                                   <Badge variant="outline">{q.request?.type}</Badge>
                                   <Badge className="bg-purple-100 text-purple-800 border-purple-300">En attente CD</Badge>
@@ -449,7 +503,7 @@ export default function CDManageRequestsPage() {
                                 <p className="text-sm text-muted-foreground">OEC : {q.request?.oec?.organizationName}</p>
                                 <p className="text-sm text-muted-foreground">Domaine : {q.request?.domain}</p>
                                 <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                  <h4 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-1"><Users className="w-4 h-4" /> Composition d'équipe</h4>
+                                  <h4 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-1"><Users className="w-4 h-4" /> Composition d&apos;équipe</h4>
                                   <div className="grid grid-cols-3 gap-2 text-sm">
                                     <div>REE : <strong>{q.reeCount || 1}</strong></div>
                                     <div>Évl. Tech : <strong>{q.etCount || 0}</strong></div>
@@ -460,11 +514,28 @@ export default function CDManageRequestsPage() {
                                   </div>
                                   <div className="mt-2 text-sm">Durée totale : <strong>{q.evaluationDurationDays} H/j</strong></div>
                                 </div>
+
+                                <div className="mt-2 p-3 rounded-lg border bg-emerald-50/60 border-emerald-200 space-y-2">
+                                  <h4 className="text-sm font-medium text-emerald-900 flex items-center gap-1">
+                                    <FileText className="w-4 h-4" /> Documents à consulter
+                                  </h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    <a href={`/api/quotations/${q.id}/devis.pdf`} target="_blank" rel="noopener noreferrer">
+                                      <Button size="sm" variant="outline">
+                                        <Download className="h-3.5 w-3.5 mr-1" /> Voir le devis (PDF)
+                                      </Button>
+                                    </a>
+                                    <Button size="sm" variant="outline" onClick={() => openConventionView(q)}>
+                                      <FileSignature className="h-3.5 w-3.5 mr-1" /> Voir la convention
+                                    </Button>
+                                  </div>
+                                </div>
+
                                 <div className="flex items-center gap-4 mt-2">
                                   <div><p className="text-xs text-muted-foreground">Préparé par</p><p className="text-sm font-medium">{q.preparedByRaName}</p></div>
                                 </div>
                               </div>
-                              <div className="flex flex-col gap-2 ml-4">
+                              <div className="flex flex-col gap-2 shrink-0">
                                 <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => { setCdSelectedQuotation(q); setCdValidationDialogOpen(true); }}>
                                   <CheckCircle className="h-4 w-4 mr-1" />Valider
                                 </Button>
@@ -751,13 +822,57 @@ export default function CDManageRequestsPage() {
             </DialogContent>
           </Dialog>
 
+          {/* CD VIEW CONVENTION DIALOG */}
+          <Dialog open={cdConventionDialogOpen} onOpenChange={setCdConventionDialogOpen}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileSignature className="h-5 w-5" /> Convention
+                </DialogTitle>
+                <DialogDescription>
+                  Dossier {cdSelectedQuotation?.request?.referenceNumber || `#${cdSelectedQuotation?.request?.id || cdSelectedQuotation?.requestId}`}
+                  {cdSelectedQuotation?.request?.oec?.organizationName && <> — {cdSelectedQuotation.request.oec.organizationName}</>}
+                </DialogDescription>
+              </DialogHeader>
+              {cdConventionLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+              ) : !cdConvention ? (
+                <p className="text-center text-muted-foreground py-8">Aucune convention disponible pour ce dossier</p>
+              ) : (
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">N° Convention</p>
+                      <p className="font-mono font-medium">{cdConvention.conventionNumber}</p>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Statut</p>
+                      <p className="font-medium">{cdConvention.status || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-2">Contenu</p>
+                    <p className="whitespace-pre-wrap">{cdConvention.content || "—"}</p>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-2">Termes et conditions</p>
+                    <p className="whitespace-pre-wrap">{cdConvention.termsAndConditions || "—"}</p>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCdConventionDialogOpen(false)}>Fermer</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* CD VALIDATE QUOTATION/CONVENTION DIALOG */}
           <Dialog open={cdValidationDialogOpen} onOpenChange={setCdValidationDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Valider et envoyer à l'OEC</DialogTitle>
+                <DialogTitle>Valider et envoyer à l&apos;OEC</DialogTitle>
                 <DialogDescription>
-                  Confirmez la validation du devis et de la convention. Ils seront envoyés à l'OEC qui dispose de 10 jours pour accepter.
+                  Confirmez la validation du devis et de la convention. Ils seront envoyés à l&apos;OEC qui dispose de 10 jours pour accepter.
                 </DialogDescription>
               </DialogHeader>
               {cdSelectedQuotation && (
@@ -769,10 +884,20 @@ export default function CDManageRequestsPage() {
                       <strong>Domaine :</strong> {cdSelectedQuotation.request?.domain}
                     </AlertDescription>
                   </Alert>
+                  <div className="flex flex-wrap gap-2">
+                    <a href={`/api/quotations/${cdSelectedQuotation.id}/devis.pdf`} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="outline" type="button">
+                        <Download className="h-3.5 w-3.5 mr-1" /> Devis PDF
+                      </Button>
+                    </a>
+                    <Button size="sm" variant="outline" type="button" onClick={() => openConventionView(cdSelectedQuotation)}>
+                      <FileSignature className="h-3.5 w-3.5 mr-1" /> Convention
+                    </Button>
+                  </div>
                   <Alert className="border-amber-200 bg-amber-50">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription className="text-amber-800">
-                      <strong>Important :</strong> L'OEC a 10 jours pour accepter. Un rappel sera envoyé au bout de 5 jours. Si l'OEC ne répond pas dans les 15 jours, le dossier sera classé.
+                      <strong>Important :</strong> L&apos;OEC a 10 jours pour accepter. Un rappel sera envoyé au bout de 5 jours. Si l&apos;OEC ne répond pas dans les 15 jours, le dossier sera classé.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -780,7 +905,7 @@ export default function CDManageRequestsPage() {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setCdValidationDialogOpen(false)} disabled={cdValidating}>Annuler</Button>
                 <Button className="bg-green-600 hover:bg-green-700" onClick={handleCDValidate} disabled={cdValidating}>
-                  {cdValidating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><Send className="mr-2 h-4 w-4" />Valider et envoyer à l'OEC</>}
+                  {cdValidating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validation...</> : <><Send className="mr-2 h-4 w-4" />Valider et envoyer à l&apos;OEC</>}
                 </Button>
               </DialogFooter>
             </DialogContent>

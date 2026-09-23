@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
+import { Link, useLocation } from "wouter";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StringDatePicker } from "@/components/ui/date-time-picker";
@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import AuthLayout from "@/components/layout/AuthLayout";
-import { Loader2, CheckCircle, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin, Eye, EyeOff } from "lucide-react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useTheme } from "@/hooks/use-theme";
+import { Loader2, CheckCircle, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -256,6 +257,7 @@ export default function OECRegister() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -717,7 +719,7 @@ export default function OECRegister() {
 
   const goToLogin = () => {
     setShowSuccessDialog(false);
-    setLocation("/auth/login");
+    setLocation("/");
   };
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -1866,6 +1868,68 @@ export default function OECRegister() {
     </div>
   );
 
+  // ── Demo prefill (dev helper) ──
+  const fillDemoOEC = () => {
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 6);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    setTypeDemande("initiale");
+    setDateEvaluation(futureDateStr);
+    setActivites(["inspection"]);
+    setSiteType("monosite");
+
+    setAccountEmail("oec.demo@algeractestapp.dz");
+    setAccountPassword("Demo1234!");
+    setAccountPasswordConfirm("Demo1234!");
+
+    setNomLegal("LABO DEMO SARL");
+    setAbreviation("LDEMO");
+    setSigle("LD");
+    setStatutJuridique("SARL");
+    setRegistreCommerce("16B1234567");
+    setCodesActivite("7120 – Services d'essais et analyses techniques");
+    setAdresseSiege("12 Rue des Labos, Alger");
+    setAdresseFacturation("12 Rue des Labos, Alger");
+    setEmailOrg("contact@labodemo.dz");
+    setSiteWeb("www.labodemo.dz");
+    setAppartientGroupe("non");
+
+    setContactNom("Ahmed Bensalem");
+    setContactFonction("Directeur Qualité");
+    setContactAdresse("12 Rue des Labos, Alger");
+    setContactTelephone("+213 555 123 456");
+    setContactFax("+213 21 123 456");
+    setContactEmail("ahmed.bensalem@labodemo.dz");
+
+    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non", ebmd: "Non" }]);
+    setPersonnelSites([{ id: 1, site: "Alger", permanents: "10", vacataires: "3" }]);
+    setResponsablesTechniques([{ id: 1, nom: "Karim Zouaoui", qualifications: "Ingénieur génie industriel", experience: "8 ans" }]);
+    setResponsableQualiteNom("Fatima Cherif");
+    setResponsableQualiteQualif("Master Qualité");
+    setResponsableQualiteExp("5 ans");
+    setPrestationConseil("non");
+    setReconnaissances([{ id: 1, organisation: "IAF", domaine: "Inspection industrielle", validite: "2025" }]);
+    setMotifTransfert("");
+
+    setFor04Type("A");
+    setFor04Domaines([{ id: Date.now(), domaine: "Équipements sous pression", sousDomaine: "Chaudières", objetInspecte: "Chaudière industrielle", norme: "EN 13445", typeInspection: "Périodique" }]);
+    setFor04Inspecteurs([{ id: Date.now() + 1, nom: "Mourad Kaci", qualification: "Ingénieur mécanique", domaineHabilitation: "Équipements sous pression", experience: "6", statut: "Permanent" }]);
+    setFor04Equipements([{ id: Date.now() + 2, designation: "Étalon de pression", marqueModele: "Fluke 700", noSerie: "SN-001", gamme: "0–600 bar", dateEtalonnage: "2024-01-15" }]);
+
+    setDocsAdminChecked({});
+    setDocsChecked({});
+    setDemandeurNom("Ahmed Bensalem");
+    setDemandeurFonction("Directeur Général");
+    setDemandeurDate(new Date().toISOString().split("T")[0]);
+    setSignature("A. Bensalem");
+    setEngagementsAcceptes(true);
+    setOrganismeSoumission("LABO DEMO SARL");
+
+    setCurrentStep(1);
+    setErrors({});
+  };
+
   // ── Step router ──
   const renderStep = () => {
     switch (currentStep) {
@@ -1888,135 +1952,164 @@ export default function OECRegister() {
   // ══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <AuthLayout hideFlagBar>
-      <div className="w-full max-w-4xl mx-auto py-6 px-4 space-y-6">
+    <>
+    <div className="min-h-screen bg-[#f5f6f8] dark:bg-slate-950 transition-colors registration-wizard">
+      {/* Fixed top header — same pattern as ExpertRegister */}
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/60 sticky top-0 z-20 transition-colors">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
+            <div>
+              <h1 className="text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                {t("oecRegister.title")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher variant="compact" />
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+              aria-label="Changer de thème"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <Button variant="ghost" size="sm" asChild className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
+              <Link href="/auth/register">
+                <ChevronLeft className="w-4 h-4 mr-1" /> {t("common.back")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold">{t("oecRegister.title")}</h1>
-                <p className="text-muted-foreground mt-1">{t("oecRegister.subtitle")}</p>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        {/* Progress */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">
+                {t("nrp.stepOf", { current: currentStep, total: STEPS.length })}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-slate-400">{t(`nrp.steps.${currentStep}`)}</p>
+            </div>
+            <span className="text-sm font-medium text-[#00A63E] bg-[#00A63E]/8 px-3 py-1 rounded-full">
+              {Math.round((currentStep / STEPS.length) * 100)}{t("nrp.pctCompleted")}
+            </span>
+          </div>
+          <div className="relative h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="absolute top-0 left-0 h-full bg-[#00A63E] rounded-full transition-all duration-500"
+              style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-4">
+            {STEPS.map((step) => (
+              <div key={step.id} className={cn("flex flex-col items-center transition-all", step.id <= currentStep ? "opacity-100" : "opacity-40")}>
+                <div className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                  step.id < currentStep ? "bg-[#00A63E] text-white"
+                    : step.id === currentStep ? "bg-[#00A63E] text-white ring-2 ring-[#00A63E]/20 ring-offset-2"
+                    : "bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600"
+                )}>
+                  {step.id}
+                </div>
+                <span className="text-[10px] mt-1.5 text-center hidden md:block max-w-[80px] text-gray-600 dark:text-slate-400">
+                  {t(`nrp.steps.${step.id}`)}
+                </span>
               </div>
-              <Button type="button" variant="outline" onClick={fillDemoOEC} className="h-11 gap-2">
+            ))}
+          </div>
+        </div>
+
+        {/* Form content */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60">
+          <div className="p-6 md:p-10">
+            <div className="flex justify-end mb-6">
+              <Button type="button" variant="outline" className="gap-2" onClick={fillDemoOEC}>
                 Demo
               </Button>
             </div>
+            {renderStep()}
 
-            {/* Progress */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-6 border">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">{t("nrp.stepOf", { current: currentStep, total: STEPS.length })}</h2>
-                  <p className="text-sm text-slate-600">{t(`nrp.steps.${currentStep}`)}</p>
-                </div>
-                <span className="text-sm font-medium text-slate-500">
-                  {Math.round((currentStep / STEPS.length) * 100)}{t("nrp.pctCompleted")}
-                </span>
-              </div>
-              <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00A63E] to-[#00D44A] transition-all duration-500"
-                  style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-4">
-                {STEPS.map((step) => (
-                  <div key={step.id} className={cn("flex flex-col items-center transition-all", step.id <= currentStep ? "opacity-100" : "opacity-40")}>
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                      step.id < currentStep ? "bg-[#00A63E] text-white"
-                        : step.id === currentStep ? "bg-[#00A63E] text-white ring-4 ring-[#00A63E]/20"
-                        : "bg-slate-200 text-slate-400"
-                    )}>
-                      {step.id}
-                    </div>
-                    <span className="text-[10px] mt-1 text-center hidden md:block max-w-[90px]">{t(`nrp.steps.${step.id}`)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100 dark:border-slate-700">
+              {currentStep > 1 ? (
+                <Button type="button" variant="outline" onClick={prev} className="gap-2 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                  <ChevronLeft className="w-4 h-4" /> {t("nrp.nav.prev")}
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={() => setLocation("/")} className="gap-2 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                  {t("nrp.nav.cancel")}
+                </Button>
+              )}
 
-            {/* Form content */}
-            <Card className="shadow-lg">
-              <CardContent className="p-8">
-                {renderStep()}
-
-                <div className="flex justify-between mt-8 pt-6 border-t">
-                  {currentStep > 1 ? (
-                    <Button type="button" variant="outline" onClick={prev} className="gap-2">
-                      <ChevronLeft className="w-4 h-4" /> {t("nrp.nav.prev")}
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="outline" onClick={() => setLocation("/auth/login")}>
-                      {t("nrp.nav.cancel")}
-                    </Button>
-                  )}
-
-                  {currentStep < STEPS.length ? (
-                    <Button type="button" onClick={next} className="gap-2 ml-auto" style={{ backgroundColor: "#00A63E" }}>
-                      {t("nrp.nav.next")} <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  ) : (
-                    <Button type="button" onClick={handleSubmitClick} disabled={loading || submitted} className="ml-auto" style={{ backgroundColor: "#00A63E" }}>
-                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : submitted ? t("nrp.nav.alreadySubmitted") : t("nrp.nav.submit")}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-      </div>
-
-      {/* Confirmation avant soumission */}
-      <Dialog open={showConfirmDialog} onOpenChange={(o) => !loading && setShowConfirmDialog(o)}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700">
-              <AlertCircle className="h-5 w-5" />
-              {t("nrp.dialogs.confirm.title")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("nrp.dialogs.confirm.desc")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>{t("nrp.dialogs.confirm.backToForm")}</Button>
-            <Button onClick={handleSubmit} disabled={loading} style={{ backgroundColor: "#00A63E" }}>
-              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : t("nrp.dialogs.confirm.confirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Submission success dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-700">
-              <CheckCircle className="h-5 w-5" />
-              {t("oecRegister.successTitle")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("oecRegister.successDesc")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-700">{t("oecRegister.successInfo")}</p>
+              {currentStep < STEPS.length ? (
+                <Button type="button" onClick={next} className="gap-2 ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm">
+                  {t("nrp.nav.next")} <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button type="button" onClick={handleSubmitClick} disabled={loading || submitted} className="ml-auto bg-[#00A63E] hover:bg-[#008a35] text-white shadow-sm">
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : submitted ? t("nrp.nav.alreadySubmitted") : t("nrp.nav.submit")}
+                </Button>
+              )}
             </div>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <DialogFooter>
-            <Button
-              onClick={goToLogin}
-              className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}
-            >
-              {t("oecRegister.goToLogin")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AuthLayout>
+    {/* Confirmation avant soumission */}
+    <Dialog open={showConfirmDialog} onOpenChange={(o) => !loading && setShowConfirmDialog(o)}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-700">
+            <AlertCircle className="h-5 w-5" />
+            {t("nrp.dialogs.confirm.title")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("nrp.dialogs.confirm.desc")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>{t("nrp.dialogs.confirm.backToForm")}</Button>
+          <Button onClick={handleSubmit} disabled={loading} style={{ backgroundColor: "#00A63E" }}>
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : t("nrp.dialogs.confirm.confirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Submission success dialog */}
+    <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-green-700">
+            <CheckCircle className="h-5 w-5" />
+            {t("oecRegister.successTitle")}
+          </DialogTitle>
+          <DialogDescription>
+            {t("oecRegister.successDesc")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">{t("oecRegister.successInfo")}</p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={goToLogin}
+            className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}
+          >
+            {t("oecRegister.goToLogin")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

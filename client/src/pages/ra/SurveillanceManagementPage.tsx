@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,12 +137,21 @@ export default function SurveillanceManagementPage() {
       const responses = await Promise.all(
         endpoints.map(url => fetch(url, { credentials: "include" }).then(r => r.json()).catch(() => ({ success: false })))
       );
-      if (responses[0]?.success) setUpcoming(responses[0].data || []);
-      if (responses[1]?.success) setOverdue(responses[1].data || []);
-      if (responses[2]?.success) setInProgress(responses[2].data || []);
-      if (responses[3]?.success) setCompleted(responses[3].data || []);
+      const upcomingList = responses[0]?.success ? (responses[0].data || []) : [];
+      const overdueList = responses[1]?.success ? (responses[1].data || []) : [];
+      const inProgressList = responses[2]?.success ? (responses[2].data || []) : [];
+      const completedList = responses[3]?.success ? (responses[3].data || []) : [];
+      setUpcoming(upcomingList);
+      setOverdue(overdueList);
+      setInProgress(inProgressList);
+      setCompleted(completedList);
       if (responses[4]?.success) setDeadlineViolations(responses[4].data || []);
       if (responses[5]?.success) setFindingDeadlines(responses[5].data || []);
+      consumeDeepLinkedRequest(
+        [...overdueList, ...inProgressList, ...upcomingList, ...completedList],
+        (ev) => { void selectEval(ev); },
+        "requestId",
+      );
     } catch (err) { }
     setLoading(false);
   };

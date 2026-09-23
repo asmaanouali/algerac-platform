@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * Idempotent: only seeds if reference numbers don't already exist.
  * Runs after seed-data.sql (which creates users).
  */
-@Component
+//@Component // disabled: only the users table should be pre-populated on deploy
 @Order(20)
 @RequiredArgsConstructor
 @Slf4j

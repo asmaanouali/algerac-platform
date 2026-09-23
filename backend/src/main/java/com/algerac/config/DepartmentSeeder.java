@@ -15,7 +15,7 @@ import java.util.List;
  * New departments can still be added at runtime by admins — this seeder is
  * idempotent (findByCode before insert).
  */
-//@Component // disabled: only the users table should be pre-populated on deploy
+@Component
 @RequiredArgsConstructor
 @Slf4j
 @Order(1) // run before other seeders that may reference departments

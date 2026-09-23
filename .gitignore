@@ -4,4 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-backend/src/main/resources/application.properties
+backend/src/main/resources/static
+.env
+.env.*
+backend/target

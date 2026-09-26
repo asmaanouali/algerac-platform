@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
@@ -260,6 +260,10 @@ export default function OECRegister() {
   const { theme, toggleTheme } = useTheme();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  useEffect(() => {
+    setMaxStepReached((m) => Math.max(m, currentStep));
+  }, [currentStep]);
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -2006,11 +2010,20 @@ export default function OECRegister() {
           </div>
           <div className="hidden sm:flex justify-between mt-4">
             {STEPS.map((step) => (
-              <div key={step.id} className={cn("flex flex-col items-center transition-all", step.id <= currentStep ? "opacity-100" : "opacity-40")}>
+              <div
+                key={step.id}
+                onClick={() => step.id <= maxStepReached && step.id !== currentStep && setCurrentStep(step.id)}
+                className={cn(
+                  "flex flex-col items-center transition-all",
+                  step.id <= currentStep ? "opacity-100" : "opacity-40",
+                  step.id <= maxStepReached && step.id !== currentStep ? "cursor-pointer" : "cursor-default"
+                )}
+              >
                 <div className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                  step.id < currentStep ? "bg-[#00A63E] text-white"
+                  step.id < currentStep ? "bg-[#00A63E] text-white hover:ring-2 hover:ring-[#00A63E]/30"
                     : step.id === currentStep ? "bg-[#00A63E] text-white ring-2 ring-[#00A63E]/20 ring-offset-2"
+                    : step.id <= maxStepReached ? "bg-[#00A63E]/20 text-[#00A63E] border border-[#00A63E]/40 hover:ring-2 hover:ring-[#00A63E]/30"
                     : "bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600"
                 )}>
                   {step.id}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -160,6 +160,10 @@ export default function ExpertRegisterWizard() {
     </button>
   );
   const [currentStep, setCurrentStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  useEffect(() => {
+    setMaxStepReached((m) => Math.max(m, currentStep));
+  }, [currentStep]);
   const [showBlacklistDialog, setShowBlacklistDialog] = useState(false);
   const [appealLoading, setAppealLoading] = useState(false);
 
@@ -2212,19 +2216,23 @@ export default function ExpertRegisterWizard() {
             {STEPS.map((step) => (
               <div
                 key={step.id}
+                onClick={() => step.id <= maxStepReached && step.id !== currentStep && setCurrentStep(step.id)}
                 className={cn(
                   "flex flex-col items-center transition-all",
-                  step.id <= currentStep ? "opacity-100" : "opacity-40"
+                  step.id <= currentStep ? "opacity-100" : "opacity-40",
+                  step.id <= maxStepReached && step.id !== currentStep ? "cursor-pointer" : "cursor-default"
                 )}
               >
                 <div
                   className={cn(
                     "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
                     step.id < currentStep
-                      ? "bg-[#00A63E] text-white"
+                      ? "bg-[#00A63E] text-white hover:ring-2 hover:ring-[#00A63E]/30"
                       : step.id === currentStep
                         ? "bg-[#00A63E] text-white ring-2 ring-[#00A63E]/20 ring-offset-2"
-                        : "bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600"
+                        : step.id <= maxStepReached
+                          ? "bg-[#00A63E]/20 text-[#00A63E] border border-[#00A63E]/40 hover:ring-2 hover:ring-[#00A63E]/30"
+                          : "bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600"
                   )}
                 >
                   {step.id < currentStep ? (

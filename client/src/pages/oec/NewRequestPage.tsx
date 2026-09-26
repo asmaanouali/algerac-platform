@@ -261,6 +261,10 @@ export default function NewRequestPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  useEffect(() => {
+    setMaxStepReached((m) => Math.max(m, currentStep));
+  }, [currentStep]);
   const [loading, setLoading] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -1975,11 +1979,20 @@ export default function NewRequestPage() {
               </div>
               <div className="flex justify-between mt-4">
                 {STEPS.map((step) => (
-                  <div key={step.id} className={cn("flex flex-col items-center transition-all", step.id <= currentStep ? "opacity-100" : "opacity-40")}>
+                  <div
+                    key={step.id}
+                    onClick={() => step.id <= maxStepReached && step.id !== currentStep && setCurrentStep(step.id)}
+                    className={cn(
+                      "flex flex-col items-center transition-all",
+                      step.id <= currentStep ? "opacity-100" : "opacity-40",
+                      step.id <= maxStepReached && step.id !== currentStep ? "cursor-pointer" : "cursor-default"
+                    )}
+                  >
                     <div className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                      step.id < currentStep ? "bg-[#00A63E] text-white"
+                      step.id < currentStep ? "bg-[#00A63E] text-white hover:ring-4 hover:ring-[#00A63E]/20"
                         : step.id === currentStep ? "bg-[#00A63E] text-white ring-4 ring-[#00A63E]/20"
+                        : step.id <= maxStepReached ? "bg-[#00A63E]/20 text-[#00A63E] hover:ring-4 hover:ring-[#00A63E]/20"
                         : "bg-slate-200 text-slate-400"
                     )}>
                       {step.id}

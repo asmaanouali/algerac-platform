@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, Send, Eye, ShieldCheck, Clock } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, Send, Eye, ShieldCheck, Clock, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
@@ -29,6 +30,7 @@ const GAP_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function GapsManagementPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -155,9 +157,15 @@ export default function GapsManagementPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Gestion des écarts</h1>
-            <p className="text-muted-foreground mt-1">Suivi des non-conformités, plans d'action et vérification des preuves (Étape 8)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Gestion des écarts</h1>
+              <p className="text-muted-foreground mt-1">Suivi des non-conformités, plans d'action et vérification des preuves (Étape 8)</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

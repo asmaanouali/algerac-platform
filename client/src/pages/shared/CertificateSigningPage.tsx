@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -7,9 +8,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, CheckCircle, Clock, Loader2, Stamp } from "lucide-react";
+import { Award, CheckCircle, Clock, Loader2, Stamp, RefreshCw } from "lucide-react";
 
 export default function CertificateSigningPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -91,14 +93,20 @@ export default function CertificateSigningPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Award className="w-6 h-6" />
-              Certificats d'accréditation
-            </h1>
-            <p className="text-muted-foreground">
-              Signature et suivi des certificats FOR 05
-            </p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Award className="w-6 h-6" />
+                Certificats d'accréditation
+              </h1>
+              <p className="text-muted-foreground">
+                Signature et suivi des certificats FOR 05
+              </p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

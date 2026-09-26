@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Loader2, Gavel, Vote, FileText, CalendarDays, CheckCircle2, Users,
   ShieldCheck, AlertTriangle, ClipboardList, Eye, FileCheck,
-  UserCheck, Scale, Clock, Ban
+  UserCheck, Scale, Clock, Ban, RefreshCw
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -204,14 +204,20 @@ export default function CASMemberDashboard() {
         <main className="p-6 md:p-8">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center gap-3">
-              <Scale className="w-7 h-7 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold">{t('cas_page.dashboardTitle')}</h1>
-                <p className="text-muted-foreground mt-1">
-                  Membre CAS — {user.fullName} | PRO 07 & PRO 16
-                </p>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Scale className="w-7 h-7 text-primary" />
+                <div>
+                  <h1 className="text-2xl font-bold">{t('cas_page.dashboardTitle')}</h1>
+                  <p className="text-muted-foreground mt-1">
+                    Membre CAS — {user.fullName} | PRO 07 & PRO 16
+                  </p>
+                </div>
               </div>
+              <Button variant="outline" onClick={loadMeetings} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
             </div>
           </div>
 

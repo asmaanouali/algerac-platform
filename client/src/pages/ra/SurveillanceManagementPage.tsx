@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -65,6 +66,7 @@ const WORKFLOW_STEPS = [
 ];
 
 export default function SurveillanceManagementPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -446,6 +448,9 @@ export default function SurveillanceManagementPage() {
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" onClick={loadAll} className="gap-1">
+                <RefreshCw className="w-4 h-4" /> {t("common.refresh")}
+              </Button>
               <Button onClick={() => setShowProgramme(true)} className="gap-1">
                 <Eye className="w-4 h-4" /> Surveillance
               </Button>

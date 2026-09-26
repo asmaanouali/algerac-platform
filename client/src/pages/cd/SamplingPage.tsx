@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -20,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import {
   Beaker, Plus, CheckCircle, Clock, Send, XCircle, FileSearch, Target,
   Users, Building2, FlaskConical, AlertTriangle, Archive, Eye, Info,
-  Calculator, ChevronDown, ChevronUp, Search, Filter
+  Calculator, ChevronDown, ChevronUp, Search, Filter, RefreshCw
 } from "lucide-react";
 
 interface SamplingPlan {
@@ -99,6 +100,7 @@ const defaultForm = {
 type FormState = typeof defaultForm;
 
 export default function SamplingPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [plans, setPlans] = useState<SamplingPlan[]>([]);
@@ -303,9 +305,14 @@ export default function SamplingPage() {
                 Plans d'échantillonnage pour les évaluations de laboratoires et d'inspection
               </p>
             </div>
-            <Button onClick={() => { setForm({ ...defaultForm }); setFormStep(0); setShowCreate(true); }}>
-              <Plus className="w-4 h-4 mr-2" />Nouveau plan
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={loadPlans}>
+                <RefreshCw className="w-4 h-4 mr-2" />{t("common.refresh")}
+              </Button>
+              <Button onClick={() => { setForm({ ...defaultForm }); setFormStep(0); setShowCreate(true); }}>
+                <Plus className="w-4 h-4 mr-2" />Nouveau plan
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}

@@ -41,7 +41,9 @@
     "total": "Total",
     "submitting": "Envoi en cours...",
     "copyright": "© 2026 ALGERAC. Tous droits réservés.",
-    "language": "Langue"
+    "language": "Langue",
+    "refresh": "Actualiser",
+    "refreshing": "Actualisation..."
   },
   "auth": {
     "welcome": "Bienvenue",

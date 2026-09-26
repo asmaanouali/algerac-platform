@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, FileSearch, Send, CheckCircle, XCircle, AlertTriangle, FileText } from "lucide-react";
+import { Loader2, FileSearch, Send, CheckCircle, XCircle, AlertTriangle, FileText, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const CD_REVIEW_STATUSES = [
@@ -23,6 +24,7 @@ const CD_REVIEW_STATUSES = [
 ];
 
 export default function DocumentaryDecisionPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -156,9 +158,15 @@ export default function DocumentaryDecisionPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Revue Documentaire — Décision CD</h1>
-            <p className="text-muted-foreground mt-1">Validez les résultats, rédigez une synthèse et prenez la décision de poursuivre ou arrêter</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Revue Documentaire — Décision CD</h1>
+              <p className="text-muted-foreground mt-1">Validez les résultats, rédigez une synthèse et prenez la décision de poursuivre ou arrêter</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

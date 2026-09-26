@@ -1956,28 +1956,28 @@ export default function OECRegister() {
     <div className="min-h-screen bg-[#f5f6f8] dark:bg-slate-950 transition-colors registration-wizard">
       {/* Fixed top header — same pattern as ExpertRegister */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700/60 sticky top-0 z-20 transition-colors">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logoalgerac.png" alt="ALGERAC" className="w-10 h-10 object-contain" />
-            <div>
-              <h1 className="text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src="/logoalgerac.png" alt="ALGERAC" className="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-[#00A63E] leading-tight">ALGERAC</h1>
+              <p className="hidden sm:block text-xs text-gray-500 dark:text-slate-400 truncate">
                 {t("oecRegister.title")}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <LanguageSwitcher variant="compact" />
             <button
               onClick={toggleTheme}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all shrink-0"
               aria-label="Changer de thème"
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <Button variant="ghost" size="sm" asChild className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
+            <Button variant="ghost" size="sm" asChild className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 sm:px-3">
               <Link href="/auth/register">
-                <ChevronLeft className="w-4 h-4 mr-1" /> {t("common.back")}
+                <ChevronLeft className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">{t("common.back")}</span>
               </Link>
             </Button>
           </div>
@@ -2004,7 +2004,7 @@ export default function OECRegister() {
               style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
             />
           </div>
-          <div className="flex justify-between mt-4">
+          <div className="hidden sm:flex justify-between mt-4">
             {STEPS.map((step) => (
               <div key={step.id} className={cn("flex flex-col items-center transition-all", step.id <= currentStep ? "opacity-100" : "opacity-40")}>
                 <div className={cn(

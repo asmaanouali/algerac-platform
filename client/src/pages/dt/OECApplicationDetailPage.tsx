@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, ArrowLeft, CheckCircle, XCircle, Download, FileText,
-  Mail, Phone, User, Building2, Calendar, MapPin,
+  Mail, Phone, User, Building2, Calendar, MapPin, RefreshCw,
 } from "lucide-react";
 
 interface Application {
@@ -33,6 +34,7 @@ interface Application {
 }
 
 export default function DTOECApplicationDetailPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -125,6 +127,10 @@ export default function DTOECApplicationDetailPage() {
             <div className="flex gap-2">
               <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200">Nouvel OEC (pas de compte)</Badge>
               <Badge variant="outline">APP-{app.id}</Badge>
+              <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
             </div>
           </div>
 

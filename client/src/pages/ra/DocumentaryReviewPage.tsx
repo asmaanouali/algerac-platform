@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench, Download } from "lucide-react";
+import { Loader2, FileSearch, Send, CheckCircle, Clock, Users, ArrowRight, Play, User, CheckCircle2, FileText, FolderOpen, Wrench, Download, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
@@ -54,6 +55,7 @@ const statusLabels: Record<string, { label: string; color: string; step: number 
 };
 
 export default function DocumentaryReviewPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -181,9 +183,15 @@ export default function DocumentaryReviewPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Revue Documentaire</h1>
-            <p className="text-muted-foreground mt-1">Gérez la revue documentaire des dossiers d'accréditation (Étape 5)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Revue Documentaire</h1>
+              <p className="text-muted-foreground mt-1">Gérez la revue documentaire des dossiers d'accréditation (Étape 5)</p>
+            </div>
+            <Button variant="outline" onClick={loadRequests} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>

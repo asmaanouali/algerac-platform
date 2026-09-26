@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, Award, Download, Eye } from "lucide-react";
+import { Loader2, Award, Download, Eye, RefreshCw } from "lucide-react";
 
 interface Certificate {
   id: number;
@@ -27,6 +28,7 @@ interface Certificate {
 }
 
 export default function OECCertificatesPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -122,9 +124,15 @@ export default function OECCertificatesPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Mes Certificats</h1>
-            <p className="text-muted-foreground mt-1">Consultez vos certificats d'accréditation délivrés par ALGERAC.</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Mes Certificats</h1>
+              <p className="text-muted-foreground mt-1">Consultez vos certificats d'accréditation délivrés par ALGERAC.</p>
+            </div>
+            <Button variant="outline" onClick={loadCertificates} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <Card>

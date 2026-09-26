@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -11,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, ClipboardCheck, AlertTriangle, Users, MessageSquare, Send, Plus, Eye, CalendarClock, FileText } from "lucide-react";
+import { Loader2, ClipboardCheck, AlertTriangle, Users, MessageSquare, Send, Plus, Eye, CalendarClock, FileText, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function EvaluationDayPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState<any[]>([]);
@@ -145,9 +147,15 @@ export default function EvaluationDayPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Évaluation sur Site (Étape 7)</h1>
-            <p className="text-muted-foreground mt-1">Réunion d'ouverture, évaluation, réunion de clôture</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Évaluation sur Site (Étape 7)</h1>
+              <p className="text-muted-foreground mt-1">Réunion d'ouverture, évaluation, réunion de clôture</p>
+            </div>
+            <Button variant="outline" onClick={loadTeams} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

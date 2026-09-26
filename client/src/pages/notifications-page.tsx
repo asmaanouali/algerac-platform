@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle, Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ function formatDate(iso: string, t: (key: string, opts?: any) => string) {
 export default function NotificationsPage() {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { data: notifications = [], isLoading, refetch, isFetching } = useNotifications();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
 
@@ -90,7 +90,17 @@ export default function NotificationsPage() {
                   : `${notifications.length} notification${notifications.length > 1 ? "s" : ""}`}
               </p>
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
+              {unreadCount > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -105,6 +115,7 @@ export default function NotificationsPage() {
                 {t('notifications_page.markAllRead')}
               </Button>
             )}
+            </div>
           </div>
 
           {/* Content */}

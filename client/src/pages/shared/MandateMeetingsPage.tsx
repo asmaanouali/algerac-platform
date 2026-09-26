@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -6,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Mail, Calendar, FileText, CheckCircle, Clock, MapPin, Users, ClipboardList } from "lucide-react";
+import { Loader2, Mail, Calendar, FileText, CheckCircle, Clock, MapPin, Users, ClipboardList, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const MANDATE_STATUS: Record<string, { label: string; color: string }> = {
@@ -24,6 +25,7 @@ const MEETING_STATUS: Record<string, { label: string; color: string }> = {
 };
 
 export default function MandateMeetingsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -76,9 +78,15 @@ export default function MandateMeetingsPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Mandatements & Réunions</h1>
-            <p className="text-muted-foreground mt-1">Vos mandatements reçus et les réunions de préparation planifiées (Étape 6)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Mandatements & Réunions</h1>
+              <p className="text-muted-foreground mt-1">Vos mandatements reçus et les réunions de préparation planifiées (Étape 6)</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

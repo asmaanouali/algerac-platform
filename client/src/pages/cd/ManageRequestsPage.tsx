@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { useLocation, Link, useSearch } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users, ClipboardCheck, Eye, Send, AlertTriangle, Shield, Calendar, Download, FileSignature } from "lucide-react";
+import { Loader2, FileText, UserPlus, CheckCircle, FolderOpen, Archive, XCircle, Users, ClipboardCheck, Eye, Send, AlertTriangle, Shield, Calendar, Download, FileSignature, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -62,6 +63,7 @@ function resolveManageTab(search: string): ManageTab {
 }
 
 export default function CDManageRequestsPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
@@ -370,9 +372,15 @@ export default function CDManageRequestsPage() {
         <Navbar />
         <main className="p-4 md:p-8">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Chef de Département — Gestion des Demandes</h1>
-              <p className="text-muted-foreground mt-2">Assignez les demandes aux RAs compétents et gérez les dossiers</p>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="text-3xl font-bold">Chef de Département — Gestion des Demandes</h1>
+                <p className="text-muted-foreground mt-2">Assignez les demandes aux RAs compétents et gérez les dossiers</p>
+              </div>
+              <Button variant="outline" onClick={loadData} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-5">

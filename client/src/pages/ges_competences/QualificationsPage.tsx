@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -88,6 +89,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function QualificationsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
@@ -204,7 +206,7 @@ export default function QualificationsPage() {
               <p className="text-gray-500 mt-1">Suivi du processus de qualification des évaluateurs et experts</p>
             </div>
             <Button onClick={fetchQualifications} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
+              <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
             </Button>
           </div>
 

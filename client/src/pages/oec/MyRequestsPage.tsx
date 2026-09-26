@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CheckCircle, XCircle, Clock, Eye, Plus, FileText, Users, AlertTriangle, ArrowRight } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Eye, Plus, FileText, Users, AlertTriangle, ArrowRight, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -233,7 +233,13 @@ export default function MyRequestsPage() {
                 <h1 className="text-3xl font-bold">{t("mrd.title")}</h1>
                 <p className="text-muted-foreground mt-2">{t("mrd.subtitle")}</p>
               </div>
-              <Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />{t("mrd.newRequest")}</Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={loadRequests} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  {t("common.refresh")}
+                </Button>
+                <Button onClick={() => setLocation("/oec/nouvelle-demande")}><Plus className="h-4 w-4 mr-2" />{t("mrd.newRequest")}</Button>
+              </div>
             </div>
 
             {/* Stats */}

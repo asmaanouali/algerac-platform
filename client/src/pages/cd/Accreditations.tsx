@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, FileText, UserCheck } from "lucide-react";
+import { Loader2, FileText, UserCheck, RefreshCw } from "lucide-react";
 
 export default function CDAccreditations() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -127,11 +129,17 @@ export default function CDAccreditations() {
             </div>
           ) : (
             <>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Chef de Département</h1>
-        <p className="text-muted-foreground">
-          Attribuez un numéro de référence et assignez les demandes aux responsables d'accréditation
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Chef de Département</h1>
+          <p className="text-muted-foreground">
+            Attribuez un numéro de référence et assignez les demandes aux responsables d'accréditation
+          </p>
+        </div>
+        <Button variant="outline" onClick={loadData} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          {t("common.refresh")}
+        </Button>
       </div>
       <Card>
         <CardHeader>

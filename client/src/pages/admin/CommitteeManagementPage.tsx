@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, CheckCircle2, Users, Plus, Pencil, Trash2, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Users, Plus, Pencil, Trash2, Loader2, ShieldCheck, RefreshCw } from "lucide-react";
 
 interface Domain { value: string; label: string; }
 interface User { id: number; fullName: string; email: string; role: string; }
@@ -159,9 +159,15 @@ export default function CommitteeManagementPage() {
                 Un comité par domaine — 5 membres max (président + vice-président + experts)
               </p>
             </div>
-            <Button onClick={openCreate} disabled={availableDomains.length === 0}>
-              <Plus className="h-4 w-4 mr-2" /> Nouveau comité
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={loadAll} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
+              <Button onClick={openCreate} disabled={availableDomains.length === 0}>
+                <Plus className="h-4 w-4 mr-2" /> Nouveau comité
+              </Button>
+            </div>
           </div>
 
           {/* Coverage summary */}

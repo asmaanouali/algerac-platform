@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Stamp, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Stamp, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DGMissionOrdersPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
@@ -64,9 +66,15 @@ export default function DGMissionOrdersPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Approbation DG — Ordres de Mission</h1>
-            <p className="text-muted-foreground mt-1">Donnez la validation finale des ordres de mission (Étape 6.3)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Approbation DG — Ordres de Mission</h1>
+              <p className="text-muted-foreground mt-1">Donnez la validation finale des ordres de mission (Étape 6.3)</p>
+            </div>
+            <Button variant="outline" onClick={loadOrders} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

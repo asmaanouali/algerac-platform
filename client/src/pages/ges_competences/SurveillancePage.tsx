@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -62,6 +63,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function SurveillancePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<QualificationStats | null>(null);
@@ -136,7 +138,7 @@ export default function SurveillancePage() {
               <p className="text-gray-500 mt-1">Tableau de bord de surveillance continue et KPI (PRO_06 §6.6)</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchAll}>
-              <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
+              <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
             </Button>
           </div>
 

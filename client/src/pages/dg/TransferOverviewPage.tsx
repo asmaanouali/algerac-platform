@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowRightLeft, CheckCircle, XCircle, Eye, Gavel,
-  ShieldCheck, ShieldAlert, DollarSign, AlertTriangle, Users, Clock, BarChart3
+  ShieldCheck, ShieldAlert, DollarSign, AlertTriangle, Users, Clock, BarChart3, RefreshCw
 } from "lucide-react";
 
 interface Transfer {
@@ -28,6 +29,7 @@ interface Transfer {
 }
 
 export default function TransferOverviewPage() {
+  const { t } = useTranslation();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDetail, setShowDetail] = useState(false);
@@ -116,11 +118,17 @@ export default function TransferOverviewPage() {
     <div className="min-h-screen bg-gray-50/50">
       <Sidebar /><div className="md:ml-64"><Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <ArrowRightLeft className="w-6 h-6 text-primary" />Vue d'ensemble des transferts — DG
-            </h1>
-            <p className="text-muted-foreground">Suivi global des transferts d'accréditation (PRO 31)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <ArrowRightLeft className="w-6 h-6 text-primary" />Vue d'ensemble des transferts — DG
+              </h1>
+              <p className="text-muted-foreground">Suivi global des transferts d'accréditation (PRO 31)</p>
+            </div>
+            <Button variant="outline" onClick={loadTransfers} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {/* Stats */}

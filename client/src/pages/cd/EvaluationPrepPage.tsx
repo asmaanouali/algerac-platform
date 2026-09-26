@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -15,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2, Send, CheckCircle, XCircle, CalendarDays, MapPin, Clock,
-  FileCheck, Users, Mail, AlertTriangle, Pencil,
+  FileCheck, Users, Mail, AlertTriangle, Pencil, RefreshCw,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -26,6 +27,7 @@ const CD_EVAL_STATUSES = [
 ];
 
 export default function CDEvaluationPrepPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -176,9 +178,15 @@ export default function CDEvaluationPrepPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Préparation Évaluation — CD</h1>
-            <p className="text-muted-foreground mt-1">Validation mandatements, réunion de préparation, validation plan FOR 32</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Préparation Évaluation — CD</h1>
+              <p className="text-muted-foreground mt-1">Validation mandatements, réunion de préparation, validation plan FOR 32</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

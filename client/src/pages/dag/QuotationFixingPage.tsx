@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Loader2, FileText, Download, DollarSign, Search, AlertTriangle, Send, ClipboardCheck, Eye,
+  Loader2, FileText, Download, DollarSign, Search, AlertTriangle, Send, ClipboardCheck, Eye, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -247,13 +248,19 @@ export default function DAGQuotationFixingPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-4 md:p-8 space-y-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <DollarSign className="h-7 w-7 text-primary" /> Fixation des devis
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Fixez le montant des devis préparés par les RA, puis consultez l&apos;historique des devis établis.
-            </p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                <DollarSign className="h-7 w-7 text-primary" /> Fixation des devis
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Fixez le montant des devis préparés par les RA, puis consultez l&apos;historique des devis établis.
+              </p>
+            </div>
+            <Button variant="outline" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <Card>

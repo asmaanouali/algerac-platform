@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, UserCheck, Search, Mail, Briefcase } from "lucide-react";
+import { Loader2, UserCheck, Search, Mail, Briefcase, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,6 +27,7 @@ interface RAWorkload {
 }
 
 export default function CDRAWorkloadPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [ras, setRas] = useState<RAWorkload[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,9 +68,15 @@ export default function CDRAWorkloadPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-4 md:p-8 space-y-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Responsables d'Accréditation</h1>
-            <p className="text-muted-foreground mt-2">Vue d'ensemble des RA du département, leurs compétences et leur charge de travail</p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Responsables d'Accréditation</h1>
+              <p className="text-muted-foreground mt-2">Vue d'ensemble des RA du département, leurs compétences et leur charge de travail</p>
+            </div>
+            <Button variant="outline" onClick={load} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">

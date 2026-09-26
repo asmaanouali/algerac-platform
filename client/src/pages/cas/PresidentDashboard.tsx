@@ -20,7 +20,7 @@ import {
   Loader2, Gavel, Vote, FileText, CalendarDays, CheckCircle2, Users,
   ShieldCheck, AlertTriangle, ClipboardList, Crown, FileCheck,
   UserCheck, Scale, Clock, Send, Play, StopCircle, Eye, BookOpen,
-  Stamp, AlertCircle, ArrowRight, BarChart3, Building2, Star, Ban
+  Stamp, AlertCircle, ArrowRight, BarChart3, Building2, Star, Ban, RefreshCw
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -317,14 +317,20 @@ export default function CASPresidentDashboard() {
         <main className="p-6 md:p-8">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center gap-3">
-              <Crown className="w-7 h-7 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold">{t('cas_page.presidentDashboardTitle')}</h1>
-                <p className="text-muted-foreground mt-1">
-                  PRO 07 (Gestion CAS) & PRO 16 (Prise de Décision) | {user.fullName}
-                </p>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Crown className="w-7 h-7 text-primary" />
+                <div>
+                  <h1 className="text-2xl font-bold">{t('cas_page.presidentDashboardTitle')}</h1>
+                  <p className="text-muted-foreground mt-1">
+                    PRO 07 (Gestion CAS) & PRO 16 (Prise de Décision) | {user.fullName}
+                  </p>
+                </div>
               </div>
+              <Button variant="outline" onClick={loadMeetings} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
             </div>
           </div>
 

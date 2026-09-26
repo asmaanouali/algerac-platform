@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
-import { Loader2, CreditCard, Eye, AlertTriangle } from "lucide-react";
+import { Loader2, CreditCard, Eye, AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Payment {
   id: number;
@@ -30,6 +31,7 @@ interface Payment {
 }
 
 export default function PaymentsListPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -159,13 +161,21 @@ export default function PaymentsListPage() {
           <div className="container mx-auto max-w-6xl">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Mes Paiements
-                </CardTitle>
-                <CardDescription>
-                  Toutes vos factures : inscription, évaluation, redevance annuelle, etc. (PRO_18 / PRO_18-1)
-                </CardDescription>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Mes Paiements
+                    </CardTitle>
+                    <CardDescription>
+                      Toutes vos factures : inscription, évaluation, redevance annuelle, etc. (PRO_18 / PRO_18-1)
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" onClick={loadPayments} disabled={loading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                    {t("common.refresh")}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (

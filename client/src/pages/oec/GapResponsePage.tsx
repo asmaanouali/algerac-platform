@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, FileText, Upload, Shield, Clock, Send, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, FileText, Upload, Shield, Clock, Send, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
 import { getOecStatusLabel } from "@/lib/oec-request-display";
 
 /**
@@ -21,6 +22,7 @@ import { getOecStatusLabel } from "@/lib/oec-request-display";
  * Also can submit evidence and contest gaps.
  */
 export default function GapResponsePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -151,9 +153,15 @@ export default function GapResponsePage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Traitement des Écarts — Étape 8</h1>
-            <p className="text-muted-foreground mt-1">Soumettez vos plans d'action et preuves de mise en œuvre</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Traitement des Écarts — Étape 8</h1>
+              <p className="text-muted-foreground mt-1">Soumettez vos plans d'action et preuves de mise en œuvre</p>
+            </div>
+            <Button variant="outline" onClick={loadRequests} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

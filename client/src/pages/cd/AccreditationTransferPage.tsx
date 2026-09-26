@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
@@ -126,11 +127,17 @@ export default function AccreditationTransferPage() {
     <div className="min-h-screen bg-gray-50/50">
       <Sidebar /><div className="md:ml-64"><Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <ArrowRightLeft className="w-6 h-6 text-primary" />Transfert d'accréditation — PRO 31
-            </h1>
-            <p className="text-muted-foreground">Étude de faisabilité et suivi des transferts d'accréditation</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <ArrowRightLeft className="w-6 h-6 text-primary" />Transfert d'accréditation — PRO 31
+              </h1>
+              <p className="text-muted-foreground">Étude de faisabilité et suivi des transferts d'accréditation</p>
+            </div>
+            <Button variant="outline" onClick={loadTransfers} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {/* Stats */}

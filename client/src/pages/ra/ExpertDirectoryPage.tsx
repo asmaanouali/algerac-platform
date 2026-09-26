@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ExpertDirectoryPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -143,7 +145,7 @@ export default function ExpertDirectoryPage() {
               </div>
             </div>
             <Button variant="outline" onClick={loadExperts} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Actualiser"}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("common.refresh")}
             </Button>
           </div>
 

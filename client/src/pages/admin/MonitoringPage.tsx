@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 };
 
 export default function MonitoringPage() {
+  const { t } = useTranslation();
   const [metrics, setMetrics] = useState<Metrics>({});
   const [httpData, setHttpData] = useState<HttpPoint[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -116,7 +118,7 @@ export default function MonitoringPage() {
             </div>
             <Button variant="outline" onClick={() => fetchAll(true)} disabled={refreshing}>
               {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Actualiser
+              {t("common.refresh")}
             </Button>
           </div>
 

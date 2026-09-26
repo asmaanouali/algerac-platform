@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
-import { BarChart3, Loader2, Printer, Users, FileCheck, Clock } from "lucide-react";
+import { BarChart3, Loader2, Printer, Users, FileCheck, Clock, RefreshCw } from "lucide-react";
 import {
   PieChart, Pie, Cell, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -32,6 +33,7 @@ const PERIODS = [
 ];
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState("month");
   const [stats, setStats] = useState<ReportStats>({});
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,10 @@ export default function ReportsPage() {
                   {PERIODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <Button variant="outline" onClick={fetchStats} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
               <Button variant="outline" onClick={() => window.print()}>
                 <Printer className="w-4 h-4 mr-2" />
                 Exporter PDF

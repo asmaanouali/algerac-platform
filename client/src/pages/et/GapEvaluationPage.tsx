@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, ShieldCheck, Eye } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle, XCircle, FileText, ShieldCheck, Eye, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const GAP_STATUS_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ const GAP_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function GapEvaluationPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState<any[]>([]);
@@ -115,9 +117,15 @@ export default function GapEvaluationPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Évaluation des Plans d'Action</h1>
-            <p className="text-muted-foreground mt-1">Évaluez les plans d'action soumis par l'OEC et vérifiez les preuves de mise en œuvre</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Évaluation des Plans d'Action</h1>
+              <p className="text-muted-foreground mt-1">Évaluez les plans d'action soumis par l'OEC et vérifiez les preuves de mise en œuvre</p>
+            </div>
+            <Button variant="outline" onClick={loadTeams} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

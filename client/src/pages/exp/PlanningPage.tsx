@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -7,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Loader2, CalendarDays, Plus, Trash2 } from "lucide-react";
+import { Loader2, CalendarDays, Plus, Trash2, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function PlanningPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [unavailableDates, setUnavailableDates] = useState<any[]>([]);
@@ -78,9 +80,15 @@ export default function PlanningPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Mon Planning</h1>
-            <p className="text-muted-foreground mt-1">Gérez vos disponibilités pour les missions d'évaluation</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Mon Planning</h1>
+              <p className="text-muted-foreground mt-1">Gérez vos disponibilités pour les missions d'évaluation</p>
+            </div>
+            <Button variant="outline" onClick={loadDates} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2, Calendar, Search, Filter, CalendarDays, X } from "lucide-react";
+import { Loader2, Users, UserPlus, Send, CheckCircle, Shield, AlertTriangle, Trash2, Calendar, Search, Filter, CalendarDays, X, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
@@ -59,6 +60,7 @@ const platformRoleToTeamRole: Record<string, string> = {
 };
 
 export default function TeamCompositionPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -315,9 +317,15 @@ export default function TeamCompositionPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Constitution de l'Equipe d'Evaluation</h1>
-            <p className="text-muted-foreground mt-1">Designez les membres de l'equipe d'evaluation (Etape 4)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Constitution de l'Equipe d'Evaluation</h1>
+              <p className="text-muted-foreground mt-1">Designez les membres de l'equipe d'evaluation (Etape 4)</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

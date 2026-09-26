@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send, Users, Clock, FolderOpen, Wrench, FileText, CheckCircle2 } from "lucide-react";
+import { Loader2, FileSearch, CheckCircle, AlertTriangle, Send, Users, Clock, FolderOpen, Wrench, FileText, CheckCircle2, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const DOC_TYPES = [
@@ -25,7 +26,9 @@ const DOC_TYPES = [
   { key: "doc_technique_enregistrements", label: "Enregistrements qualité", category: "Technique" },
 ];
 
-export default function DocumentaryAnalysisPage() {  const { user } = useAuth();
+export default function DocumentaryAnalysisPage() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState<any[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
@@ -162,9 +165,15 @@ export default function DocumentaryAnalysisPage() {  const { user } = useAuth();
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Revue Documentaire</h1>
-            <p className="text-muted-foreground mt-1">Analysez les documents soumis par l'OEC (Étape 5)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Revue Documentaire</h1>
+              <p className="text-muted-foreground mt-1">Analysez les documents soumis par l'OEC (Étape 5)</p>
+            </div>
+            <Button variant="outline" onClick={loadTeams} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

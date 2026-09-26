@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ async function fetchJson(url: string, timeoutMs = 10000): Promise<any[]> {
 }
 
 export default function DTAccreditationRequestsPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [requests, setRequests] = useState<RequestRow[]>([]);
@@ -191,7 +193,7 @@ export default function DTAccreditationRequestsPage() {
             </div>
             <Button variant="outline" onClick={load} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Actualiser
+              {t("common.refresh")}
             </Button>
           </div>
 

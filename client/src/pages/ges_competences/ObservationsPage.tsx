@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ const OBS_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ObservationsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [observations, setObservations] = useState<ObservationReport[]>([]);
@@ -210,7 +212,7 @@ export default function ObservationsPage() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={fetchObservations}>
-                <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
+                <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
               </Button>
               <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" /> Nouvelle observation

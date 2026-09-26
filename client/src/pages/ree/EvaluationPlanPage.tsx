@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -30,6 +31,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 const emptyForm = { dailyProgram: "", activityDistribution: "", schedules: "", documentsToExamine: "" };
 
 export default function EvaluationPlanPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -165,9 +167,15 @@ export default function EvaluationPlanPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Plan d'Évaluation — FOR 32</h1>
-            <p className="text-muted-foreground mt-1">Élaborez et soumettez le plan d'évaluation au RA (Étape 6.4)</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Plan d'Évaluation — FOR 32</h1>
+              <p className="text-muted-foreground mt-1">Élaborez et soumettez le plan d'évaluation au RA (Étape 6.4)</p>
+            </div>
+            <Button variant="outline" onClick={loadTeams} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil, Rocket } from "lucide-react";
+import { Loader2, Send, Plus, ClipboardList, FileCheck, CheckCircle, Mail, XCircle, AlertTriangle, Pencil, Rocket, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { consumeDeepLinkedRequest } from "@/lib/ra-resume";
 
@@ -26,6 +27,7 @@ const EVAL_PREP_STATUSES = [
 ];
 
 export default function EvaluationPrepPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -248,9 +250,15 @@ export default function EvaluationPrepPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Préparation de l'évaluation (Étape 6)</h1>
-            <p className="text-muted-foreground mt-1">Mandatements, ordres de mission FOR 18, plan d'évaluation FOR 32</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Préparation de l'évaluation (Étape 6)</h1>
+              <p className="text-muted-foreground mt-1">Mandatements, ordres de mission FOR 18, plan d'évaluation FOR 32</p>
+            </div>
+            <Button variant="outline" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           {loading ? (

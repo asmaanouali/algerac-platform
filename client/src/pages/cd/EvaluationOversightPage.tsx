@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -13,9 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Send, CheckCircle, ClipboardList, Users, Calendar, Shield, Award } from "lucide-react";
+import { FileText, Send, CheckCircle, ClipboardList, Users, Calendar, Shield, Award, RefreshCw } from "lucide-react";
 
 export default function EvaluationOversightPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -195,11 +197,17 @@ export default function EvaluationOversightPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Pilotage de l'évaluation sur site</h1>
-            <p className="text-muted-foreground">
-              Gestion des mandats, plans d'évaluation, écarts et contestations
-            </p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold">Pilotage de l'évaluation sur site</h1>
+              <p className="text-muted-foreground">
+                Gestion des mandats, plans d'évaluation, écarts et contestations
+              </p>
+            </div>
+            <Button variant="outline" onClick={loadRequests} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

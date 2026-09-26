@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, FileText, Download, Search } from "lucide-react";
+import { Loader2, FileText, Download, Search, RefreshCw } from "lucide-react";
 
 interface Doc {
   key: string;
@@ -41,6 +42,7 @@ const guessCategory = (key?: string): string => {
 };
 
 export default function OECDocumentsPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -132,11 +134,17 @@ export default function OECDocumentsPage() {
       <div className="md:ml-64">
         <Navbar />
         <main className="p-6 md:p-8 space-y-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Mes Documents</h1>
-            <p className="text-muted-foreground mt-1">
-              Tous les documents que vous avez soumis dans l'ensemble de vos demandes d'accréditation.
-            </p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Mes Documents</h1>
+              <p className="text-muted-foreground mt-1">
+                Tous les documents que vous avez soumis dans l'ensemble de vos demandes d'accréditation.
+              </p>
+            </div>
+            <Button variant="outline" onClick={loadAll} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
           </div>
 
           <Card>

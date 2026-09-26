@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function SupMyPlanPage() {
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -98,7 +100,7 @@ export default function SupMyPlanPage() {
               </h1>
               <p className="text-sm text-slate-500 mt-1">Plan triennal — vos missions de supervision</p>
             </div>
-            <Button variant="outline" onClick={fetchAll}><RefreshCw className="h-4 w-4 mr-2" />Actualiser</Button>
+            <Button variant="outline" onClick={fetchAll}><RefreshCw className="h-4 w-4 mr-2" />{t("common.refresh")}</Button>
           </div>
 
           <Tabs defaultValue="upcoming">

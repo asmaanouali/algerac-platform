@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,6 +29,7 @@ interface Candidature {
 }
 
 export default function GesCompetencesDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [candidatures, setCandidatures] = useState<Candidature[]>([]);
   const [interviews, setInterviews] = useState<Candidature[]>([]);
@@ -35,7 +37,7 @@ export default function GesCompetencesDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    document.title = "Tableau de Bord - Gestion des Compétences | ALGERAC";
+    document.title = t("gesCompetences.dashboard.pageTitle", { defaultValue: "Tableau de Bord - Gestion des Compétences | ALGERAC" });
     fetchData();
   }, []);
 
@@ -131,22 +133,22 @@ export default function GesCompetencesDashboard() {
       FORMATEUR: "bg-indigo-100 text-indigo-800 border-indigo-200",
     };
     const labels: Record<string, string> = {
-      EXPERT: "Expert",
-      EVALUATEUR: "Évaluateur",
-      FORMATEUR: "Formateur",
+      EXPERT: t("gesCompetences.common.userType.EXPERT", { defaultValue: "Expert" }),
+      EVALUATEUR: t("gesCompetences.common.userType.EVALUATEUR", { defaultValue: "Évaluateur" }),
+      FORMATEUR: t("gesCompetences.common.userType.FORMATEUR", { defaultValue: "Formateur" }),
     };
     return <Badge variant="outline" className={colors[type]}>{labels[type] || type}</Badge>;
   };
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { class: string; label: string }> = {
-      PENDING: { class: "bg-amber-50 text-amber-700 border-amber-300", label: "En attente" },
-      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
-      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
-      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
-      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: "Acceptée" },
-      APPROVED: { class: "bg-green-50 text-green-700 border-green-300", label: "Compte actif" },
-      REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: "Non retenue" },
+      PENDING: { class: "bg-amber-50 text-amber-700 border-amber-300", label: t("gesCompetences.dashboard.status.PENDING", { defaultValue: "En attente" }) },
+      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: t("gesCompetences.dashboard.status.INTERVIEW_SCHEDULED", { defaultValue: "Entretien planifié" }) },
+      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: t("gesCompetences.dashboard.status.INTERVIEW_CONFIRMED", { defaultValue: "Entretien confirmé" }) },
+      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: t("gesCompetences.dashboard.status.INTERVIEW_COMPLETED", { defaultValue: "Entretien terminé" }) },
+      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: t("gesCompetences.dashboard.status.CANDIDATURE_APPROVED", { defaultValue: "Acceptée" }) },
+      APPROVED: { class: "bg-green-50 text-green-700 border-green-300", label: t("gesCompetences.dashboard.status.APPROVED", { defaultValue: "Compte actif" }) },
+      REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: t("gesCompetences.dashboard.status.REJECTED", { defaultValue: "Non retenue" }) },
     };
     const s = map[status] || { class: "", label: status };
     return <Badge variant="outline" className={s.class}>{s.label}</Badge>;
@@ -174,8 +176,8 @@ export default function GesCompetencesDashboard() {
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Header */}
           <DashboardHeader
-            title="Tableau de Bord"
-            subtitle={`Bienvenue, ${user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.`}
+            title={t("gesCompetences.dashboard.title", { defaultValue: "Tableau de Bord" })}
+            subtitle={t("gesCompetences.dashboard.subtitle", { name: user?.fullName || t("gesCompetences.dashboard.defaultManagerName", { defaultValue: "Gestionnaire" }), defaultValue: `Bienvenue, ${user?.fullName || "Gestionnaire"}. Vue d'ensemble des candidatures et entretiens.` })}
             onRefresh={() => fetchData(true)}
             refreshing={refreshing}
           />
@@ -186,7 +188,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dossiers en attente</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gesCompetences.dashboard.statPendingFiles", { defaultValue: "Dossiers en attente" })}</p>
                     <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
                   </div>
                   <div className="p-3 bg-amber-50 rounded-xl">
@@ -200,7 +202,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Entretiens à venir</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gesCompetences.dashboard.statUpcomingInterviews", { defaultValue: "Entretiens à venir" })}</p>
                     <p className="text-3xl font-bold text-blue-600 mt-1">{stats.interviewScheduled + stats.interviewConfirmed}</p>
                   </div>
                   <div className="p-3 bg-blue-50 rounded-xl">
@@ -214,7 +216,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Candidats acceptés</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gesCompetences.dashboard.statAcceptedCandidates", { defaultValue: "Candidats acceptés" })}</p>
                     <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.approved + stats.active}</p>
                   </div>
                   <div className="p-3 bg-emerald-50 rounded-xl">
@@ -228,7 +230,7 @@ export default function GesCompetencesDashboard() {
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total candidatures</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("gesCompetences.dashboard.statTotalCandidatures", { defaultValue: "Total candidatures" })}</p>
                     <p className="text-3xl font-bold text-slate-700 mt-1">{stats.total}</p>
                   </div>
                   <div className="p-3 bg-slate-100 rounded-xl">
@@ -249,15 +251,15 @@ export default function GesCompetencesDashboard() {
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-amber-600" />
-                        Actions Requises
+                        {t("gesCompetences.dashboard.actionsRequired", { defaultValue: "Actions Requises" })}
                       </CardTitle>
                       <CardDescription>
-                        {actionsRequises.length} entretien(s) en attente de confirmation
+                        {t("gesCompetences.dashboard.actionsRequiredDesc", { count: actionsRequises.length, defaultValue: `${actionsRequises.length} entretien(s) en attente de confirmation` })}
                       </CardDescription>
                     </div>
                     <Link href="/ges-competences/entretiens">
                       <Button variant="ghost" size="sm" className="gap-1">
-                        Gérer <ArrowRight className="w-3 h-3" />
+                        {t("gesCompetences.dashboard.manage", { defaultValue: "Gérer" })} <ArrowRight className="w-3 h-3" />
                       </Button>
                     </Link>
                   </div>
@@ -286,19 +288,19 @@ export default function GesCompetencesDashboard() {
                             <p className="font-medium text-sm">{action.fullName}</p>
                             <p className="text-xs text-muted-foreground">
                               {action.domaineExpertise}
-                              {action.interviewDate && ` · Entretien le ${formatDateTime(action.interviewDate)}`}
+                              {action.interviewDate && ` ${t("gesCompetences.dashboard.interviewOn", { date: formatDateTime(action.interviewDate), defaultValue: `· Entretien le ${formatDateTime(action.interviewDate)}` })}`}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {action.daysLeft !== null && action.daysLeft <= 0 ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Délai expiré</Badge>
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">{t("gesCompetences.dashboard.deadlineExpired", { defaultValue: "Délai expiré" })}</Badge>
                           ) : action.daysLeft !== null && action.daysLeft <= 2 ? (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">J-{action.daysLeft}</Badge>
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">{t("gesCompetences.dashboard.daysLeft", { days: action.daysLeft, defaultValue: `J-${action.daysLeft}` })}</Badge>
                           ) : action.daysLeft !== null && action.daysLeft <= 4 ? (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">J-{action.daysLeft}</Badge>
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">{t("gesCompetences.dashboard.daysLeft", { days: action.daysLeft, defaultValue: `J-${action.daysLeft}` })}</Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">En attente</Badge>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">{t("gesCompetences.dashboard.waitingAction", { defaultValue: "En attente" })}</Badge>
                           )}
                           {getTypeBadge(action.userType)}
                         </div>
@@ -306,7 +308,7 @@ export default function GesCompetencesDashboard() {
                     ))}
                     {actionsRequises.length > 5 && (
                       <p className="text-xs text-center text-muted-foreground mt-2">
-                        +{actionsRequises.length - 5} autre(s) en attente
+                        {t("gesCompetences.dashboard.othersWaiting", { count: actionsRequises.length - 5, defaultValue: `+${actionsRequises.length - 5} autre(s) en attente` })}
                       </p>
                     )}
                   </div>
@@ -321,17 +323,17 @@ export default function GesCompetencesDashboard() {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CalendarDays className="w-5 h-5 text-blue-600" />
-                      Entretiens du Jour
+                      {t("gesCompetences.dashboard.todayInterviews", { defaultValue: "Entretiens du Jour" })}
                     </CardTitle>
                     <CardDescription>
                       {todayInterviews.length === 0 
-                        ? "Aucun entretien confirmé aujourd'hui" 
-                        : `${todayInterviews.length} entretien(s) confirmé(s)`}
+                        ? t("gesCompetences.dashboard.noInterviewToday", { defaultValue: "Aucun entretien confirmé aujourd'hui" }) 
+                        : t("gesCompetences.dashboard.confirmedCount", { count: todayInterviews.length, defaultValue: `${todayInterviews.length} entretien(s) confirmé(s)` })}
                     </CardDescription>
                   </div>
                   <Link href="/ges-competences/entretiens">
                     <Button variant="ghost" size="sm" className="gap-1">
-                      Voir tout <ArrowRight className="w-3 h-3" />
+                      {t("gesCompetences.dashboard.viewAll", { defaultValue: "Voir tout" })} <ArrowRight className="w-3 h-3" />
                     </Button>
                   </Link>
                 </div>
@@ -340,7 +342,7 @@ export default function GesCompetencesDashboard() {
                 {todayInterviews.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Aucun entretien confirmé aujourd'hui</p>
+                    <p className="text-sm">{t("gesCompetences.dashboard.noInterviewToday", { defaultValue: "Aucun entretien confirmé aujourd'hui" })}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -383,13 +385,13 @@ export default function GesCompetencesDashboard() {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Calendar className="w-5 h-5 text-cyan-600" />
-                      Prochains Entretiens
+                      {t("gesCompetences.dashboard.upcomingInterviewsTitle", { defaultValue: "Prochains Entretiens" })}
                     </CardTitle>
-                    <CardDescription>Les 5 prochains entretiens confirmés</CardDescription>
+                    <CardDescription>{t("gesCompetences.dashboard.next5", { defaultValue: "Les 5 prochains entretiens confirmés" })}</CardDescription>
                   </div>
                   <Link href="/ges-competences/entretiens">
                     <Button variant="ghost" size="sm" className="gap-1">
-                      Planning <ArrowRight className="w-3 h-3" />
+                      {t("gesCompetences.dashboard.planning", { defaultValue: "Planning" })} <ArrowRight className="w-3 h-3" />
                     </Button>
                   </Link>
                 </div>
@@ -398,7 +400,7 @@ export default function GesCompetencesDashboard() {
                 {upcomingInterviews.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Aucun entretien à venir</p>
+                    <p className="text-sm">{t("gesCompetences.dashboard.noUpcomingInterview", { defaultValue: "Aucun entretien à venir" })}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -436,13 +438,13 @@ export default function GesCompetencesDashboard() {
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <UserPlus className="w-5 h-5 text-amber-600" />
-                      Nouvelles Candidatures
+                      {t("gesCompetences.dashboard.newCandidatures", { defaultValue: "Nouvelles Candidatures" })}
                     </CardTitle>
-                    <CardDescription>Candidatures en attente d'examen</CardDescription>
+                    <CardDescription>{t("gesCompetences.dashboard.pendingReviewDesc", { defaultValue: "Candidatures en attente d'examen" })}</CardDescription>
                   </div>
                   <Link href="/ges-competences/candidatures">
                     <Button variant="ghost" size="sm" className="gap-1">
-                      Toutes les candidatures <ArrowRight className="w-3 h-3" />
+                      {t("gesCompetences.dashboard.allCandidatures", { defaultValue: "Toutes les candidatures" })} <ArrowRight className="w-3 h-3" />
                     </Button>
                   </Link>
                 </div>
@@ -451,7 +453,7 @@ export default function GesCompetencesDashboard() {
                 {recentCandidatures.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Aucune candidature en attente</p>
+                    <p className="text-sm">{t("gesCompetences.dashboard.noPendingCandidature", { defaultValue: "Aucune candidature en attente" })}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -474,7 +476,7 @@ export default function GesCompetencesDashboard() {
                           {getTypeBadge(cand.userType)}
                           <Link href="/ges-competences/candidatures">
                             <Button variant="outline" size="sm" className="gap-1 h-8">
-                              <Eye className="w-3 h-3" /> Examiner
+                              <Eye className="w-3 h-3" /> {t("gesCompetences.dashboard.review", { defaultValue: "Examiner" })}
                             </Button>
                           </Link>
                         </div>
@@ -493,28 +495,28 @@ export default function GesCompetencesDashboard() {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <BarChart3 className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm font-medium text-muted-foreground">Experts</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("gesCompetences.dashboard.experts", { defaultValue: "Experts" })}</span>
                   </div>
                   <p className="text-2xl font-bold">{candidatures.filter(c => c.userType === "EXPERT").length}</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <BarChart3 className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm font-medium text-muted-foreground">Évaluateurs</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("gesCompetences.dashboard.evaluators", { defaultValue: "Évaluateurs" })}</span>
                   </div>
                   <p className="text-2xl font-bold">{candidatures.filter(c => c.userType === "EVALUATEUR").length}</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <BarChart3 className="w-4 h-4 text-indigo-500" />
-                    <span className="text-sm font-medium text-muted-foreground">Formateurs</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("gesCompetences.dashboard.trainers", { defaultValue: "Formateurs" })}</span>
                   </div>
                   <p className="text-2xl font-bold">{candidatures.filter(c => c.userType === "FORMATEUR").length}</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm font-medium text-muted-foreground">Taux d'acceptation</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("gesCompetences.dashboard.acceptanceRate", { defaultValue: "Taux d'acceptation" })}</span>
                   </div>
                   <p className="text-2xl font-bold">
                     {stats.total > 0 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ interface Interview {
 }
 
 export default function InterviewPlanningPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -69,7 +71,7 @@ export default function InterviewPlanningPage() {
   const [showDayDialog, setShowDayDialog] = useState(false);
 
   useEffect(() => {
-    document.title = "Planning Entretiens - Gestion des Compétences | ALGERAC";
+    document.title = t("gesCompetences.interviewPlanning.pageTitle", { defaultValue: "Planning Entretiens - Gestion des Compétences | ALGERAC" });
     fetchData();
   }, []);
 
@@ -99,7 +101,7 @@ export default function InterviewPlanningPage() {
         );
       }
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de charger les entretiens", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewPlanning.errorLoad", { defaultValue: "Impossible de charger les entretiens" }), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -151,32 +153,32 @@ export default function InterviewPlanningPage() {
     const map: Record<string, { class: string; label: string; icon: React.ReactNode }> = {
       INTERVIEW_SCHEDULED: {
         class: "bg-blue-50 text-blue-700 border-blue-300",
-        label: "Planifié",
+        label: t("gesCompetences.interviewPlanning.status.INTERVIEW_SCHEDULED", { defaultValue: "Planifié" }),
         icon: <CalendarClock className="w-3 h-3 mr-1" />,
       },
       INTERVIEW_CONFIRMED: {
         class: "bg-cyan-50 text-cyan-700 border-cyan-300",
-        label: "Confirmé",
+        label: t("gesCompetences.interviewPlanning.status.INTERVIEW_CONFIRMED", { defaultValue: "Confirmé" }),
         icon: <CalendarCheck className="w-3 h-3 mr-1" />,
       },
       INTERVIEW_COMPLETED: {
         class: "bg-teal-50 text-teal-700 border-teal-300",
-        label: "Terminé",
+        label: t("gesCompetences.interviewPlanning.status.INTERVIEW_COMPLETED", { defaultValue: "Terminé" }),
         icon: <CheckCircle className="w-3 h-3 mr-1" />,
       },
       CANDIDATURE_APPROVED: {
         class: "bg-emerald-50 text-emerald-700 border-emerald-300",
-        label: "Accepté",
+        label: t("gesCompetences.interviewPlanning.status.CANDIDATURE_APPROVED", { defaultValue: "Accepté" }),
         icon: <CheckCircle className="w-3 h-3 mr-1" />,
       },
       APPROVED: {
         class: "bg-green-50 text-green-700 border-green-300",
-        label: "Compte actif",
+        label: t("gesCompetences.interviewPlanning.status.APPROVED", { defaultValue: "Compte actif" }),
         icon: <CheckCircle className="w-3 h-3 mr-1" />,
       },
       REJECTED: {
         class: "bg-slate-50 text-slate-600 border-slate-300",
-        label: "Non retenu",
+        label: t("gesCompetences.interviewPlanning.status.REJECTED", { defaultValue: "Non retenu" }),
         icon: null,
       },
     };
@@ -190,7 +192,11 @@ export default function InterviewPlanningPage() {
   };
 
   const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = { EXPERT: "Expert", EVALUATEUR: "Évaluateur", FORMATEUR: "Formateur" };
+    const labels: Record<string, string> = {
+      EXPERT: t("gesCompetences.common.userType.EXPERT", { defaultValue: "Expert" }),
+      EVALUATEUR: t("gesCompetences.common.userType.EVALUATEUR", { defaultValue: "Évaluateur" }),
+      FORMATEUR: t("gesCompetences.common.userType.FORMATEUR", { defaultValue: "Formateur" }),
+    };
     return labels[type] || type;
   };
 
@@ -201,20 +207,20 @@ export default function InterviewPlanningPage() {
         { method: "POST", credentials: "include" }
       );
       if (response.ok) {
-        toast({ title: "Succès", description: "Entretien confirmé" });
+        toast({ title: t("gesCompetences.interviewPlanning.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.interviewPlanning.toasts.confirmed", { defaultValue: "Entretien confirmé" }) });
         fetchData();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewPlanning.toasts.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
   const handleReschedule = async () => {
     if (!rescheduleInterview || !newDateObj || !newTime) {
-      toast({ title: "Erreur", description: "Veuillez renseigner une date et une heure", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewPlanning.toasts.errorSelectDateTime", { defaultValue: "Veuillez renseigner une date et une heure" }), variant: "destructive" });
       return;
     }
     try {
@@ -232,7 +238,7 @@ export default function InterviewPlanningPage() {
         }
       );
       if (response.ok) {
-        toast({ title: "Succès", description: "Date de l'entretien mise à jour" });
+        toast({ title: t("gesCompetences.interviewPlanning.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.interviewPlanning.toasts.dateUpdated", { defaultValue: "Date de l'entretien mise à jour" }) });
         fetchData();
         setShowRescheduleDialog(false);
         setRescheduleInterview(null);
@@ -240,10 +246,10 @@ export default function InterviewPlanningPage() {
         setNewTime("");
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewPlanning.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewPlanning.toasts.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
@@ -285,11 +291,20 @@ export default function InterviewPlanningPage() {
 
   // Export interviews
   const handleExport = (format: "csv" | "xlsx") => {
-    const headers = ["ID", "Nom Complet", "Type", "Domaine", "Email", "Téléphone", "Date Entretien", "Statut"];
+    const headers = [
+      t("gesCompetences.interviewPlanning.exportHeaders.id", { defaultValue: "ID" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.fullName", { defaultValue: "Nom Complet" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.type", { defaultValue: "Type" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.domain", { defaultValue: "Domaine" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.email", { defaultValue: "Email" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.phone", { defaultValue: "Téléphone" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.interviewDate", { defaultValue: "Date Entretien" }),
+      t("gesCompetences.interviewPlanning.exportHeaders.status", { defaultValue: "Statut" }),
+    ];
     const statusLabels: Record<string, string> = {
-      INTERVIEW_SCHEDULED: "Planifié",
-      INTERVIEW_CONFIRMED: "Confirmé",
-      INTERVIEW_COMPLETED: "Terminé",
+      INTERVIEW_SCHEDULED: t("gesCompetences.interviewPlanning.status.INTERVIEW_SCHEDULED", { defaultValue: "Planifié" }),
+      INTERVIEW_CONFIRMED: t("gesCompetences.interviewPlanning.status.INTERVIEW_CONFIRMED", { defaultValue: "Confirmé" }),
+      INTERVIEW_COMPLETED: t("gesCompetences.interviewPlanning.status.INTERVIEW_COMPLETED", { defaultValue: "Terminé" }),
     };
     const rows = filteredInterviews.map(i => [
       i.registrationId || "",
@@ -308,7 +323,7 @@ export default function InterviewPlanningPage() {
     } else {
       exportToCsv(headers, rows, filename);
     }
-    toast({ title: "Export effectué", description: `${filteredInterviews.length} entretien(s) exporté(s) en ${format.toUpperCase()}` });
+    toast({ title: t("gesCompetences.interviewPlanning.toasts.exportDone", { defaultValue: "Export effectué" }), description: t("gesCompetences.interviewPlanning.toasts.exportDoneDesc", { count: filteredInterviews.length, format: format.toUpperCase(), defaultValue: `${filteredInterviews.length} entretien(s) exporté(s) en ${format.toUpperCase()}` }) });
   };
   const isPast = (dateStr: string) => new Date(dateStr) < new Date();
 
@@ -327,13 +342,13 @@ export default function InterviewPlanningPage() {
     const daysLeft = getDeadlineDaysRemaining(interview);
     if (daysLeft === null) return null;
     if (daysLeft <= 0) {
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">Délai expiré</Badge>;
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">{t("gesCompetences.interviewPlanning.deadlineExpired", { defaultValue: "Délai expiré" })}</Badge>;
     }
     if (daysLeft <= 2) {
-      return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">J-{daysLeft}</Badge>;
+      return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">{t("gesCompetences.interviewPlanning.daysLeft", { days: daysLeft, defaultValue: `J-${daysLeft}` })}</Badge>;
     }
     if (daysLeft <= 4) {
-      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs">J-{daysLeft}</Badge>;
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs">{t("gesCompetences.interviewPlanning.daysLeft", { days: daysLeft, defaultValue: `J-${daysLeft}` })}</Badge>;
     }
     return null;
   };
@@ -348,26 +363,26 @@ export default function InterviewPlanningPage() {
           {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-2xl font-bold">Planning des Entretiens</h1>
-              <p className="text-muted-foreground mt-1">Vue d'ensemble et gestion des entretiens planifiés</p>
+              <h1 className="text-2xl md:text-2xl font-bold">{t("gesCompetences.interviewPlanning.title", { defaultValue: "Planning des Entretiens" })}</h1>
+              <p className="text-muted-foreground mt-1">{t("gesCompetences.interviewPlanning.subtitle", { defaultValue: "Vue d'ensemble et gestion des entretiens planifiés" })}</p>
             </div>
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <FileText className="w-4 h-4 mr-1" />
-                    Exporter
+                    {t("gesCompetences.interviewPlanning.export", { defaultValue: "Exporter" })}
                     <ChevronDown className="w-4 h-4 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleExport("csv")}>
                     <FileText className="w-4 h-4 mr-2" />
-                    Exporter en CSV
+                    {t("gesCompetences.interviewPlanning.exportCsv", { defaultValue: "Exporter en CSV" })}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("xlsx")}>
                     <FileText className="w-4 h-4 mr-2" />
-                    Exporter en XLSX
+                    {t("gesCompetences.interviewPlanning.exportXlsx", { defaultValue: "Exporter en XLSX" })}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -376,14 +391,14 @@ export default function InterviewPlanningPage() {
                 size="sm"
                 onClick={() => setViewMode("list")}
               >
-                Liste
+                {t("gesCompetences.interviewPlanning.viewList", { defaultValue: "Liste" })}
               </Button>
               <Button
                 variant={viewMode === "calendar" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("calendar")}
               >
-                <CalendarDays className="w-4 h-4 mr-1" /> Calendrier
+                <CalendarDays className="w-4 h-4 mr-1" /> {t("gesCompetences.interviewPlanning.viewCalendar", { defaultValue: "Calendrier" })}
               </Button>
             </div>
           </div>
@@ -392,31 +407,31 @@ export default function InterviewPlanningPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card>
               <CardContent className="pt-4 pb-4 px-4">
-                <p className="text-sm text-muted-foreground">Aujourd'hui</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.interviewPlanning.statToday", { defaultValue: "Aujourd'hui" })}</p>
                 <p className="text-2xl font-bold text-orange-600">{stats.today}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-4 px-4">
-                <p className="text-sm text-muted-foreground">Planifiés</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.interviewPlanning.statScheduled", { defaultValue: "Planifiés" })}</p>
                 <p className="text-2xl font-bold text-blue-600">{stats.scheduled}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-4 px-4">
-                <p className="text-sm text-muted-foreground">Confirmés</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.interviewPlanning.statConfirmed", { defaultValue: "Confirmés" })}</p>
                 <p className="text-2xl font-bold text-cyan-600">{stats.confirmed}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-4 px-4">
-                <p className="text-sm text-muted-foreground">Terminés</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.interviewPlanning.statCompleted", { defaultValue: "Terminés" })}</p>
                 <p className="text-2xl font-bold text-teal-600">{stats.completed}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-4 px-4">
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.interviewPlanning.statTotal", { defaultValue: "Total" })}</p>
                 <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
               </CardContent>
             </Card>
@@ -429,7 +444,7 @@ export default function InterviewPlanningPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Rechercher par nom, ID, domaine..."
+                    placeholder={t("gesCompetences.interviewPlanning.searchPlaceholder", { defaultValue: "Rechercher par nom, ID, domaine..." })}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9"
@@ -437,13 +452,13 @@ export default function InterviewPlanningPage() {
                 </div>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Statut" />
+                    <SelectValue placeholder={t("gesCompetences.interviewPlanning.filterStatusPlaceholder", { defaultValue: "Statut" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="INTERVIEW_SCHEDULED">Planifiés</SelectItem>
-                    <SelectItem value="INTERVIEW_CONFIRMED">Confirmés</SelectItem>
-                    <SelectItem value="INTERVIEW_COMPLETED">Terminés</SelectItem>
+                    <SelectItem value="all">{t("gesCompetences.interviewPlanning.filterAllStatuses", { defaultValue: "Tous les statuts" })}</SelectItem>
+                    <SelectItem value="INTERVIEW_SCHEDULED">{t("gesCompetences.interviewPlanning.statScheduled", { defaultValue: "Planifiés" })}</SelectItem>
+                    <SelectItem value="INTERVIEW_CONFIRMED">{t("gesCompetences.interviewPlanning.statConfirmed", { defaultValue: "Confirmés" })}</SelectItem>
+                    <SelectItem value="INTERVIEW_COMPLETED">{t("gesCompetences.interviewPlanning.statCompleted", { defaultValue: "Terminés" })}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -468,7 +483,15 @@ export default function InterviewPlanningPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-lg overflow-hidden">
-                  {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
+                  {[
+                    t("gesCompetences.interviewPlanning.weekdays.mon", { defaultValue: "Lun" }),
+                    t("gesCompetences.interviewPlanning.weekdays.tue", { defaultValue: "Mar" }),
+                    t("gesCompetences.interviewPlanning.weekdays.wed", { defaultValue: "Mer" }),
+                    t("gesCompetences.interviewPlanning.weekdays.thu", { defaultValue: "Jeu" }),
+                    t("gesCompetences.interviewPlanning.weekdays.fri", { defaultValue: "Ven" }),
+                    t("gesCompetences.interviewPlanning.weekdays.sat", { defaultValue: "Sam" }),
+                    t("gesCompetences.interviewPlanning.weekdays.sun", { defaultValue: "Dim" }),
+                  ].map((day) => (
                     <div key={day} className="bg-slate-50 p-2 text-center text-xs font-semibold text-slate-500">
                       {day}
                     </div>
@@ -526,7 +549,7 @@ export default function InterviewPlanningPage() {
                             ))}
                             {dayInterviews.length > 3 && (
                               <p className="text-xs text-muted-foreground text-center">
-                                +{dayInterviews.length - 3} autres
+                                {t("gesCompetences.interviewPlanning.othersCount", { count: dayInterviews.length - 3, defaultValue: `+${dayInterviews.length - 3} autres` })}
                               </p>
                             )}
                           </div>
@@ -544,12 +567,12 @@ export default function InterviewPlanningPage() {
             <div className="space-y-3">
               {loading ? (
                 <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">Chargement...</CardContent>
+                  <CardContent className="py-8 text-center text-muted-foreground">{t("gesCompetences.interviewPlanning.loading", { defaultValue: "Chargement..." })}</CardContent>
                 </Card>
               ) : filteredInterviews.length === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">
-                    Aucun entretien trouvé
+                    {t("gesCompetences.interviewPlanning.empty", { defaultValue: "Aucun entretien trouvé" })}
                   </CardContent>
                 </Card>
               ) : (
@@ -592,7 +615,7 @@ export default function InterviewPlanningPage() {
                                 <span className={past ? "text-amber-600 font-medium" : ""}>
                                   {formatDate(interview.interviewDate)}
                                 </span>
-                                {past && <span className="text-xs text-amber-500 ml-1">(passé)</span>}
+                                {past && <span className="text-xs text-amber-500 ml-1">{t("gesCompetences.interviewPlanning.past", { defaultValue: "(passé)" })}</span>}
                               </div>
                             </div>
                           </div>
@@ -607,7 +630,7 @@ export default function InterviewPlanningPage() {
                                 onClick={() => handleConfirmInterview(interview)}
                               >
                                 <CalendarCheck className="w-4 h-4 mr-1" />
-                                Confirmer
+                                {t("gesCompetences.interviewPlanning.confirm", { defaultValue: "Confirmer" })}
                               </Button>
                             )}
                             {interview.status !== "INTERVIEW_COMPLETED" && (
@@ -620,7 +643,7 @@ export default function InterviewPlanningPage() {
                                 }}
                               >
                                 <Edit3 className="w-4 h-4 mr-1" />
-                                Modifier
+                                {t("gesCompetences.interviewPlanning.edit", { defaultValue: "Modifier" })}
                               </Button>
                             )}
                             <Button
@@ -628,7 +651,7 @@ export default function InterviewPlanningPage() {
                               onClick={() => setLocation(`/ges-competences/entretien/${interview.id}`)}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              {interview.status === "INTERVIEW_COMPLETED" ? "Évaluer" : "Voir détails"}
+                              {interview.status === "INTERVIEW_COMPLETED" ? t("gesCompetences.interviewPlanning.evaluate", { defaultValue: "Évaluer" }) : t("gesCompetences.interviewPlanning.viewDetails", { defaultValue: "Voir détails" })}
                             </Button>
                           </div>
                         </div>
@@ -646,31 +669,31 @@ export default function InterviewPlanningPage() {
       <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Modifier la date d'entretien</DialogTitle>
+            <DialogTitle>{t("gesCompetences.interviewPlanning.rescheduleDialog.title", { defaultValue: "Modifier la date d'entretien" })}</DialogTitle>
             <DialogDescription>
-              {rescheduleInterview && `Candidat(e) : ${rescheduleInterview.fullName}`}
+              {rescheduleInterview && t("gesCompetences.interviewPlanning.rescheduleDialog.candidateLabel", { name: rescheduleInterview.fullName, defaultValue: `Candidat(e) : ${rescheduleInterview.fullName}` })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Nouvelle date *</Label>
+              <Label>{t("gesCompetences.interviewPlanning.rescheduleDialog.newDateLabel", { defaultValue: "Nouvelle date *" })}</Label>
               <div className="mt-2">
                 <DatePicker
                   value={newDateObj}
                   onChange={setNewDateObj}
-                  placeholder="Sélectionner une date"
+                  placeholder={t("gesCompetences.interviewPlanning.rescheduleDialog.datePlaceholder", { defaultValue: "Sélectionner une date" })}
                   minDate={new Date()}
                 />
               </div>
             </div>
             <div>
-              <Label>Nouvelle heure *</Label>
+              <Label>{t("gesCompetences.interviewPlanning.rescheduleDialog.newTimeLabel", { defaultValue: "Nouvelle heure *" })}</Label>
               <div className="mt-2">
                 <TimePicker
                   value={newTime}
                   onChange={setNewTime}
-                  placeholder="Sélectionner l'heure"
+                  placeholder={t("gesCompetences.interviewPlanning.rescheduleDialog.timePlaceholder", { defaultValue: "Sélectionner l'heure" })}
                 />
               </div>
             </div>
@@ -685,10 +708,10 @@ export default function InterviewPlanningPage() {
                 setNewTime("");
               }}
             >
-              Annuler
+              {t("gesCompetences.interviewPlanning.rescheduleDialog.cancel", { defaultValue: "Annuler" })}
             </Button>
             <Button onClick={handleReschedule} disabled={!newDateObj || !newTime}>
-              Enregistrer
+              {t("gesCompetences.interviewPlanning.rescheduleDialog.save", { defaultValue: "Enregistrer" })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -700,10 +723,10 @@ export default function InterviewPlanningPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarDays className="w-5 h-5" />
-              Entretiens du {selectedDayLabel}
+              {t("gesCompetences.interviewPlanning.dayDialog.title", { day: selectedDayLabel, defaultValue: `Entretiens du ${selectedDayLabel}` })}
             </DialogTitle>
             <DialogDescription>
-              {selectedDayInterviews.length} entretien(s) planifié(s) pour cette journée
+              {t("gesCompetences.interviewPlanning.dayDialog.countLabel", { count: selectedDayInterviews.length, defaultValue: `${selectedDayInterviews.length} entretien(s) planifié(s) pour cette journée` })}
             </DialogDescription>
           </DialogHeader>
 

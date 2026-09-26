@@ -49,6 +49,12 @@ interface Qualification {
   createdAt: string;
 }
 
+const STATUS_KEYS = [
+  "PENDING_TRAINING", "TRAINING_IN_PROGRESS", "TRAINING_COMPLETED", "TRAINING_FAILED",
+  "OBSERVER_PHASE", "PRACTICE_PHASE", "PENDING_COMMISSION", "QUALIFIED",
+  "RENEWAL_PENDING", "RENEWED", "EXTENSION_PENDING", "SUSPENDED", "WITHDRAWN",
+] as const;
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING_TRAINING: "En attente de formation",
   TRAINING_IN_PROGRESS: "Formation en cours",
@@ -87,6 +93,7 @@ const ROLE_LABELS: Record<string, string> = {
   EQ: "Évaluateur Qualiticien",
   REE: "Responsable d'Équipe d'Évaluation",
 };
+const ROLE_KEYS = ["ET", "EXP", "EQ", "REE"] as const;
 
 export default function QualificationsPage() {
   const { t } = useTranslation();
@@ -110,8 +117,11 @@ export default function QualificationsPage() {
   const [decisionType, setDecisionType] = useState("");
   const [decisionNotes, setDecisionNotes] = useState("");
 
+  const tStatus = (status: string) => t(`gesCompetences.qualifications.status.${status}`, { defaultValue: STATUS_LABELS[status] || status });
+  const tRole = (role: string) => t(`gesCompetences.qualifications.roleLabels.${role}`, { defaultValue: ROLE_LABELS[role] || role });
+
   useEffect(() => {
-    document.title = "Qualifications - Gestion des Compétences | ALGERAC";
+    document.title = t("gesCompetences.qualifications.pageTitle", { defaultValue: "Qualifications - Gestion des Compétences | ALGERAC" });
     fetchQualifications();
   }, []);
 
@@ -162,15 +172,15 @@ export default function QualificationsPage() {
         body: body ? JSON.stringify(body) : undefined,
       });
       if (res.ok) {
-        toast({ title: "Succès", description: "Action effectuée avec succès" });
+        toast({ title: t("gesCompetences.qualifications.actionSuccess", { defaultValue: "Succès" }), description: t("gesCompetences.qualifications.actionSuccessDesc", { defaultValue: "Action effectuée avec succès" }) });
         fetchQualifications();
         setDetailOpen(false);
       } else {
         const err = await res.json();
-        toast({ title: "Erreur", description: err.error, variant: "destructive" });
+        toast({ title: t("gesCompetences.qualifications.error", { defaultValue: "Erreur" }), description: err.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Erreur de connexion", variant: "destructive" });
+      toast({ title: t("gesCompetences.qualifications.error", { defaultValue: "Erreur" }), description: t("gesCompetences.qualifications.errorConnection", { defaultValue: "Erreur de connexion" }), variant: "destructive" });
     } finally {
       setActionLoading(false);
     }
@@ -202,8 +212,8 @@ export default function QualificationsPage() {
         <main className="p-4 md:p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gestion des Qualifications</h1>
-              <p className="text-gray-500 mt-1">Suivi du processus de qualification des évaluateurs et experts</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t("gesCompetences.qualifications.title", { defaultValue: "Gestion des Qualifications" })}</h1>
+              <p className="text-gray-500 mt-1">{t("gesCompetences.qualifications.subtitle", { defaultValue: "Suivi du processus de qualification des évaluateurs et experts" })}</p>
             </div>
             <Button onClick={fetchQualifications} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
@@ -215,37 +225,37 @@ export default function QualificationsPage() {
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                <div className="text-xs text-gray-500 mt-1">Total</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statTotal", { defaultValue: "Total" })}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-emerald-600">{stats.qualified}</div>
-                <div className="text-xs text-gray-500 mt-1">Qualifiés</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statQualified", { defaultValue: "Qualifiés" })}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-                <div className="text-xs text-gray-500 mt-1">En cours</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statInProgress", { defaultValue: "En cours" })}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-orange-600">{stats.pendingCommission}</div>
-                <div className="text-xs text-gray-500 mt-1">Commission</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statCommission", { defaultValue: "Commission" })}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-red-600">{stats.suspended}</div>
-                <div className="text-xs text-gray-500 mt-1">Suspendus</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statSuspended", { defaultValue: "Suspendus" })}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-amber-600">{stats.expiringSoon}</div>
-                <div className="text-xs text-gray-500 mt-1">Expirent bientôt</div>
+                <div className="text-xs text-gray-500 mt-1">{t("gesCompetences.qualifications.statExpiringSoon", { defaultValue: "Expirent bientôt" })}</div>
               </CardContent>
             </Card>
           </div>
@@ -257,7 +267,7 @@ export default function QualificationsPage() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Rechercher par nom ou email..."
+                    placeholder={t("gesCompetences.qualifications.searchPlaceholder", { defaultValue: "Rechercher par nom ou email..." })}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -265,23 +275,23 @@ export default function QualificationsPage() {
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder="Statut" />
+                    <SelectValue placeholder={t("gesCompetences.qualifications.filterStatusPlaceholder", { defaultValue: "Statut" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    <SelectItem value="all">{t("gesCompetences.qualifications.filterAllStatuses", { defaultValue: "Tous les statuts" })}</SelectItem>
+                    {STATUS_KEYS.map((k) => (
+                      <SelectItem key={k} value={k}>{tStatus(k)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
                   <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder="Rôle" />
+                    <SelectValue placeholder={t("gesCompetences.qualifications.filterRolePlaceholder", { defaultValue: "Rôle" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les rôles</SelectItem>
-                    {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    <SelectItem value="all">{t("gesCompetences.qualifications.filterAllRoles", { defaultValue: "Tous les rôles" })}</SelectItem>
+                    {ROLE_KEYS.map((k) => (
+                      <SelectItem key={k} value={k}>{tRole(k)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -295,26 +305,26 @@ export default function QualificationsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Évaluateur</TableHead>
-                    <TableHead>Rôle</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Qualification</TableHead>
-                    <TableHead>Expiration</TableHead>
-                    <TableHead>Missions</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.evaluator", { defaultValue: "Évaluateur" })}</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.role", { defaultValue: "Rôle" })}</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.status", { defaultValue: "Statut" })}</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.qualification", { defaultValue: "Qualification" })}</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.expiry", { defaultValue: "Expiration" })}</TableHead>
+                    <TableHead>{t("gesCompetences.qualifications.table.missions", { defaultValue: "Missions" })}</TableHead>
+                    <TableHead className="text-right">{t("gesCompetences.qualifications.table.actions", { defaultValue: "Actions" })}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                        Chargement...
+                        {t("gesCompetences.qualifications.table.loading", { defaultValue: "Chargement..." })}
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                        Aucune qualification trouvée
+                        {t("gesCompetences.qualifications.table.empty", { defaultValue: "Aucune qualification trouvée" })}
                       </TableCell>
                     </TableRow>
                   ) : filtered.map(q => (
@@ -325,11 +335,11 @@ export default function QualificationsPage() {
                         <div className="text-xs text-gray-500">{q.evaluator.email}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{ROLE_LABELS[q.qualifiedRole] || q.qualifiedRole}</Badge>
+                        <Badge variant="outline">{tRole(q.qualifiedRole)}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge className={STATUS_COLORS[q.status] || "bg-gray-100"}>
-                          {STATUS_LABELS[q.status] || q.status}
+                          {tStatus(q.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -344,9 +354,20 @@ export default function QualificationsPage() {
                       </TableCell>
                       <TableCell>{q.missionsCompletedCurrentCycle}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {q.status === "PENDING_COMMISSION" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => { e.stopPropagation(); setSelectedQual(q); setCommissionDialogOpen(true); }}
+                            >
+                              <Award className="h-4 w-4 mr-1" /> {t("gesCompetences.qualifications.quickApplyDecision", { defaultValue: "Appliquer décision" })}
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -368,48 +389,48 @@ export default function QualificationsPage() {
                   {selectedQual.evaluator.fullName}
                 </DialogTitle>
                 <DialogDescription>
-                  {ROLE_LABELS[selectedQual.qualifiedRole] || selectedQual.qualifiedRole} — 
-                  {STATUS_LABELS[selectedQual.status] || selectedQual.status}
+                  {tRole(selectedQual.qualifiedRole)} — 
+                  {tStatus(selectedQual.status)}
                 </DialogDescription>
               </DialogHeader>
 
               <Tabs defaultValue="info" className="mt-4">
                 <TabsList className="grid grid-cols-3">
-                  <TabsTrigger value="info">Informations</TabsTrigger>
-                  <TabsTrigger value="progress">Progression</TabsTrigger>
-                  <TabsTrigger value="actions">Actions</TabsTrigger>
+                  <TabsTrigger value="info">{t("gesCompetences.qualifications.detail.tabInfo", { defaultValue: "Informations" })}</TabsTrigger>
+                  <TabsTrigger value="progress">{t("gesCompetences.qualifications.detail.tabProgress", { defaultValue: "Progression" })}</TabsTrigger>
+                  <TabsTrigger value="actions">{t("gesCompetences.qualifications.detail.tabActions", { defaultValue: "Actions" })}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="info" className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-gray-500">Email</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.email", { defaultValue: "Email" })}</Label>
                       <p className="font-medium">{selectedQual.evaluator.email}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Téléphone</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.phone", { defaultValue: "Téléphone" })}</Label>
                       <p className="font-medium">{selectedQual.evaluator.phone || "-"}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Date de qualification</Label>
-                      <p className="font-medium">{selectedQual.qualificationDate ? new Date(selectedQual.qualificationDate).toLocaleDateString("fr-FR") : "Non qualifié"}</p>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.qualificationDate", { defaultValue: "Date de qualification" })}</Label>
+                      <p className="font-medium">{selectedQual.qualificationDate ? new Date(selectedQual.qualificationDate).toLocaleDateString("fr-FR") : t("gesCompetences.qualifications.notQualified", { defaultValue: "Non qualifié" })}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Date d'expiration</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.expiryDate", { defaultValue: "Date d'expiration" })}</Label>
                       <p className="font-medium">{selectedQual.expiryDate ? new Date(selectedQual.expiryDate).toLocaleDateString("fr-FR") : "-"}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Contrat FOR 18 bis</Label>
-                      <p className="font-medium">{selectedQual.collaborationContractSigned ? "✅ Signé" : "❌ Non signé"}</p>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.contractLabel", { defaultValue: "Contrat FOR 18 bis" })}</Label>
+                      <p className="font-medium">{selectedQual.collaborationContractSigned ? t("gesCompetences.qualifications.detail.signed", { defaultValue: "✅ Signé" }) : t("gesCompetences.qualifications.detail.notSigned", { defaultValue: "❌ Non signé" })}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Cas spécial</Label>
-                      <p className="font-medium">{selectedQual.fromOtherAccreditationBody ? "Autre organisme" : "Parcours standard"}</p>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.specialCase", { defaultValue: "Cas spécial" })}</Label>
+                      <p className="font-medium">{selectedQual.fromOtherAccreditationBody ? t("gesCompetences.qualifications.detail.otherBody", { defaultValue: "Autre organisme" }) : t("gesCompetences.qualifications.detail.standardPath", { defaultValue: "Parcours standard" })}</p>
                     </div>
                   </div>
                   {selectedQual.suspensionReason && (
                     <div className="p-3 bg-red-50 rounded-lg">
-                      <Label className="text-xs text-red-600">Motif de suspension</Label>
+                      <Label className="text-xs text-red-600">{t("gesCompetences.qualifications.detail.suspensionReason", { defaultValue: "Motif de suspension" })}</Label>
                       <p className="text-red-800">{selectedQual.suspensionReason}</p>
                     </div>
                   )}
@@ -418,7 +439,7 @@ export default function QualificationsPage() {
                 <TabsContent value="progress" className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-gray-500">Score examen formation</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.examScore", { defaultValue: "Score examen formation" })}</Label>
                       <p className="font-medium text-lg">
                         {selectedQual.trainingExamScore != null ? `${selectedQual.trainingExamScore}%` : "-"}
                         {selectedQual.trainingExamScore != null && (
@@ -429,31 +450,31 @@ export default function QualificationsPage() {
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Formation terminée</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.trainingCompletedLabel", { defaultValue: "Formation terminée" })}</Label>
                       <p className="font-medium">{selectedQual.trainingCompletedDate ? new Date(selectedQual.trainingCompletedDate).toLocaleDateString("fr-FR") : "-"}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Missions observateur</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.observerMissions", { defaultValue: "Missions observateur" })}</Label>
                       <p className="font-medium text-lg">{selectedQual.observerMissionsCompleted} / 1 min</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Missions supervisées</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.supervisedMissions", { defaultValue: "Missions supervisées" })}</Label>
                       <p className="font-medium text-lg">{selectedQual.supervisedMissionsCompleted} / 2 min</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Missions cycle en cours</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.currentCycleMissions", { defaultValue: "Missions cycle en cours" })}</Label>
                       <p className="font-medium">{selectedQual.missionsCompletedCurrentCycle}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Participations recyclage</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.recyclingParticipations", { defaultValue: "Participations recyclage" })}</Label>
                       <p className="font-medium">{selectedQual.recyclingParticipations}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Dernière observation</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.lastObservation", { defaultValue: "Dernière observation" })}</Label>
                       <p className="font-medium">{selectedQual.lastObservationDate ? new Date(selectedQual.lastObservationDate).toLocaleDateString("fr-FR") : "-"}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-500">Dernier recyclage</Label>
+                      <Label className="text-xs text-gray-500">{t("gesCompetences.qualifications.detail.lastRecycling", { defaultValue: "Dernier recyclage" })}</Label>
                       <p className="font-medium">{selectedQual.lastRecyclingDate ? new Date(selectedQual.lastRecyclingDate).toLocaleDateString("fr-FR") : "-"}</p>
                     </div>
                   </div>
@@ -462,55 +483,55 @@ export default function QualificationsPage() {
                 <TabsContent value="actions" className="space-y-3 mt-4">
                   {selectedQual.status === "PENDING_TRAINING" && (
                     <Button className="w-full justify-start" onClick={() => performAction(selectedQual.id, "status", "PUT", { status: "TRAINING_IN_PROGRESS" })}>
-                      <BookOpen className="h-4 w-4 mr-2" /> Démarrer la formation
+                      <BookOpen className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.startTraining", { defaultValue: "Démarrer la formation" })}
                     </Button>
                   )}
                   {selectedQual.status === "TRAINING_IN_PROGRESS" && (
                     <Button className="w-full justify-start" onClick={() => { setTrainingDialogOpen(true); }}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" /> Enregistrer résultat d'examen
+                      <CheckCircle2 className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.recordExamResult", { defaultValue: "Enregistrer résultat d'examen" })}
                     </Button>
                   )}
                   {selectedQual.status === "TRAINING_COMPLETED" && (
                     <Button className="w-full justify-start" onClick={() => performAction(selectedQual.id, "advance-observer")}>
-                      <Eye className="h-4 w-4 mr-2" /> Passer en phase d'observation
+                      <Eye className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.advanceObserver", { defaultValue: "Passer en phase d'observation" })}
                     </Button>
                   )}
                   {selectedQual.status === "OBSERVER_PHASE" && (
                     <>
                       <Button className="w-full justify-start" variant="outline" onClick={() => performAction(selectedQual.id, "increment-observer")}>
-                        <ArrowRight className="h-4 w-4 mr-2" /> +1 Mission observateur
+                        <ArrowRight className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.incObserver", { defaultValue: "+1 Mission observateur" })}
                       </Button>
                       <Button className="w-full justify-start" onClick={() => performAction(selectedQual.id, "advance-practice")}>
-                        <Play className="h-4 w-4 mr-2" /> Passer en phase de pratique
+                        <Play className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.advancePractice", { defaultValue: "Passer en phase de pratique" })}
                       </Button>
                     </>
                   )}
                   {selectedQual.status === "PRACTICE_PHASE" && (
                     <>
                       <Button className="w-full justify-start" variant="outline" onClick={() => performAction(selectedQual.id, "increment-supervised")}>
-                        <ArrowRight className="h-4 w-4 mr-2" /> +1 Mission supervisée
+                        <ArrowRight className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.incSupervised", { defaultValue: "+1 Mission supervisée" })}
                       </Button>
                       <Button className="w-full justify-start" onClick={() => performAction(selectedQual.id, "submit-commission")}>
-                        <Send className="h-4 w-4 mr-2" /> Soumettre à la Commission
+                        <Send className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.submitCommission", { defaultValue: "Soumettre à la Commission" })}
                       </Button>
                     </>
                   )}
                   {selectedQual.status === "PENDING_COMMISSION" && (
                     <Button className="w-full justify-start" onClick={() => setCommissionDialogOpen(true)}>
-                      <Award className="h-4 w-4 mr-2" /> Appliquer décision de commission
+                      <Award className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.applyCommissionDecision", { defaultValue: "Appliquer décision de commission" })}
                     </Button>
                   )}
                   {(selectedQual.status === "QUALIFIED" || selectedQual.status === "RENEWED") && (
                     <>
                       <Button className="w-full justify-start" variant="outline" onClick={() => performAction(selectedQual.id, "record-mission")}>
-                        <ArrowRight className="h-4 w-4 mr-2" /> Enregistrer mission complétée
+                        <ArrowRight className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.recordMission", { defaultValue: "Enregistrer mission complétée" })}
                       </Button>
                       <Button className="w-full justify-start" variant="outline" onClick={() => performAction(selectedQual.id, "record-recycling")}>
-                        <RefreshCw className="h-4 w-4 mr-2" /> Enregistrer participation recyclage
+                        <RefreshCw className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.recordRecycling", { defaultValue: "Enregistrer participation recyclage" })}
                       </Button>
                       {!selectedQual.collaborationContractSigned && (
                         <Button className="w-full justify-start" onClick={() => performAction(selectedQual.id, "sign-contract")}>
-                          <CheckCircle2 className="h-4 w-4 mr-2" /> Signer contrat FOR 18 bis
+                          <CheckCircle2 className="h-4 w-4 mr-2" /> {t("gesCompetences.qualifications.detail.actions.signContract", { defaultValue: "Signer contrat FOR 18 bis" })}
                         </Button>
                       )}
                     </>
@@ -526,18 +547,18 @@ export default function QualificationsPage() {
       <Dialog open={trainingDialogOpen} onOpenChange={setTrainingDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Résultat d'examen de formation</DialogTitle>
-            <DialogDescription>Seuil de réussite : 70%</DialogDescription>
+            <DialogTitle>{t("gesCompetences.qualifications.trainingDialog.title", { defaultValue: "Résultat d'examen de formation" })}</DialogTitle>
+            <DialogDescription>{t("gesCompetences.qualifications.trainingDialog.subtitle", { defaultValue: "Seuil de réussite : 70%" })}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Score obtenu (%)</Label>
-              <Input type="number" min="0" max="100" value={examScore} onChange={e => setExamScore(e.target.value)} placeholder="Ex: 85" />
+              <Label>{t("gesCompetences.qualifications.trainingDialog.scoreLabel", { defaultValue: "Score obtenu (%)" })}</Label>
+              <Input type="number" min="0" max="100" value={examScore} onChange={e => setExamScore(e.target.value)} placeholder={t("gesCompetences.qualifications.trainingDialog.scorePlaceholder", { defaultValue: "Ex: 85" })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTrainingDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleTrainingResult} disabled={actionLoading || !examScore}>Enregistrer</Button>
+            <Button variant="outline" onClick={() => setTrainingDialogOpen(false)}>{t("gesCompetences.qualifications.trainingDialog.cancel", { defaultValue: "Annuler" })}</Button>
+            <Button onClick={handleTrainingResult} disabled={actionLoading || !examScore}>{t("gesCompetences.qualifications.trainingDialog.save", { defaultValue: "Enregistrer" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -546,33 +567,33 @@ export default function QualificationsPage() {
       <Dialog open={commissionDialogOpen} onOpenChange={setCommissionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Décision de la Commission de Qualification</DialogTitle>
+            <DialogTitle>{t("gesCompetences.qualifications.commissionDialog.title", { defaultValue: "Décision de la Commission de Qualification" })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Type de décision</Label>
+              <Label>{t("gesCompetences.qualifications.commissionDialog.decisionTypeLabel", { defaultValue: "Type de décision" })}</Label>
               <Select value={decisionType} onValueChange={setDecisionType}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("gesCompetences.qualifications.commissionDialog.selectPlaceholder", { defaultValue: "Sélectionner..." })} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="QUALIFICATION_INITIALE">Qualification initiale</SelectItem>
-                  <SelectItem value="RENOUVELLEMENT">Renouvellement</SelectItem>
-                  <SelectItem value="EXTENSION">Extension</SelectItem>
-                  <SelectItem value="AVERTISSEMENT">Avertissement</SelectItem>
-                  <SelectItem value="SUSPENSION_TEMPORAIRE">Suspension temporaire</SelectItem>
-                  <SelectItem value="RETRAIT_DEFINITIF">Retrait définitif</SelectItem>
-                  <SelectItem value="MISE_A_NIVEAU">Mise à niveau</SelectItem>
+                  <SelectItem value="QUALIFICATION_INITIALE">{t("gesCompetences.qualifications.commissionDialog.decisions.QUALIFICATION_INITIALE", { defaultValue: "Qualification initiale" })}</SelectItem>
+                  <SelectItem value="RENOUVELLEMENT">{t("gesCompetences.qualifications.commissionDialog.decisions.RENOUVELLEMENT", { defaultValue: "Renouvellement" })}</SelectItem>
+                  <SelectItem value="EXTENSION">{t("gesCompetences.qualifications.commissionDialog.decisions.EXTENSION", { defaultValue: "Extension" })}</SelectItem>
+                  <SelectItem value="AVERTISSEMENT">{t("gesCompetences.qualifications.commissionDialog.decisions.AVERTISSEMENT", { defaultValue: "Avertissement" })}</SelectItem>
+                  <SelectItem value="SUSPENSION_TEMPORAIRE">{t("gesCompetences.qualifications.commissionDialog.decisions.SUSPENSION_TEMPORAIRE", { defaultValue: "Suspension temporaire" })}</SelectItem>
+                  <SelectItem value="RETRAIT_DEFINITIF">{t("gesCompetences.qualifications.commissionDialog.decisions.RETRAIT_DEFINITIF", { defaultValue: "Retrait définitif" })}</SelectItem>
+                  <SelectItem value="MISE_A_NIVEAU">{t("gesCompetences.qualifications.commissionDialog.decisions.MISE_A_NIVEAU", { defaultValue: "Mise à niveau" })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Notes / Motif</Label>
+              <Label>{t("gesCompetences.qualifications.commissionDialog.notesLabel", { defaultValue: "Notes / Motif" })}</Label>
               <Textarea value={decisionNotes} onChange={e => setDecisionNotes(e.target.value)}
-                placeholder="Notes de la commission..." rows={3} />
+                placeholder={t("gesCompetences.qualifications.commissionDialog.notesPlaceholder", { defaultValue: "Notes de la commission..." })} rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCommissionDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleCommissionDecision} disabled={actionLoading || !decisionType}>Appliquer</Button>
+            <Button variant="outline" onClick={() => setCommissionDialogOpen(false)}>{t("gesCompetences.qualifications.commissionDialog.cancel", { defaultValue: "Annuler" })}</Button>
+            <Button onClick={handleCommissionDecision} disabled={actionLoading || !decisionType}>{t("gesCompetences.qualifications.commissionDialog.apply", { defaultValue: "Appliquer" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -62,6 +62,8 @@ const ROLE_LABELS: Record<string, string> = {
   REE: "Responsable d'Équipe",
 };
 
+const ROLE_I18N_KEYS: Record<string, string> = { ET: "ET", EXP: "EXP", EQ: "EQ", REE: "REE" };
+
 export default function SurveillancePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -72,7 +74,7 @@ export default function SurveillancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Surveillance & KPI - ALGERAC";
+    document.title = t("gesCompetences.surveillance.pageTitle", { defaultValue: "Surveillance & KPI - ALGERAC" });
     fetchAll();
   }, []);
 
@@ -119,7 +121,7 @@ export default function SurveillancePage() {
         <div className="md:ml-64">
           <Navbar />
           <main className="p-4 md:p-6 flex items-center justify-center h-96">
-            <p className="text-gray-500">Chargement...</p>
+            <p className="text-gray-500">{t("gesCompetences.surveillance.loading", { defaultValue: "Chargement..." })}</p>
           </main>
         </div>
       </div>
@@ -134,8 +136,8 @@ export default function SurveillancePage() {
         <main className="p-4 md:p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Surveillance & Indicateurs</h1>
-              <p className="text-gray-500 mt-1">Tableau de bord de surveillance continue et KPI (PRO_06 §6.6)</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t("gesCompetences.surveillance.title", { defaultValue: "Surveillance & Indicateurs" })}</h1>
+              <p className="text-gray-500 mt-1">{t("gesCompetences.surveillance.subtitle", { defaultValue: "Tableau de bord de surveillance continue et KPI (PRO_06 §6.6)" })}</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchAll}>
               <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
@@ -149,9 +151,9 @@ export default function SurveillancePage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Taux de qualification</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">{t("gesCompetences.surveillance.kpiQualificationRate", { defaultValue: "Taux de qualification" })}</p>
                       <p className="text-3xl font-bold text-emerald-600">{kpis.qualificationRate}%</p>
-                      <p className="text-xs text-gray-400">{kpis.totalActive} qualifiés / {stats.totalQualifications} total</p>
+                      <p className="text-xs text-gray-400">{t("gesCompetences.surveillance.kpiQualifiedOfTotal", { active: kpis.totalActive, total: stats.totalQualifications, defaultValue: `${kpis.totalActive} qualifiés / ${stats.totalQualifications} total` })}</p>
                     </div>
                     <Award className="h-8 w-8 text-emerald-200" />
                   </div>
@@ -161,9 +163,9 @@ export default function SurveillancePage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Satisfaction OEC moyenne</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">{t("gesCompetences.surveillance.kpiAvgSatisfaction", { defaultValue: "Satisfaction OEC moyenne" })}</p>
                       <p className="text-3xl font-bold text-blue-600">{kpis.avgSatisfaction}</p>
-                      <p className="text-xs text-gray-400">{satisfaction.length} enquêtes FOR 21</p>
+                      <p className="text-xs text-gray-400">{t("gesCompetences.surveillance.kpiSurveysCount", { count: satisfaction.length, defaultValue: `${satisfaction.length} enquêtes FOR 21` })}</p>
                     </div>
                     <Star className="h-8 w-8 text-blue-200" />
                   </div>
@@ -173,9 +175,9 @@ export default function SurveillancePage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Expirations &lt;90j</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">{t("gesCompetences.surveillance.kpiExpiring90", { defaultValue: "Expirations <90j" })}</p>
                       <p className="text-3xl font-bold text-amber-600">{stats.expiringIn90Days}</p>
-                      <p className="text-xs text-gray-400">{stats.expired} expirées</p>
+                      <p className="text-xs text-gray-400">{t("gesCompetences.surveillance.kpiExpiredCount", { count: stats.expired, defaultValue: `${stats.expired} expirées` })}</p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-amber-200" />
                   </div>
@@ -185,9 +187,9 @@ export default function SurveillancePage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Couverture observations</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">{t("gesCompetences.surveillance.kpiObservationCoverage", { defaultValue: "Couverture observations" })}</p>
                       <p className="text-3xl font-bold text-purple-600">{kpis.observationCoverage}%</p>
-                      <p className="text-xs text-gray-400">{stats.totalObservations} observations FOR 71</p>
+                      <p className="text-xs text-gray-400">{t("gesCompetences.surveillance.kpiObservationsCount", { count: stats.totalObservations, defaultValue: `${stats.totalObservations} observations FOR 71` })}</p>
                     </div>
                     <Eye className="h-8 w-8 text-purple-200" />
                   </div>
@@ -199,22 +201,22 @@ export default function SurveillancePage() {
           {/* Pipeline & Alerts */}
           <Tabs defaultValue="pipeline">
             <TabsList>
-              <TabsTrigger value="pipeline">Pipeline Qualification</TabsTrigger>
-              <TabsTrigger value="expiring">Expirations ({expiring.length})</TabsTrigger>
-              <TabsTrigger value="satisfaction">Satisfaction OEC</TabsTrigger>
-              <TabsTrigger value="alerts">Alertes</TabsTrigger>
+              <TabsTrigger value="pipeline">{t("gesCompetences.surveillance.tabPipeline", { defaultValue: "Pipeline Qualification" })}</TabsTrigger>
+              <TabsTrigger value="expiring">{t("gesCompetences.surveillance.tabExpiring", { count: expiring.length, defaultValue: `Expirations (${expiring.length})` })}</TabsTrigger>
+              <TabsTrigger value="satisfaction">{t("gesCompetences.surveillance.tabSatisfaction", { defaultValue: "Satisfaction OEC" })}</TabsTrigger>
+              <TabsTrigger value="alerts">{t("gesCompetences.surveillance.tabAlerts", { defaultValue: "Alertes" })}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pipeline" className="mt-4">
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {[
-                    { label: "Attente formation", count: stats.pendingTraining, color: "text-gray-600", icon: Clock },
-                    { label: "Formation en cours", count: stats.trainingInProgress, color: "text-blue-600", icon: Activity },
-                    { label: "Phase observation", count: stats.observerPhase, color: "text-indigo-600", icon: Eye },
-                    { label: "Phase pratique", count: stats.practicePhase, color: "text-purple-600", icon: TrendingUp },
-                    { label: "Attente commission", count: stats.pendingCommission, color: "text-orange-600", icon: Users },
-                    { label: "Qualifiés actifs", count: stats.qualified + stats.renewed, color: "text-emerald-600", icon: CheckCircle2 },
+                    { label: t("gesCompetences.surveillance.pipelinePendingTraining", { defaultValue: "Attente formation" }), count: stats.pendingTraining, color: "text-gray-600", icon: Clock },
+                    { label: t("gesCompetences.surveillance.pipelineTrainingInProgress", { defaultValue: "Formation en cours" }), count: stats.trainingInProgress, color: "text-blue-600", icon: Activity },
+                    { label: t("gesCompetences.surveillance.pipelineObserverPhase", { defaultValue: "Phase observation" }), count: stats.observerPhase, color: "text-indigo-600", icon: Eye },
+                    { label: t("gesCompetences.surveillance.pipelinePracticePhase", { defaultValue: "Phase pratique" }), count: stats.practicePhase, color: "text-purple-600", icon: TrendingUp },
+                    { label: t("gesCompetences.surveillance.pipelinePendingCommission", { defaultValue: "Attente commission" }), count: stats.pendingCommission, color: "text-orange-600", icon: Users },
+                    { label: t("gesCompetences.surveillance.pipelineQualifiedActive", { defaultValue: "Qualifiés actifs" }), count: stats.qualified + stats.renewed, color: "text-emerald-600", icon: CheckCircle2 },
                   ].map((item, i) => (
                     <Card key={i}>
                       <CardContent className="p-4 text-center">
@@ -230,34 +232,34 @@ export default function SurveillancePage() {
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm">Commissions</CardTitle>
+                      <CardTitle className="text-sm">{t("gesCompetences.surveillance.commissionsTitle", { defaultValue: "Commissions" })}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-4">
                         <div>
                           <div className="text-2xl font-bold text-blue-600">{stats.plannedCommissions}</div>
-                          <div className="text-xs text-gray-500">Planifiées</div>
+                          <div className="text-xs text-gray-500">{t("gesCompetences.surveillance.commissionsPlanned", { defaultValue: "Planifiées" })}</div>
                         </div>
                         <div>
                           <div className="text-2xl font-bold text-green-600">{stats.completedCommissions}</div>
-                          <div className="text-xs text-gray-500">Terminées</div>
+                          <div className="text-xs text-gray-500">{t("gesCompetences.surveillance.commissionsCompleted", { defaultValue: "Terminées" })}</div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm">Sanctions</CardTitle>
+                      <CardTitle className="text-sm">{t("gesCompetences.surveillance.sanctionsTitle", { defaultValue: "Sanctions" })}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-4">
                         <div>
                           <div className="text-2xl font-bold text-orange-600">{stats.suspended}</div>
-                          <div className="text-xs text-gray-500">Suspendus</div>
+                          <div className="text-xs text-gray-500">{t("gesCompetences.surveillance.sanctionsSuspended", { defaultValue: "Suspendus" })}</div>
                         </div>
                         <div>
                           <div className="text-2xl font-bold text-red-600">{stats.withdrawn}</div>
-                          <div className="text-xs text-gray-500">Retirés</div>
+                          <div className="text-xs text-gray-500">{t("gesCompetences.surveillance.sanctionsWithdrawn", { defaultValue: "Retirés" })}</div>
                         </div>
                       </div>
                     </CardContent>
@@ -272,18 +274,18 @@ export default function SurveillancePage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Évaluateur</TableHead>
-                        <TableHead>Rôle</TableHead>
-                        <TableHead>Expiration</TableHead>
-                        <TableHead>Missions/Cycle</TableHead>
-                        <TableHead>Dernière observation</TableHead>
-                        <TableHead>Recyclages</TableHead>
-                        <TableHead>Alerte</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.evaluator", { defaultValue: "Évaluateur" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.role", { defaultValue: "Rôle" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.expiry", { defaultValue: "Expiration" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.missionsCycle", { defaultValue: "Missions/Cycle" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.lastObservation", { defaultValue: "Dernière observation" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.recycling", { defaultValue: "Recyclages" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.alert", { defaultValue: "Alerte" })}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {expiring.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">Aucune qualification expirant bientôt</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">{t("gesCompetences.surveillance.table.noneExpiring", { defaultValue: "Aucune qualification expirant bientôt" })}</TableCell></TableRow>
                       ) : expiring.map(q => {
                         const daysLeft = Math.ceil((new Date(q.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                         const missionsOk = q.missionsCompletedCurrentCycle >= 2;
@@ -294,12 +296,12 @@ export default function SurveillancePage() {
                               <div className="font-medium">{q.evaluator.fullName}</div>
                               <div className="text-xs text-gray-500">{q.evaluator.email}</div>
                             </TableCell>
-                            <TableCell><Badge variant="outline">{ROLE_LABELS[q.qualifiedRole] || q.qualifiedRole}</Badge></TableCell>
+                            <TableCell><Badge variant="outline">{t(`gesCompetences.surveillance.roleLabels.${ROLE_I18N_KEYS[q.qualifiedRole]}`, { defaultValue: ROLE_LABELS[q.qualifiedRole] || q.qualifiedRole })}</Badge></TableCell>
                             <TableCell>
                               <span className={daysLeft < 30 ? "text-red-600 font-semibold" : daysLeft < 60 ? "text-orange-600" : ""}>
                                 {new Date(q.expiryDate).toLocaleDateString("fr-FR")}
                               </span>
-                              <div className="text-xs text-gray-400">{daysLeft}j restants</div>
+                              <div className="text-xs text-gray-400">{t("gesCompetences.surveillance.table.daysLeft", { days: daysLeft, defaultValue: `${daysLeft}j restants` })}</div>
                             </TableCell>
                             <TableCell>
                               <span className={missionsOk ? "text-green-600" : "text-red-600"}>
@@ -307,7 +309,7 @@ export default function SurveillancePage() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              {q.lastObservationDate ? new Date(q.lastObservationDate).toLocaleDateString("fr-FR") : "Jamais"}
+                              {q.lastObservationDate ? new Date(q.lastObservationDate).toLocaleDateString("fr-FR") : t("gesCompetences.surveillance.table.never", { defaultValue: "Jamais" })}
                             </TableCell>
                             <TableCell>
                               <span className={recyclingOk ? "text-green-600" : "text-red-600"}>
@@ -337,16 +339,16 @@ export default function SurveillancePage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>OEC</TableHead>
-                        <TableHead>Évaluateur</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Score moyen</TableHead>
-                        <TableHead>Satisfaction globale</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.oec", { defaultValue: "OEC" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.evaluator", { defaultValue: "Évaluateur" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.date", { defaultValue: "Date" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.avgScore", { defaultValue: "Score moyen" })}</TableHead>
+                        <TableHead>{t("gesCompetences.surveillance.table.globalSatisfaction", { defaultValue: "Satisfaction globale" })}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {satisfaction.length === 0 ? (
-                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-500">Aucune enquête de satisfaction</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-500">{t("gesCompetences.surveillance.table.noSurveys", { defaultValue: "Aucune enquête de satisfaction" })}</TableCell></TableRow>
                       ) : satisfaction.map(s => (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium">{s.oecUser.fullName}</TableCell>
@@ -374,8 +376,8 @@ export default function SurveillancePage() {
                     <CardContent className="p-4 flex items-center gap-3">
                       <XCircle className="h-6 w-6 text-red-500" />
                       <div>
-                        <p className="font-semibold text-red-800">{stats.expired} qualification(s) expirée(s)</p>
-                        <p className="text-sm text-gray-500">Action requise : renouvellement ou retrait</p>
+                        <p className="font-semibold text-red-800">{t("gesCompetences.surveillance.alerts.expiredCount", { count: stats.expired, defaultValue: `${stats.expired} qualification(s) expirée(s)` })}</p>
+                        <p className="text-sm text-gray-500">{t("gesCompetences.surveillance.alerts.expiredAction", { defaultValue: "Action requise : renouvellement ou retrait" })}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -385,8 +387,8 @@ export default function SurveillancePage() {
                     <CardContent className="p-4 flex items-center gap-3">
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                       <div>
-                        <p className="font-semibold text-amber-800">{stats.expiringIn90Days} qualification(s) expirent dans les 90 jours</p>
-                        <p className="text-sm text-gray-500">Planifier le renouvellement et vérifier les conditions (missions, recyclage)</p>
+                        <p className="font-semibold text-amber-800">{t("gesCompetences.surveillance.alerts.expiring90Count", { count: stats.expiringIn90Days, defaultValue: `${stats.expiringIn90Days} qualification(s) expirent dans les 90 jours` })}</p>
+                        <p className="text-sm text-gray-500">{t("gesCompetences.surveillance.alerts.expiring90Action", { defaultValue: "Planifier le renouvellement et vérifier les conditions (missions, recyclage)" })}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -396,8 +398,8 @@ export default function SurveillancePage() {
                     <CardContent className="p-4 flex items-center gap-3">
                       <ShieldAlert className="h-6 w-6 text-orange-500" />
                       <div>
-                        <p className="font-semibold text-orange-800">{stats.suspended} évaluateur(s) suspendu(s)</p>
-                        <p className="text-sm text-gray-500">Suivre les conditions de levée de suspension</p>
+                        <p className="font-semibold text-orange-800">{t("gesCompetences.surveillance.alerts.suspendedCount", { count: stats.suspended, defaultValue: `${stats.suspended} évaluateur(s) suspendu(s)` })}</p>
+                        <p className="text-sm text-gray-500">{t("gesCompetences.surveillance.alerts.suspendedAction", { defaultValue: "Suivre les conditions de levée de suspension" })}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -407,8 +409,8 @@ export default function SurveillancePage() {
                     <CardContent className="p-4 flex items-center gap-3">
                       <Users className="h-6 w-6 text-blue-500" />
                       <div>
-                        <p className="font-semibold text-blue-800">{stats.pendingCommission} dossier(s) en attente de commission</p>
-                        <p className="text-sm text-gray-500">Planifier une session de la Commission de Qualification</p>
+                        <p className="font-semibold text-blue-800">{t("gesCompetences.surveillance.alerts.pendingCommissionCount", { count: stats.pendingCommission, defaultValue: `${stats.pendingCommission} dossier(s) en attente de commission` })}</p>
+                        <p className="text-sm text-gray-500">{t("gesCompetences.surveillance.alerts.pendingCommissionAction", { defaultValue: "Planifier une session de la Commission de Qualification" })}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -418,8 +420,8 @@ export default function SurveillancePage() {
                     <CardContent className="p-4 flex items-center gap-3">
                       <CheckCircle2 className="h-6 w-6 text-green-500" />
                       <div>
-                        <p className="font-semibold text-green-800">Aucune alerte</p>
-                        <p className="text-sm text-gray-500">Tous les indicateurs sont normaux</p>
+                        <p className="font-semibold text-green-800">{t("gesCompetences.surveillance.alerts.none", { defaultValue: "Aucune alerte" })}</p>
+                        <p className="text-sm text-gray-500">{t("gesCompetences.surveillance.alerts.noneDesc", { defaultValue: "Tous les indicateurs sont normaux" })}</p>
                       </div>
                     </CardContent>
                   </Card>

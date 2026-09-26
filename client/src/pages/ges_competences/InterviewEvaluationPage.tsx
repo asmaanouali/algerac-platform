@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,20 +67,28 @@ interface ChecklistItem {
   checked: boolean;
 }
 
-const DEFAULT_CHECKLIST: ChecklistItem[] = [
-  { id: "1", label: "Vérification de l'identité et des documents originaux", checked: false },
-  { id: "2", label: "Expérience professionnelle vérifiée et pertinente", checked: false },
-  { id: "3", label: "Compétences techniques dans le domaine d'expertise", checked: false },
-  { id: "4", label: "Connaissance des normes et référentiels applicables", checked: false },
-  { id: "5", label: "Capacité de communication et de rédaction de rapports", checked: false },
-  { id: "6", label: "Disponibilité et flexibilité géographique", checked: false },
-  { id: "7", label: "Compréhension du rôle et des responsabilités", checked: false },
-  { id: "8", label: "Impartialité et indépendance confirmées", checked: false },
-  { id: "9", label: "Maîtrise des langues requises (Arabe / Français)", checked: false },
-  { id: "10", label: "Aptitude au travail en équipe d'évaluation", checked: false },
-];
+const DEFAULT_CHECKLIST_FALLBACK: Record<string, string> = {
+  "1": "Vérification de l'identité et des documents originaux",
+  "2": "Expérience professionnelle vérifiée et pertinente",
+  "3": "Compétences techniques dans le domaine d'expertise",
+  "4": "Connaissance des normes et référentiels applicables",
+  "5": "Capacité de communication et de rédaction de rapports",
+  "6": "Disponibilité et flexibilité géographique",
+  "7": "Compréhension du rôle et des responsabilités",
+  "8": "Impartialité et indépendance confirmées",
+  "9": "Maîtrise des langues requises (Arabe / Français)",
+  "10": "Aptitude au travail en équipe d'évaluation",
+};
+
+const getDefaultChecklist = (t: (key: string, opts?: any) => string): ChecklistItem[] =>
+  Object.keys(DEFAULT_CHECKLIST_FALLBACK).map((id) => ({
+    id,
+    label: t(`gesCompetences.interviewEvaluation.checklistDefaults.${id}`, { defaultValue: DEFAULT_CHECKLIST_FALLBACK[id] }),
+    checked: false,
+  }));
 
 export default function InterviewEvaluationPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [matched, params] = useRoute("/ges-competences/entretien/:id");
@@ -91,7 +100,7 @@ export default function InterviewEvaluationPage() {
 
   // Evaluation state
   const [notes, setNotes] = useState("");
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => getDefaultChecklist(t));
   const [newChecklistItem, setNewChecklistItem] = useState("");
 
   // Decision dialogs
@@ -107,7 +116,7 @@ export default function InterviewEvaluationPage() {
   }>({});
 
   useEffect(() => {
-    document.title = "Évaluation Entretien - Gestion des Compétences | ALGERAC";
+    document.title = t("gesCompetences.interviewEvaluation.pageTitle", { defaultValue: "Évaluation Entretien - Gestion des Compétences | ALGERAC" });
     if (candidateId) fetchCandidature();
   }, [candidateId]);
 
@@ -175,10 +184,10 @@ export default function InterviewEvaluationPage() {
           }
         }
       } else {
-        toast({ title: "Erreur", description: "Candidature introuvable", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.notFoundDesc", { defaultValue: "Candidature introuvable" }), variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de charger la candidature", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.loadError", { defaultValue: "Impossible de charger la candidature" }), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -220,13 +229,13 @@ export default function InterviewEvaluationPage() {
         }
       );
       if (response.ok) {
-        toast({ title: "Sauvegardé", description: "Notes et checklist enregistrées" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.saved", { defaultValue: "Sauvegardé" }), description: t("gesCompetences.interviewEvaluation.toasts.savedDesc", { defaultValue: "Notes et checklist enregistrées" }) });
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -248,14 +257,14 @@ export default function InterviewEvaluationPage() {
         { method: "POST", credentials: "include" }
       );
       if (response.ok) {
-        toast({ title: "Succès", description: "Entretien marqué comme terminé" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.interviewEvaluation.toasts.completedDesc", { defaultValue: "Entretien marqué comme terminé" }) });
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
@@ -281,17 +290,17 @@ export default function InterviewEvaluationPage() {
       );
       if (response.ok) {
         toast({
-          title: "Candidature acceptée",
-          description: "L'administrateur a reçu une notification pour créer le compte.",
+          title: t("gesCompetences.interviewEvaluation.toasts.acceptedTitle", { defaultValue: "Candidature acceptée" }),
+          description: t("gesCompetences.interviewEvaluation.toasts.acceptedDesc", { defaultValue: "L'administrateur a reçu une notification pour créer le compte." }),
         });
         setShowAcceptDialog(false);
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
@@ -317,17 +326,17 @@ export default function InterviewEvaluationPage() {
       );
       if (response.ok) {
         toast({
-          title: "Traitement effectué",
-          description: "Le candidat a été notifié par email de manière appropriée.",
+          title: t("gesCompetences.interviewEvaluation.toasts.processedTitle", { defaultValue: "Traitement effectué" }),
+          description: t("gesCompetences.interviewEvaluation.toasts.processedDesc", { defaultValue: "Le candidat a été notifié par email de manière appropriée." }),
         });
         setShowRejectDialog(false);
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
@@ -347,25 +356,29 @@ export default function InterviewEvaluationPage() {
         a.click();
         window.URL.revokeObjectURL(url);
       } else {
-        toast({ title: "Erreur", description: "Impossible de télécharger le FOR20", variant: "destructive" });
+        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.downloadError", { defaultValue: "Impossible de télécharger le FOR20" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
   const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = { EXPERT: "Expert", EVALUATEUR: "Évaluateur", FORMATEUR: "Formateur" };
+    const labels: Record<string, string> = {
+      EXPERT: t("gesCompetences.common.userType.EXPERT", { defaultValue: "Expert" }),
+      EVALUATEUR: t("gesCompetences.common.userType.EVALUATEUR", { defaultValue: "Évaluateur" }),
+      FORMATEUR: t("gesCompetences.common.userType.FORMATEUR", { defaultValue: "Formateur" }),
+    };
     return labels[type] || type;
   };
 
   const getStatusInfo = (status: string) => {
     const map: Record<string, { class: string; label: string }> = {
-      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
-      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
-      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
-      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: "Acceptée" },
-      REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: "Non retenue" },
+      INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: t("gesCompetences.interviewEvaluation.status.INTERVIEW_SCHEDULED", { defaultValue: "Entretien planifié" }) },
+      INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: t("gesCompetences.interviewEvaluation.status.INTERVIEW_CONFIRMED", { defaultValue: "Entretien confirmé" }) },
+      INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: t("gesCompetences.interviewEvaluation.status.INTERVIEW_COMPLETED", { defaultValue: "Entretien terminé" }) },
+      CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: t("gesCompetences.interviewEvaluation.status.CANDIDATURE_APPROVED", { defaultValue: "Acceptée" }) },
+      REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: t("gesCompetences.interviewEvaluation.status.REJECTED", { defaultValue: "Non retenue" }) },
     };
     return map[status] || { class: "", label: status };
   };
@@ -384,7 +397,7 @@ export default function InterviewEvaluationPage() {
         <div className="flex-1 flex flex-col w-full md:ml-64">
           <Navbar />
           <main className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">Chargement...</p>
+            <p className="text-muted-foreground">{t("gesCompetences.interviewEvaluation.loading", { defaultValue: "Chargement..." })}</p>
           </main>
         </div>
       </div>
@@ -400,9 +413,9 @@ export default function InterviewEvaluationPage() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">Candidature introuvable</p>
+              <p className="text-muted-foreground mb-4">{t("gesCompetences.interviewEvaluation.notFound", { defaultValue: "Candidature introuvable" })}</p>
               <Button variant="outline" onClick={() => setLocation("/ges-competences/entretiens")}>
-                <ArrowLeft className="w-4 h-4 mr-2" /> Retour au planning
+                <ArrowLeft className="w-4 h-4 mr-2" /> {t("gesCompetences.interviewEvaluation.backToPlanning", { defaultValue: "Retour au planning" })}
               </Button>
             </div>
           </main>
@@ -421,16 +434,16 @@ export default function InterviewEvaluationPage() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
               <Clock className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Entretien non confirmé</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">{t("gesCompetences.interviewEvaluation.interviewNotConfirmedTitle", { defaultValue: "Entretien non confirmé" })}</h2>
               <p className="text-muted-foreground mb-2">
-                L'entretien avec <strong>{candidature.fullName}</strong> n'a pas encore été confirmé.
+                {t("gesCompetences.interviewEvaluation.interviewNotConfirmedDesc1", { name: candidature.fullName, defaultValue: `L'entretien avec ${candidature.fullName} n'a pas encore été confirmé.` })}
               </p>
               <p className="text-sm text-muted-foreground mb-6">
-                Vous devez d'abord confirmer la date d'entretien avant de pouvoir accéder à la page de préparation et d'évaluation.
+                {t("gesCompetences.interviewEvaluation.interviewNotConfirmedDesc2", { defaultValue: "Vous devez d'abord confirmer la date d'entretien avant de pouvoir accéder à la page de préparation et d'évaluation." })}
               </p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" onClick={() => setLocation("/ges-competences/entretiens")}>
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Retour au planning
+                  <ArrowLeft className="w-4 h-4 mr-2" /> {t("gesCompetences.interviewEvaluation.backToPlanning", { defaultValue: "Retour au planning" })}
                 </Button>
                 <Button
                   className="bg-cyan-600 hover:bg-cyan-700"
@@ -441,18 +454,18 @@ export default function InterviewEvaluationPage() {
                         { method: "POST", credentials: "include" }
                       );
                       if (response.ok) {
-                        toast({ title: "Succès", description: "Entretien confirmé" });
+                        toast({ title: t("gesCompetences.interviewEvaluation.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.interviewEvaluation.toasts.confirmed", { defaultValue: "Entretien confirmé" }) });
                         fetchCandidature();
                       } else {
                         const error = await response.json();
-                        toast({ title: "Erreur", description: error.message || "Erreur", variant: "destructive" });
+                        toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), variant: "destructive" });
                       }
                     } catch {
-                      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+                      toast({ title: t("gesCompetences.interviewEvaluation.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.interviewEvaluation.toasts.genericError", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
                     }
                   }}
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" /> Confirmer l'entretien
+                  <CheckCircle className="w-4 h-4 mr-2" /> {t("gesCompetences.interviewEvaluation.confirmInterview", { defaultValue: "Confirmer l'entretien" })}
                 </Button>
               </div>
             </div>
@@ -479,11 +492,11 @@ export default function InterviewEvaluationPage() {
               className="mb-4 text-slate-600"
               onClick={() => setLocation("/ges-competences/entretiens")}
             >
-              <ArrowLeft className="w-4 h-4 mr-1" /> Retour au planning
+              <ArrowLeft className="w-4 h-4 mr-1" /> {t("gesCompetences.interviewEvaluation.backToPlanning", { defaultValue: "Retour au planning" })}
             </Button>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold">Évaluation d'Entretien</h1>
+                <h1 className="text-2xl font-bold">{t("gesCompetences.interviewEvaluation.title", { defaultValue: "Évaluation d'Entretien" })}</h1>
                 <p className="text-muted-foreground mt-1">
                   {candidature.fullName} — {getTypeLabel(candidature.userType)}
                 </p>
@@ -558,7 +571,7 @@ export default function InterviewEvaluationPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Date de l'entretien
+                      <Clock className="w-4 h-4" /> {t("gesCompetences.interviewEvaluation.interviewDateLabel", { defaultValue: "Date de l'entretien" })}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -580,25 +593,25 @@ export default function InterviewEvaluationPage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Panel d'Entretien
+                    <Users className="w-4 h-4" /> {t("gesCompetences.interviewEvaluation.panelTitle", { defaultValue: "Panel d'Entretien" })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
                       <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                      <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique</span>
+                      <span className="font-medium">DT</span> — <span className="text-muted-foreground">{t("gesCompetences.interviewEvaluation.panel.dt", { defaultValue: "Directeur Technique" })}</span>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
                       <div className="w-2 h-2 bg-purple-500 rounded-full" />
-                      <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité</span>
+                      <span className="font-medium">RQ</span> — <span className="text-muted-foreground">{t("gesCompetences.interviewEvaluation.panel.rq", { defaultValue: "Responsable Qualité" })}</span>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
                       <div className="w-2 h-2 bg-amber-500 rounded-full" />
                       <span className="font-medium">CD</span> — {panelMembers.cd ? (
                         <span className="text-muted-foreground">{panelMembers.cd.fullName}</span>
                       ) : (
-                        <span className="text-muted-foreground italic">Non sélectionné</span>
+                        <span className="text-muted-foreground italic">{t("gesCompetences.interviewEvaluation.panel.notSelected", { defaultValue: "Non sélectionné" })}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
@@ -606,12 +619,12 @@ export default function InterviewEvaluationPage() {
                       <span className="font-medium">RA</span> — {panelMembers.ra ? (
                         <span className="text-muted-foreground">{panelMembers.ra.fullName}</span>
                       ) : (
-                        <span className="text-muted-foreground italic">Non sélectionné</span>
+                        <span className="text-muted-foreground italic">{t("gesCompetences.interviewEvaluation.panel.notSelected", { defaultValue: "Non sélectionné" })}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded">
                       <div className="w-2 h-2 bg-green-500 rounded-full" />
-                      <span className="font-medium">GES</span> — <span className="text-muted-foreground">Gestionnaire de Compétences</span>
+                      <span className="font-medium">GES</span> — <span className="text-muted-foreground">{t("gesCompetences.interviewEvaluation.panel.ges", { defaultValue: "Gestionnaire de Compétences" })}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -621,12 +634,12 @@ export default function InterviewEvaluationPage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Documents
+                    <FileText className="w-4 h-4" /> {t("gesCompetences.interviewEvaluation.documentsTitle", { defaultValue: "Documents" })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <Button variant="outline" className="w-full justify-start text-sm" onClick={handleDownloadFor20}>
-                    <Download className="w-4 h-4 mr-2" /> Télécharger FOR20
+                    <Download className="w-4 h-4 mr-2" /> {t("gesCompetences.interviewEvaluation.downloadFor20", { defaultValue: "Télécharger FOR20" })}
                   </Button>
                   {candidature.documentsJson &&
                     (() => {
@@ -674,7 +687,7 @@ export default function InterviewEvaluationPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                      <ClipboardCheck className="w-5 h-5" /> Checklist d'Évaluation
+                      <ClipboardCheck className="w-5 h-5" /> {t("gesCompetences.interviewEvaluation.checklistTitle", { defaultValue: "Checklist d'Évaluation" })}
                     </CardTitle>
                     <div className="text-sm text-muted-foreground">
                       {checkedCount}/{checklist.length} ({checklistProgress}%)
@@ -733,7 +746,7 @@ export default function InterviewEvaluationPage() {
                     {/* Add custom checklist item */}
                     <div className="flex gap-2 mt-4">
                       <Input
-                        placeholder="Ajouter un critère personnalisé..."
+                        placeholder={t("gesCompetences.interviewEvaluation.addCriteriaPlaceholder", { defaultValue: "Ajouter un critère personnalisé..." })}
                         value={newChecklistItem}
                         onChange={(e) => setNewChecklistItem(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && addChecklistItem()}
@@ -751,12 +764,12 @@ export default function InterviewEvaluationPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" /> Notes d'Entretien
+                    <FileText className="w-5 h-5" /> {t("gesCompetences.interviewEvaluation.notesTitle", { defaultValue: "Notes d'Entretien" })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    placeholder="Notez vos observations pendant l'entretien : compétences techniques, savoir-être, points forts, points d'amélioration, recommandations..."
+                    placeholder={t("gesCompetences.interviewEvaluation.notesPlaceholder", { defaultValue: "Notez vos observations pendant l'entretien : compétences techniques, savoir-être, points forts, points d'amélioration, recommandations..." })}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={8}
@@ -765,7 +778,7 @@ export default function InterviewEvaluationPage() {
                   <div className="flex justify-end mt-3">
                     <Button variant="outline" onClick={handleSaveNotes} disabled={saving}>
                       <Save className="w-4 h-4 mr-2" />
-                      {saving ? "Sauvegarde..." : "Sauvegarder"}
+                      {saving ? t("gesCompetences.interviewEvaluation.saving", { defaultValue: "Sauvegarde..." }) : t("gesCompetences.interviewEvaluation.save", { defaultValue: "Sauvegarder" })}
                     </Button>
                   </div>
                 </CardContent>
@@ -775,7 +788,7 @@ export default function InterviewEvaluationPage() {
               {canDecide && (
                 <Card className="border-2 border-slate-200">
                   <CardHeader>
-                    <CardTitle>Décision</CardTitle>
+                    <CardTitle>{t("gesCompetences.interviewEvaluation.decisionTitle", { defaultValue: "Décision" })}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {candidature.status !== "INTERVIEW_COMPLETED" && (
@@ -786,10 +799,10 @@ export default function InterviewEvaluationPage() {
                           onClick={handleMarkCompleted}
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
-                          Marquer l'entretien comme terminé
+                          {t("gesCompetences.interviewEvaluation.markCompleted", { defaultValue: "Marquer l'entretien comme terminé" })}
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2 text-center">
-                          Marquez l'entretien comme terminé avant de prendre une décision finale.
+                          {t("gesCompetences.interviewEvaluation.markCompletedHint", { defaultValue: "Marquez l'entretien comme terminé avant de prendre une décision finale." })}
                         </p>
                         <Separator className="my-4" />
                       </div>
@@ -810,10 +823,10 @@ export default function InterviewEvaluationPage() {
                         <div className="text-center px-2 break-words">
   <CheckCircle className="w-6 h-6 mx-auto mb-1" />
   <span className="font-semibold text-sm block">
-    Accepter la Candidature
+    {t("gesCompetences.interviewEvaluation.acceptCandidature", { defaultValue: "Accepter la Candidature" })}
   </span>
   <p className="text-xs font-normal opacity-80 mt-1">
-    L'administrateur sera notifié pour créer le compte
+    {t("gesCompetences.interviewEvaluation.acceptHint", { defaultValue: "L'administrateur sera notifié pour créer le compte" })}
   </p>
 </div>
                       </Button>
@@ -825,9 +838,9 @@ export default function InterviewEvaluationPage() {
                       >
                         <div className="text-center">
                           <XCircle className="w-6 h-6 mx-auto mb-1" />
-                          <span className="font-semibold">Non Retenue</span>
+                          <span className="font-semibold">{t("gesCompetences.interviewEvaluation.rejectCandidature", { defaultValue: "Non Retenue" })}</span>
                           <p className="text-xs font-normal opacity-80 mt-1">
-                            Le candidat recevra un email professionnel
+                            {t("gesCompetences.interviewEvaluation.rejectHint", { defaultValue: "Le candidat recevra un email professionnel" })}
                           </p>
                         </div>
                       </Button>
@@ -851,13 +864,13 @@ export default function InterviewEvaluationPage() {
                       <div>
                         <p className="font-semibold">
                           {candidature.interviewDecision === "ACCEPTED"
-                            ? "Candidature Acceptée"
-                            : "Candidature Non Retenue"}
+                            ? t("gesCompetences.interviewEvaluation.alreadyDecidedAccepted", { defaultValue: "Candidature Acceptée" })
+                            : t("gesCompetences.interviewEvaluation.alreadyDecidedRejected", { defaultValue: "Candidature Non Retenue" })}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {candidature.interviewDecision === "ACCEPTED"
-                            ? "L'administrateur a été notifié pour la création du compte."
-                            : "Le candidat a été notifié par email."}
+                            ? t("gesCompetences.interviewEvaluation.alreadyDecidedAcceptedDesc", { defaultValue: "L'administrateur a été notifié pour la création du compte." })
+                            : t("gesCompetences.interviewEvaluation.alreadyDecidedRejectedDesc", { defaultValue: "Le candidat a été notifié par email." })}
                         </p>
                       </div>
                     </div>
@@ -873,52 +886,52 @@ export default function InterviewEvaluationPage() {
       <Dialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Accepter la Candidature</DialogTitle>
+            <DialogTitle>{t("gesCompetences.interviewEvaluation.acceptDialog.title", { defaultValue: "Accepter la Candidature" })}</DialogTitle>
             <DialogDescription>
-              Veuillez vérifier les informations et sélectionner le rôle à attribuer au candidat.
+              {t("gesCompetences.interviewEvaluation.acceptDialog.desc", { defaultValue: "Veuillez vérifier les informations et sélectionner le rôle à attribuer au candidat." })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>{t("gesCompetences.interviewEvaluation.acceptDialog.emailLabel", { defaultValue: "Email" })}</Label>
               <Input value={candidature?.email || ""} readOnly className="bg-muted" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nom</Label>
+                <Label>{t("gesCompetences.interviewEvaluation.acceptDialog.lastNameLabel", { defaultValue: "Nom" })}</Label>
                 <Input value={candidature?.nom || candidature?.fullName?.split(" ").slice(1).join(" ") || ""} readOnly className="bg-muted" />
               </div>
               <div className="space-y-2">
-                <Label>Prénom</Label>
+                <Label>{t("gesCompetences.interviewEvaluation.acceptDialog.firstNameLabel", { defaultValue: "Prénom" })}</Label>
                 <Input value={candidature?.prenom || candidature?.fullName?.split(" ")[0] || ""} readOnly className="bg-muted" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Rôle à attribuer <span className="text-red-500">*</span></Label>
+              <Label>{t("gesCompetences.interviewEvaluation.acceptDialog.roleLabel", { defaultValue: "Rôle à attribuer" })} <span className="text-red-500">*</span></Label>
               <Select value={acceptRole} onValueChange={setAcceptRole}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un rôle" />
+                  <SelectValue placeholder={t("gesCompetences.interviewEvaluation.acceptDialog.rolePlaceholder", { defaultValue: "Sélectionner un rôle" })} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EXPERT">Expert</SelectItem>
-                  <SelectItem value="EF">Évaluateur en Formation</SelectItem>
-                  <SelectItem value="ET">Évaluateur Technique</SelectItem>
-                  <SelectItem value="EQ">Évaluateur Qualité</SelectItem>
-                  <SelectItem value="FORMATEUR">Formateur</SelectItem>
+                  <SelectItem value="EXPERT">{t("gesCompetences.interviewEvaluation.acceptDialog.roles.EXPERT", { defaultValue: "Expert" })}</SelectItem>
+                  <SelectItem value="EF">{t("gesCompetences.interviewEvaluation.acceptDialog.roles.EF", { defaultValue: "Évaluateur en Formation" })}</SelectItem>
+                  <SelectItem value="ET">{t("gesCompetences.interviewEvaluation.acceptDialog.roles.ET", { defaultValue: "Évaluateur Technique" })}</SelectItem>
+                  <SelectItem value="EQ">{t("gesCompetences.interviewEvaluation.acceptDialog.roles.EQ", { defaultValue: "Évaluateur Qualité" })}</SelectItem>
+                  <SelectItem value="FORMATEUR">{t("gesCompetences.interviewEvaluation.acceptDialog.roles.FORMATEUR", { defaultValue: "Formateur" })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <p className="text-sm text-muted-foreground">
-              Une notification sera envoyée à l'administrateur pour créer le compte utilisateur.
+              {t("gesCompetences.interviewEvaluation.acceptDialog.notice", { defaultValue: "Une notification sera envoyée à l'administrateur pour créer le compte utilisateur." })}
             </p>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAcceptDialog(false)}>
-              Annuler
+              {t("gesCompetences.interviewEvaluation.acceptDialog.cancel", { defaultValue: "Annuler" })}
             </Button>
             <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAccept}>
               <CheckCircle className="w-4 h-4 mr-2" />
-              Confirmer l'acceptation
+              {t("gesCompetences.interviewEvaluation.acceptDialog.confirm", { defaultValue: "Confirmer l'acceptation" })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -928,18 +941,17 @@ export default function InterviewEvaluationPage() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Candidature Non Retenue</DialogTitle>
+            <DialogTitle>{t("gesCompetences.interviewEvaluation.rejectDialog.title", { defaultValue: "Candidature Non Retenue" })}</DialogTitle>
             <DialogDescription>
-              Le candidat recevra un email professionnel indiquant que sa candidature n'a pas pu être retenue dans le
-              cadre des contraintes opérationnelles actuelles, tout en restant encourageant.
+              {t("gesCompetences.interviewEvaluation.rejectDialog.desc", { defaultValue: "Le candidat recevra un email professionnel indiquant que sa candidature n'a pas pu être retenue dans le cadre des contraintes opérationnelles actuelles, tout en restant encourageant." })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Note interne additionnelle (optionnel)</Label>
+              <Label>{t("gesCompetences.interviewEvaluation.rejectDialog.notesLabel", { defaultValue: "Note interne additionnelle (optionnel)" })}</Label>
               <Textarea
-                placeholder="Raison interne du refus (non visible par le candidat)..."
+                placeholder={t("gesCompetences.interviewEvaluation.rejectDialog.notesPlaceholder", { defaultValue: "Raison interne du refus (non visible par le candidat)..." })}
                 value={rejectNotes}
                 onChange={(e) => setRejectNotes(e.target.value)}
                 rows={3}
@@ -949,19 +961,17 @@ export default function InterviewEvaluationPage() {
 
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-xs text-amber-700">
-                <strong>Note :</strong> Le candidat recevra un email professionnel mentionnant que ses qualifications
-                sont reconnues mais que la décision est liée aux contraintes opérationnelles. Aucune mention explicite
-                de refus.
+                <strong>{t("gesCompetences.interviewEvaluation.rejectDialog.noticeLabel", { defaultValue: "Note :" })}</strong> {t("gesCompetences.interviewEvaluation.rejectDialog.noticeText", { defaultValue: "Le candidat recevra un email professionnel mentionnant que ses qualifications sont reconnues mais que la décision est liée aux contraintes opérationnelles. Aucune mention explicite de refus." })}
               </p>
             </div>
           </div>
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Annuler
+              {t("gesCompetences.interviewEvaluation.rejectDialog.cancel", { defaultValue: "Annuler" })}
             </Button>
             <Button variant="outline" className="text-slate-600" onClick={handleReject}>
-              Confirmer
+              {t("gesCompetences.interviewEvaluation.rejectDialog.confirm", { defaultValue: "Confirmer" })}
             </Button>
           </DialogFooter>
         </DialogContent>

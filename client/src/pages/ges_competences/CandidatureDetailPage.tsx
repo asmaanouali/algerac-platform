@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useRoute, useLocation } from "wouter";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
@@ -51,33 +52,50 @@ interface Candidature {
   interviewPanelRaId?: number;
 }
 
-const getStatusBadge = (status: string) => {
-  const map: Record<string, { class: string; label: string }> = {
-    PENDING: { class: "bg-amber-50 text-amber-700 border-amber-300", label: "En attente" },
-    PROFILE_PRESELECTED: { class: "bg-orange-50 text-orange-700 border-orange-300", label: "Présélectionné (FOR28)" },
-    DOCUMENTS_SUBMITTED: { class: "bg-indigo-50 text-indigo-700 border-indigo-300", label: "Documents reçus" },
-    INTERVIEW_SCHEDULED: { class: "bg-blue-50 text-blue-700 border-blue-300", label: "Entretien planifié" },
-    INTERVIEW_CONFIRMED: { class: "bg-cyan-50 text-cyan-700 border-cyan-300", label: "Entretien confirmé" },
-    INTERVIEW_COMPLETED: { class: "bg-teal-50 text-teal-700 border-teal-300", label: "Entretien terminé" },
-    CANDIDATURE_APPROVED: { class: "bg-emerald-50 text-emerald-700 border-emerald-300", label: "Acceptée (compte en attente)" },
-    APPROVED: { class: "bg-green-50 text-green-700 border-green-300", label: "Compte actif" },
-    REJECTED: { class: "bg-slate-50 text-slate-600 border-slate-300", label: "Non retenue" },
-  };
-  const s = map[status] || { class: "", label: status };
-  return <Badge variant="outline" className={s.class}>{s.label}</Badge>;
+const STATUS_LABELS_FALLBACK: Record<string, string> = {
+  PENDING: "En attente",
+  PROFILE_PRESELECTED: "Présélectionné (FOR28)",
+  DOCUMENTS_SUBMITTED: "Documents reçus",
+  INTERVIEW_SCHEDULED: "Entretien planifié",
+  INTERVIEW_CONFIRMED: "Entretien confirmé",
+  INTERVIEW_COMPLETED: "Entretien terminé",
+  CANDIDATURE_APPROVED: "Acceptée (compte en attente)",
+  APPROVED: "Compte actif",
+  REJECTED: "Non retenue",
 };
 
-const getTypeBadge = (type: string) => {
+const getStatusBadge = (status: string, t: (key: string, opts?: any) => string) => {
+  const classMap: Record<string, string> = {
+    PENDING: "bg-amber-50 text-amber-700 border-amber-300",
+    PROFILE_PRESELECTED: "bg-orange-50 text-orange-700 border-orange-300",
+    DOCUMENTS_SUBMITTED: "bg-indigo-50 text-indigo-700 border-indigo-300",
+    INTERVIEW_SCHEDULED: "bg-blue-50 text-blue-700 border-blue-300",
+    INTERVIEW_CONFIRMED: "bg-cyan-50 text-cyan-700 border-cyan-300",
+    INTERVIEW_COMPLETED: "bg-teal-50 text-teal-700 border-teal-300",
+    CANDIDATURE_APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-300",
+    APPROVED: "bg-green-50 text-green-700 border-green-300",
+    REJECTED: "bg-slate-50 text-slate-600 border-slate-300",
+  };
+  const label = t(`gesCompetences.candidatures.status.${status}`, { defaultValue: STATUS_LABELS_FALLBACK[status] || status });
+  return <Badge variant="outline" className={classMap[status] || ""}>{label}</Badge>;
+};
+
+const getTypeBadge = (type: string, t: (key: string, opts?: any) => string) => {
   const colors: Record<string, string> = {
     EXPERT: "bg-blue-100 text-blue-800",
     EVALUATEUR: "bg-purple-100 text-purple-800",
     FORMATEUR: "bg-indigo-100 text-indigo-800",
   };
-  const labels: Record<string, string> = { EXPERT: "Expert", EVALUATEUR: "Évaluateur", FORMATEUR: "Formateur" };
+  const labels: Record<string, string> = {
+    EXPERT: t("gesCompetences.common.userType.EXPERT", { defaultValue: "Expert" }),
+    EVALUATEUR: t("gesCompetences.common.userType.EVALUATEUR", { defaultValue: "Évaluateur" }),
+    FORMATEUR: t("gesCompetences.common.userType.FORMATEUR", { defaultValue: "Formateur" }),
+  };
   return <Badge className={colors[type]}>{labels[type] || type}</Badge>;
 };
 
 export default function CandidatureDetailPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [matched, params] = useRoute("/ges-competences/candidatures/:id");
@@ -124,10 +142,10 @@ export default function CandidatureDetailPage() {
         const found = data.find((c) => String(c.id) === String(candidatureId));
         setCandidature(found || null);
       } else {
-        toast({ title: "Erreur", description: "Impossible de charger la candidature", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorLoad", { defaultValue: "Impossible de charger la candidature" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -146,11 +164,11 @@ export default function CandidatureDetailPage() {
 
   const handleScheduleInterview = async () => {
     if (!candidature || !interviewDateObj || !interviewTime) {
-      toast({ title: "Erreur", description: "Veuillez sélectionner une date et une heure", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.toasts.errorSelectDateTime", { defaultValue: "Veuillez sélectionner une date et une heure" }), variant: "destructive" });
       return;
     }
     if (!selectedPanelCdId || !selectedPanelRaId) {
-      toast({ title: "Erreur", description: "Veuillez sélectionner un Chef de Département et un Responsable d'Accréditation pour le panel", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.toasts.errorSelectPanel", { defaultValue: "Veuillez sélectionner un Chef de Département et un Responsable d'Accréditation pour le panel" }), variant: "destructive" });
       return;
     }
     const year = interviewDateObj.getFullYear();
@@ -170,7 +188,7 @@ export default function CandidatureDetailPage() {
         }),
       });
       if (response.ok) {
-        toast({ title: "Succès", description: "Entretien planifié. Tous les membres du panel ont été notifiés." });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.candidatureDetail.toasts.successScheduled", { defaultValue: "Entretien planifié. Tous les membres du panel ont été notifiés." }) });
         setShowScheduleDialog(false);
         setInterviewDateObj(undefined);
         setInterviewTime("");
@@ -179,10 +197,10 @@ export default function CandidatureDetailPage() {
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Impossible de planifier l'entretien", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.toasts.errorSchedule", { defaultValue: "Impossible de planifier l'entretien" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -196,7 +214,7 @@ export default function CandidatureDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ rejectionReason: rejectionReason || "Profil non retenu dans le cadre des besoins actuels" }),
+        body: JSON.stringify({ rejectionReason: rejectionReason || t("gesCompetences.candidatureDetail.defaultRejectionReason", { defaultValue: "Profil non retenu dans le cadre des besoins actuels" }) }),
       });
       if (response.ok) {
         if (starOnReject) {
@@ -205,17 +223,17 @@ export default function CandidatureDetailPage() {
             credentials: "include",
           });
         }
-        toast({ title: "Traitement effectué", description: "Le candidat a été notifié par email de manière appropriée." });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.successProcessed", { defaultValue: "Traitement effectué" }), description: t("gesCompetences.candidatureDetail.toasts.successProcessedDesc", { defaultValue: "Le candidat a été notifié par email de manière appropriée." }) });
         setShowRejectDialog(false);
         setRejectionReason("");
         setStarOnReject(false);
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -236,10 +254,10 @@ export default function CandidatureDetailPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        toast({ title: "Erreur", description: "Impossible de télécharger le FOR20", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.toasts.errorDownloadFor20", { defaultValue: "Impossible de télécharger le FOR20" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     }
   };
 
@@ -252,14 +270,14 @@ export default function CandidatureDetailPage() {
         credentials: "include",
       });
       if (response.ok) {
-        toast({ title: "Profil présélectionné", description: "Un email avec le lien FOR28 a été envoyé au candidat." });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.successPreselected", { defaultValue: "Profil présélectionné" }), description: t("gesCompetences.candidatureDetail.toasts.successPreselectedDesc", { defaultValue: "Un email avec le lien FOR28 a été envoyé au candidat." }) });
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Une erreur est survenue", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -267,7 +285,7 @@ export default function CandidatureDetailPage() {
 
   const handleBlacklist = async () => {
     if (!candidature || !blacklistReason.trim()) {
-      toast({ title: "Erreur", description: "Le motif de blacklist est obligatoire", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.toasts.errorRequiredBlacklistReason", { defaultValue: "Le motif de blacklist est obligatoire" }), variant: "destructive" });
       return;
     }
     setSubmittingAction("blacklist");
@@ -279,16 +297,16 @@ export default function CandidatureDetailPage() {
         body: JSON.stringify({ reason: blacklistReason }),
       });
       if (response.ok) {
-        toast({ title: "Succès", description: "Candidat blacklisté. Il ne pourra plus se réinscrire." });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.candidatureDetail.toasts.successBlacklisted", { defaultValue: "Candidat blacklisté. Il ne pourra plus se réinscrire." }) });
         setShowBlacklistDialog(false);
         setBlacklistReason("");
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Échec du blacklist", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.toasts.errorBlacklistFailed", { defaultValue: "Échec du blacklist" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -303,11 +321,11 @@ export default function CandidatureDetailPage() {
         credentials: "include",
       });
       if (response.ok) {
-        toast({ title: "Succès", description: "Candidat retiré de la blacklist" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.candidatureDetail.toasts.successUnblacklisted", { defaultValue: "Candidat retiré de la blacklist" }) });
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.toasts.errorFailed", { defaultValue: "Échec" }), variant: "destructive" });
       }
     } catch {
       toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
@@ -325,14 +343,14 @@ export default function CandidatureDetailPage() {
         credentials: "include",
       });
       if (response.ok) {
-        toast({ title: "Succès", description: "Candidature restaurée. Le dossier est de nouveau en attente d'examen." });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.success", { defaultValue: "Succès" }), description: t("gesCompetences.candidatureDetail.toasts.successRestored", { defaultValue: "Candidature restaurée. Le dossier est de nouveau en attente d'examen." }) });
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.toasts.errorFailed", { defaultValue: "Échec" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -349,18 +367,18 @@ export default function CandidatureDetailPage() {
       if (response.ok) {
         const data = await response.json();
         toast({
-          title: data.starred ? "Profil marqué" : "Marque retirée",
+          title: data.starred ? t("gesCompetences.candidatureDetail.toasts.successStarred", { defaultValue: "Profil marqué" }) : t("gesCompetences.candidatureDetail.toasts.successUnstarred", { defaultValue: "Marque retirée" }),
           description: data.starred
-            ? "Ce profil sera considéré pour de futures opportunités."
-            : "La marque a été retirée.",
+            ? t("gesCompetences.candidatureDetail.toasts.starredToastDesc", { defaultValue: "Ce profil sera considéré pour de futures opportunités." })
+            : t("gesCompetences.candidatureDetail.toasts.unstarredToastDesc", { defaultValue: "La marque a été retirée." }),
         });
         fetchCandidature();
       } else {
         const error = await response.json();
-        toast({ title: "Erreur", description: error.message || "Échec", variant: "destructive" });
+        toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: error.message || t("gesCompetences.candidatureDetail.toasts.errorFailed", { defaultValue: "Échec" }), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erreur", description: "Une erreur est survenue", variant: "destructive" });
+      toast({ title: t("gesCompetences.candidatureDetail.toasts.error", { defaultValue: "Erreur" }), description: t("gesCompetences.candidatureDetail.errorGeneric", { defaultValue: "Une erreur est survenue" }), variant: "destructive" });
     } finally {
       setSubmittingAction(null);
     }
@@ -378,20 +396,20 @@ export default function CandidatureDetailPage() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Détails de la Candidature</h1>
+              <h1 className="text-2xl font-bold">{t("gesCompetences.candidatureDetail.title", { defaultValue: "Détails de la Candidature" })}</h1>
               {candidature && (
-                <p className="text-sm text-muted-foreground">Référence : {candidature.registrationId}</p>
+                <p className="text-sm text-muted-foreground">{t("gesCompetences.candidatureDetail.reference", { id: candidature.registrationId, defaultValue: `Référence : ${candidature.registrationId}` })}</p>
               )}
             </div>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">Chargement...</div>
+            <div className="flex items-center justify-center py-20 text-muted-foreground">{t("gesCompetences.candidatureDetail.loading", { defaultValue: "Chargement..." })}</div>
           ) : !candidature ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <p className="text-muted-foreground">Candidature introuvable.</p>
+              <p className="text-muted-foreground">{t("gesCompetences.candidatureDetail.notFound", { defaultValue: "Candidature introuvable." })}</p>
               <Button variant="outline" onClick={() => setLocation("/ges-competences/candidatures")}>
-                Retour à la liste
+                {t("gesCompetences.candidatureDetail.backToList", { defaultValue: "Retour à la liste" })}
               </Button>
             </div>
           ) : (
@@ -412,55 +430,55 @@ export default function CandidatureDetailPage() {
                 <CardContent className="pt-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-muted-foreground">Nom Complet</Label>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.fullName", { defaultValue: "Nom Complet" })}</Label>
                       <p className="font-medium mt-1">{candidature.fullName}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Type</Label>
-                      <div className="mt-1">{getTypeBadge(candidature.userType)}</div>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.type", { defaultValue: "Type" })}</Label>
+                      <div className="mt-1">{getTypeBadge(candidature.userType, t)}</div>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.email", { defaultValue: "Email" })}</Label>
                       <p className="font-medium mt-1">{candidature.email}</p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Téléphone</Label>
-                      <p className="font-medium mt-1">{candidature.telephoneMobile || candidature.telephone || "Non renseigné"}</p>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.phone", { defaultValue: "Téléphone" })}</Label>
+                      <p className="font-medium mt-1">{candidature.telephoneMobile || candidature.telephone || t("gesCompetences.candidatureDetail.fields.notProvided", { defaultValue: "Non renseigné" })}</p>
                     </div>
                     {candidature.dateNaissance && (
                       <div>
-                        <Label className="text-xs text-muted-foreground">Date de naissance</Label>
+                        <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.birthDate", { defaultValue: "Date de naissance" })}</Label>
                         <p className="font-medium mt-1">{candidature.dateNaissance}</p>
                       </div>
                     )}
                     {candidature.nationalite && (
                       <div>
-                        <Label className="text-xs text-muted-foreground">Nationalité</Label>
+                        <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.nationality", { defaultValue: "Nationalité" })}</Label>
                         <p className="font-medium mt-1">{candidature.nationalite}</p>
                       </div>
                     )}
                     <div>
-                      <Label className="text-xs text-muted-foreground">Statut</Label>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.status", { defaultValue: "Statut" })}</Label>
                       <div className="mt-1">
-                        {getStatusBadge(candidature.status)}
+                        {getStatusBadge(candidature.status, t)}
                         {candidature.blacklisted && (
-                          <Badge variant="destructive" className="ml-2 text-[10px]">Blacklisté</Badge>
+                          <Badge variant="destructive" className="ml-2 text-[10px]">{t("gesCompetences.candidatureDetail.fields.blacklistedBadge", { defaultValue: "Blacklisté" })}</Badge>
                         )}
                       </div>
                     </div>
                     <div className="md:col-span-2">
-                      <Label className="text-xs text-muted-foreground">Domaine d'expertise</Label>
+                      <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.domain", { defaultValue: "Domaine d'expertise" })}</Label>
                       <p className="font-medium mt-1">{candidature.domaineExpertise}</p>
                     </div>
                     {candidature.sousDomaineExpertise && (
                       <div className="md:col-span-2">
-                        <Label className="text-xs text-muted-foreground">Sous-domaine</Label>
+                        <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.subDomain", { defaultValue: "Sous-domaine" })}</Label>
                         <p className="font-medium mt-1">{candidature.sousDomaineExpertise}</p>
                       </div>
                     )}
                     {candidature.adresseDomicile && (
                       <div className="md:col-span-2">
-                        <Label className="text-xs text-muted-foreground">Adresse</Label>
+                        <Label className="text-xs text-muted-foreground">{t("gesCompetences.candidatureDetail.fields.address", { defaultValue: "Adresse" })}</Label>
                         <p className="font-medium mt-1">{candidature.adresseDomicile}</p>
                       </div>
                     )}
@@ -471,7 +489,7 @@ export default function CandidatureDetailPage() {
               {/* Interview info */}
               {candidature.interviewDate && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <Label className="text-sm font-semibold text-blue-700 mb-1 block">Entretien planifié</Label>
+                  <Label className="text-sm font-semibold text-blue-700 mb-1 block">{t("gesCompetences.candidatureDetail.interviewScheduledLabel", { defaultValue: "Entretien planifié" })}</Label>
                   <p className="text-sm text-blue-800">
                     {new Date(candidature.interviewDate).toLocaleDateString("fr-FR", {
                       weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -485,7 +503,12 @@ export default function CandidatureDetailPage() {
               {candidature.status === "REJECTED" && candidature.rejectionReason && (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                   <Label className="text-sm font-semibold text-slate-700 mb-1 block">
-                    Motif de refus {candidature.rejectionType === "interview" ? "(après entretien)" : "(dossier)"}
+                    {t("gesCompetences.candidatureDetail.rejectionReasonLabel", {
+                      suffix: candidature.rejectionType === "interview"
+                        ? t("gesCompetences.candidatureDetail.rejectionSuffixInterview", { defaultValue: "(après entretien)" })
+                        : t("gesCompetences.candidatureDetail.rejectionSuffixDossier", { defaultValue: "(dossier)" }),
+                      defaultValue: `Motif de refus ${candidature.rejectionType === "interview" ? "(après entretien)" : "(dossier)"}`,
+                    })}
                   </Label>
                   <p className="text-sm text-slate-600">{candidature.rejectionReason}</p>
                 </div>
@@ -495,9 +518,9 @@ export default function CandidatureDetailPage() {
               {candidature.starred && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <Label className="text-sm font-semibold text-amber-700 mb-1 flex items-center gap-2">
-                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> Profil à considérer
+                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> {t("gesCompetences.candidatureDetail.starredLabel", { defaultValue: "Profil à considérer" })}
                   </Label>
-                  <p className="text-sm text-amber-600">Ce profil a été marqué comme intéressant pour de futures opportunités.</p>
+                  <p className="text-sm text-amber-600">{t("gesCompetences.candidatureDetail.starredDesc", { defaultValue: "Ce profil a été marqué comme intéressant pour de futures opportunités." })}</p>
                 </div>
               )}
 
@@ -505,12 +528,12 @@ export default function CandidatureDetailPage() {
               {candidature.blacklisted && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                   <Label className="text-sm font-semibold text-red-700 mb-1 flex items-center gap-2">
-                    <ShieldBan className="w-4 h-4" /> Candidat blacklisté
+                    <ShieldBan className="w-4 h-4" /> {t("gesCompetences.candidatureDetail.blacklistedLabel", { defaultValue: "Candidat blacklisté" })}
                   </Label>
                   <p className="text-sm text-red-600">{candidature.blacklistReason}</p>
                   {candidature.blacklistedAt && (
                     <p className="text-xs text-red-400 mt-1">
-                      Depuis le {new Date(candidature.blacklistedAt).toLocaleDateString("fr-FR")}
+                      {t("gesCompetences.candidatureDetail.blacklistedSince", { date: new Date(candidature.blacklistedAt).toLocaleDateString("fr-FR"), defaultValue: `Depuis le ${new Date(candidature.blacklistedAt).toLocaleDateString("fr-FR")}` })}
                     </p>
                   )}
                   <Button
@@ -519,7 +542,7 @@ export default function CandidatureDetailPage() {
                     className="mt-2 text-green-700 border-green-300"
                     onClick={handleUnblacklist}
                   >
-                    <ShieldCheck className="w-3 h-3 mr-1" /> Retirer de la blacklist
+                    <ShieldCheck className="w-3 h-3 mr-1" /> {t("gesCompetences.candidatureDetail.removeFromBlacklist", { defaultValue: "Retirer de la blacklist" })}
                   </Button>
                 </div>
               )}
@@ -527,9 +550,9 @@ export default function CandidatureDetailPage() {
               {/* Documents */}
               <Card>
                 <CardContent className="pt-6">
-                  <Label className="text-sm font-semibold mb-3 block">Documents</Label>
+                  <Label className="text-sm font-semibold mb-3 block">{t("gesCompetences.candidatureDetail.documentsTitle", { defaultValue: "Documents" })}</Label>
                   <Button variant="outline" className="w-full justify-start gap-2" onClick={handleDownloadFor20}>
-                    <Download className="w-4 h-4" /> Télécharger le formulaire FOR20
+                    <Download className="w-4 h-4" /> {t("gesCompetences.candidatureDetail.downloadFor20", { defaultValue: "Télécharger le formulaire FOR20" })}
                   </Button>
                   {candidature.documentsJson && (() => {
                     try {
@@ -537,7 +560,7 @@ export default function CandidatureDetailPage() {
                       if (!docs || docs.length === 0) return null;
                       return (
                         <div className="mt-3 space-y-2">
-                          <p className="text-xs text-muted-foreground font-medium">Fichiers joints :</p>
+                          <p className="text-xs text-muted-foreground font-medium">{t("gesCompetences.candidatureDetail.attachedFiles", { defaultValue: "Fichiers joints :" })}</p>
                           {docs.map((doc, i) => (
                             <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
                               <span className="text-sm truncate flex-1 mr-2">{doc.name}</span>
@@ -560,7 +583,7 @@ export default function CandidatureDetailPage() {
                                     URL.revokeObjectURL(url);
                                   }}
                                 >
-                                  <Download className="w-3 h-3 mr-1" /> Télécharger
+                                  <Download className="w-3 h-3 mr-1" /> {t("gesCompetences.candidatureDetail.download", { defaultValue: "Télécharger" })}
                                 </Button>
                               )}
                             </div>
@@ -580,17 +603,17 @@ export default function CandidatureDetailPage() {
                     <div className="flex gap-3 flex-wrap">
                       <Button className="flex-1 bg-orange-500 hover:bg-orange-600" onClick={handlePreselectProfile} disabled={isBusy}>
                         {submittingAction === "preselect" ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Action en cours…</>
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
                         ) : (
-                          <><FileText className="w-4 h-4 mr-2" /> Présélectionner (FOR28)</>
+                          <><FileText className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.actions.preselect", { defaultValue: "Présélectionner (FOR28)" })}</>
                         )}
                       </Button>
                       <Button variant="outline" className="flex-1 text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => setShowRejectDialog(true)} disabled={isBusy}>
-                        <XCircle className="w-4 h-4 mr-2" /> Dossier Non Retenu
+                        <XCircle className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.actions.rejectDossier", { defaultValue: "Dossier Non Retenu" })}
                       </Button>
                       {!candidature.blacklisted && (
                         <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setShowBlacklistDialog(true)} disabled={isBusy}>
-                          <ShieldBan className="w-4 h-4 mr-1" /> Blacklist
+                          <ShieldBan className="w-4 h-4 mr-1" /> {t("gesCompetences.candidatureDetail.actions.blacklist", { defaultValue: "Blacklist" })}
                         </Button>
                       )}
                     </div>
@@ -604,14 +627,14 @@ export default function CandidatureDetailPage() {
                         onClick={() => setShowScheduleDialog(true)}
                         disabled={isBusy}
                       >
-                        <CalendarPlus className="w-4 h-4 mr-2" /> Planifier un Entretien
+                        <CalendarPlus className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.actions.scheduleInterview", { defaultValue: "Planifier un Entretien" })}
                       </Button>
                       <Button variant="outline" className="flex-1 text-slate-600 border-slate-300 hover:bg-slate-50" onClick={() => setShowRejectDialog(true)} disabled={isBusy}>
-                        <XCircle className="w-4 h-4 mr-2" /> Dossier Non Retenu
+                        <XCircle className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.actions.rejectDossier", { defaultValue: "Dossier Non Retenu" })}
                       </Button>
                       {!candidature.blacklisted && (
                         <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setShowBlacklistDialog(true)} disabled={isBusy}>
-                          <ShieldBan className="w-4 h-4 mr-1" /> Blacklist
+                          <ShieldBan className="w-4 h-4 mr-1" /> {t("gesCompetences.candidatureDetail.actions.blacklist", { defaultValue: "Blacklist" })}
                         </Button>
                       )}
                     </div>
@@ -622,9 +645,9 @@ export default function CandidatureDetailPage() {
                     <div className="flex gap-3 flex-wrap">
                       <Button variant="outline" className="flex-1 text-blue-600 border-blue-300 hover:bg-blue-50" onClick={handleRestore} disabled={isBusy}>
                         {submittingAction === "restore" ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Action en cours…</>
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
                         ) : (
-                          <><RotateCcw className="w-4 h-4 mr-2" /> Réexaminer la candidature</>
+                          <><RotateCcw className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.actions.reexamine", { defaultValue: "Réexaminer la candidature" })}</>
                         )}
                       </Button>
                       <Button
@@ -636,11 +659,11 @@ export default function CandidatureDetailPage() {
                         disabled={isBusy}
                       >
                         {submittingAction === "star" ? (
-                          <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Action en cours…</>
+                          <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
                         ) : (
                           <>
                             <Star className={`w-4 h-4 mr-1 ${candidature.starred ? "fill-amber-500 text-amber-500" : ""}`} />
-                            {candidature.starred ? "Retirer l'étoile" : "Marquer le profil"}
+                            {candidature.starred ? t("gesCompetences.candidatureDetail.actions.unstar", { defaultValue: "Retirer l'étoile" }) : t("gesCompetences.candidatureDetail.actions.star", { defaultValue: "Marquer le profil" })}
                           </>
                         )}
                       </Button>
@@ -654,7 +677,7 @@ export default function CandidatureDetailPage() {
                     !candidature.blacklisted && (
                       <div className="flex gap-3">
                         <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setShowBlacklistDialog(true)} disabled={isBusy}>
-                          <ShieldBan className="w-4 h-4 mr-1" /> Blacklister ce candidat
+                          <ShieldBan className="w-4 h-4 mr-1" /> {t("gesCompetences.candidatureDetail.actions.blacklistCandidate", { defaultValue: "Blacklister ce candidat" })}
                         </Button>
                       </div>
                     )}
@@ -669,49 +692,48 @@ export default function CandidatureDetailPage() {
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Planifier un Entretien</DialogTitle>
+            <DialogTitle>{t("gesCompetences.candidatureDetail.scheduleDialog.title", { defaultValue: "Planifier un Entretien" })}</DialogTitle>
             <DialogDescription>
-              {candidature && `Candidat(e) : ${candidature.fullName}`}
+              {candidature && t("gesCompetences.candidatureDetail.scheduleDialog.candidateLabel", { name: candidature.fullName, defaultValue: `Candidat(e) : ${candidature.fullName}` })}
               <br />
-              Un email de convocation sera envoyé au candidat et à tous les membres du panel d'entretien.
+              {t("gesCompetences.candidatureDetail.scheduleDialog.notice", { defaultValue: "Un email de convocation sera envoyé au candidat et à tous les membres du panel d'entretien." })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Date de l'entretien *</Label>
+              <Label>{t("gesCompetences.candidatureDetail.scheduleDialog.dateLabel", { defaultValue: "Date de l'entretien *" })}</Label>
               <div className="mt-2">
-                <DatePicker value={interviewDateObj} onChange={setInterviewDateObj} placeholder="Sélectionner une date" minDate={new Date()} />
+                <DatePicker value={interviewDateObj} onChange={setInterviewDateObj} placeholder={t("gesCompetences.candidatureDetail.scheduleDialog.datePlaceholder", { defaultValue: "Sélectionner une date" })} minDate={new Date()} />
               </div>
             </div>
             <div>
-              <Label>Heure de l'entretien *</Label>
+              <Label>{t("gesCompetences.candidatureDetail.scheduleDialog.timeLabel", { defaultValue: "Heure de l'entretien *" })}</Label>
               <div className="mt-2">
-                <TimePicker value={interviewTime} onChange={setInterviewTime} placeholder="Sélectionner l'heure" />
+                <TimePicker value={interviewTime} onChange={setInterviewTime} placeholder={t("gesCompetences.candidatureDetail.scheduleDialog.timePlaceholder", { defaultValue: "Sélectionner l'heure" })} />
               </div>
             </div>
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-slate-600" />
-                <Label className="text-base font-semibold">Composition du Panel d'Entretien</Label>
+                <Label className="text-base font-semibold">{t("gesCompetences.candidatureDetail.scheduleDialog.panelTitle", { defaultValue: "Composition du Panel d'Entretien" })}</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Le Directeur Technique (DT) et le Responsable Qualité (RQ) sont automatiquement inclus.
-                Veuillez sélectionner le Chef de Département et le Responsable d'Accréditation.
+                {t("gesCompetences.candidatureDetail.scheduleDialog.panelNotice", { defaultValue: "Le Directeur Technique (DT) et le Responsable Qualité (RQ) sont automatiquement inclus. Veuillez sélectionner le Chef de Département et le Responsable d'Accréditation." })}
               </p>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="font-medium">DT</span> — <span className="text-muted-foreground">Directeur Technique</span>
+                  <span className="font-medium">DT</span> — <span className="text-muted-foreground">{t("gesCompetences.candidatureDetail.scheduleDialog.dtLabel", { defaultValue: "Directeur Technique" })}</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="font-medium">RQ</span> — <span className="text-muted-foreground">Responsable Qualité</span>
+                  <span className="font-medium">RQ</span> — <span className="text-muted-foreground">{t("gesCompetences.candidatureDetail.scheduleDialog.rqLabel", { defaultValue: "Responsable Qualité" })}</span>
                 </div>
                 <div>
-                  <Label>Chef de Département (CD) *</Label>
+                  <Label>{t("gesCompetences.candidatureDetail.scheduleDialog.cdLabel", { defaultValue: "Chef de Département (CD) *" })}</Label>
                   <Select value={selectedPanelCdId} onValueChange={(val) => { setSelectedPanelCdId(val); setSelectedPanelRaId(""); }}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Sélectionner un Chef de Département" />
+                      <SelectValue placeholder={t("gesCompetences.candidatureDetail.scheduleDialog.cdPlaceholder", { defaultValue: "Sélectionner un Chef de Département" })} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableCDs.map((cd) => (
@@ -723,10 +745,10 @@ export default function CandidatureDetailPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Responsable d'Accréditation (RA) *</Label>
+                  <Label>{t("gesCompetences.candidatureDetail.scheduleDialog.raLabel", { defaultValue: "Responsable d'Accréditation (RA) *" })}</Label>
                   <Select value={selectedPanelRaId} onValueChange={setSelectedPanelRaId} disabled={!selectedPanelCdId}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder={selectedPanelCdId ? "Sélectionner un Responsable d'Accréditation" : "Veuillez d'abord sélectionner un CD"} />
+                      <SelectValue placeholder={selectedPanelCdId ? t("gesCompetences.candidatureDetail.scheduleDialog.raPlaceholder", { defaultValue: "Sélectionner un Responsable d'Accréditation" }) : t("gesCompetences.candidatureDetail.scheduleDialog.raPlaceholderNoCD", { defaultValue: "Veuillez d'abord sélectionner un CD" })} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableRAs
@@ -744,14 +766,14 @@ export default function CandidatureDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="font-medium">GES</span> — <span className="text-muted-foreground">Gestionnaire de Compétences (vous)</span>
+                  <span className="font-medium">GES</span> — <span className="text-muted-foreground">{t("gesCompetences.candidatureDetail.scheduleDialog.gesLabel", { defaultValue: "Gestionnaire de Compétences (vous)" })}</span>
                 </div>
               </div>
             </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setShowScheduleDialog(false); setInterviewDateObj(undefined); setInterviewTime(""); setSelectedPanelCdId(""); setSelectedPanelRaId(""); }}>
-              Annuler
+              {t("gesCompetences.candidatureDetail.scheduleDialog.cancel", { defaultValue: "Annuler" })}
             </Button>
             <Button
               className="bg-[#00A63E] hover:bg-[#009235]"
@@ -759,9 +781,9 @@ export default function CandidatureDetailPage() {
               disabled={!interviewDateObj || !interviewTime || !selectedPanelCdId || !selectedPanelRaId || submittingAction === "schedule"}
             >
               {submittingAction === "schedule" ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Action en cours…</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
               ) : (
-                <><CalendarPlus className="w-4 h-4 mr-2" /> Confirmer & Notifier le Panel</>
+                <><CalendarPlus className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.scheduleDialog.confirm", { defaultValue: "Confirmer & Notifier le Panel" })}</>
               )}
             </Button>
           </DialogFooter>
@@ -772,18 +794,17 @@ export default function CandidatureDetailPage() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Dossier Non Retenu</DialogTitle>
+            <DialogTitle>{t("gesCompetences.candidatureDetail.rejectDialog.title", { defaultValue: "Dossier Non Retenu" })}</DialogTitle>
             <DialogDescription>
-              Le candidat recevra un email professionnel indiquant que son profil ne correspond pas aux besoins actuels,
-              tout en gardant son dossier pour de futures opportunités.
+              {t("gesCompetences.candidatureDetail.rejectDialog.notice", { defaultValue: "Le candidat recevra un email professionnel indiquant que son profil ne correspond pas aux besoins actuels, tout en gardant son dossier pour de futures opportunités." })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectionReason">Motif de refus (non visible par le candidat)</Label>
+              <Label htmlFor="rejectionReason">{t("gesCompetences.candidatureDetail.rejectDialog.reasonLabel", { defaultValue: "Motif de refus (non visible par le candidat)" })}</Label>
               <Textarea
                 id="rejectionReason"
-                placeholder="Raison interne du refus (pour vos archives uniquement)..."
+                placeholder={t("gesCompetences.candidatureDetail.rejectDialog.reasonPlaceholder", { defaultValue: "Raison interne du refus (pour vos archives uniquement)..." })}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
@@ -798,20 +819,20 @@ export default function CandidatureDetailPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Star className={`w-4 h-4 ${starOnReject ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
-                  <span className="text-sm font-medium">Bon profil à considérer</span>
+                  <span className="text-sm font-medium">{t("gesCompetences.candidatureDetail.rejectDialog.starCheckboxLabel", { defaultValue: "Bon profil à considérer" })}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Marquer ce profil pour une éventuelle reconsidération future.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("gesCompetences.candidatureDetail.rejectDialog.starCheckboxDesc", { defaultValue: "Marquer ce profil pour une éventuelle reconsidération future." })}</p>
               </div>
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => { setShowRejectDialog(false); setRejectionReason(""); setStarOnReject(false); }} disabled={submittingAction === "reject"}>
-                Annuler
+                {t("gesCompetences.candidatureDetail.rejectDialog.cancel", { defaultValue: "Annuler" })}
               </Button>
               <Button variant="outline" className="flex-1 text-slate-600" onClick={handleRejectDossier} disabled={submittingAction === "reject"}>
                 {submittingAction === "reject" ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Action en cours…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
                 ) : (
-                  "Confirmer"
+                  t("gesCompetences.candidatureDetail.rejectDialog.confirm", { defaultValue: "Confirmer" })
                 )}
               </Button>
             </div>
@@ -824,20 +845,20 @@ export default function CandidatureDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
-              <ShieldBan className="w-5 h-5" /> Blacklister un candidat
+              <ShieldBan className="w-5 h-5" /> {t("gesCompetences.candidatureDetail.blacklistDialog.title", { defaultValue: "Blacklister un candidat" })}
             </DialogTitle>
             <DialogDescription>
-              {candidature && `Candidat(e) : ${candidature.fullName}`}
+              {candidature && t("gesCompetences.candidatureDetail.blacklistDialog.candidateLabel", { name: candidature.fullName, defaultValue: `Candidat(e) : ${candidature.fullName}` })}
               <br />
-              Un candidat blacklisté ne pourra plus se réinscrire avec la même adresse email.
+              {t("gesCompetences.candidatureDetail.blacklistDialog.notice", { defaultValue: "Un candidat blacklisté ne pourra plus se réinscrire avec la même adresse email." })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="blacklistReason">Motif du blacklist *</Label>
+              <Label htmlFor="blacklistReason">{t("gesCompetences.candidatureDetail.blacklistDialog.reasonLabel", { defaultValue: "Motif du blacklist *" })}</Label>
               <Textarea
                 id="blacklistReason"
-                placeholder="Raison du blacklist (spam, abus, fausse identité...)"
+                placeholder={t("gesCompetences.candidatureDetail.blacklistDialog.reasonPlaceholder", { defaultValue: "Raison du blacklist (spam, abus, fausse identité...)" })}
                 value={blacklistReason}
                 onChange={(e) => setBlacklistReason(e.target.value)}
                 rows={3}
@@ -846,18 +867,18 @@ export default function CandidatureDetailPage() {
             </div>
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-xs text-red-700">
-                <strong>Attention :</strong> Cette action empêchera ce candidat de se réinscrire. Elle peut être annulée ultérieurement.
+                <strong>{t("gesCompetences.candidatureDetail.blacklistDialog.warningTitle", { defaultValue: "Attention :" })}</strong> {t("gesCompetences.candidatureDetail.blacklistDialog.warningText", { defaultValue: "Cette action empêchera ce candidat de se réinscrire. Elle peut être annulée ultérieurement." })}
               </p>
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => { setShowBlacklistDialog(false); setBlacklistReason(""); }} disabled={submittingAction === "blacklist"}>
-                Annuler
+                {t("gesCompetences.candidatureDetail.blacklistDialog.cancel", { defaultValue: "Annuler" })}
               </Button>
               <Button variant="destructive" onClick={handleBlacklist} disabled={!blacklistReason.trim() || submittingAction === "blacklist"}>
                 {submittingAction === "blacklist" ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Action en cours…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("gesCompetences.candidatureDetail.actions.inProgress", { defaultValue: "Action en cours…" })}</>
                 ) : (
-                  <><ShieldBan className="w-4 h-4 mr-2" /> Confirmer le blacklist</>
+                  <><ShieldBan className="w-4 h-4 mr-2" /> {t("gesCompetences.candidatureDetail.blacklistDialog.confirm", { defaultValue: "Confirmer le blacklist" })}</>
                 )}
               </Button>
             </DialogFooter>

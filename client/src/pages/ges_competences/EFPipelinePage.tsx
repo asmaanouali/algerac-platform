@@ -21,12 +21,12 @@ interface Q {
 }
 
 const PHASES = [
-  { key: "PENDING_TRAINING", label: "En attente formation", color: "bg-yellow-100 text-yellow-800", icon: BookOpen },
-  { key: "TRAINING_IN_PROGRESS", label: "Formation en cours", color: "bg-blue-100 text-blue-800", icon: BookOpen },
-  { key: "TRAINING_COMPLETED", label: "Formation terminée", color: "bg-cyan-100 text-cyan-800", icon: BookOpen },
-  { key: "OBSERVER_PHASE", label: "Phase observation", color: "bg-indigo-100 text-indigo-800", icon: Eye },
-  { key: "PRACTICE_PHASE", label: "Phase pratique", color: "bg-purple-100 text-purple-800", icon: ClipboardCheck },
-  { key: "PENDING_COMMISSION", label: "En attente commission", color: "bg-orange-100 text-orange-800", icon: Award },
+  { key: "PENDING_TRAINING", i18nKey: "PENDING_TRAINING", label: "En attente formation", color: "bg-yellow-100 text-yellow-800", icon: BookOpen },
+  { key: "TRAINING_IN_PROGRESS", i18nKey: "TRAINING_IN_PROGRESS", label: "Formation en cours", color: "bg-blue-100 text-blue-800", icon: BookOpen },
+  { key: "TRAINING_COMPLETED", i18nKey: "TRAINING_COMPLETED", label: "Formation terminée", color: "bg-cyan-100 text-cyan-800", icon: BookOpen },
+  { key: "OBSERVER_PHASE", i18nKey: "OBSERVER_PHASE", label: "Phase observation", color: "bg-indigo-100 text-indigo-800", icon: Eye },
+  { key: "PRACTICE_PHASE", i18nKey: "PRACTICE_PHASE", label: "Phase pratique", color: "bg-purple-100 text-purple-800", icon: ClipboardCheck },
+  { key: "PENDING_COMMISSION", i18nKey: "PENDING_COMMISSION", label: "En attente commission", color: "bg-orange-100 text-orange-800", icon: Award },
 ];
 
 export default function EFPipelinePage() {
@@ -36,7 +36,7 @@ export default function EFPipelinePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Pipeline Évaluateurs en Formation | ALGERAC";
+    document.title = t("gesCompetences.efPipeline.pageTitle", { defaultValue: "Pipeline Évaluateurs en Formation | ALGERAC" });
     fetchAll();
   }, []);
 
@@ -53,8 +53,8 @@ export default function EFPipelinePage() {
   const advance = async (id: number, action: string) => {
     const url = `/api/qualifications/${id}/${action}`;
     const res = await fetch(url, { method: "POST", credentials: "include" });
-    if (res.ok) { toast({ title: "Étape avancée" }); fetchAll(); }
-    else { const err = await res.json(); toast({ title: "Erreur", description: err.error, variant: "destructive" }); }
+    if (res.ok) { toast({ title: t("gesCompetences.efPipeline.stepAdvanced", { defaultValue: "Étape avancée" }) }); fetchAll(); }
+    else { const err = await res.json(); toast({ title: t("gesCompetences.efPipeline.error", { defaultValue: "Erreur" }), description: err.error, variant: "destructive" }); }
   };
 
   const grouped = useMemo(() => {
@@ -66,9 +66,9 @@ export default function EFPipelinePage() {
 
   const nextActionLabel = (status: string): { label: string; action: string } | null => {
     switch (status) {
-      case "TRAINING_COMPLETED": return { label: "→ Phase observation", action: "advance-observer" };
-      case "OBSERVER_PHASE": return { label: "→ Phase pratique", action: "advance-practice" };
-      case "PRACTICE_PHASE": return { label: "→ Soumettre commission", action: "submit-commission" };
+      case "TRAINING_COMPLETED": return { label: t("gesCompetences.efPipeline.nextAction.toObserver", { defaultValue: "→ Phase observation" }), action: "advance-observer" };
+      case "OBSERVER_PHASE": return { label: t("gesCompetences.efPipeline.nextAction.toPractice", { defaultValue: "→ Phase pratique" }), action: "advance-practice" };
+      case "PRACTICE_PHASE": return { label: t("gesCompetences.efPipeline.nextAction.toCommission", { defaultValue: "→ Soumettre commission" }), action: "submit-commission" };
       default: return null;
     }
   };
@@ -82,14 +82,14 @@ export default function EFPipelinePage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
-                <GraduationCap className="h-6 w-6 text-indigo-600" /> Pipeline Évaluateurs en Formation (EF)
+                <GraduationCap className="h-6 w-6 text-indigo-600" /> {t("gesCompetences.efPipeline.title", { defaultValue: "Pipeline Évaluateurs en Formation (EF)" })}
               </h1>
-              <p className="text-sm text-slate-500 mt-1">PRO 06 §5.3 — parcours formation → observation → pratique → commission</p>
+              <p className="text-sm text-slate-500 mt-1">{t("gesCompetences.efPipeline.subtitle", { defaultValue: "PRO 06 §5.3 — parcours formation → observation → pratique → commission" })}</p>
             </div>
             <Button variant="outline" onClick={fetchAll}><RefreshCw className="h-4 w-4 mr-2" />{t("common.refresh")}</Button>
           </div>
 
-          {loading ? <p>Chargement…</p> : (
+          {loading ? <p>{t("gesCompetences.efPipeline.loading", { defaultValue: "Chargement…" })}</p> : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {PHASES.map((phase) => {
                 const Icon = phase.icon;
@@ -98,13 +98,13 @@ export default function EFPipelinePage() {
                   <Card key={phase.key}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center justify-between">
-                        <span className="flex items-center gap-2"><Icon className="h-4 w-4" />{phase.label}</span>
+                        <span className="flex items-center gap-2"><Icon className="h-4 w-4" />{t(`gesCompetences.efPipeline.phases.${phase.i18nKey}`, { defaultValue: phase.label })}</span>
                         <Badge className={phase.color}>{list.length}</Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {list.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-4 text-center">Vide</p>
+                        <p className="text-xs text-slate-400 py-4 text-center">{t("gesCompetences.efPipeline.empty", { defaultValue: "Vide" })}</p>
                       ) : list.map((q) => {
                         const next = nextActionLabel(q.status);
                         return (
@@ -112,11 +112,11 @@ export default function EFPipelinePage() {
                             <div className="font-medium text-sm">{q.evaluator.fullName}</div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-[10px]">{q.qualifiedRole}</Badge>
-                              {q.trainingExamScore != null && <span className="text-slate-500">Examen: {q.trainingExamScore}%</span>}
+                              {q.trainingExamScore != null && <span className="text-slate-500">{t("gesCompetences.efPipeline.exam", { score: q.trainingExamScore, defaultValue: `Examen: ${q.trainingExamScore}%` })}</span>}
                             </div>
                             <div className="text-slate-600">
-                              Obs: {q.observerMissionsCompleted}/1 · Sup: {q.supervisedMissionsCompleted}/2
-                              {q.partialAssessmentCompleted && <span className="text-emerald-600 ml-1">· Partielle ✓</span>}
+                              {t("gesCompetences.efPipeline.obsSup", { obs: q.observerMissionsCompleted, sup: q.supervisedMissionsCompleted, defaultValue: `Obs: ${q.observerMissionsCompleted}/1 · Sup: ${q.supervisedMissionsCompleted}/2` })}
+                              {q.partialAssessmentCompleted && <span className="text-emerald-600 ml-1">{t("gesCompetences.efPipeline.partialDone", { defaultValue: "· Partielle ✓" })}</span>}
                             </div>
                             {next && (
                               <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-[11px]" onClick={() => advance(q.id, next.action)}>

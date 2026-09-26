@@ -41,6 +41,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'à' HH:mm");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -619,7 +622,7 @@ public class EmailService {
 
     public void sendFor28AccessEmail(User user, String token, String secretCode) {
         String typeLabel = getExpertTypeLabel(user);
-        String for28Url = "http://localhost:5173/for28/" + token;
+        String for28Url = frontendUrl + "/for28/" + token;
 
         String content = """
                 <p>Bonjour <strong>%s %s</strong>,</p>

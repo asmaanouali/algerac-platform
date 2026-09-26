@@ -1,6 +1,8 @@
 package com.algerac.controller;
 
 import com.algerac.model.User;
+import com.algerac.model.UserRole;
+import com.algerac.repository.UserRepository;
 import com.algerac.service.CandidatureService;
 import com.algerac.service.PdfGenerationService;
 import jakarta.servlet.http.HttpSession;
@@ -23,6 +25,29 @@ public class CandidatureController {
 
     private final CandidatureService candidatureService;
     private final PdfGenerationService pdfGenerationService;
+    private final UserRepository userRepository;
+
+    /**
+     * Vérifie que l'utilisateur en session est authentifié et possède l'un des rôles autorisés.
+     * Retourne null si l'accès est autorisé, sinon une réponse 401/403 à renvoyer telle quelle.
+     */
+    private ResponseEntity<Map<String, Object>> requireRole(HttpSession session, UserRole... allowedRoles) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", "Non authentifié", "message", "Non authentifié"));
+        }
+        User caller = userRepository.findById(userId).orElse(null);
+        if (caller == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", "Non authentifié", "message", "Non authentifié"));
+        }
+        for (UserRole role : allowedRoles) {
+            if (caller.hasRole(role)) {
+                return null;
+            }
+        }
+        log.warn("Accès refusé pour userId={} (rôle={}) - rôles requis: {}", userId, caller.getRole(), allowedRoles);
+        return ResponseEntity.status(403).body(Map.of("success", false, "error", "Accès refusé : rôle insuffisant", "message", "Accès refusé : rôle insuffisant"));
+    }
 
     /**
      * Récupère toutes les candidatures en attente (PENDING)
@@ -31,12 +56,9 @@ public class CandidatureController {
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingCandidatures(HttpSession session) {
         try {
-            // Vérifier l'authentification
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                log.warn("Tentative d'accès non autorisé à /api/candidatures/pending");
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
             
             log.info("GET /api/candidatures/pending - Récupération des candidatures en attente par userId: {}", userId);
             
@@ -56,11 +78,8 @@ public class CandidatureController {
     @GetMapping("/all")
     public ResponseEntity<?> getAllCandidatures(HttpSession session) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             
             log.info("GET /api/candidatures/all - Récupération de toutes les candidatures");
             List<User> allUsers = candidatureService.getAllCandidatures();
@@ -77,11 +96,8 @@ public class CandidatureController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getCandidatureById(@PathVariable Long id, HttpSession session) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body("Non authentifié");
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             
             log.info("GET /api/candidatures/{} - Récupération d'une candidature", id);
             User user = candidatureService.getCandidatureById(id);
@@ -102,12 +118,9 @@ public class CandidatureController {
     @GetMapping("/oec/pending")
     public ResponseEntity<?> getPendingOECCandidatures(HttpSession session) {
         try {
-            // Vérifier l'authentification
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                log.warn("Tentative d'accès non autorisé à /api/candidatures/oec/pending");
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
             
             log.info("GET /api/candidatures/oec/pending - Récupération des candidatures OEC en attente par userId: {}", userId);
             
@@ -128,11 +141,8 @@ public class CandidatureController {
     @GetMapping("/oec/all")
     public ResponseEntity<?> getAllOECCandidatures(HttpSession session) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return authError;
             
             log.info("GET /api/candidatures/oec/all - Récupération de toutes les candidatures OEC");
             List<User> allOECs = candidatureService.getAllOECCandidatures();
@@ -150,11 +160,8 @@ public class CandidatureController {
     @GetMapping("/oec/approved")
     public ResponseEntity<?> getApprovedOECCandidatures(HttpSession session) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.ADMIN);
+            if (authError != null) return authError;
             
             log.info("GET /api/candidatures/oec/approved - Récupération des OEC approuvés en attente de compte");
             List<User> approvedOECs = candidatureService.getApprovedOECCandidatures();
@@ -172,11 +179,9 @@ public class CandidatureController {
     @PostMapping("/oec/{id}/create-account")
     public ResponseEntity<?> createOECAccount(@PathVariable Long id, HttpSession session) {
         try {
-            // Vérifier l'authentification
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.ADMIN);
+            if (authError != null) return authError;
             Long adminUserId = (Long) session.getAttribute("userId");
-            if (adminUserId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
             
             log.info("POST /api/candidatures/oec/{}/create-account - Création de compte par admin {}", id, adminUserId);
             
@@ -211,11 +216,8 @@ public class CandidatureController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<?> approveCandidature(@PathVariable Long id, HttpSession session) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return authError;
             
             log.info("POST /api/candidatures/{}/approve - Approbation d'une candidature", id);
             
@@ -254,11 +256,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            // Vérifier l'authentification
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return authError;
             
             String rejectionReason = request.get("rejectionReason");
             
@@ -299,10 +298,8 @@ public class CandidatureController {
     @GetMapping("/oec/{id}/doc1")
     public ResponseEntity<byte[]> downloadDoc1(@PathVariable Long id, HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).build();
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT);
+            if (authError != null) return ResponseEntity.status(authError.getStatusCode()).build();
             
             log.info("GET /api/candidatures/oec/{}/doc1 - Téléchargement DOC1", id);
             
@@ -329,10 +326,8 @@ public class CandidatureController {
     @GetMapping("/experts/{id}/for20")
     public ResponseEntity<byte[]> downloadFor20(@PathVariable Long id, HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).build();
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES, UserRole.DT, UserRole.RA, UserRole.CD, UserRole.RQ);
+            if (authError != null) return ResponseEntity.status(authError.getStatusCode()).build();
             
             log.info("GET /api/candidatures/experts/{}/for20 - Téléchargement FOR20", id);
             
@@ -360,10 +355,9 @@ public class CandidatureController {
     @GetMapping("/experts")
     public ResponseEntity<?> getExpertCandidatures(HttpSession session) {
         try {
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES, UserRole.DT);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
             
             log.info("GET /api/candidatures/experts - Récupération des candidatures experts par userId: {}", userId);
             
@@ -384,10 +378,8 @@ public class CandidatureController {
     @GetMapping("/experts/approved")
     public ResponseEntity<?> getApprovedExpertCandidatures(HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.ADMIN);
+            if (authError != null) return authError;
             log.info("GET /api/candidatures/experts/approved - Récupération des experts approuvés en attente de compte");
             List<User> approvedExperts = candidatureService.getApprovedExpertCandidatures();
             return ResponseEntity.ok(approvedExperts);
@@ -404,9 +396,9 @@ public class CandidatureController {
     @PostMapping("/experts/{id}/create-account")
     public ResponseEntity<?> createExpertAccount(@PathVariable Long id, HttpSession session) {
         try {
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.ADMIN);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null)
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
 
             String generatedPassword = candidatureService.createExpertAccount(id, userId);
 
@@ -432,10 +424,8 @@ public class CandidatureController {
     @PostMapping("/experts/{id}/approve")
     public ResponseEntity<?> approveExpertCandidature(@PathVariable Long id, HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES, UserRole.DT);
+            if (authError != null) return authError;
             
             log.info("POST /api/candidatures/experts/{}/approve - Approbation candidature expert", id);
             
@@ -474,10 +464,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES, UserRole.DT);
+            if (authError != null) return authError;
             
             String rejectionReason = request.get("rejectionReason");
             
@@ -527,10 +515,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String interviewDateStr = (String) request.get("interviewDate");
             if (interviewDateStr == null || interviewDateStr.trim().isEmpty()) {
@@ -587,10 +573,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String newDateStr = request.get("newDate");
             if (newDateStr == null || newDateStr.trim().isEmpty()) {
@@ -636,10 +620,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/{}/confirm-interview - Confirmation entretien", id);
             
@@ -678,10 +660,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String notes = request.get("notes");
             String checklistJson = request.get("checklistJson");
@@ -722,10 +702,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/{}/complete-interview - Marque entretien terminé", id);
             
@@ -764,10 +742,9 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
 
             String role = body != null ? body.get("role") : null;
             log.info("POST /api/candidatures/experts/{}/interview-accept - Acceptation après entretien, role={}", id, role);
@@ -807,10 +784,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String internalNotes = request.get("internalNotes");
 
@@ -846,10 +821,8 @@ public class CandidatureController {
     @GetMapping("/experts/interviews")
     public ResponseEntity<?> getScheduledInterviews(HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("GET /api/candidatures/experts/interviews - Récupération des entretiens");
             
@@ -874,10 +847,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String internalNotes = request.get("internalNotes");
 
@@ -916,10 +887,8 @@ public class CandidatureController {
     @PostMapping("/experts/{id}/preselect-profile")
     public ResponseEntity<?> preselectProfile(@PathVariable Long id, HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             log.info("POST /api/candidatures/experts/{}/preselect-profile - Présélection profil", id);
             User user = candidatureService.preselectProfile(id);
             log.info("Profil {} présélectionné avec succès - lien FOR28 envoyé", id);
@@ -949,10 +918,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             String reason = request.get("reason");
             if (reason == null || reason.trim().isEmpty()) {
@@ -979,10 +946,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/{}/unblacklist - Retrait blacklist", id);
             candidatureService.unblacklistCandidate(id);
@@ -1005,10 +970,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/{}/restore - Restauration candidature", id);
             candidatureService.restoreCandidature(id);
@@ -1031,10 +994,8 @@ public class CandidatureController {
             HttpSession session
     ) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/{}/toggle-star - Toggle étoile", id);
             boolean starred = candidatureService.toggleStar(id);
@@ -1054,10 +1015,8 @@ public class CandidatureController {
     @PostMapping("/experts/expire-unconfirmed")
     public ResponseEntity<?> expireUnconfirmedInterviews(HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("success", false, "message", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
 
             log.info("POST /api/candidatures/experts/expire-unconfirmed - Vérification des expirations");
             int expired = candidatureService.expireUnconfirmedInterviews();
@@ -1076,10 +1035,9 @@ public class CandidatureController {
     @GetMapping("/experts/my-interviews")
     public ResponseEntity<?> getMyInterviews(HttpSession session) {
         try {
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT, UserRole.RQ, UserRole.CD, UserRole.RA, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
             
             Object userRoleObj = session.getAttribute("userRole");
             String userRole = userRoleObj != null ? userRoleObj.toString() : null;
@@ -1100,10 +1058,9 @@ public class CandidatureController {
     @GetMapping("/experts/{id}/panel-view")
     public ResponseEntity<?> getCandidateForPanel(@PathVariable Long id, HttpSession session) {
         try {
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.DT, UserRole.RQ, UserRole.CD, UserRole.RA, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
             
             Object userRoleObj = session.getAttribute("userRole");
             String userRole = userRoleObj != null ? userRoleObj.toString() : null;
@@ -1133,10 +1090,8 @@ public class CandidatureController {
     @GetMapping("/experts/panel-members")
     public ResponseEntity<?> getAvailablePanelMembers(HttpSession session) {
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
-            }
+            ResponseEntity<Map<String, Object>> authError = requireRole(session, UserRole.GES_COMPETENCES);
+            if (authError != null) return authError;
             
             log.info("GET /api/candidatures/experts/panel-members - Récupération des membres disponibles pour le panel");
             

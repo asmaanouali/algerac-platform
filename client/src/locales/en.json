@@ -64,7 +64,18 @@
     "loginError": "Login error",
     "emailNotFound": "No account found with this email address",
     "wrongPassword": "Incorrect password",
+    "invalidCredentials": "Incorrect email or password",
     "logout": "Sign out",
+    "twoFactor": {
+      "title": "Verification required",
+      "subtitle": "Enter the code sent to {{email}}",
+      "code": "Verification code",
+      "verify": "Verify",
+      "verifying": "Verifying...",
+      "resendCode": "Resend code",
+      "resending": "Resending...",
+      "back": "Back to sign in"
+    },
     "passwordRecovery": {
       "errorTitle": "Error",
       "networkError": "Network or server error.",
@@ -99,12 +110,12 @@
         "subtitle": "Create a secure password for your account",
         "passwordLabel": "New password",
         "confirmLabel": "Confirm password",
-        "minHint": "Minimum 8 characters",
+        "minHint": "Minimum 12 characters, with an uppercase letter, a lowercase letter, a number and a symbol",
         "changeButton": "Change password",
         "changingButton": "Changing...",
         "passwordChangedTitle": "Password updated!",
         "passwordChangedDescription": "Your password has been changed successfully.",
-        "passwordMinError": "Password must contain at least 8 characters.",
+        "passwordMinError": "Password must be at least 12 characters and include an uppercase letter, a lowercase letter, a number and a special character.",
         "passwordMismatchError": "Passwords do not match.",
         "resetError": "Error while resetting password."
       }

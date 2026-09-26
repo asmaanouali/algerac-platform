@@ -64,7 +64,18 @@
     "loginError": "Erreur de connexion",
     "emailNotFound": "Aucun compte n'est associé à cet email",
     "wrongPassword": "Mot de passe incorrect",
+    "invalidCredentials": "Email ou mot de passe incorrect",
     "logout": "Déconnexion",
+    "twoFactor": {
+      "title": "Vérification requise",
+      "subtitle": "Entrez le code envoyé à {{email}}",
+      "code": "Code de vérification",
+      "verify": "Vérifier",
+      "verifying": "Vérification...",
+      "resendCode": "Renvoyer le code",
+      "resending": "Renvoi...",
+      "back": "Retour à la connexion"
+    },
     "passwordRecovery": {
       "errorTitle": "Erreur",
       "networkError": "Erreur réseau ou serveur.",
@@ -99,12 +110,12 @@
         "subtitle": "Créez un mot de passe sécurisé pour votre compte",
         "passwordLabel": "Nouveau mot de passe",
         "confirmLabel": "Confirmer le mot de passe",
-        "minHint": "Minimum 8 caractères",
+        "minHint": "Minimum 12 caractères, avec une majuscule, une minuscule, un chiffre et un symbole",
         "changeButton": "Changer le mot de passe",
         "changingButton": "Changement...",
         "passwordChangedTitle": "Mot de passe modifié !",
         "passwordChangedDescription": "Votre mot de passe a été changé avec succès.",
-        "passwordMinError": "Le mot de passe doit contenir au moins 8 caractères.",
+        "passwordMinError": "Le mot de passe doit contenir au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial.",
         "passwordMismatchError": "Les mots de passe ne correspondent pas.",
         "resetError": "Erreur lors de la réinitialisation."
       }

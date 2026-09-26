@@ -27,6 +27,7 @@ interface SecuritySettings {
   maxLoginAttempts?: number;
   ipRestriction?: boolean;
   ipWhitelistEnabled?: boolean;
+  ipWhitelist?: string;
   sessionTimeout?: boolean;
   sessionTimeoutMinutes?: number;
   lockoutDurationMinutes?: number;
@@ -241,6 +242,19 @@ export default function SecurityPage() {
                     <Label>Restriction par adresse IP</Label>
                     <Switch checked={!!ipRestriction} onCheckedChange={(v) => setSettings({ ...settings, ipRestriction: v, ipWhitelistEnabled: v })} />
                   </div>
+                  {ipRestriction && (
+                    <div className="space-y-2">
+                      <Label>Adresses IP autorisées (séparées par des virgules)</Label>
+                      <Input
+                        placeholder="ex: 41.200.0.1, 105.12.*"
+                        value={settings.ipWhitelist ?? ""}
+                        onChange={(e) => setSettings({ ...settings, ipWhitelist: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Utilisez "*" en fin d'adresse pour autoriser un préfixe (ex: 105.12.*). Aucune IP listée = tout le monde est bloqué.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <Label>Expiration de session</Label>
                     <Switch checked={!!settings.sessionTimeout} onCheckedChange={(v) => setSettings({ ...settings, sessionTimeout: v })} />

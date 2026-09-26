@@ -182,7 +182,7 @@ public class EmailService {
     // ============================================================
 
     public void sendOtpResetPassword(User user, String otp) {
-        log.info("[EMAIL SERVICE] Début sendOtpResetPassword pour {} (OTP: {})", user.getEmail(), otp);
+        log.info("[EMAIL SERVICE] Début sendOtpResetPassword pour {}", user.getEmail());
         String content = """
                 <p>Bonjour <strong>%s</strong>,</p>
                 <p>Vous avez demandé la réinitialisation de votre mot de passe sur la plateforme ALGERAC.</p>
@@ -197,6 +197,24 @@ public class EmailService {
                         spotlightCard("Votre code de vérification", otp, null),
                         supportLine());
         sendBrandedEmail(user.getEmail(), "Réinitialisation du mot de passe - ALGERAC", content);
+    }
+
+    public void sendLoginOtp(User user, String otp) {
+        log.info("[EMAIL SERVICE] Début sendLoginOtp pour {}", user.getEmail());
+        String content = """
+                <p>Bonjour <strong>%s</strong>,</p>
+                <p>Une tentative de connexion à votre compte ALGERAC nécessite une vérification supplémentaire.</p>
+                %s
+                <p style="text-align: center; color: #666; font-size: 13px; margin-top: -10px;">
+                    Ce code est valable <strong>5 minutes</strong>.
+                </p>
+                <p>Si vous n'êtes pas à l'origine de cette tentative de connexion, changez votre mot de passe immédiatement.</p>
+                %s
+                """.formatted(
+                        user.getFullName(),
+                        spotlightCard("Votre code de connexion", otp, null),
+                        supportLine());
+        sendBrandedEmail(user.getEmail(), "Code de vérification de connexion - ALGERAC", content);
     }
 
     // ============================================================

@@ -2,10 +2,12 @@ package com.algerac.service;
 
 import com.algerac.dto.ExpertSignupRequest;
 import com.algerac.dto.OECSignupRequest;
+import com.algerac.model.LoginTwoFactorToken;
 import com.algerac.model.PasswordResetToken;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.model.UserStatus;
+import com.algerac.repository.LoginTwoFactorTokenRepository;
 import com.algerac.repository.PasswordResetTokenRepository;
 import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,6 +32,7 @@ public class AuthService {
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final LoginTwoFactorTokenRepository loginTwoFactorTokenRepository;
 
     private static final String EXPERT_PREFIX = "EXP";
     private static final String FORMATEUR_PREFIX = "FOR";
@@ -246,14 +249,15 @@ public class AuthService {
     }
     
     public User authenticate(String email, String password) {
+        // Same error for unknown email and wrong password to avoid leaking account existence
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("EMAIL_NOT_FOUND");
+            throw new RuntimeException("INVALID_CREDENTIALS");
         }
         
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("WRONG_PASSWORD");
+            throw new RuntimeException("INVALID_CREDENTIALS");
         }
         
         if (user.getStatus() != UserStatus.APPROVED) {
@@ -268,6 +272,75 @@ public class AuthService {
                 .orElse(null);
     }
 
+    // Message unique pour tous les cas d'échec de vérification du code de connexion.
+    private static final String LOGIN_OTP_GENERIC_ERROR = "Code invalide ou expiré. Veuillez recommencer la connexion.";
+
+    /**
+     * Démarre le second facteur d'authentification après validation du mot de passe :
+     * génère un OTP, l'envoie par email et retourne un token de challenge (cookie).
+     */
+    @Transactional
+    public String initiateTwoFactorChallenge(User user) {
+        String challenge = java.util.UUID.randomUUID().toString();
+        String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
+
+        loginTwoFactorTokenRepository.deleteByUser(user);
+        LoginTwoFactorToken twoFactorToken = LoginTwoFactorToken.builder()
+                .token(challenge + ":" + otp)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(5))
+                .build();
+        loginTwoFactorTokenRepository.save(twoFactorToken);
+
+        try {
+            emailService.sendLoginOtp(user, otp);
+        } catch (Exception e) {
+            log.warn("[AUTH SERVICE] Erreur envoi email 2FA (challenge toujours valide): {}", e.getMessage());
+        }
+
+        return challenge;
+    }
+
+    /**
+     * Renvoie un nouveau code pour un challenge de connexion déjà émis (même utilisateur).
+     */
+    @Transactional
+    public void resendTwoFactorChallenge(String challenge) {
+        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByTokenStartingWith(challenge);
+        if (tokenOpt.isEmpty()) {
+            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+        }
+        User user = tokenOpt.get().getUser();
+        initiateTwoFactorChallenge(user);
+    }
+
+    /**
+     * Vérifie l'OTP de connexion et retourne l'utilisateur si valide (crée la session côté contrôleur).
+     */
+    @Transactional
+    public User verifyLoginOtp(String challenge, String otp) {
+        String cleanedOtp = otp != null ? otp.trim() : "";
+
+        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByTokenStartingWith(challenge);
+        if (tokenOpt.isEmpty()) {
+            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+        }
+
+        LoginTwoFactorToken twoFactorToken = tokenOpt.get();
+        if (twoFactorToken.isExpired()) {
+            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+        }
+
+        String[] parts = twoFactorToken.getToken().split(":");
+        if (parts.length != 2 || !parts[1].trim().equals(cleanedOtp)) {
+            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+        }
+
+        User user = twoFactorToken.getUser();
+        loginTwoFactorTokenRepository.delete(twoFactorToken);
+        return user;
+    }
+
     /**
      * Initie la procédure de récupération du mot de passe
      * Génère un OTP et l'envoie par email
@@ -276,19 +349,20 @@ public class AuthService {
     public String forgotPassword(String email) {
         log.info("[AUTH SERVICE] Forgot password pour: {}", email);
         
+        // Toujours renvoyer un token, même si l'email est inconnu, pour ne pas révéler
+        // l'existence d'un compte (protection contre l'énumération d'emails).
+        String token = java.util.UUID.randomUUID().toString();
+        
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("Aucun utilisateur avec cet email.");
+            log.info("[AUTH SERVICE] Email inconnu, réponse générique renvoyée sans envoi.");
+            return token;
         }
         
         User user = userOpt.get();
         
         // Générer un code OTP à 6 chiffres
         String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
-        log.info("[AUTH SERVICE] OTP généré pour {}", email);
-        
-        // Token unique pour le frontend (UUID)
-        String token = java.util.UUID.randomUUID().toString();
         
         // Supprimer les anciens tokens pour cet utilisateur
         passwordResetTokenRepository.deleteByUser(user);
@@ -307,30 +381,18 @@ public class AuthService {
             log.info("[AUTH SERVICE] Email OTP envoyé avec succès");
         } catch (Exception e) {
             log.warn("[AUTH SERVICE] Erreur envoi email (token toujours valide): {}", e.getMessage());
-            log.warn("[AUTH SERVICE] [DEV] OTP pour {} : {}", email, otp);
         }
         
-        // Return token:otp so controller can expose OTP in dev
-        return token + "|" + otp;
-    }
-
-    /**
-     * [DEV] Récupère l'OTP actuel pour un email (pour les tests)
-     */
-    @Transactional(readOnly = true)
-    public String getDevOtp(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) throw new RuntimeException("Utilisateur introuvable.");
-        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByUser(userOpt.get());
-        if (tokenOpt.isEmpty()) throw new RuntimeException("Aucun OTP actif pour cet email.");
-        String[] parts = tokenOpt.get().getToken().split(":");
-        if (parts.length != 2) throw new RuntimeException("Format invalide.");
-        return parts[1];
+        return token;
     }
 
     /**
      * Vérifie l'OTP saisi par l'utilisateur
      */
+    // Message unique pour tous les cas d'échec de vérification (token inconnu, expiré ou
+    // OTP erroné) afin de ne pas révéler si l'email associé existe réellement.
+    private static final String OTP_GENERIC_ERROR = "Code ou lien invalide. Veuillez redemander un nouveau code.";
+
     @Transactional(readOnly = true)
     public void verifyOtp(String token, String otp) {
         log.info("[AUTH SERVICE] Vérification OTP pour token: {}", token);
@@ -341,7 +403,7 @@ public class AuthService {
         Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
         if (tokenOpt.isEmpty()) {
             log.warn("[AUTH SERVICE] Token introuvable: {}", token);
-            throw new RuntimeException("Lien ou code invalide.");
+            throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
         PasswordResetToken resetToken = tokenOpt.get();
@@ -349,7 +411,7 @@ public class AuthService {
         // Vérifier l'expiration
         if (resetToken.isExpired()) {
             log.warn("[AUTH SERVICE] Token expiré: {}", resetToken.getExpiryDate());
-            throw new RuntimeException("Code expiré. Veuillez redemander un nouveau code.");
+            throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
         // Extraire et vérifier l'OTP
@@ -357,14 +419,14 @@ public class AuthService {
         
         if (parts.length != 2) {
             log.error("[AUTH SERVICE] Format de token invalide. Token: '{}'", resetToken.getToken());
-            throw new RuntimeException("Format de token invalide.");
+            throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
         String storedOtp = parts[1].trim();
         
         if (!storedOtp.equals(cleanedOtp)) {
             log.warn("[AUTH SERVICE] OTP incorrect pour token: {}", token);
-            throw new RuntimeException("Code incorrect.");
+            throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
         log.info("[AUTH SERVICE] ✅ OTP vérifié avec succès");
@@ -393,6 +455,8 @@ public class AuthService {
         
         User user = resetToken.getUser();
         
+        validatePasswordStrength(newPassword);
+        
         // Vérifier que le nouveau mot de passe n'est pas identique à l'ancien
         if (passwordEncoder.matches(newPassword, user.getPassword())) {
             log.warn("[AUTH SERVICE] Tentative de réutilisation du mot de passe actuel");
@@ -406,6 +470,30 @@ public class AuthService {
         passwordResetTokenRepository.delete(resetToken);
         
         log.info("[AUTH SERVICE] Mot de passe réinitialisé pour: {}", user.getEmail());
+    }
+
+    private static final int PASSWORD_MIN_LENGTH = 12;
+
+    /**
+     * Applique la politique de mot de passe (alignée sur les paramètres par défaut
+     * de AdminSecurityController: 12 caractères min., majuscule, minuscule, chiffre, spécial).
+     */
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < PASSWORD_MIN_LENGTH) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins " + PASSWORD_MIN_LENGTH + " caractères.");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins une lettre majuscule.");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins une lettre minuscule.");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins un chiffre.");
+        }
+        if (!password.matches(".*[^A-Za-z0-9].*")) {
+            throw new RuntimeException("Le mot de passe doit contenir au moins un caractère spécial.");
+        }
     }
     
 }

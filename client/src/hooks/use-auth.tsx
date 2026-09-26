@@ -25,10 +25,16 @@ export function useLogin() {
   const { toast } = useToast();
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: async (credentials: LoginRequest) => {
+    mutationFn: async (credentials: LoginRequest): Promise<User | { twoFactorRequired: true }> => {
       try {
         const res = await apiRequest("POST", "/api/auth/login", credentials);
-        return await res.json();
+        const json = await res.json();
+        // Login is gated behind email-OTP 2FA: backend wraps the response in
+        // ApiResponse ({ data: { twoFactorRequired: true } }) instead of returning the user directly.
+        if (json && json.data && json.data.twoFactorRequired) {
+          return { twoFactorRequired: true };
+        }
+        return json as User;
       } catch (err: any) {
         // Essayer d'extraire le message d'erreur du backend
         let msg = err.message;
@@ -43,20 +49,19 @@ export function useLogin() {
         throw new Error(msg);
       }
     },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/auth/me"], user);
+    onSuccess: (result) => {
+      if ("twoFactorRequired" in result) return;
+      queryClient.setQueryData(["/api/auth/me"], result);
       toast({
         title: t("auth.loginSuccess"),
-        description: t("auth.welcomeUser", { name: user.fullName }),
+        description: t("auth.welcomeUser", { name: result.fullName }),
       });
     },
     onError: (error: Error) => {
       const code = error.message;
       let description: string;
-      if (code === "EMAIL_NOT_FOUND") {
-        description = t("auth.emailNotFound");
-      } else if (code === "WRONG_PASSWORD") {
-        description = t("auth.wrongPassword");
+      if (code === "INVALID_CREDENTIALS") {
+        description = t("auth.invalidCredentials");
       } else {
         description = code;
       }
@@ -65,6 +70,33 @@ export function useLogin() {
         description,
         variant: "destructive",
       });
+    },
+  });
+}
+
+export function useVerifyLoginOtp() {
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: async (otp: string): Promise<User> => {
+      const res = await apiRequest("POST", "/api/auth/verify-login-otp", { otp });
+      return await res.json();
+    },
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/auth/me"], user);
+      toast({
+        title: t("auth.loginSuccess"),
+        description: t("auth.welcomeUser", { name: user.fullName }),
+      });
+    },
+  });
+}
+
+export function useResendLoginOtp() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/resend-login-otp");
+      return await res.json();
     },
   });
 }

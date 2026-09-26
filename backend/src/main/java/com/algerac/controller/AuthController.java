@@ -3,23 +3,35 @@
 package com.algerac.controller;
 
 import com.algerac.dto.*;
+import com.algerac.model.SystemLog;
 import com.algerac.model.User;
 import com.algerac.model.OECApplication;
 import com.algerac.model.RequestType;
 import com.algerac.repository.UserRepository;
 import com.algerac.repository.OECApplicationRepository;
+import com.algerac.repository.SystemLogRepository;
+import com.algerac.repository.SystemSettingRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import com.algerac.service.NotificationService;
+import com.algerac.service.RateLimiterService;
 import com.algerac.service.RequestService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,44 +45,194 @@ public class AuthController {
     private final UserRepository userRepository;
     private final OECApplicationRepository oecApplicationRepository;
     private final RequestService requestService;
+    private final RateLimiterService rateLimiterService;
+    private final SystemSettingRepository systemSettingRepository;
+    private final SystemLogRepository systemLogRepository;
+
+    private static final String RESET_TOKEN_COOKIE = "pwd_reset_token";
+    private static final String LOGIN_2FA_COOKIE = "login_2fa_token";
+
+    @Value("${server.servlet.session.cookie.secure:false}")
+    private boolean cookieSecure;
+
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    /** Partially redacts a secret token so it can be correlated in logs without exposing it fully. */
+    private static String maskToken(String token) {
+        if (token == null || token.length() <= 8) {
+            return "****";
+        }
+        return token.substring(0, 4) + "…" + token.substring(token.length() - 4);
+    }
+
+    /** Persists a security-relevant event to the SystemLog audit trail (admin Security > Audit Logs). */
+    private void audit(String level, String module, String identifier, String ip, String message) {
+        try {
+            systemLogRepository.save(SystemLog.builder()
+                    .timestamp(LocalDateTime.now())
+                    .level(level)
+                    .module(module)
+                    .message(message)
+                    .username(identifier)
+                    .sourceIp(ip)
+                    .build());
+        } catch (Exception e) {
+            log.warn("AuthController: unable to persist audit log entry - {}", e.getMessage());
+        }
+    }
+
+    private String getSetting(String key, String defaultValue) {
+        return systemSettingRepository.findBySettingKey(key)
+                .map(com.algerac.model.SystemSetting::getSettingValue)
+                .filter(v -> v != null && !v.isBlank())
+                .orElse(defaultValue);
+    }
+
+    private boolean getSettingBool(String key, boolean defaultValue) {
+        return Boolean.parseBoolean(getSetting(key, String.valueOf(defaultValue)));
+    }
+
+    private int getSettingInt(String key, int defaultValue) {
+        try {
+            return Integer.parseInt(getSetting(key, String.valueOf(defaultValue)));
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private int maxAttempts() {
+        return getSettingInt("maxLoginAttempts", 5);
+    }
+
+    private Duration lockoutDuration() {
+        return Duration.ofMinutes(getSettingInt("lockoutDurationMinutes", 15));
+    }
+
+    /** Admin-configured IP allowlist check (settings: ipRestriction / ipWhitelist). */
+    private boolean isIpAllowed(String clientIp) {
+        boolean restricted = getSettingBool("ipRestriction", false) || getSettingBool("ipWhitelistEnabled", false);
+        if (!restricted) {
+            return true;
+        }
+        String whitelist = getSetting("ipWhitelist", "");
+        if (whitelist.isBlank()) {
+            return false; // restriction on but nothing whitelisted => deny by default
+        }
+        for (String entry : whitelist.split(",")) {
+            String pattern = entry.trim();
+            if (pattern.isEmpty()) continue;
+            if (pattern.equals(clientIp)) return true;
+            if (pattern.endsWith(".*") && clientIp.startsWith(pattern.substring(0, pattern.length() - 1))) return true;
+        }
+        return false;
+    }
+
+    /** Whether login must go through the email-OTP second factor before a session is created. */
+    private boolean twoFactorRequired() {
+        return getSettingBool("require2fa", false) || getSettingBool("twoFactorEnabled", false);
+    }
+
+    private void setResetTokenCookie(HttpServletResponse response, String token) {
+        ResponseCookie cookie = ResponseCookie.from(RESET_TOKEN_COOKIE, token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ofMinutes(15))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearResetTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(RESET_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void setLoginChallengeCookie(HttpServletResponse response, String token) {
+        ResponseCookie cookie = ResponseCookie.from(LOGIN_2FA_COOKIE, token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ofMinutes(5))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearLoginChallengeCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(LOGIN_2FA_COOKIE, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void createSession(HttpSession session, User user) {
+        session.setAttribute("userId", user.getId());
+        session.setAttribute("userRole", user.getRole());
+    }
 
     // === MOT DE PASSE OUBLIE ===
     @PostMapping("/forgot-password")
-    public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<ApiResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         log.info("[CONTROLLER] Forgot password: {}", request.getEmail());
+        String ip = clientIp(httpRequest);
+        String rateLimitKey = "forgot:" + ip + ":" + request.getEmail().toLowerCase();
         try {
-            String result = authService.forgotPassword(request.getEmail());
-            // result format: "token|otp"
-            String[] parts = result.split("\\|", 2);
-            String token = parts[0];
-            String otp = parts.length > 1 ? parts[1] : null;
-            log.info("[CONTROLLER][DEV] OTP for {}: {}", request.getEmail(), otp);
-            return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email.", token));
+            rateLimiterService.assertNotLocked(rateLimitKey, "AUTH_FORGOT_PASSWORD", request.getEmail(), ip);
+        } catch (RateLimiterService.RateLimitedException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(e.getMessage()));
+        }
+        rateLimiterService.recordFailure(rateLimitKey, maxAttempts(), lockoutDuration(), "AUTH_FORGOT_PASSWORD", request.getEmail(), ip);
+        try {
+            String token = authService.forgotPassword(request.getEmail());
+            setResetTokenCookie(httpResponse, token);
+            return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email."));
         } catch (RuntimeException e) {
             log.error("[CONTROLLER] Erreur: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    // === [DEV] GET OTP BY EMAIL ===
-    @GetMapping("/dev/otp")
-    public ResponseEntity<ApiResponse> getDevOtp(@RequestParam String email) {
-        try {
-            String otp = authService.getDevOtp(email);
-            return ResponseEntity.ok(ApiResponse.success("OTP actuel.", otp));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     // === VERIFICATION OTP ===
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        log.info("[CONTROLLER] Verify OTP - Token: {}, OTP: '{}'", request.getToken(), request.getOtp());
+    public ResponseEntity<ApiResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request,
+            @CookieValue(name = RESET_TOKEN_COOKIE, required = false) String token,
+            HttpServletRequest httpRequest) {
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la procédure."));
+        }
+        log.info("[CONTROLLER] Verify OTP - Token: {}", token);
+        String ip = clientIp(httpRequest);
+        String identifier = maskToken(token);
+        String rateLimitKey = "otp:" + token;
         try {
-            authService.verifyOtp(request.getToken(), request.getOtp());
+            rateLimiterService.assertNotLocked(rateLimitKey, "AUTH_OTP_VERIFY", identifier, ip);
+        } catch (RateLimiterService.RateLimitedException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(e.getMessage()));
+        }
+        try {
+            authService.verifyOtp(token, request.getOtp());
+            rateLimiterService.recordSuccess(rateLimitKey);
             return ResponseEntity.ok(ApiResponse.success("Code vérifié avec succès."));
         } catch (RuntimeException e) {
+            rateLimiterService.recordFailure(rateLimitKey, maxAttempts(), lockoutDuration(), "AUTH_OTP_VERIFY", identifier, ip);
             log.error("[CONTROLLER] Erreur vérification OTP: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -78,10 +240,16 @@ public class AuthController {
 
     // === RESET PASSWORD ===
     @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        log.info("[CONTROLLER] Reset password pour token: {}", request.getToken());
+    public ResponseEntity<ApiResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+            @CookieValue(name = RESET_TOKEN_COOKIE, required = false) String token,
+            HttpServletResponse httpResponse) {
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la procédure."));
+        }
+        log.info("[CONTROLLER] Reset password pour token: {}", token);
         try {
-            authService.resetPassword(request.getToken(), request.getNewPassword());
+            authService.resetPassword(token, request.getNewPassword());
+            clearResetTokenCookie(httpResponse);
             return ResponseEntity.ok(ApiResponse.success("Mot de passe réinitialisé avec succès."));
         } catch (RuntimeException e) {
             log.error("[CONTROLLER] Erreur: {}", e.getMessage());
@@ -94,7 +262,9 @@ public class AuthController {
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpSession session,
-            BindingResult bindingResult) {
+            BindingResult bindingResult,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         
         if (bindingResult.hasErrors()) {
             String errors = bindingResult.getAllErrors().stream()
@@ -103,18 +273,40 @@ public class AuthController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(errors));
         }
+
+        String clientIp = clientIp(httpRequest);
+        if (!isIpAllowed(clientIp)) {
+            log.warn("Connexion refusée pour IP non autorisée : {}", clientIp);
+            audit("WARNING", "AUTH_LOGIN", request.getEmail(), clientIp, "Connexion refusée : IP non autorisée");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Connexion non autorisée depuis cette adresse IP."));
+        }
+        
+        String rateLimitKey = "login:" + clientIp + ":" + request.getEmail().toLowerCase();
+        try {
+            rateLimiterService.assertNotLocked(rateLimitKey, "AUTH_LOGIN", request.getEmail(), clientIp);
+        } catch (RateLimiterService.RateLimitedException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(e.getMessage()));
+        }
         
         try {
             User user = authService.authenticate(request.getEmail(), request.getPassword());
-            
-            // Store user in session
-            session.setAttribute("userId", user.getId());
-            session.setAttribute("userRole", user.getRole());
-            
+            rateLimiterService.recordSuccess(rateLimitKey);
+
+            if (twoFactorRequired()) {
+                String challenge = authService.initiateTwoFactorChallenge(user);
+                setLoginChallengeCookie(httpResponse, challenge);
+                log.info("2FA requis, code envoyé pour : {}", user.getEmail());
+                return ResponseEntity.ok(ApiResponse.success("Code de vérification envoyé à votre email.",
+                        java.util.Map.of("twoFactorRequired", true)));
+            }
+
+            createSession(session, user);
             log.info("Connexion réussie pour : {}", user.getEmail());
             
             return ResponseEntity.ok(UserDTO.fromUser(user));
         } catch (RuntimeException e) {
+            rateLimiterService.recordFailure(rateLimitKey, maxAttempts(), lockoutDuration(), "AUTH_LOGIN", request.getEmail(), clientIp);
             log.error("Erreur lors de la connexion : {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -122,6 +314,62 @@ public class AuthController {
             log.error("Erreur inattendue lors de la connexion", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Une erreur est survenue"));
+        }
+    }
+
+    // === VERIFY LOGIN OTP endpoint (2nd factor) ===
+    @PostMapping("/verify-login-otp")
+    public ResponseEntity<?> verifyLoginOtp(@Valid @RequestBody VerifyOtpRequest request,
+            @CookieValue(name = LOGIN_2FA_COOKIE, required = false) String challenge,
+            HttpSession session, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        if (challenge == null || challenge.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la connexion."));
+        }
+        String ip = clientIp(httpRequest);
+        String identifier = maskToken(challenge);
+        String rateLimitKey = "login2fa:" + challenge;
+        try {
+            rateLimiterService.assertNotLocked(rateLimitKey, "AUTH_LOGIN_2FA_VERIFY", identifier, ip);
+        } catch (RateLimiterService.RateLimitedException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(e.getMessage()));
+        }
+        try {
+            User user = authService.verifyLoginOtp(challenge, request.getOtp());
+            rateLimiterService.recordSuccess(rateLimitKey);
+            clearLoginChallengeCookie(httpResponse);
+            createSession(session, user);
+            log.info("Connexion (2FA) réussie pour : {}", user.getEmail());
+            return ResponseEntity.ok(UserDTO.fromUser(user));
+        } catch (RuntimeException e) {
+            rateLimiterService.recordFailure(rateLimitKey, maxAttempts(), lockoutDuration(), "AUTH_LOGIN_2FA_VERIFY", identifier, ip);
+            log.error("[CONTROLLER] Erreur vérification OTP de connexion: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // === RESEND LOGIN OTP endpoint (2nd factor) ===
+    @PostMapping("/resend-login-otp")
+    public ResponseEntity<ApiResponse> resendLoginOtp(
+            @CookieValue(name = LOGIN_2FA_COOKIE, required = false) String challenge,
+            HttpServletRequest httpRequest) {
+        if (challenge == null || challenge.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la connexion."));
+        }
+        String ip = clientIp(httpRequest);
+        String identifier = maskToken(challenge);
+        String rateLimitKey = "login2faresend:" + ip + ":" + challenge;
+        try {
+            rateLimiterService.assertNotLocked(rateLimitKey, "AUTH_LOGIN_2FA_RESEND", identifier, ip);
+        } catch (RateLimiterService.RateLimitedException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(e.getMessage()));
+        }
+        rateLimiterService.recordFailure(rateLimitKey, maxAttempts(), lockoutDuration(), "AUTH_LOGIN_2FA_RESEND", identifier, ip);
+        try {
+            authService.resendTwoFactorChallenge(challenge);
+            return ResponseEntity.ok(ApiResponse.success("Nouveau code envoyé."));
+        } catch (RuntimeException e) {
+            log.error("[CONTROLLER] Erreur renvoi OTP de connexion: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
     

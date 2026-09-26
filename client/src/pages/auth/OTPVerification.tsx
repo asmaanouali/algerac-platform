@@ -74,17 +74,6 @@ export default function OTPVerification() {
     setLoading(true);
     
     const otpCode = otp.join("");
-    const token = localStorage.getItem("resetToken");
-    
-    if (!token) {
-      toast({
-        title: t("auth.passwordRecovery.errorTitle"),
-        description: t("auth.passwordRecovery.sessionExpired"),
-      });
-      setLoading(false);
-      setTimeout(() => setLocation("/auth/forgot-password"), 1500);
-      return;
-    }
     
     try {
       const response = await fetch("/api/auth/verify-otp", {
@@ -92,10 +81,7 @@ export default function OTPVerification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          token: token,
-          otp: otpCode 
-        }),
+        body: JSON.stringify({ otp: otpCode }),
         credentials: "include",
       });
       
@@ -138,11 +124,6 @@ export default function OTPVerification() {
       setResending(false);
       
       if (response.ok) {
-        // Mettre à jour le token
-        const token = data.data;
-        if (token) {
-          localStorage.setItem("resetToken", token);
-        }
         toast({
           title: t("auth.passwordRecovery.otp.resendSuccessTitle"),
           description: t("auth.passwordRecovery.otp.resendSuccessDescription", { email }),

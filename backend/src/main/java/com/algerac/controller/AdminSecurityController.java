@@ -54,6 +54,7 @@ public class AdminSecurityController {
         DEFAULTS.put("maxLoginAttempts", "5");
         DEFAULTS.put("ipRestriction", "false");
         DEFAULTS.put("ipWhitelistEnabled", "false");
+        DEFAULTS.put("ipWhitelist", "");
         DEFAULTS.put("sessionTimeout", "true");
         DEFAULTS.put("sessionTimeoutMinutes", "30");
         DEFAULTS.put("lockoutDurationMinutes", "15");

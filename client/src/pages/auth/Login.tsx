@@ -4,8 +4,8 @@ import AuthLayout from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, LogIn, Mail, Phone, Globe } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Eye, EyeOff, LogIn, Mail, Phone, Globe, ShieldCheck, ArrowLeft } from "lucide-react";
+import { useAuth, useVerifyLoginOtp, useResendLoginOtp } from "@/hooks/use-auth";
 import RoleSelector from "@/components/RoleSelector";
 
 export default function Login() {
@@ -13,12 +13,26 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
   const [, setLocation] = useLocation();
   const { loginMutation, user, needsRoleSelection, availableRoles, setActiveRole } = useAuth();
+  const verifyOtpMutation = useVerifyLoginOtp();
+  const resendOtpMutation = useResendLoginOtp();
+
+  const twoFactorPending =
+    loginMutation.isSuccess &&
+    !!loginMutation.data &&
+    "twoFactorRequired" in loginMutation.data &&
+    !user;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate({ email, password });
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    verifyOtpMutation.mutate(otpCode);
   };
 
   // Redirection après succès du login
@@ -135,6 +149,62 @@ export default function Login() {
               <p className="text-sm text-slate-500 dark:text-slate-400">{t("auth.loginTitle")}</p>
             </div>
 
+            {twoFactorPending ? (
+              <form className="space-y-5" onSubmit={handleVerifyOtp}>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                  <ShieldCheck className="w-5 h-5 text-[#00A63E]" />
+                  <h3 className="font-semibold">{t("auth.twoFactor.title")}</h3>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t("auth.twoFactor.subtitle", { email })}
+                </p>
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">
+                    {t("auth.twoFactor.code")}
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    className="h-11 bg-slate-50 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white tracking-widest text-center font-mono focus:bg-white dark:focus:bg-white/15 focus:border-[#00A63E] focus:ring-[#00A63E]/20 transition-all"
+                    disabled={verifyOtpMutation.isPending}
+                  />
+                </div>
+
+                {verifyOtpMutation.isError && (
+                  <p className="text-sm text-red-600">{(verifyOtpMutation.error as Error).message}</p>
+                )}
+
+                <Button
+                  className="w-full h-11 bg-[#00A63E] hover:bg-[#008a35] text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-900/30 transition-all"
+                  type="submit"
+                  disabled={verifyOtpMutation.isPending || otpCode.length !== 6}
+                >
+                  {verifyOtpMutation.isPending ? t("auth.twoFactor.verifying") : t("auth.twoFactor.verify")}
+                </Button>
+
+                <div className="flex items-center justify-between text-sm">
+                  <button
+                    type="button"
+                    onClick={() => loginMutation.reset()}
+                    className="flex items-center gap-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> {t("auth.twoFactor.back")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resendOtpMutation.mutate()}
+                    disabled={resendOtpMutation.isPending}
+                    className="text-[#00A63E] hover:text-[#00c44d] font-medium"
+                  >
+                    {resendOtpMutation.isPending ? t("auth.twoFactor.resending") : t("auth.twoFactor.resendCode")}
+                  </button>
+                </div>
+              </form>
+            ) : (
             <form className="space-y-5" onSubmit={handleLogin}>
               <div className="space-y-0.5">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300 block">
@@ -196,6 +266,7 @@ export default function Login() {
                 )}
               </Button>
             </form>
+            )}
 
             <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-500">
               {t("auth.noAccount")}{" "}

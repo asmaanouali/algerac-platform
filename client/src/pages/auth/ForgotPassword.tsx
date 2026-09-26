@@ -30,11 +30,6 @@ export default function ForgotPassword() {
       const data = await response.json();
       setLoading(false);
       if (response.ok) {
-        // Stocker le token pour la vérification OTP
-        const token = data.data; // Le token est dans data.data selon ApiResponse
-        if (token) {
-          localStorage.setItem("resetToken", token);
-        }
         toast({
           title: t("auth.passwordRecovery.forgot.codeSentTitle"),
           description: t("auth.passwordRecovery.forgot.codeSentDescription", { email }),

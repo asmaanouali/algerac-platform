@@ -8,6 +8,9 @@ import { useLocation } from "wouter";
 import { Lock, Mail, Phone, Globe } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+const isStrongPassword = (pwd: string) =>
+  pwd.length >= 12 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
+
 export default function NewPassword() {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
@@ -18,7 +21,7 @@ export default function NewPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!password || password.length < 8) {
+    if (!isStrongPassword(password)) {
       toast({
         title: t("auth.passwordRecovery.errorTitle"),
         description: t("auth.passwordRecovery.newPassword.passwordMinError"),
@@ -36,18 +39,6 @@ export default function NewPassword() {
     }
     
     setLoading(true);
-    const token = localStorage.getItem("resetToken");
-    
-    if (!token) {
-      toast({
-        title: t("auth.passwordRecovery.errorTitle"),
-        description: t("auth.passwordRecovery.sessionExpired"),
-        variant: "destructive",
-      });
-      setLoading(false);
-      setTimeout(() => setLocation("/auth/forgot-password"), 1500);
-      return;
-    }
     
     try {
       const response = await fetch("/api/auth/reset-password", {
@@ -55,10 +46,7 @@ export default function NewPassword() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          token: token,
-          newPassword: password 
-        }),
+        body: JSON.stringify({ newPassword: password }),
         credentials: "include",
       });
       
@@ -66,8 +54,6 @@ export default function NewPassword() {
       setLoading(false);
       
       if (response.ok) {
-        // Supprimer le token du localStorage
-        localStorage.removeItem("resetToken");
         toast({
           title: t("auth.passwordRecovery.newPassword.passwordChangedTitle"),
           description: t("auth.passwordRecovery.newPassword.passwordChangedDescription"),

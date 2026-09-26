@@ -83,8 +83,6 @@ public class SecurityConfig {
                 .contentTypeOptions(content -> {})
                 .httpStrictTransportSecurity(hsts -> hsts.maxAgeInSeconds(31536000).includeSubDomains(true))
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                .permissionsPolicy(permissions -> permissions.policy(
-                        "geolocation=(), camera=(), microphone=(), payment=(), usb=()"))
                 // 'unsafe-inline' on style-src is required by Tailwind/Radix inline style attributes;
                 // Google Fonts stylesheet + font files are the only external origins the SPA loads.
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
@@ -98,6 +96,9 @@ public class SecurityConfig {
                         + "base-uri 'self'; "
                         + "form-action 'self'; "
                         + "frame-ancestors 'none'"))
+                // permissionsPolicy() is last since it does not return HeadersConfigurer for further chaining.
+                .permissionsPolicy(permissions -> permissions.policy(
+                        "geolocation=(), camera=(), microphone=(), payment=(), usb=()"))
             )
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())

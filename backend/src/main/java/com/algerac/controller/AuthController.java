@@ -493,10 +493,19 @@ public class AuthController {
             }
             
             // Envoyer email de confirmation à l'OEC
-            emailService.sendOECRegistrationConfirmation(user);
+            // L'échec d'envoi ne doit pas annuler l'inscription : le compte est déjà créé
+            try {
+                emailService.sendOECRegistrationConfirmation(user);
+            } catch (Exception e) {
+                log.error("Email de confirmation OEC non envoyé à {} : {}", user.getEmail(), e.getMessage());
+            }
             
             // Envoyer notification au DT (sans DOC1 en pièce jointe)
-            emailService.sendDTNewOECNotification(user);
+            try {
+                emailService.sendDTNewOECNotification(user);
+            } catch (Exception e) {
+                log.error("Notification DT (nouvel OEC) non envoyée : {}", e.getMessage());
+            }
             
             log.info("Candidature OEC créée avec succès (User PENDING) - ID: {}, Organisme: {}", 
                     user.getId(), user.getOrganizationName());
@@ -542,7 +551,12 @@ public class AuthController {
             User user = authService.registerExpert(request);
             
             // Envoyer email de confirmation au candidat (ton professionnel, profil sera évalué)
-            emailService.sendExpertRegistrationConfirmation(user);
+            // L'échec d'envoi ne doit pas annuler l'inscription : le compte est déjà créé
+            try {
+                emailService.sendExpertRegistrationConfirmation(user);
+            } catch (Exception e) {
+                log.error("Email de confirmation Expert non envoyé à {} : {}", user.getEmail(), e.getMessage());
+            }
             
             // Envoyer notification IN-APP au gestionnaire de compétences (PAS d'email)
             String typeLabel = user.getUserType() != null ? switch (user.getUserType().toUpperCase()) {

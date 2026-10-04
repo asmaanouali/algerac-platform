@@ -142,6 +142,10 @@ public class EmailService {
 
     /** Public branded HTML email — wraps the given content in the ALGERAC chrome. */
     public void sendBrandedEmail(String to, String subject, String contentHtml) {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new IllegalStateException(
+                    "SMTP non configuré : définissez les variables d'environnement MAIL_USERNAME et MAIL_PASSWORD");
+        }
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");

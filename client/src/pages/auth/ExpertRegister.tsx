@@ -696,16 +696,44 @@ export default function ExpertRegisterWizard() {
     }
   };
 
-  const fillDemo = () => {
-    setFormData({
-      userType: "EXPERT",
-      nom: "Demo",
+  const DEMO_PROFILES: Record<
+    "EXPERT" | "EVALUATEUR" | "FORMATEUR",
+    { prenom: string; email: string; poste: string; activites: string }
+  > = {
+    EXPERT: {
       prenom: "Expert",
+      email: "demo.expert@algerac.dz",
+      poste: "Expert technique",
+      activites: "Evaluation et formation",
+    },
+    EVALUATEUR: {
+      prenom: "Evaluateur",
+      email: "demo.evaluateur@algerac.dz",
+      poste: "Évaluateur qualité",
+      activites: "Évaluation de la conformité des organismes",
+    },
+    FORMATEUR: {
+      prenom: "Formateur",
+      email: "demo.formateur@algerac.dz",
+      poste: "Formateur senior",
+      activites: "Conception et animation de formations",
+    },
+  };
+
+  const fillDemo = (role: "EXPERT" | "EVALUATEUR" | "FORMATEUR" = "EXPERT") => {
+    const profile = DEMO_PROFILES[role];
+    const isEvaluateur = role === "EVALUATEUR";
+    const isFormateur = role === "FORMATEUR";
+
+    setFormData({
+      userType: role,
+      nom: "Demo",
+      prenom: profile.prenom,
       dateNaissance: "1990-01-01",
       nationalite: "algerian",
       nationaliteAutre: "",
       situationFamiliale: "single",
-      email: "demo.expert@algerac.dz",
+      email: profile.email,
       telephone: "+213 21 23 45 67",
       telephoneMobile: "+213 66 12 34 56",
       fax: "+213 21 23 45 68",
@@ -740,15 +768,42 @@ export default function ExpertRegisterWizard() {
         dateDebut: "2014-01",
         dateFin: "2024-03",
         organisme: "ALGERAC",
-        posteOccupe: "Expert technique",
-        activitesPrincipales: "Evaluation et formation",
+        posteOccupe: profile.poste,
+        activitesPrincipales: profile.activites,
         categorieCompetence: "Technique",
         domaineCompetence: "Audit",
         sousDomaineCompetence: "Qualité",
       },
     ]);
-    setHasEvaluations(false);
-    setHasFormationsDispensees(false);
+    setHasEvaluations(isEvaluateur);
+    setEvaluations(
+      isEvaluateur
+        ? [
+            {
+              dateDebut: "2018-01",
+              dateFin: "2023-12",
+              type: "evaluation",
+              typeEvaluation: "Audit de certification ISO/CEI 17025",
+              roleTenu: "Évaluateur technique",
+              normesReferentiels: "ISO/CEI 17025",
+            },
+          ]
+        : [{ dateDebut: "", dateFin: "", type: "", typeEvaluation: "", roleTenu: "", normesReferentiels: "" }]
+    );
+    setHasFormationsDispensees(isFormateur);
+    setFormationsDispensees(
+      isFormateur
+        ? [
+            {
+              dateDebut: "2019-03",
+              dateFin: "2019-03",
+              duree: "3 jours",
+              formation: "Formation aux exigences ISO/CEI 17025",
+              organismeBeneficiaire: "ALGERAC",
+            },
+          ]
+        : [{ dateDebut: "", dateFin: "", duree: "", formation: "", organismeBeneficiaire: "" }]
+    );
     setLangues([
       { langue: "arabic", langueAutre: "", lu: "excellent", parle: "excellent", ecrit: "excellent" },
       { langue: "french", langueAutre: "", lu: "veryGood", parle: "veryGood", ecrit: "veryGood" },
@@ -2258,10 +2313,18 @@ export default function ExpertRegisterWizard() {
         {/* Form Content */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200/60 dark:border-slate-700/60">
           <div className="p-6 md:p-10">
-            <div className="flex justify-end mb-6">
-              <Button type="button" variant="outline" className="gap-2" onClick={fillDemo}>
-                Demo
-              </Button>
+            <div className="flex flex-wrap justify-end gap-2 mb-6">
+              {userTypes.map((type) => (
+                <Button
+                  key={type.value}
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => fillDemo(type.value as "EXPERT" | "EVALUATEUR" | "FORMATEUR")}
+                >
+                  {t("er.buttons.demoFor", { role: type.label })}
+                </Button>
+              ))}
             </div>
             {renderStep()}
 

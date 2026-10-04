@@ -671,7 +671,8 @@
       "addExperience": "إضافة خبرة",
       "addEvaluation": "إضافة تقييم",
       "addFormationDispensee": "إضافة تكوين مقدّم",
-      "addLangue": "إضافة لغة أخرى"
+      "addLangue": "إضافة لغة أخرى",
+      "demoFor": "تجربة {{role}}"
     },
     "errors": {
       "nomRequired": "اللقب مطلوب",

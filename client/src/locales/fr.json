@@ -671,7 +671,8 @@
       "addExperience": "Ajouter une expérience",
       "addEvaluation": "Ajouter une évaluation",
       "addFormationDispensee": "Ajouter une formation dispensée",
-      "addLangue": "Ajouter une autre langue"
+      "addLangue": "Ajouter une autre langue",
+      "demoFor": "Démo {{role}}"
     },
     "errors": {
       "nomRequired": "Le nom est requis",

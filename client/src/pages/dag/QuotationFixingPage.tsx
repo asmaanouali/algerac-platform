@@ -70,6 +70,7 @@ function formatAmount(amount?: number) {
 }
 
 export default function DAGQuotationFixingPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [pending, setPending] = useState<Quotation[]>([]);
   const [established, setEstablished] = useState<Quotation[]>([]);

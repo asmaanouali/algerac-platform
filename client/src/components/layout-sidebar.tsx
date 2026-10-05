@@ -113,7 +113,6 @@ export function Sidebar() {
       { href: "/dag/frais-enregistrement", label: t('nav.registrationFees'), icon: FileText },
       { href: "/dag/fixation-devis", label: t('nav.quotationFixing', { defaultValue: 'Fixation des devis' }), icon: DollarSign },
       { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
-      { href: "/dag/tarifs", label: t('nav.pricing'), icon: CreditCard },
     ],
     admin: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },

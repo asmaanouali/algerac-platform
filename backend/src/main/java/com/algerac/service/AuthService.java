@@ -249,15 +249,16 @@ public class AuthService {
     }
     
     public User authenticate(String email, String password) {
-        // Same error for unknown email and wrong password to avoid leaking account existence
+        // Distinct errors for unknown email vs wrong password, as requested
+        // (note: this reveals whether an email is registered, which is a user-enumeration trade-off).
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("INVALID_CREDENTIALS");
+            throw new RuntimeException("EMAIL_NOT_FOUND");
         }
         
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("INVALID_CREDENTIALS");
+            throw new RuntimeException("WRONG_PASSWORD");
         }
         
         if (user.getStatus() != UserStatus.APPROVED) {

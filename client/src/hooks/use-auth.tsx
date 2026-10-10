@@ -60,7 +60,11 @@ export function useLogin() {
     onError: (error: Error) => {
       const code = error.message;
       let description: string;
-      if (code === "INVALID_CREDENTIALS") {
+      if (code === "EMAIL_NOT_FOUND") {
+        description = t("auth.emailNotFound");
+      } else if (code === "WRONG_PASSWORD") {
+        description = t("auth.wrongPassword");
+      } else if (code === "INVALID_CREDENTIALS") {
         description = t("auth.invalidCredentials");
       } else {
         description = code;

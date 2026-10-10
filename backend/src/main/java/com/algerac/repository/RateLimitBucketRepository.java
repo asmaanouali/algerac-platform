@@ -37,7 +37,7 @@ public interface RateLimitBucketRepository extends JpaRepository<RateLimitBucket
                         WHEN rate_limit_buckets.locked_until IS NOT NULL AND rate_limit_buckets.locked_until < now() THEN 1
                         ELSE rate_limit_buckets.failure_count + 1
                       END) >= :maxAttempts
-                  THEN now() + make_interval(mins => :lockoutMinutes::int)
+                  THEN now() + make_interval(mins => CAST(:lockoutMinutes AS int))
                 WHEN rate_limit_buckets.locked_until IS NOT NULL AND rate_limit_buckets.locked_until < now()
                   THEN NULL
                 ELSE rate_limit_buckets.locked_until

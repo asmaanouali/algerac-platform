@@ -10,7 +10,4 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     Optional<PasswordResetToken> findByToken(String token);
     Optional<PasswordResetToken> findByUser(User user);
     void deleteByUser(User user);
-
-    // Pour retrouver le token par préfixe (UUID) sans OTP
-    Optional<PasswordResetToken> findByTokenStartingWith(String tokenPrefix);
 }

@@ -1,16 +1,20 @@
 package com.algerac.filter;
 
+import com.algerac.repository.UserRepository;
+import com.algerac.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,8 +25,11 @@ import java.util.Set;
  */
 @Component
 @Order(1)
+@RequiredArgsConstructor
 @Slf4j
 public class AuthenticationFilter implements Filter {
+
+    private final UserRepository userRepository;
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/login",
@@ -78,7 +85,36 @@ public class AuthenticationFilter implements Filter {
             return;
         }
 
+        if (isSessionStale(session)) {
+            session.invalidate();
+            sendUnauthorized(httpResponse, "Session expirée suite à un changement de mot de passe. Veuillez vous reconnecter.");
+            return;
+        }
+
         chain.doFilter(request, response);
+    }
+
+    /**
+     * A session created before the account's last password change is stale: this is how a
+     * password reset forcibly logs out any other active session for that account, since there
+     * is no central session registry to invalidate them directly.
+     */
+    private boolean isSessionStale(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        Long loginAt = (Long) session.getAttribute("loginAt");
+        if (userId == null || loginAt == null) {
+            return false;
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return true;
+        }
+        LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return false;
+        }
+        long passwordChangedAtMillis = passwordChangedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return passwordChangedAtMillis > loginAt;
     }
 
     private boolean isPublicPath(String path) {

@@ -12,13 +12,20 @@ import com.algerac.repository.PasswordResetTokenRepository;
 import com.algerac.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Optional;
 import java.security.SecureRandom;
 
@@ -37,6 +44,53 @@ public class AuthService {
     private static final String EXPERT_PREFIX = "EXP";
     private static final String FORMATEUR_PREFIX = "FOR";
     private static final String EVALUATEUR_PREFIX = "EVAL";
+
+    // Keyed-hash secret for OTP codes (see hashOtp()). Configure OTP_HASH_SECRET in production
+    // so hashes survive app restarts; falls back to a random in-memory key otherwise.
+    @Value("${app.security.otp-secret:}")
+    private String configuredOtpSecret;
+
+    private byte[] otpSecretBytes;
+    // BCrypt hash of a random value, used only to keep authenticate() roughly constant-time
+    // for unknown emails (mitigates timing-based user enumeration).
+    private String dummyPasswordHash;
+
+    @PostConstruct
+    private void init() {
+        if (configuredOtpSecret != null && !configuredOtpSecret.isBlank()) {
+            otpSecretBytes = configuredOtpSecret.getBytes(StandardCharsets.UTF_8);
+        } else {
+            log.warn("[AUTH SERVICE] OTP_HASH_SECRET non configuré : utilisation d'une clé générée "
+                    + "aléatoirement au démarrage. Les OTP déjà émis deviendront invalides après un "
+                    + "redémarrage. Configurez OTP_HASH_SECRET en production.");
+            byte[] random = new byte[32];
+            new SecureRandom().nextBytes(random);
+            otpSecretBytes = random;
+        }
+        dummyPasswordHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+    }
+
+    private static final String HMAC_ALGORITHM = "HmacSHA256";
+
+    /** Keyed hash of an OTP, bound to its token/challenge selector; never store the raw code. */
+    private String hashOtp(String tokenSelector, String otp) {
+        try {
+            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+            mac.init(new SecretKeySpec(otpSecretBytes, HMAC_ALGORITHM));
+            byte[] result = mac.doFinal((tokenSelector + ":" + otp).getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(result);
+        } catch (Exception e) {
+            throw new IllegalStateException("Impossible de hacher le code OTP", e);
+        }
+    }
+
+    /** Constant-time comparison of a candidate OTP against the stored keyed hash. */
+    private boolean matchesOtp(String tokenSelector, String candidateOtp, String storedHash) {
+        String candidateHash = hashOtp(tokenSelector, candidateOtp);
+        return MessageDigest.isEqual(
+                candidateHash.getBytes(StandardCharsets.UTF_8),
+                storedHash.getBytes(StandardCharsets.UTF_8));
+    }
 
     /**
      * Génère un ID séquentiel unique par rôle (ex: EXP-0001)
@@ -249,16 +303,19 @@ public class AuthService {
     }
     
     public User authenticate(String email, String password) {
-        // Distinct errors for unknown email vs wrong password, as requested
-        // (note: this reveals whether an email is registered, which is a user-enumeration trade-off).
+        // Single generic error for unknown email vs wrong password, to avoid revealing
+        // whether an email is registered (user-enumeration protection).
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("EMAIL_NOT_FOUND");
+            // Still run a BCrypt comparison against a dummy hash so the response time is
+            // roughly the same as a real account with a wrong password.
+            passwordEncoder.matches(password, dummyPasswordHash);
+            throw new RuntimeException("INVALID_CREDENTIALS");
         }
         
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("WRONG_PASSWORD");
+            throw new RuntimeException("INVALID_CREDENTIALS");
         }
         
         if (user.getStatus() != UserStatus.APPROVED) {
@@ -275,6 +332,7 @@ public class AuthService {
 
     // Message unique pour tous les cas d'échec de vérification du code de connexion.
     private static final String LOGIN_OTP_GENERIC_ERROR = "Code invalide ou expiré. Veuillez recommencer la connexion.";
+    private static final int MAX_LOGIN_OTP_ATTEMPTS = 5;
 
     /**
      * Démarre le second facteur d'authentification après validation du mot de passe :
@@ -287,7 +345,9 @@ public class AuthService {
 
         loginTwoFactorTokenRepository.deleteByUser(user);
         LoginTwoFactorToken twoFactorToken = LoginTwoFactorToken.builder()
-                .token(challenge + ":" + otp)
+                .token(challenge)
+                .otpHash(hashOtp(challenge, otp))
+                .attempts(0)
                 .user(user)
                 .expiryDate(LocalDateTime.now().plusMinutes(5))
                 .build();
@@ -307,7 +367,7 @@ public class AuthService {
      */
     @Transactional
     public void resendTwoFactorChallenge(String challenge) {
-        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByTokenStartingWith(challenge);
+        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByToken(challenge);
         if (tokenOpt.isEmpty()) {
             throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
         }
@@ -318,22 +378,26 @@ public class AuthService {
     /**
      * Vérifie l'OTP de connexion et retourne l'utilisateur si valide (crée la session côté contrôleur).
      */
-    @Transactional
+    // noRollbackFor: the increment/delete below must commit even though the method signals
+    // failure via a thrown RuntimeException.
+    @Transactional(noRollbackFor = RuntimeException.class)
     public User verifyLoginOtp(String challenge, String otp) {
         String cleanedOtp = otp != null ? otp.trim() : "";
 
-        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByTokenStartingWith(challenge);
+        Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByToken(challenge);
         if (tokenOpt.isEmpty()) {
             throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
         }
 
         LoginTwoFactorToken twoFactorToken = tokenOpt.get();
-        if (twoFactorToken.isExpired()) {
+        if (twoFactorToken.isExpired() || twoFactorToken.getAttempts() >= MAX_LOGIN_OTP_ATTEMPTS) {
+            loginTwoFactorTokenRepository.delete(twoFactorToken);
             throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
         }
 
-        String[] parts = twoFactorToken.getToken().split(":");
-        if (parts.length != 2 || !parts[1].trim().equals(cleanedOtp)) {
+        if (!matchesOtp(challenge, cleanedOtp, twoFactorToken.getOtpHash())) {
+            twoFactorToken.setAttempts(twoFactorToken.getAttempts() + 1);
+            loginTwoFactorTokenRepository.save(twoFactorToken);
             throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
         }
 
@@ -368,9 +432,12 @@ public class AuthService {
         // Supprimer les anciens tokens pour cet utilisateur
         passwordResetTokenRepository.deleteByUser(user);
         
-        // Stocker le token et OTP (format: token:otp)
+        // Stocker le token (sélecteur opaque) et le hash de l'OTP séparément
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(token + ":" + otp)
+                .token(token)
+                .otpHash(hashOtp(token, otp))
+                .verified(false)
+                .attempts(0)
                 .user(user)
                 .expiryDate(LocalDateTime.now().plusMinutes(15))
                 .build();
@@ -393,54 +460,53 @@ public class AuthService {
     // Message unique pour tous les cas d'échec de vérification (token inconnu, expiré ou
     // OTP erroné) afin de ne pas révéler si l'email associé existe réellement.
     private static final String OTP_GENERIC_ERROR = "Code ou lien invalide. Veuillez redemander un nouveau code.";
+    private static final int MAX_OTP_ATTEMPTS = 5;
 
-    @Transactional(readOnly = true)
+    // noRollbackFor: the increment/delete below must commit even though the method signals
+    // failure via a thrown RuntimeException (Spring's default would otherwise roll both back).
+    @Transactional(noRollbackFor = RuntimeException.class)
     public void verifyOtp(String token, String otp) {
-        log.info("[AUTH SERVICE] Vérification OTP pour token: {}", token);
+        log.info("[AUTH SERVICE] Vérification OTP (token masqué)");
         
         // Nettoyer l'OTP (enlever espaces, etc.)
         String cleanedOtp = otp != null ? otp.trim() : "";
         
-        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(token);
         if (tokenOpt.isEmpty()) {
-            log.warn("[AUTH SERVICE] Token introuvable: {}", token);
+            log.warn("[AUTH SERVICE] Token introuvable");
             throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
         PasswordResetToken resetToken = tokenOpt.get();
         
-        // Vérifier l'expiration
-        if (resetToken.isExpired()) {
-            log.warn("[AUTH SERVICE] Token expiré: {}", resetToken.getExpiryDate());
+        // Vérifier l'expiration et le nombre de tentatives
+        if (resetToken.isExpired() || resetToken.getAttempts() >= MAX_OTP_ATTEMPTS) {
+            log.warn("[AUTH SERVICE] Token expiré ou nombre max de tentatives atteint");
+            passwordResetTokenRepository.delete(resetToken);
             throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
-        // Extraire et vérifier l'OTP
-        String[] parts = resetToken.getToken().split(":");
-        
-        if (parts.length != 2) {
-            log.error("[AUTH SERVICE] Format de token invalide. Token: '{}'", resetToken.getToken());
+        if (!matchesOtp(token, cleanedOtp, resetToken.getOtpHash())) {
+            log.warn("[AUTH SERVICE] OTP incorrect");
+            resetToken.setAttempts(resetToken.getAttempts() + 1);
+            passwordResetTokenRepository.save(resetToken);
             throw new RuntimeException(OTP_GENERIC_ERROR);
         }
         
-        String storedOtp = parts[1].trim();
-        
-        if (!storedOtp.equals(cleanedOtp)) {
-            log.warn("[AUTH SERVICE] OTP incorrect pour token: {}", token);
-            throw new RuntimeException(OTP_GENERIC_ERROR);
-        }
-        
+        resetToken.setVerified(true);
+        passwordResetTokenRepository.save(resetToken);
         log.info("[AUTH SERVICE] ✅ OTP vérifié avec succès");
     }
 
     /**
      * Réinitialise le mot de passe après vérification de l'OTP
      */
-    @Transactional
+    // noRollbackFor: the expired-token cleanup delete below must commit even on failure.
+    @Transactional(noRollbackFor = RuntimeException.class)
     public void resetPassword(String token, String newPassword) {
-        log.info("[AUTH SERVICE] Reset password pour token: {}", token);
+        log.info("[AUTH SERVICE] Reset password (token masqué)");
         
-        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByTokenStartingWith(token);
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(token);
         if (tokenOpt.isEmpty()) {
             log.warn("[AUTH SERVICE] Token introuvable");
             throw new RuntimeException("Lien invalide.");
@@ -451,7 +517,16 @@ public class AuthService {
         // Vérifier l'expiration
         if (resetToken.isExpired()) {
             log.warn("[AUTH SERVICE] Token expiré");
+            passwordResetTokenRepository.delete(resetToken);
             throw new RuntimeException("Lien expiré. Veuillez recommencer la procédure.");
+        }
+        
+        // Le mot de passe ne peut être changé qu'après vérification réussie de l'OTP
+        // (empêche un attaquant disposant uniquement du cookie de token de réinitialiser
+        // le mot de passe sans connaître le code envoyé par email).
+        if (!resetToken.isVerified()) {
+            log.warn("[AUTH SERVICE] Tentative de reset sans vérification OTP préalable");
+            throw new RuntimeException("Veuillez d'abord vérifier le code reçu par email.");
         }
         
         User user = resetToken.getUser();
@@ -465,6 +540,9 @@ public class AuthService {
         }
         
         user.setPassword(passwordEncoder.encode(newPassword));
+        // Marks all sessions created before this instant as stale; AuthenticationFilter
+        // forces them to re-authenticate so a stolen/active session can't survive a reset.
+        user.setPasswordChangedAt(LocalDateTime.now());
         userRepository.save(user);
         
         // Supprimer le token utilisé

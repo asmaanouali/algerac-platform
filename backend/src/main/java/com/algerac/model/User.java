@@ -52,6 +52,10 @@ public class User {
     
     @Column(nullable = false)
     private String password; // BCrypt hash
+
+    // Timestamp of the last password change; AuthenticationFilter invalidates any session
+    // issued before this instant, so a password reset forcibly logs out other active sessions.
+    private LocalDateTime passwordChangedAt;
     
     @Column(nullable = false)
     private String fullName; // Combine nom + prenom for experts, or organization name for OEC

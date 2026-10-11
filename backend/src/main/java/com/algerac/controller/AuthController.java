@@ -55,12 +55,31 @@ public class AuthController {
     @Value("${server.servlet.session.cookie.secure:false}")
     private boolean cookieSecure;
 
-    private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+    // Comma-separated list of reverse-proxy IPs allowed to set X-Forwarded-For (env: TRUSTED_PROXIES).
+    // Left empty by default so a direct client can't spoof the header to dodge IP-based
+    // rate limiting / IP allowlisting.
+    @Value("${app.security.trusted-proxies:}")
+    private String trustedProxiesConfig;
+
+    private java.util.Set<String> trustedProxies() {
+        if (trustedProxiesConfig == null || trustedProxiesConfig.isBlank()) {
+            return java.util.Set.of();
         }
-        return request.getRemoteAddr();
+        return java.util.Arrays.stream(trustedProxiesConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String remoteAddr = request.getRemoteAddr();
+        if (trustedProxies().contains(remoteAddr)) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return forwarded.split(",")[0].trim();
+            }
+        }
+        return remoteAddr;
     }
 
     /** Partially redacts a secret token so it can be correlated in logs without exposing it fully. */
@@ -182,9 +201,14 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private void createSession(HttpSession session, User user) {
+    private void createSession(HttpServletRequest request, HttpSession session, User user) {
+        // Rotate the session ID on privilege escalation (post-auth) to prevent session fixation:
+        // an ID issued before login (e.g. to an attacker who tricked the victim into using it)
+        // is discarded in favor of a fresh one, while existing session attributes are preserved.
+        request.changeSessionId();
         session.setAttribute("userId", user.getId());
         session.setAttribute("userRole", user.getRole());
+        session.setAttribute("loginAt", System.currentTimeMillis());
     }
 
     // === MOT DE PASSE OUBLIE ===
@@ -218,7 +242,7 @@ public class AuthController {
         if (token == null || token.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la procédure."));
         }
-        log.info("[CONTROLLER] Verify OTP - Token: {}", token);
+        log.info("[CONTROLLER] Verify OTP - Token: {}", maskToken(token));
         String ip = clientIp(httpRequest);
         String identifier = maskToken(token);
         String rateLimitKey = "otp:" + token;
@@ -246,7 +270,7 @@ public class AuthController {
         if (token == null || token.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Session expirée. Veuillez recommencer la procédure."));
         }
-        log.info("[CONTROLLER] Reset password pour token: {}", token);
+        log.info("[CONTROLLER] Reset password pour token: {}", maskToken(token));
         try {
             authService.resetPassword(token, request.getNewPassword());
             clearResetTokenCookie(httpResponse);
@@ -261,8 +285,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
-            HttpSession session,
             BindingResult bindingResult,
+            HttpSession session,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         
@@ -301,7 +325,7 @@ public class AuthController {
                         java.util.Map.of("twoFactorRequired", true)));
             }
 
-            createSession(session, user);
+            createSession(httpRequest, session, user);
             log.info("Connexion réussie pour : {}", user.getEmail());
             
             return ResponseEntity.ok(UserDTO.fromUser(user));
@@ -337,7 +361,7 @@ public class AuthController {
             User user = authService.verifyLoginOtp(challenge, request.getOtp());
             rateLimiterService.recordSuccess(rateLimitKey);
             clearLoginChallengeCookie(httpResponse);
-            createSession(session, user);
+            createSession(httpRequest, session, user);
             log.info("Connexion (2FA) réussie pour : {}", user.getEmail());
             return ResponseEntity.ok(UserDTO.fromUser(user));
         } catch (RuntimeException e) {

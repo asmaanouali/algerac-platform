@@ -50,7 +50,7 @@ export default function NewPassword() {
         credentials: "include",
       });
       
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       setLoading(false);
       
       if (response.ok) {
@@ -63,7 +63,7 @@ export default function NewPassword() {
       } else {
         toast({
           title: t("auth.passwordRecovery.errorTitle"),
-          description: data?.message || t("auth.passwordRecovery.newPassword.resetError"),
+          description: data?.message || t("auth.passwordRecovery.newPassword.resetError", { status: response.status }),
           variant: "destructive",
         });
       }

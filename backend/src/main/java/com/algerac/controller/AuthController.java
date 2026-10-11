@@ -228,6 +228,8 @@ public class AuthController {
             String token = authService.forgotPassword(request.getEmail());
             setResetTokenCookie(httpResponse, token);
             return ResponseEntity.ok(ApiResponse.success("Code envoyé à l'email."));
+        } catch (AuthService.AccountNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
         } catch (RuntimeException e) {
             log.error("[CONTROLLER] Erreur: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

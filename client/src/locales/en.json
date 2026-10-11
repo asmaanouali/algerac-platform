@@ -78,7 +78,7 @@
     },
     "passwordRecovery": {
       "errorTitle": "Error",
-      "networkError": "Network or server error.",
+      "networkError": "Unable to connect: check your internet connection and try again.",
       "sessionExpired": "Session expired. Please start again.",
       "forgot": {
         "title": "Reset password",
@@ -88,6 +88,7 @@
         "codeSentTitle": "Code sent",
         "codeSentDescription": "A code has been sent to {{email}}",
         "noAccountError": "No account found with this email",
+        "sendError": "Sending the code failed (HTTP code {{status}}).",
         "backToLogin": "Back to sign in"
       },
       "otp": {
@@ -101,8 +102,8 @@
         "resendSuccessDescription": "A new code has been sent to {{email}}",
         "verifySuccessTitle": "Success",
         "verifySuccessDescription": "Code verified successfully.",
-        "invalidCodeError": "Invalid code. Please try again.",
-        "resendError": "Error while resending the code.",
+        "invalidCodeError": "Code verification failed (HTTP code {{status}}).",
+        "resendError": "Resending the code failed (HTTP code {{status}}).",
         "back": "Back"
       },
       "newPassword": {
@@ -117,7 +118,7 @@
         "passwordChangedDescription": "Your password has been changed successfully.",
         "passwordMinError": "Password must be at least 12 characters and include an uppercase letter, a lowercase letter, a number and a special character.",
         "passwordMismatchError": "Passwords do not match.",
-        "resetError": "Error while resetting password."
+        "resetError": "Password reset failed (HTTP code {{status}})."
       }
     },
     "register": {

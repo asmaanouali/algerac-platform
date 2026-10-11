@@ -85,7 +85,7 @@ export default function OTPVerification() {
         credentials: "include",
       });
       
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       setLoading(false);
       
       if (response.ok) {
@@ -97,7 +97,8 @@ export default function OTPVerification() {
       } else {
         toast({
           title: t("auth.passwordRecovery.errorTitle"),
-          description: data?.message || t("auth.passwordRecovery.otp.invalidCodeError"),
+          description: data?.message || t("auth.passwordRecovery.otp.invalidCodeError", { status: response.status }),
+          variant: "destructive",
         });
       }
     } catch (_err) {
@@ -105,6 +106,7 @@ export default function OTPVerification() {
       toast({
         title: t("auth.passwordRecovery.errorTitle"),
         description: t("auth.passwordRecovery.networkError"),
+        variant: "destructive",
       });
     }
   };
@@ -120,7 +122,7 @@ export default function OTPVerification() {
         body: JSON.stringify({ email }),
         credentials: "include",
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       setResending(false);
       
       if (response.ok) {
@@ -131,7 +133,10 @@ export default function OTPVerification() {
       } else {
         toast({
           title: t("auth.passwordRecovery.errorTitle"),
-          description: data?.message || t("auth.passwordRecovery.otp.resendError"),
+          description: response.status === 404
+            ? t("auth.passwordRecovery.forgot.noAccountError")
+            : data?.message || t("auth.passwordRecovery.otp.resendError", { status: response.status }),
+          variant: "destructive",
         });
       }
     } catch (_err) {
@@ -139,6 +144,7 @@ export default function OTPVerification() {
       toast({
         title: t("auth.passwordRecovery.errorTitle"),
         description: t("auth.passwordRecovery.networkError"),
+        variant: "destructive",
       });
     }
   };

@@ -27,7 +27,7 @@ export default function ForgotPassword() {
         body: JSON.stringify({ email }),
         credentials: "include",
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       setLoading(false);
       if (response.ok) {
         toast({
@@ -38,7 +38,9 @@ export default function ForgotPassword() {
       } else {
         toast({
           title: t("auth.passwordRecovery.errorTitle"),
-          description: data?.message || t("auth.passwordRecovery.forgot.noAccountError"),
+          description: response.status === 404
+            ? t("auth.passwordRecovery.forgot.noAccountError")
+            : data?.message || t("auth.passwordRecovery.forgot.sendError", { status: response.status }),
           variant: "destructive"
         });
       }
@@ -47,6 +49,7 @@ export default function ForgotPassword() {
       toast({
         title: t("auth.passwordRecovery.errorTitle"),
         description: t("auth.passwordRecovery.networkError"),
+        variant: "destructive"
       });
     }
   };

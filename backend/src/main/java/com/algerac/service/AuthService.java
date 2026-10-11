@@ -330,9 +330,17 @@ public class AuthService {
                 .orElse(null);
     }
 
-    // Message unique pour tous les cas d'échec de vérification du code de connexion.
-    private static final String LOGIN_OTP_GENERIC_ERROR = "Code invalide ou expiré. Veuillez recommencer la connexion.";
+    private static final String LOGIN_OTP_NOT_FOUND = "Aucune vérification de connexion en cours ou elle a expiré. Veuillez vous reconnecter.";
+    private static final String LOGIN_OTP_EXPIRED = "Ce code de connexion a expiré (validité : 5 minutes). Veuillez vous reconnecter pour en recevoir un nouveau.";
+    private static final String LOGIN_OTP_TOO_MANY_ATTEMPTS = "Nombre maximal de tentatives atteint. Veuillez vous reconnecter pour recevoir un nouveau code.";
     private static final int MAX_LOGIN_OTP_ATTEMPTS = 5;
+
+    /** Exception signalant qu'aucun compte ne correspond à l'email fourni. */
+    public static class AccountNotFoundException extends RuntimeException {
+        public AccountNotFoundException(String message) {
+            super(message);
+        }
+    }
 
     /**
      * Démarre le second facteur d'authentification après validation du mot de passe :
@@ -369,7 +377,7 @@ public class AuthService {
     public void resendTwoFactorChallenge(String challenge) {
         Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByToken(challenge);
         if (tokenOpt.isEmpty()) {
-            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+            throw new RuntimeException(LOGIN_OTP_NOT_FOUND);
         }
         User user = tokenOpt.get().getUser();
         initiateTwoFactorChallenge(user);
@@ -386,19 +394,26 @@ public class AuthService {
 
         Optional<LoginTwoFactorToken> tokenOpt = loginTwoFactorTokenRepository.findByToken(challenge);
         if (tokenOpt.isEmpty()) {
-            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+            throw new RuntimeException(LOGIN_OTP_NOT_FOUND);
         }
 
         LoginTwoFactorToken twoFactorToken = tokenOpt.get();
-        if (twoFactorToken.isExpired() || twoFactorToken.getAttempts() >= MAX_LOGIN_OTP_ATTEMPTS) {
+        if (twoFactorToken.isExpired()) {
             loginTwoFactorTokenRepository.delete(twoFactorToken);
-            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+            throw new RuntimeException(LOGIN_OTP_EXPIRED);
+        }
+        if (twoFactorToken.getAttempts() >= MAX_LOGIN_OTP_ATTEMPTS) {
+            loginTwoFactorTokenRepository.delete(twoFactorToken);
+            throw new RuntimeException(LOGIN_OTP_TOO_MANY_ATTEMPTS);
         }
 
         if (!matchesOtp(challenge, cleanedOtp, twoFactorToken.getOtpHash())) {
-            twoFactorToken.setAttempts(twoFactorToken.getAttempts() + 1);
+            int attempts = twoFactorToken.getAttempts() + 1;
+            twoFactorToken.setAttempts(attempts);
             loginTwoFactorTokenRepository.save(twoFactorToken);
-            throw new RuntimeException(LOGIN_OTP_GENERIC_ERROR);
+            throw new RuntimeException(attempts >= MAX_LOGIN_OTP_ATTEMPTS
+                    ? LOGIN_OTP_TOO_MANY_ATTEMPTS
+                    : "Code incorrect. Il vous reste " + (MAX_LOGIN_OTP_ATTEMPTS - attempts) + " tentative(s).");
         }
 
         User user = twoFactorToken.getUser();
@@ -414,17 +429,14 @@ public class AuthService {
     public String forgotPassword(String email) {
         log.info("[AUTH SERVICE] Forgot password pour: {}", email);
         
-        // Toujours renvoyer un token, même si l'email est inconnu, pour ne pas révéler
-        // l'existence d'un compte (protection contre l'énumération d'emails).
-        String token = java.util.UUID.randomUUID().toString();
-        
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
-            log.info("[AUTH SERVICE] Email inconnu, réponse générique renvoyée sans envoi.");
-            return token;
+            log.info("[AUTH SERVICE] Email inconnu, aucun envoi.");
+            throw new AccountNotFoundException("Aucun compte avec cet email.");
         }
         
         User user = userOpt.get();
+        String token = java.util.UUID.randomUUID().toString();
         
         // Générer un code OTP à 6 chiffres
         String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
@@ -457,9 +469,9 @@ public class AuthService {
     /**
      * Vérifie l'OTP saisi par l'utilisateur
      */
-    // Message unique pour tous les cas d'échec de vérification (token inconnu, expiré ou
-    // OTP erroné) afin de ne pas révéler si l'email associé existe réellement.
-    private static final String OTP_GENERIC_ERROR = "Code ou lien invalide. Veuillez redemander un nouveau code.";
+    private static final String OTP_NOT_FOUND = "Aucune demande de réinitialisation en cours ou elle a expiré. Veuillez redemander un code.";
+    private static final String OTP_EXPIRED = "Ce code a expiré (validité : 15 minutes). Veuillez en redemander un nouveau.";
+    private static final String OTP_TOO_MANY_ATTEMPTS = "Nombre maximal de tentatives atteint. Veuillez redemander un nouveau code.";
     private static final int MAX_OTP_ATTEMPTS = 5;
 
     // noRollbackFor: the increment/delete below must commit even though the method signals
@@ -474,23 +486,30 @@ public class AuthService {
         Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(token);
         if (tokenOpt.isEmpty()) {
             log.warn("[AUTH SERVICE] Token introuvable");
-            throw new RuntimeException(OTP_GENERIC_ERROR);
+            throw new RuntimeException(OTP_NOT_FOUND);
         }
         
         PasswordResetToken resetToken = tokenOpt.get();
         
-        // Vérifier l'expiration et le nombre de tentatives
-        if (resetToken.isExpired() || resetToken.getAttempts() >= MAX_OTP_ATTEMPTS) {
-            log.warn("[AUTH SERVICE] Token expiré ou nombre max de tentatives atteint");
+        if (resetToken.isExpired()) {
+            log.warn("[AUTH SERVICE] Token expiré");
             passwordResetTokenRepository.delete(resetToken);
-            throw new RuntimeException(OTP_GENERIC_ERROR);
+            throw new RuntimeException(OTP_EXPIRED);
+        }
+        if (resetToken.getAttempts() >= MAX_OTP_ATTEMPTS) {
+            log.warn("[AUTH SERVICE] Nombre max de tentatives atteint");
+            passwordResetTokenRepository.delete(resetToken);
+            throw new RuntimeException(OTP_TOO_MANY_ATTEMPTS);
         }
         
         if (!matchesOtp(token, cleanedOtp, resetToken.getOtpHash())) {
             log.warn("[AUTH SERVICE] OTP incorrect");
-            resetToken.setAttempts(resetToken.getAttempts() + 1);
+            int attempts = resetToken.getAttempts() + 1;
+            resetToken.setAttempts(attempts);
             passwordResetTokenRepository.save(resetToken);
-            throw new RuntimeException(OTP_GENERIC_ERROR);
+            throw new RuntimeException(attempts >= MAX_OTP_ATTEMPTS
+                    ? OTP_TOO_MANY_ATTEMPTS
+                    : "Code incorrect. Il vous reste " + (MAX_OTP_ATTEMPTS - attempts) + " tentative(s).");
         }
         
         resetToken.setVerified(true);
@@ -509,7 +528,7 @@ public class AuthService {
         Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(token);
         if (tokenOpt.isEmpty()) {
             log.warn("[AUTH SERVICE] Token introuvable");
-            throw new RuntimeException("Lien invalide.");
+            throw new RuntimeException(OTP_NOT_FOUND);
         }
         
         PasswordResetToken resetToken = tokenOpt.get();
@@ -518,7 +537,7 @@ public class AuthService {
         if (resetToken.isExpired()) {
             log.warn("[AUTH SERVICE] Token expiré");
             passwordResetTokenRepository.delete(resetToken);
-            throw new RuntimeException("Lien expiré. Veuillez recommencer la procédure.");
+            throw new RuntimeException(OTP_EXPIRED);
         }
         
         // Le mot de passe ne peut être changé qu'après vérification réussie de l'OTP

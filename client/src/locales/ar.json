@@ -78,7 +78,7 @@
     },
     "passwordRecovery": {
       "errorTitle": "خطأ",
-      "networkError": "خطأ في الشبكة أو الخادم.",
+      "networkError": "تعذّر الاتصال: تحقق من اتصالك بالإنترنت ثم أعد المحاولة.",
       "sessionExpired": "انتهت الجلسة. يرجى إعادة المحاولة.",
       "forgot": {
         "title": "إعادة تعيين كلمة المرور",
@@ -88,6 +88,7 @@
         "codeSentTitle": "تم إرسال الرمز",
         "codeSentDescription": "تم إرسال رمز إلى {{email}}",
         "noAccountError": "لا يوجد حساب بهذا البريد الإلكتروني",
+        "sendError": "فشل إرسال الرمز (رمز HTTP {{status}}).",
         "backToLogin": "العودة إلى تسجيل الدخول"
       },
       "otp": {
@@ -101,8 +102,8 @@
         "resendSuccessDescription": "تم إرسال رمز جديد إلى {{email}}",
         "verifySuccessTitle": "نجاح",
         "verifySuccessDescription": "تم التحقق من الرمز بنجاح.",
-        "invalidCodeError": "رمز غير صحيح. يرجى المحاولة مرة أخرى.",
-        "resendError": "حدث خطأ أثناء إعادة إرسال الرمز.",
+        "invalidCodeError": "فشل التحقق من الرمز (رمز HTTP {{status}}).",
+        "resendError": "فشلت إعادة إرسال الرمز (رمز HTTP {{status}}).",
         "back": "رجوع"
       },
       "newPassword": {
@@ -117,7 +118,7 @@
         "passwordChangedDescription": "تم تغيير كلمة المرور بنجاح.",
         "passwordMinError": "يجب أن تحتوي كلمة المرور على 12 حرفًا على الأقل، بما في ذلك حرف كبير وحرف صغير ورقم ورمز خاص.",
         "passwordMismatchError": "كلمتا المرور غير متطابقتين.",
-        "resetError": "حدث خطأ أثناء إعادة تعيين كلمة المرور."
+        "resetError": "فشلت إعادة تعيين كلمة المرور (رمز HTTP {{status}})."
       }
     },
     "register": {

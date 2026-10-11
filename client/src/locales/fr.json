@@ -78,7 +78,7 @@
     },
     "passwordRecovery": {
       "errorTitle": "Erreur",
-      "networkError": "Erreur réseau ou serveur.",
+      "networkError": "Connexion impossible : vérifiez votre connexion internet puis réessayez.",
       "sessionExpired": "Session expirée. Veuillez recommencer.",
       "forgot": {
         "title": "Réinitialisation",
@@ -88,6 +88,7 @@
         "codeSentTitle": "Code envoyé",
         "codeSentDescription": "Un code a été envoyé à {{email}}",
         "noAccountError": "Aucun compte avec cet email",
+        "sendError": "L'envoi du code a échoué (code HTTP {{status}}).",
         "backToLogin": "Retour à la connexion"
       },
       "otp": {
@@ -101,8 +102,8 @@
         "resendSuccessDescription": "Un nouveau code a été envoyé à {{email}}",
         "verifySuccessTitle": "Succès",
         "verifySuccessDescription": "Code vérifié avec succès.",
-        "invalidCodeError": "Code incorrect. Veuillez réessayer.",
-        "resendError": "Erreur lors du renvoi du code.",
+        "invalidCodeError": "La vérification du code a échoué (code HTTP {{status}}).",
+        "resendError": "Le renvoi du code a échoué (code HTTP {{status}}).",
         "back": "Retour"
       },
       "newPassword": {
@@ -117,7 +118,7 @@
         "passwordChangedDescription": "Votre mot de passe a été changé avec succès.",
         "passwordMinError": "Le mot de passe doit contenir au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial.",
         "passwordMismatchError": "Les mots de passe ne correspondent pas.",
-        "resetError": "Erreur lors de la réinitialisation."
+        "resetError": "La réinitialisation du mot de passe a échoué (code HTTP {{status}})."
       }
     },
     "register": {
@@ -545,7 +546,7 @@
       "step9": "Divers"
     },
     "userTypes": {
-      "expert": "Expert Technique",
+      "expert": "Expert",
       "evaluateur": "Évaluateur",
       "formateur": "Formateur"
     },

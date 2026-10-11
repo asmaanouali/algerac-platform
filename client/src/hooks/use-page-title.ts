@@ -104,7 +104,6 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/dt\/demandes-accreditation$/, "Demandes d'accréditation"],
   [/^\/dt\/demandes-accreditation-legacy$/, "Demandes d'accréditation"],
   [/^\/dt\/demande\/.+$/, "Détail demande"],
-  [/^\/dt\/candidature-oec\/.+$/, "Candidature OEC"],
   [/^\/dt\/candidatures-oec$/, "Candidatures OEC"],
   [/^\/dt\/candidatures$/, "Candidatures"],
   [/^\/dt\/ordres-mission$/, "Ordres de mission"],

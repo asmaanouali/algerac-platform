@@ -562,7 +562,7 @@ public class CandidatureService {
             .stream()
             .filter(user -> user.getUserType() != null && 
                    (user.getUserType().equalsIgnoreCase("EXPERT") || 
-                    user.getUserType().equalsIgnoreCase("ET") || 
+                    user.getUserType().equalsIgnoreCase("EVALUATEUR") || 
                     user.getUserType().equalsIgnoreCase("FORMATEUR")) &&
                    (user.getStatus() == UserStatus.INTERVIEW_SCHEDULED || 
                     user.getStatus() == UserStatus.INTERVIEW_CONFIRMED ||

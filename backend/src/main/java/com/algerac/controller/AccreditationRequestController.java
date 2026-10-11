@@ -231,6 +231,8 @@ public class AccreditationRequestController {
             oecProfile.put("porteeAccreditation", oecUser.getPorteeAccreditation());
             oecProfile.put("typeDemande", oecUser.getTypeDemande());
             oecProfile.put("documentsJson", oecUser.getDocumentsJson());
+            oecProfile.put("logoBase64", oecUser.getLogoBase64());
+            oecProfile.put("logoMimeType", oecUser.getLogoMimeType());
             details.put("oecProfile", oecProfile);
         }
         

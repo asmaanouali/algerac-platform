@@ -1,7 +1,6 @@
 
 package com.algerac.service;
 
-import com.algerac.model.OECApplication;
 import com.algerac.model.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -153,7 +152,19 @@ public class EmailService {
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(wrapBrandedHtml(contentHtml), true);
-            mailSender.send(mimeMessage);
+            // The SMTP server intermittently drops connections, so retry before giving up
+            final int maxAttempts = 4;
+            for (int attempt = 1; ; attempt++) {
+                try {
+                    mailSender.send(mimeMessage);
+                    break;
+                } catch (org.springframework.mail.MailSendException e) {
+                    if (attempt >= maxAttempts) {
+                        throw e;
+                    }
+                    log.warn("Échec envoi email à {} (tentative {}/{}): {}", to, attempt, maxAttempts, e.getMessage());
+                }
+            }
             log.info("Email envoyé à {} - {}", to, subject);
         } catch (MessagingException e) {
             log.error("Erreur lors de l'envoi de l'email à {} ({})", to, subject, e);
@@ -309,92 +320,6 @@ public class EmailService {
                 %s
                 """.formatted(user.getFullName(), supportLine());
         sendBrandedEmail(user.getEmail(), "Confirmation d'inscription - ALGERAC", content);
-    }
-
-    // ============================================================
-    // OEC APPLICATION WORKFLOW
-    // ============================================================
-
-    public void sendOECApplicationNotificationToDT(OECApplication application) {
-        LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("ID de la demande", "#" + application.getId());
-        rows.put("Organisme", application.getNomOrganisme());
-        rows.put("Email", application.getEmail());
-        rows.put("Téléphone", safe(application.getTelephone()));
-        rows.put("Représentant", safe(application.getNomRepresentant()));
-        rows.put("Date de candidature", application.getCreatedAt().format(DATE_TIME_FMT));
-
-        String content = """
-                <p>Bonjour,</p>
-                <p>Une nouvelle demande d'inscription <strong>OEC</strong> a été reçue et nécessite votre approbation.</p>
-                %s
-                <p>Le formulaire <strong>DOC 1</strong> complet est joint à cet email.</p>
-                <p>Veuillez consulter cette demande sur la plateforme pour l'approuver ou la refuser.</p>
-                """.formatted(detailsCard("Informations de la demande", rows));
-
-        byte[] pdfBytes = pdfGenerationService.generateOECApplicationPdf(application);
-        String filename = String.format("DOC1_%s_%s.pdf",
-                application.getNomOrganisme().replaceAll("[^a-zA-Z0-9]", "_"),
-                DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now()));
-        sendBrandedEmailWithAttachment(dtEmail,
-                String.format("[OEC] Nouvelle demande d'inscription - %s", application.getNomOrganisme()),
-                content, filename, pdfBytes);
-    }
-
-    public void sendOECApplicationConfirmationToCandidate(OECApplication application) {
-        LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("Numéro de demande", "#" + application.getId());
-        rows.put("Date de dépôt", application.getCreatedAt().format(DATE_TIME_FMT));
-
-        String content = """
-                <p>Bonjour,</p>
-                <p>Votre demande d'accréditation OEC pour l'organisme <strong>« %s »</strong> a bien été reçue.</p>
-                %s
-                <p>Votre dossier est actuellement en cours d'examen par notre équipe technique.
-                   Vous recevrez une notification par email dès qu'une décision sera prise concernant votre candidature.</p>
-                %s
-                """.formatted(application.getNomOrganisme(),
-                        detailsCard("Récapitulatif", rows),
-                        supportLine());
-        sendBrandedEmail(application.getEmail(),
-                "Confirmation de votre demande d'accréditation - ALGERAC", content);
-    }
-
-    public void sendOECApplicationRejectionToCandidate(OECApplication application, String rejectionReason) {
-        String content = """
-                <p>Bonjour,</p>
-                <p>Nous avons examiné votre demande d'accréditation pour l'organisme <strong>« %s »</strong>.</p>
-                <p>Après étude de votre dossier, nous sommes au regret de vous informer que votre demande
-                   n'a pas pu être acceptée pour le(s) motif(s) suivant(s) :</p>
-                %s
-                <p>Si vous souhaitez obtenir des informations complémentaires ou déposer une nouvelle demande
-                   après avoir pris en compte les observations, n'hésitez pas à nous contacter.</p>
-                %s
-                """.formatted(application.getNomOrganisme(),
-                        calloutCard("Motif de refus", rejectionReason, "danger"),
-                        supportLine());
-        sendBrandedEmail(application.getEmail(),
-                "Décision concernant votre demande d'accréditation - ALGERAC", content);
-    }
-
-    public void sendOECApplicationApprovedNotificationToAdmin(OECApplication application) {
-        LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("ID de la demande", "#" + application.getId());
-        rows.put("Organisme", application.getNomOrganisme());
-        rows.put("Email", application.getEmail());
-        rows.put("Téléphone", safe(application.getTelephone()));
-        rows.put("Représentant", safe(application.getNomRepresentant()));
-        rows.put("Approuvé le", application.getReviewedByDtAt().format(DATE_TIME_FMT));
-
-        String content = """
-                <p>Bonjour Administrateur,</p>
-                <p>Une candidature <strong>OEC</strong> a été approuvée par le DT et nécessite la création d'un compte utilisateur :</p>
-                %s
-                <p>Veuillez créer le compte utilisateur pour cet organisme sur la plateforme.</p>
-                """.formatted(detailsCard(null, rows));
-        sendBrandedEmail(notificationEmail,
-                String.format("[OEC] Candidature approuvée - Action requise pour %s", application.getNomOrganisme()),
-                content);
     }
 
     public void sendCandidatureApprovedEmail(User user) {
@@ -875,128 +800,6 @@ public class EmailService {
                     recipientEmail, e.getMessage());
             // Don't throw - complaint should still be registered even if email fails
         }
-    }
-
-    // ============================================================
-    // OEC APPLICATION (additional flows)
-    // ============================================================
-
-    public void sendOECApplicationRejectionWithDeficiencies(OECApplication application, String rejectionReason,
-                                                             String manquements) {
-        StringBuilder body = new StringBuilder();
-        body.append(("""
-                <p>Bonjour,</p>
-                <p>Nous avons examiné votre demande d'accréditation pour l'organisme <strong>« %s »</strong>.</p>
-                <p>Après étude de votre dossier, nous sommes au regret de vous informer que votre demande
-                   n'a pas pu être acceptée pour le(s) motif(s) suivant(s) :</p>
-                %s
-                """).formatted(application.getNomOrganisme(),
-                        calloutCard("Motif de refus", rejectionReason, "danger")));
-
-        if (manquements != null && !manquements.isBlank()) {
-            body.append(calloutCard("Manquements identifiés", manquements, "warning"));
-        }
-
-        body.append("""
-                <p>Nous vous invitons à prendre en compte ces observations et à déposer une nouvelle demande
-                   une fois les corrections effectuées.</p>
-                <p>Pour déposer une nouvelle demande, rendez-vous sur la plateforme ALGERAC :
-                   <a href="https://algerac.dz/auth/register/oec" style="color: #00A63E;">https://algerac.dz/auth/register/oec</a></p>
-                """);
-        body.append(supportLine());
-
-        sendBrandedEmail(application.getEmail(),
-                "Demande d'accréditation non retenue - ALGERAC", body.toString());
-    }
-
-    public void sendOECDepositFeeNotification(OECApplication application) {
-        LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("Montant", application.getDepositFeeAmount().toPlainString() + " DA");
-        rows.put("Date limite de paiement", application.getPaymentDeadline().format(DATE_FMT));
-
-        String content = """
-                <p>Bonjour,</p>
-                <p>Votre demande d'accréditation pour l'organisme <strong>« %s »</strong> a été approuvée par la
-                   Direction Technique d'ALGERAC.</p>
-                <p>Pour poursuivre le traitement de votre dossier, vous êtes invité(e) à régler les frais de dépôt suivants :</p>
-                %s
-                <p style="margin: 20px 0 8px 0; font-weight: bold; color: #333;">Modalités de paiement :</p>
-                <p>Après avoir effectué le paiement, veuillez envoyer la preuve de paiement (bordereau de virement,
-                   reçu de paiement, etc.) par email à l'adresse suivante :
-                   <a href="mailto:%s" style="color: #00A63E;">%s</a></p>
-                <p>Veuillez mentionner le nom de votre organisme et votre numéro de candidature
-                   <strong>(#%d)</strong> dans l'objet du mail.</p>
-                %s
-                %s
-                """.formatted(application.getNomOrganisme(),
-                        detailsCard("Frais de dépôt", rows),
-                        dagEmail, dagEmail,
-                        application.getId(),
-                        calloutCard("Important",
-                                "Vous disposez d'un délai d'<strong>un mois</strong> à compter de la réception de ce mail pour effectuer le paiement. Passé ce délai, votre demande sera automatiquement rejetée.",
-                                "warning"),
-                        supportLine());
-        sendBrandedEmail(application.getEmail(),
-                "Frais de dépôt à régler - Demande d'accréditation ALGERAC", content);
-    }
-
-    public void sendOECAccountCreatedEmail(OECApplication application, String generatedPassword) {
-        try {
-            LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-            rows.put("Organisme", application.getNomOrganisme());
-            rows.put("Type", safe(application.getTypeOrganisme()));
-            rows.put("Représentant", safe(application.getNomRepresentant()));
-            rows.put("Téléphone", safe(application.getTelephone()));
-            rows.put("Adresse", safe(application.getAdresseSiege()));
-
-            String content = """
-                    <p>Bonjour,</p>
-                    <p>Nous avons le plaisir de vous informer que votre compte sur la plateforme ALGERAC a été créé avec
-                       succès pour l'organisme <strong>« %s »</strong>.</p>
-                    %s
-                    %s
-                    %s
-                    <p>Vous pouvez dès maintenant vous connecter à la plateforme ALGERAC et accéder à l'ensemble des
-                       services disponibles.</p>
-                    <p>Bienvenue sur la plateforme ALGERAC !</p>
-                    """.formatted(application.getNomOrganisme(),
-                            credentialsCard(application.getEmail(), generatedPassword),
-                            calloutCard("Sécurité",
-                                    "Nous vous recommandons vivement de changer votre mot de passe dès votre première connexion pour des raisons de sécurité.",
-                                    "warning"),
-                            detailsCard("Informations de votre organisme", rows));
-            sendBrandedEmail(application.getEmail(),
-                    "Votre compte ALGERAC a été créé - Bienvenue !", content);
-        } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de l'email de création de compte à {}", application.getEmail(), e);
-            // Ne pas propager l'exception — le compte est déjà créé, ce n'est pas bloquant
-            log.warn("Le compte a été créé mais l'email n'a pas pu être envoyé");
-        }
-    }
-
-    public void sendOECPaymentExpiredRejection(OECApplication application) {
-        LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("Montant dû", application.getDepositFeeAmount() != null
-                ? application.getDepositFeeAmount().toPlainString() + " DA" : "N/A");
-        rows.put("Date limite de paiement", application.getPaymentDeadline() != null
-                ? application.getPaymentDeadline().format(DATE_FMT) : "N/A");
-
-        String content = """
-                <p>Bonjour,</p>
-                <p>Nous vous informons que votre demande d'accréditation pour l'organisme <strong>« %s »</strong>
-                   a été clôturée en raison du non-règlement des frais de dépôt dans le délai imparti.</p>
-                %s
-                %s
-                <p>Si vous souhaitez poursuivre votre démarche d'accréditation, vous êtes invité(e) à déposer une
-                   nouvelle demande sur la plateforme ALGERAC.</p>
-                %s
-                """.formatted(application.getNomOrganisme(),
-                        detailsCard(null, rows),
-                        calloutCard("Motif",
-                                "Frais de dépôt non réglés dans le délai d'un mois.", "danger"),
-                        supportLine());
-        sendBrandedEmail(application.getEmail(),
-                "Demande d'accréditation clôturée - Frais non réglés - ALGERAC", content);
     }
 
     /**

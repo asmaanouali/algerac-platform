@@ -4,6 +4,7 @@ import com.algerac.dto.ExpertSignupRequest;
 import com.algerac.dto.OECSignupRequest;
 import com.algerac.model.LoginTwoFactorToken;
 import com.algerac.model.PasswordResetToken;
+import com.algerac.model.RequestType;
 import com.algerac.model.User;
 import com.algerac.model.UserRole;
 import com.algerac.model.UserStatus;
@@ -40,6 +41,7 @@ public class AuthService {
     private final ObjectMapper objectMapper;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final LoginTwoFactorTokenRepository loginTwoFactorTokenRepository;
+    private final RequestService requestService;
 
     private static final String EXPERT_PREFIX = "EXP";
     private static final String FORMATEUR_PREFIX = "FOR";
@@ -113,8 +115,53 @@ public class AuthService {
         return String.format("%s-%04d", prefix, count + 1);
     }
     
+    private static final java.util.Set<String> LOGO_MIME_TYPES =
+            java.util.Set.of("image/png", "image/jpeg", "image/webp", "image/svg+xml");
+    // ~2 Mo de fichier une fois encodé en base64
+    private static final int MAX_LOGO_BASE64_LENGTH = 2_800_000;
+
+    public void validateLogo(String logoBase64, String logoMimeType) {
+        if (logoMimeType == null || !LOGO_MIME_TYPES.contains(logoMimeType)) {
+            throw new RuntimeException("Le logo doit être une image (PNG, JPG, WebP ou SVG)");
+        }
+        if (logoBase64.length() > MAX_LOGO_BASE64_LENGTH) {
+            throw new RuntimeException("Le logo ne doit pas dépasser 2 Mo");
+        }
+    }
+
+    /**
+     * Inscription publique d'un nouvel OEC : crée le User PENDING et sa demande d'accréditation
+     * (PENDING_DT_REVIEW) dans une seule transaction. La demande est la source de vérité
+     * du dossier ; le User n'est activé qu'à la création du compte par l'admin.
+     */
+    @Transactional
+    public User registerOECWithRequest(OECSignupRequest request) {
+        User user = registerOEC(request);
+        requestService.createAndSubmitForNewOec(
+                user,
+                mapTypeDemande(request.getTypeDemande()),
+                request.getPorteeAccreditation(),
+                request.getDescription()
+        );
+        return user;
+    }
+
+    private RequestType mapTypeDemande(String typeDemande) {
+        if (typeDemande == null) return RequestType.INITIAL;
+        return switch (typeDemande.toLowerCase()) {
+            case "extension" -> RequestType.EXTENSION;
+            case "renouvellement" -> RequestType.RENOUVELLEMENT;
+            case "transfert" -> RequestType.EXTENSION;
+            default -> RequestType.INITIAL;
+        };
+    }
+
     @Transactional
     public User registerOEC(OECSignupRequest request) {
+        boolean hasLogo = request.getLogoBase64() != null && !request.getLogoBase64().isBlank();
+        if (hasLogo) {
+            validateLogo(request.getLogoBase64(), request.getLogoMimeType());
+        }
         Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
             User existing = existingUser.get();
@@ -147,6 +194,8 @@ public class AuthService {
                 .emailProfessionnel(request.getEmailProfessionnel())
                 .porteeAccreditation(request.getPorteeAccreditation())
                 .typeDemande(request.getTypeDemande())
+                .logoBase64(hasLogo ? request.getLogoBase64() : null)
+                .logoMimeType(hasLogo ? request.getLogoMimeType() : null)
                 .status(UserStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();

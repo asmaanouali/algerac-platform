@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { apiRequest } from "@/lib/queryClient";
-import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf } from "@/lib/pdf-documents";
+import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf, normalizeDoc1Payload } from "@/lib/pdf-documents";
 import { getSearchRequestId } from "@/lib/ra-resume";
 
 // Persist study progress in localStorage so RA can resume where they stopped.
@@ -283,7 +283,7 @@ export default function RAFeasibilityPage() {
 
   // Parse documents from the request description JSON
   const parsedDescription = (() => {
-    try { return details?.request?.description ? JSON.parse(details.request.description) : null; } catch { return null; }
+    try { return details?.request?.description ? normalizeDoc1Payload(JSON.parse(details.request.description), details.request) : null; } catch { return null; }
   })();
   const documents: Array<{ key?: string; name: string; base64?: string; mimeType?: string }> = Array.isArray(parsedDescription?.documents) ? parsedDescription.documents : [];
   const filteredDocs = documents.filter((d) => !docSearch.trim() || d.name.toLowerCase().includes(docSearch.toLowerCase()));

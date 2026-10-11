@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf } from "@/lib/pdf-documents";
+import { openAccreditationDoc1Pdf, openAccreditationTechnicalFormPdf, normalizeDoc1Payload } from "@/lib/pdf-documents";
 import {
   Loader2, ArrowLeft, FileText, Download, Printer,
   Building2, User, Mail, Phone, MapPin, Globe, Briefcase, Calendar, ClipboardList, Users, Shield, FileDown, UserPlus,
@@ -171,7 +171,7 @@ export default function CDRequestDetailPage() {
 
   const req = data.request;
   const oec = data.oecProfile || {};
-  const p = parsed || {};
+  const p = normalizeDoc1Payload(parsed, req);
   const st = STATUS_LABELS[req.status] || { label: req.status?.replace(/_/g, " ") || "—", color: "bg-slate-100 text-slate-700" };
 
   const printDoc1 = () => {
@@ -270,8 +270,13 @@ export default function CDRequestDetailPage() {
             <CardHeader><CardTitle>Informations de l'organisme</CardTitle></CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
+                {oec.logoBase64 && (
+                  <div className="md:col-span-2">
+                    <img src={`data:${oec.logoMimeType || "image/png"};base64,${oec.logoBase64}`} alt="Logo" className="h-14 w-auto max-w-[10rem] object-contain" />
+                  </div>
+                )}
                 <Info label="Nom légal" value={p.nomLegal || oec.organizationName} />
-                <Info label="Abréviation / Sigle" value={[p.abreviation, p.sigle].filter(Boolean).join(" / ")} />
+                <Info label="Abréviation" value={p.abreviation} />
                 <Info label="Statut juridique" value={p.statutJuridique || oec.typeOrganisme} />
                 <Info label="N° Registre de commerce" value={p.registreCommerce} />
                 <Info label="Codes d'activité" value={p.codesActivite} />
@@ -312,7 +317,7 @@ export default function CDRequestDetailPage() {
           )}
 
           {/* Personnel */}
-          {(Array.isArray(p.personnelSites) || Array.isArray(p.responsablesTechniques) || p.responsableQualiteNom) && (
+          {(Array.isArray(p.personnelSites) || Array.isArray(p.responsablesTechniques) || p.responsableQualiteNom || p.responsableQualiteQualif || p.responsableQualiteExp) && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><Users className="w-4 h-4" /> Personnel</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -326,10 +331,10 @@ export default function CDRequestDetailPage() {
                   { key: "qualifications", label: "Qualifications" },
                   { key: "experience", label: "Expérience (ans)" },
                 ]} rows={p.responsablesTechniques} />
-                {p.responsableQualiteNom && (
+                {(p.responsableQualiteNom || p.responsableQualiteQualif || p.responsableQualiteExp) && (
                   <div className="grid md:grid-cols-3 gap-3 p-3 rounded-lg bg-slate-50 border">
                     <Info label="Responsable qualité — Nom" value={p.responsableQualiteNom} />
-                    <Info label="Qualifications" value={p.responsableQualiteQualif} />
+                    <Info label="Diplômes" value={p.responsableQualiteQualif} />
                     <Info label="Expérience" value={p.responsableQualiteExp} />
                   </div>
                 )}
@@ -449,7 +454,7 @@ export default function CDRequestDetailPage() {
           )}
 
           {/* Déclaration */}
-          {(p.demandeurNom || p.signature) && (
+          {p.demandeurNom && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-4 h-4" /> Déclaration</CardTitle></CardHeader>
               <CardContent>

@@ -30,6 +30,7 @@ public class RequestService {
     private final NotificationService notificationService;
     private final DepartmentRepository departmentRepository;
     private final SatelliteSiteRepository satelliteSiteRepository;
+    private final EmailService emailService;
     
     public List<AccreditationRequest> getAllRequests() {
         return requestRepository.findAll();
@@ -216,16 +217,10 @@ public class RequestService {
             
             request = requestRepository.save(request);
             log.info("DT a validé les documents de la demande {}", request.getReferenceNumber());
-            
+
             // Notifier le(s) CD concerné(s) par le domaine
             notificationService.notifyCDAfterDTApproval(request);
-
-            // Cas particulier : nouvel OEC inscrit via /oecregister sans compte (User en PENDING).
-            // Demander à l'admin de créer le compte. La demande continue son flux normal vers le CD.
-            User oecUser = request.getOec();
-            if (oecUser != null && oecUser.getStatus() == UserStatus.PENDING) {
-                notificationService.notifyAdminCreateOECAccount(request);
-            }
+            notifyAdminIfNewOecWithoutAccount(request);
         } else {
             request.setStatus(RequestStatus.DT_REJECTED);
             request.setProgress(3);
@@ -236,14 +231,37 @@ public class RequestService {
             
             request = requestRepository.save(request);
             log.info("DT a rejeté les documents de la demande {}", request.getReferenceNumber());
-            
-            // Notifier l'OEC du rejet
-            notificationService.notifyOECDTRejection(request, comments);
+
+            User oecUser = request.getOec();
+            if (oecUser != null && oecUser.getStatus() == UserStatus.PENDING) {
+                // Nouvel OEC sans compte : il ne peut pas voir de notification in-app.
+                // Email + statut REJECTED pour qu'il puisse déposer une nouvelle inscription.
+                try {
+                    emailService.sendOECRejectionByDT(oecUser, comments);
+                } catch (Exception e) {
+                    log.warn("Email de rejet DT non envoyé à {} : {}", oecUser.getEmail(), e.getMessage());
+                }
+                oecUser.setStatus(UserStatus.REJECTED);
+                userRepository.save(oecUser);
+            } else {
+                notificationService.notifyOECDTRejection(request, comments);
+            }
         }
         
         return request;
     }
-    
+
+    /**
+     * Nouvel OEC inscrit via /oecregister (User encore PENDING) : une fois la demande validée
+     * par le DT, demander à l'admin de créer le compte. La demande suit son flux vers le CD.
+     */
+    private void notifyAdminIfNewOecWithoutAccount(AccreditationRequest request) {
+        User oecUser = request.getOec();
+        if (oecUser != null && oecUser.getStatus() == UserStatus.PENDING) {
+            notificationService.notifyAdminCreateOECAccount(request);
+        }
+    }
+
     /**
      * DT: explicitly assign a validated request to a specific CD of a given
      * department. Called after dtReviewRequest(approved=true) — or as the
@@ -277,6 +295,8 @@ public class RequestService {
 
         request.setDepartment(dept);
         request.setAssignedToCd(cd);
+        boolean firstDtValidation = request.getStatus() == RequestStatus.PENDING_DT_REVIEW
+                || request.getStatus() == RequestStatus.SUBMITTED;
         if (comments != null && !comments.isBlank()) {
             request.setDtReviewComments(comments);
         }
@@ -290,6 +310,9 @@ public class RequestService {
         request = requestRepository.save(request);
 
         notificationService.notifyCDAfterDTApproval(request);
+        if (firstDtValidation) {
+            notifyAdminIfNewOecWithoutAccount(request);
+        }
         log.info("DT a assigné la demande #{} au CD {} (département {})", request.getId(), cd.getFullName(), dept.getName());
         return request;
     }

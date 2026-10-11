@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Files, Clock, CheckCircle2, AlertCircle, ArrowRight, Loader2, Users, ClipboardList, UserPlus, FileSearch, BarChart3, FileText, Shield } from "lucide-react";
 import { Link } from "wouter";
+import { UpcomingInterviewsCard } from "@/components/UpcomingInterviewsCard";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -435,6 +436,7 @@ export default function CDDashboard() {
               </div>
             </>
           )}
+          <UpcomingInterviewsCard href="/cd/entretiens-candidats" />
         </main>
       </div>
     </div>

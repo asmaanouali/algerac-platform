@@ -9,6 +9,9 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Image;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +32,7 @@ import java.util.Map;
 public class PdfGenerationService {
     
     private final ObjectMapper objectMapper;
+    private final com.algerac.repository.SatelliteSiteRepository satelliteSiteRepository;
     private static final String ALGERAC_ADDRESS = "ALGERAC - 17 Rue Abdelkader Rakouba, Hussein dey - Alger - Tél : 044.31.74.23/ Fax:044.31.82.20";
     
     /**
@@ -699,65 +703,6 @@ public class PdfGenerationService {
         document.add(address);
     }
     
-    /**
-     * Generation du PDF DOC1 pour une candidature OEC
-     */
-    public byte[] generateOECApplicationPdf(com.algerac.model.OECApplication application) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-            
-            PdfFont font = PdfFontFactory.createFont("Helvetica");
-            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold");
-            
-            // En-tete
-            Paragraph header = new Paragraph("DEMANDE D'ACCREDITATION OEC")
-                    .setFont(boldFont)
-                    .setFontSize(18)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setBold();
-            document.add(header);
-            
-            Paragraph subtitle = new Paragraph("Organisme d'evaluation de la Conformite")
-                    .setFont(font)
-                    .setFontSize(12)
-                    .setTextAlignment(TextAlignment.CENTER);
-            document.add(subtitle);
-            
-            document.add(new Paragraph("\n"));
-            
-            // Informations de base
-            Table table = new Table(UnitValue.createPercentArray(new float[]{35, 65}))
-                    .useAllAvailableWidth();
-            
-            table.addCell(createCell("Nom de l'organisme :", boldFont));
-            table.addCell(createCell(application.getNomOrganisme(), font));
-            
-            table.addCell(createCell("Type d'organisme :", boldFont));
-            table.addCell(createCell(application.getTypeOrganisme() != null ? application.getTypeOrganisme() : "", font));
-            
-            table.addCell(createCell("Adresse du siege :", boldFont));
-            table.addCell(createCell(application.getAdresseSiege() != null ? application.getAdresseSiege() : "", font));
-            
-            table.addCell(createCell("Telephone :", boldFont));
-            table.addCell(createCell(application.getTelephone() != null ? application.getTelephone() : "", font));
-            
-            table.addCell(createCell("Email :", boldFont));
-            table.addCell(createCell(application.getEmail(), font));
-            
-            document.add(table);
-            document.close();
-            
-            log.info("PDF DOC1 genere pour la candidature OEC #{}", application.getId());
-            return baos.toByteArray();
-
-        } catch (Exception e) {
-            log.error("Erreur lors de la generation du PDF DOC1", e);
-            throw new RuntimeException("Erreur lors de la generation du PDF DOC1", e);
-        }
-    }
-
     // =======================================================================
     // Accreditation request PDFs — used to package DOC1 and the technical form
     // (FOR 04 / FOR 05 depending on activities) so DAG, CD, RA, etc. can read
@@ -777,6 +722,7 @@ public class PdfGenerationService {
             PdfFont font = PdfFontFactory.createFont("Helvetica");
             PdfFont bold = PdfFontFactory.createFont("Helvetica-Bold");
 
+            addOecLogo(document, request);
             document.add(new Paragraph("ALGERAC — DOC 1").setFont(bold).setFontSize(14).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("Demande d'accréditation").setFont(bold).setFontSize(12).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph(" "));
@@ -791,91 +737,7 @@ public class PdfGenerationService {
             }
             document.add(new Paragraph(" "));
 
-            Map<String, Object> body = parseDescription(request.getDescription());
-
-            Table t = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
-            addDoc1Row(t, "Type de demande", str(body.get("typeDemande")), font, bold);
-            // Type de site — displayed in official form format with checkboxes
-            String siteType = str(body.get("siteType"));
-            boolean isMonosite  = "monosite".equalsIgnoreCase(siteType);
-            boolean isMultisite = "multisites".equalsIgnoreCase(siteType);
-            String monoBox  = isMonosite  ? "\u2611" : "\u2610";
-            String multiBox = isMultisite ? "\u2611" : "\u2610";
-            Cell siteCell = new Cell(1, 2)
-                .setPadding(4)
-                .setMarginBottom(2);
-            siteCell.add(new Paragraph(
-                "L\u2019activit\u00e9 est r\u00e9alis\u00e9e sur un monosite " + monoBox + " ou un multisites " + multiBox)
-                .setFont(bold).setFontSize(10));
-            siteCell.add(new Paragraph(
-                "(Si multisites, pri\u00e8re de renseigner le formulaire de renseignement technique de l\u2019activit\u00e9 concern\u00e9e pour chaque site)")
-                .setFont(font).setFontSize(9).setItalic());
-            t.addCell(siteCell);
-            addDoc1Row(t, "Activités", joinList(body.get("activites")), font, bold);
-            addDoc1Row(t, "Date d'évaluation souhaitée", str(body.get("dateEvaluation")), font, bold);
-            addDoc1Row(t, "Nom légal", str(body.get("nomLegal")), font, bold);
-            addDoc1Row(t, "Abréviation", str(body.get("abreviation")), font, bold);
-            addDoc1Row(t, "Sigle", str(body.get("sigle")), font, bold);
-            addDoc1Row(t, "Statut juridique", str(body.get("statutJuridique")), font, bold);
-            addDoc1Row(t, "Registre de commerce", str(body.get("registreCommerce")), font, bold);
-            addDoc1Row(t, "Codes d'activité", str(body.get("codesActivite")), font, bold);
-            addDoc1Row(t, "Adresse du siège", str(body.get("adresseSiege")), font, bold);
-            addDoc1Row(t, "Email organisme", str(body.get("emailOrg")), font, bold);
-            addDoc1Row(t, "Site web", str(body.get("siteWeb")), font, bold);
-            // Groupe
-            String appartientGroupe = str(body.get("appartientGroupe"));
-            addDoc1Row(t, "Appartient à un groupe", "oui".equalsIgnoreCase(appartientGroupe) ? "Oui" : "Non", font, bold);
-            if ("oui".equalsIgnoreCase(appartientGroupe)) {
-                addDoc1Row(t, "Nom du groupe", str(body.get("groupeNom")), font, bold);
-                addDoc1Row(t, "Adresse du groupe", str(body.get("groupeAdresse")), font, bold);
-                addDoc1Row(t, "Type de relation", str(body.get("groupeRelation")), font, bold);
-                addDoc1Row(t, "Interventions du groupe sur les activités", str(body.get("groupeImpact")), font, bold);
-            }
-            addDoc1Row(t, "Contact — nom", str(body.get("contactNom")), font, bold);
-            addDoc1Row(t, "Contact — fonction", str(body.get("contactFonction")), font, bold);
-            addDoc1Row(t, "Contact — téléphone", str(body.get("contactTelephone")), font, bold);
-            addDoc1Row(t, "Contact — email", str(body.get("contactEmail")), font, bold);
-            addDoc1Row(t, "Responsable qualité", str(body.get("responsableQualiteNom")), font, bold);
-            addDoc1Row(t, "Demandeur", str(body.get("demandeurNom")), font, bold);
-            addDoc1Row(t, "Fonction demandeur", str(body.get("demandeurFonction")), font, bold);
-            addDoc1Row(t, "Date de la demande", str(body.get("demandeurDate")), font, bold);
-            document.add(t);
-
-            // Site section — differs by siteType
-            String pdfSiteType = str(body.get("siteType"));
-            if ("monosite".equalsIgnoreCase(pdfSiteType)) {
-                document.add(new Paragraph(" "));
-                document.add(new Paragraph("Site unique").setFont(bold).setFontSize(11));
-                List<Object> monoSites = body.get("sites") instanceof List<?> ls ? (List<Object>) ls : List.of();
-                if (!monoSites.isEmpty() && monoSites.get(0) instanceof Map<?,?> ms) {
-                    Table st = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
-                    addDoc1Row(st, "Adresse", str(ms.get("adresse")), font, bold);
-                    addDoc1Row(st, "Activités réalisées", str(ms.get("activites")), font, bold);
-                    String soustr = str(ms.get("soustraitance"));
-                    if (!soustr.isBlank()) addDoc1Row(st, "Activités sous-traitées", soustr, font, bold);
-                    String ebmd = str(ms.get("ebmd"));
-                    if (!ebmd.isBlank()) addDoc1Row(st, "EBMD", ebmd, font, bold);
-                    document.add(st);
-                }
-            } else {
-                // Multisites (PRO 26)
-                document.add(new Paragraph(" "));
-                document.add(new Paragraph("Configuration multisites (PRO 26)").setFont(bold).setFontSize(11));
-                Table mst = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
-                addDoc1Row(mst, "Siège central — nom", str(body.get("msMainSiteName")), font, bold);
-                addDoc1Row(mst, "Siège central — adresse", str(body.get("msMainSiteAddress")), font, bold);
-                addDoc1Row(mst, "Contact siège — nom", str(body.get("msMainSiteContactName")), font, bold);
-                addDoc1Row(mst, "Contact siège — email", str(body.get("msMainSiteContactEmail")), font, bold);
-                addDoc1Row(mst, "SM commun centralisé", Boolean.TRUE.equals(body.get("msCentralizedSM")) ? "Oui" : "Non", font, bold);
-                addDoc1Row(mst, "Description SM commun", str(body.get("msSMDescription")), font, bold);
-                addDoc1Row(mst, "Modalités d'échanges inter-sites", str(body.get("msInterSiteExchangesDoc")), font, bold);
-                document.add(mst);
-                renderTableIfAny(document, body.get("satelliteSites"), "Sites satellites", font, bold);
-            }
-
-            renderTableIfAny(document, body.get("personnelSites"), "Personnel par site", font, bold);
-            renderTableIfAny(document, body.get("responsablesTechniques"), "Responsables techniques", font, bold);
-            renderTableIfAny(document, body.get("reconnaissances"), "Reconnaissances existantes", font, bold);
+            renderDoc1Body(document, request, font, bold);
 
             document.close();
             return baos.toByteArray();
@@ -898,7 +760,7 @@ public class PdfGenerationService {
             PdfFont font = PdfFontFactory.createFont("Helvetica");
             PdfFont bold = PdfFontFactory.createFont("Helvetica-Bold");
 
-            Map<String, Object> body = parseDescription(request.getDescription());
+            Map<String, Object> body = technicalBody(request);
             List<String> activites = listOf(body.get("activites"));
 
             document.add(new Paragraph("ALGERAC — Formulaires techniques").setFont(bold).setFontSize(14).setTextAlignment(TextAlignment.CENTER));
@@ -914,7 +776,7 @@ public class PdfGenerationService {
             }
             if (activites.contains("inspection")) {
                 document.add(new Paragraph("FOR 04 — Inspection (ISO/IEC 17020)").setFont(bold).setFontSize(12));
-                addDoc1Row(singleColumn(document, font, bold), "Type d'organisme", str(body.get("for04Type")), font, bold);
+                keyValueTable(document, font, bold, new String[][]{{"Type d'organisme", str(body.get("for04Type"))}});
                 renderTableIfAny(document, body.get("for04Domaines"), "Domaines d'inspection", font, bold);
                 renderTableIfAny(document, body.get("for04Inspecteurs"), "Personnel d'inspection", font, bold);
                 renderTableIfAny(document, body.get("for04Equipements"), "Équipements", font, bold);
@@ -926,27 +788,53 @@ public class PdfGenerationService {
                 renderTableIfAny(document, body.get("for05Methodes"), "Méthodes", font, bold);
                 renderTableIfAny(document, body.get("for05Equipements"), "Équipements", font, bold);
                 renderTableIfAny(document, body.get("for05Personnel"), "Personnel", font, bold);
-                Table et = singleColumn(document, font, bold);
-                addDoc1Row(et, "Participation EIL", str(body.get("for05ParticipationEIL")), font, bold);
-                addDoc1Row(et, "Procédure incertitudes", str(body.get("for05ProcedureIncertitudes")), font, bold);
+                keyValueTable(document, font, bold, new String[][]{
+                        {"Participation EIL", str(body.get("for05ParticipationEIL"))},
+                        {"Procédure incertitudes", str(body.get("for05ProcedureIncertitudes"))}});
                 document.add(new Paragraph(" "));
             }
             if (activites.contains("etalonnage")) {
                 document.add(new Paragraph("FOR 06 — Étalonnage (ISO/IEC 17025)").setFont(bold).setFontSize(12));
                 renderTableIfAny(document, body.get("for06Grandeurs"), "Grandeurs et gammes", font, bold);
                 renderTableIfAny(document, body.get("for06Etalons"), "Étalons de référence", font, bold);
+                renderTableIfAny(document, body.get("for06Equipements"), "Équipements", font, bold);
+                renderTableIfAny(document, body.get("for06Personnel"), "Personnel", font, bold);
+                keyValueTable(document, font, bold, new String[][]{{"Conditions environnementales", str(body.get("for06ConditionsEnv"))}});
                 document.add(new Paragraph(" "));
             }
             if (activites.contains("cert_sm")) {
                 document.add(new Paragraph("FOR 07 — Certification SM").setFont(bold).setFontSize(12));
                 renderTableIfAny(document, body.get("for07Secteurs"), "Secteurs IAF", font, bold);
-                Table referentiels = singleColumn(document, font, bold);
-                addDoc1Row(referentiels, "Référentiels", joinList(body.get("for07Referentiels")), font, bold);
+                renderTableIfAny(document, body.get("for07Auditeurs"), "Auditeurs", font, bold);
+                renderTableIfAny(document, body.get("for07Comite"), "Comité de décision", font, bold);
+                keyValueTable(document, font, bold, new String[][]{
+                        {"Référentiels", joinList(body.get("for07Referentiels"))},
+                        {"Nombre de clients certifiés", str(body.get("for07NbClientsCertifies"))}});
                 document.add(new Paragraph(" "));
             }
             if (activites.contains("examens_medicaux")) {
                 document.add(new Paragraph("FOR 05-1 — Biologie médicale").setFont(bold).setFontSize(12));
                 renderTableIfAny(document, body.get("for051Disciplines"), "Disciplines", font, bold);
+                renderTableIfAny(document, body.get("for051Personnel"), "Personnel", font, bold);
+                keyValueTable(document, font, bold, new String[][]{{"Participation EEQ", str(body.get("for051ParticipationEEQ"))}});
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("essais_aptitude")) {
+                document.add(new Paragraph("FOR 05-5 — Essais d'aptitude").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for055Programmes"), "Programmes", font, bold);
+                renderTableIfAny(document, body.get("for055Personnel"), "Personnel", font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("cert_produits")) {
+                document.add(new Paragraph("FOR 07-5 — Certification produits, procédés et services").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for075Produits"), "Produits", font, bold);
+                renderTableIfAny(document, body.get("for075Evaluateurs"), "Évaluateurs", font, bold);
+                document.add(new Paragraph(" "));
+            }
+            if (activites.contains("cert_personnes")) {
+                document.add(new Paragraph("FOR 07-8 — Certification de personnes").setFont(bold).setFontSize(12));
+                renderTableIfAny(document, body.get("for078Schemas"), "Schémas", font, bold);
+                renderTableIfAny(document, body.get("for078Evaluateurs"), "Évaluateurs", font, bold);
                 document.add(new Paragraph(" "));
             }
 
@@ -958,12 +846,410 @@ public class PdfGenerationService {
         }
     }
 
+    // ---- DOC1 rendering ----------------------------------------------------
+
+    /** DOC1 map plus the nested technicalForms.* sections flattened to the for04Type / for05Domaines... keys. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> technicalBody(AccreditationRequest request) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>(doc1Body(request));
+        if (body.get("technicalForms") instanceof Map<?, ?> forms) {
+            String[][] mapping = {
+                    {"for04", "typeOrganisme", "for04Type"}, {"for04", "domaines", "for04Domaines"},
+                    {"for04", "inspecteurs", "for04Inspecteurs"}, {"for04", "equipements", "for04Equipements"},
+                    {"for05", "domaines", "for05Domaines"}, {"for05", "methodes", "for05Methodes"},
+                    {"for05", "equipements", "for05Equipements"}, {"for05", "personnel", "for05Personnel"},
+                    {"for05", "participationEIL", "for05ParticipationEIL"},
+                    {"for05", "procedureIncertitudes", "for05ProcedureIncertitudes"},
+                    {"for06", "grandeurs", "for06Grandeurs"}, {"for06", "etalons", "for06Etalons"},
+                    {"for06", "equipements", "for06Equipements"}, {"for06", "personnel", "for06Personnel"},
+                    {"for06", "conditionsEnvironnementales", "for06ConditionsEnv"},
+                    {"for07", "referentiels", "for07Referentiels"}, {"for07", "secteurs", "for07Secteurs"},
+                    {"for07", "auditeurs", "for07Auditeurs"}, {"for07", "comite", "for07Comite"},
+                    {"for07", "nbClientsCertifies", "for07NbClientsCertifies"},
+                    {"for051", "disciplines", "for051Disciplines"}, {"for051", "personnel", "for051Personnel"},
+                    {"for051", "participationEEQ", "for051ParticipationEEQ"},
+                    {"for055", "programmes", "for055Programmes"}, {"for055", "personnel", "for055Personnel"},
+                    {"for075", "produits", "for075Produits"}, {"for075", "evaluateurs", "for075Evaluateurs"},
+                    {"for078", "schemas", "for078Schemas"}, {"for078", "evaluateurs", "for078Evaluateurs"},
+            };
+            for (String[] m : mapping) {
+                if (forms.get(m[0]) instanceof Map<?, ?> form && form.get(m[1]) != null) {
+                    body.put(m[2], form.get(m[1]));
+                }
+            }
+        }
+        return body;
+    }
+
+    private static final Map<String, String> DOC1_TYPES_DEMANDE = Map.of(
+            "initiale", "Accréditation initiale", "extension", "Extension",
+            "renouvellement", "Renouvellement", "transfert", "Transfert");
+
+    private static final Map<String, String> DOC1_ACTIVITES = Map.of(
+            "inspection", "Inspection", "essais", "Essais", "etalonnage", "Étalonnage",
+            "examens_medicaux", "Examens médicaux", "essais_aptitude", "Essais d'aptitude",
+            "cert_sm", "Certification SM",
+            "cert_produits", "Certification produits/procédés/services",
+            "cert_personnes", "Certification personnes");
+
+    private static final Map<String, String> DOC1_PRESTATION_TYPES = Map.of(
+            "accompagnement", "Accompagnement", "formation", "Formation",
+            "audit_interne", "Audit interne", "autre", "Autre");
+
+    // PRO 26 §5.1 qualification criteria, in form order
+    private static final String[][] DOC1_MS_CRITERIA = {
+            {"legalLink", "Lien juridique entre les sites et le siège"},
+            {"centralSM", "Système de management centralisé"},
+            {"commonSM", "Système de management commun à tous les sites"},
+            {"internalAudit", "Programme d'audit interne couvrant tous les sites"},
+            {"centralMgmt", "Gestion centralisée (revue de direction, ressources)"},
+            {"dataCapacity", "Capacité de collecte et d'analyse des données de tous les sites"},
+    };
+
+    private void addOecLogo(Document document, AccreditationRequest request) {
+        try {
+            User oec = request.getOec();
+            if (oec == null || oec.getLogoBase64() == null || oec.getLogoBase64().isBlank()) return;
+            String mime = oec.getLogoMimeType();
+            // iText cannot embed SVG as a raster image
+            if (mime == null || mime.contains("svg")) return;
+            Image img = new Image(ImageDataFactory.create(java.util.Base64.getDecoder().decode(oec.getLogoBase64())));
+            img.scaleToFit(120, 60);
+            img.setHorizontalAlignment(HorizontalAlignment.CENTER);
+            document.add(img);
+        } catch (Exception e) {
+            log.warn("Logo OEC ignoré dans le DOC1 de la demande #{} : {}", request.getId(), e.getMessage());
+        }
+    }
+
+    private void putIfBlank(Map<String, Object> map, String key, Object value) {
+        Object current = map.get(key);
+        if ((current == null || String.valueOf(current).isBlank()) && value != null) {
+            map.put(key, value);
+        }
+    }
+
+    /**
+     * Flatten the stored description into one DOC1 map. The public OEC registration wraps the
+     * form as {type, domain, description:{...}, multisite:{...}} while the new-request flow stores
+     * the form directly; multisite data of the new-request flow only lives on the request entity.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> doc1Body(AccreditationRequest request) {
+        Map<String, Object> raw = parseDescription(request.getDescription());
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        if (raw.get("description") instanceof Map<?, ?> inner) {
+            body.putAll((Map<String, Object>) inner);
+            if (raw.get("multisite") instanceof Map<?, ?> ms) {
+                putIfBlank(body, "msMainSiteName", ms.get("mainSiteName"));
+                putIfBlank(body, "msMainSiteAddress", ms.get("mainSiteAddress"));
+                putIfBlank(body, "msMainSiteContactName", ms.get("mainSiteContactName"));
+                putIfBlank(body, "msMainSiteContactEmail", ms.get("mainSiteContactEmail"));
+                putIfBlank(body, "msCentralizedSM", ms.get("centralizedManagementSystem"));
+                putIfBlank(body, "msSMDescription", ms.get("managementSystemDescription"));
+                putIfBlank(body, "msInterSiteExchangesDoc", ms.get("interSiteExchangesDoc"));
+                putIfBlank(body, "msCriteriaJson", ms.get("qualificationCriteriaJson"));
+                putIfBlank(body, "satelliteSites", ms.get("satelliteSites"));
+            }
+        } else {
+            body.putAll(raw);
+        }
+
+        if (Boolean.TRUE.equals(request.getIsMultisite())) {
+            putIfBlank(body, "siteType", "multisites");
+            putIfBlank(body, "msMainSiteName", request.getMainSiteName());
+            putIfBlank(body, "msMainSiteAddress", request.getMainSiteAddress());
+            putIfBlank(body, "msMainSiteContactName", request.getMainSiteContactName());
+            putIfBlank(body, "msMainSiteContactEmail", request.getMainSiteContactEmail());
+            putIfBlank(body, "msCentralizedSM", request.getCentralizedManagementSystem());
+            putIfBlank(body, "msSMDescription", request.getManagementSystemDescription());
+            putIfBlank(body, "msInterSiteExchangesDoc", request.getInterSiteExchangesDoc());
+            putIfBlank(body, "msCriteriaJson", request.getQualificationCriteriaJson());
+            boolean hasSatellites = body.get("satelliteSites") instanceof List<?> l && !l.isEmpty();
+            if (!hasSatellites && request.getId() != null) {
+                List<Map<String, Object>> satellites = new java.util.ArrayList<>();
+                for (com.algerac.model.SatelliteSite s : satelliteSiteRepository.findByRequest_IdOrderByIdAsc(request.getId())) {
+                    Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    row.put("name", s.getName());
+                    row.put("address", s.getAddress());
+                    row.put("activities", s.getActivities());
+                    row.put("personnel", s.getPersonnel());
+                    row.put("isInScope", s.getIsInScope());
+                    satellites.add(row);
+                }
+                if (!satellites.isEmpty()) body.put("satelliteSites", satellites);
+            }
+        }
+        return body;
+    }
+
+    private String doc1Fmt(Object value) {
+        if (value == null) return "";
+        if (value instanceof Boolean b) return b ? "Oui" : "Non";
+        if (value instanceof List<?> l) {
+            return l.stream().map(this::doc1Fmt).filter(s -> !s.isBlank()).collect(java.util.stream.Collectors.joining(", "));
+        }
+        return value.toString().trim();
+    }
+
+    private String doc1Date(Object value) {
+        String s = doc1Fmt(value);
+        try {
+            return java.time.LocalDate.parse(s.length() > 10 ? s.substring(0, 10) : s)
+                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } catch (Exception e) {
+            return s;
+        }
+    }
+
+    private void doc1Section(Document document, String title, PdfFont bold) {
+        document.add(new Paragraph(title).setFont(bold).setFontSize(11).setMarginTop(10).setMarginBottom(3));
+    }
+
+    private Table doc1Table() {
+        return new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+    }
+
+    /** Renders the rows with the given {key, label} columns; rows with no filled column are skipped. */
+    private void doc1Rows(Document document, List<Map<String, Object>> rows, String title, String[][] cols,
+                          PdfFont font, PdfFont bold) {
+        List<Map<String, Object>> filled = new java.util.ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            for (String[] c : cols) {
+                if (!doc1Fmt(r.get(c[0])).isBlank()) { filled.add(r); break; }
+            }
+        }
+        if (filled.isEmpty()) return;
+        if (title != null) document.add(new Paragraph(title).setFont(bold).setFontSize(10).setMarginTop(6));
+        float[] widths = new float[cols.length];
+        java.util.Arrays.fill(widths, 1f);
+        Table table = new Table(UnitValue.createPercentArray(widths)).useAllAvailableWidth();
+        for (String[] c : cols) table.addHeaderCell(createCell(c[1], bold));
+        for (Map<String, Object> r : filled) {
+            for (String[] c : cols) {
+                String v = doc1Fmt(r.get(c[0]));
+                table.addCell(createCell(v.isBlank() ? "—" : v, font));
+            }
+        }
+        document.add(table);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> doc1List(Object raw) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        if (raw instanceof List<?> l) {
+            for (Object o : l) if (o instanceof Map<?, ?> m) out.add((Map<String, Object>) m);
+        }
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void renderDoc1Body(Document document, AccreditationRequest request, PdfFont font, PdfFont bold) {
+        Map<String, Object> body = doc1Body(request);
+        User oec = request.getOec();
+
+        // 1. Type de demande
+        doc1Section(document, "1. Type de demande", bold);
+        Table t = doc1Table();
+        String typeDemande = str(body.get("typeDemande"));
+        addDoc1Row(t, "Type de demande", DOC1_TYPES_DEMANDE.getOrDefault(typeDemande, typeDemande), font, bold);
+        String siteType = str(body.get("siteType"));
+        // Helvetica has no ballot-box glyphs, so plain-text boxes are used
+        String monoBox = "monosite".equalsIgnoreCase(siteType) ? "[X]" : "[  ]";
+        String multiBox = "multisites".equalsIgnoreCase(siteType) ? "[X]" : "[  ]";
+        Cell siteCell = new Cell(1, 2).setPadding(4).setMarginBottom(2);
+        siteCell.add(new Paragraph("L\u2019activit\u00e9 est r\u00e9alis\u00e9e sur un monosite " + monoBox + " ou un multisites " + multiBox)
+                .setFont(bold).setFontSize(10));
+        siteCell.add(new Paragraph("(Si multisites, pri\u00e8re de renseigner le formulaire de renseignement technique de l\u2019activit\u00e9 concern\u00e9e pour chaque site)")
+                .setFont(font).setFontSize(9).setItalic());
+        t.addCell(siteCell);
+        List<String> activites = listOf(body.get("activites")).stream()
+                .map(a -> DOC1_ACTIVITES.getOrDefault(a, a)).toList();
+        addDoc1Row(t, "Types d'activités", String.join(", ", activites), font, bold);
+        addDoc1Row(t, "Date d'évaluation souhaitée", doc1Date(body.get("dateEvaluation")), font, bold);
+        if ("transfert".equalsIgnoreCase(typeDemande)) {
+            addDoc1Row(t, "Motif de transfert", str(body.get("motifTransfert")), font, bold);
+        }
+        document.add(t);
+
+        // 2. Organisme
+        doc1Section(document, "2. Informations sur l'organisme", bold);
+        t = doc1Table();
+        addDoc1Row(t, "Dénomination légale", str(body.get("nomLegal")), font, bold);
+        addDoc1Row(t, "Abréviation", str(body.get("abreviation")), font, bold);
+        addDoc1Row(t, "Statut juridique", str(body.get("statutJuridique")), font, bold);
+        addDoc1Row(t, "N° registre du commerce", str(body.get("registreCommerce")), font, bold);
+        addDoc1Row(t, "Codes activité", str(body.get("codesActivite")), font, bold);
+        addDoc1Row(t, "Adresse du siège", str(body.get("adresseSiege")), font, bold);
+        addDoc1Row(t, "Adresse de facturation", str(body.get("adresseFacturation")), font, bold);
+        addDoc1Row(t, "Email de l'organisme", str(body.get("emailOrg")), font, bold);
+        addDoc1Row(t, "Site web", str(body.get("siteWeb")), font, bold);
+        boolean inGroup = "oui".equalsIgnoreCase(str(body.get("appartientGroupe")));
+        addDoc1Row(t, "Appartient à un groupe", inGroup ? "Oui" : "Non", font, bold);
+        if (inGroup) {
+            addDoc1Row(t, "Nom du groupe", str(body.get("groupeNom")), font, bold);
+            addDoc1Row(t, "Adresse du groupe", str(body.get("groupeAdresse")), font, bold);
+            // groupeImpact only exists on requests submitted before the two fields were merged
+            addDoc1Row(t, "Relation avec le groupe (interventions du groupe dans l'activité)",
+                    (str(body.get("groupeRelation")) + " " + str(body.get("groupeImpact"))).trim(), font, bold);
+        }
+        document.add(t);
+
+        // 3. Personne à contacter
+        doc1Section(document, "3. Personne à contacter", bold);
+        t = doc1Table();
+        addDoc1Row(t, "Nom complet", str(body.get("contactNom")), font, bold);
+        addDoc1Row(t, "Fonction", str(body.get("contactFonction")), font, bold);
+        addDoc1Row(t, "Adresse", str(body.get("contactAdresse")), font, bold);
+        addDoc1Row(t, "Téléphone", str(body.get("contactTelephone")), font, bold);
+        addDoc1Row(t, "Fax", str(body.get("contactFax")), font, bold);
+        addDoc1Row(t, "Email", str(body.get("contactEmail")), font, bold);
+        document.add(t);
+
+        // 4. Sites
+        if ("multisites".equalsIgnoreCase(siteType)) {
+            doc1Section(document, "4. Sites — configuration multisites (PRO 26)", bold);
+            t = doc1Table();
+            addDoc1Row(t, "Siège central — nom", str(body.get("msMainSiteName")), font, bold);
+            addDoc1Row(t, "Siège central — adresse", str(body.get("msMainSiteAddress")), font, bold);
+            addDoc1Row(t, "Contact siège — nom", str(body.get("msMainSiteContactName")), font, bold);
+            addDoc1Row(t, "Contact siège — email", str(body.get("msMainSiteContactEmail")), font, bold);
+            addDoc1Row(t, "Système de management centralisé", doc1Fmt(body.get("msCentralizedSM")), font, bold);
+            addDoc1Row(t, "Description du système de management", str(body.get("msSMDescription")), font, bold);
+            addDoc1Row(t, "Document d'échanges inter-sites", str(body.get("msInterSiteExchangesDoc")), font, bold);
+            document.add(t);
+            doc1Rows(document, doc1List(body.get("satelliteSites")), "Sites satellites", new String[][]{
+                    {"name", "Nom"}, {"address", "Adresse"}, {"activities", "Activités"},
+                    {"personnel", "Personnel"}, {"isInScope", "Dans la portée"}}, font, bold);
+            renderDoc1Criteria(document, str(body.get("msCriteriaJson")), font, bold);
+        } else {
+            doc1Section(document, "4. Site unique", bold);
+            List<Map<String, Object>> sites = doc1List(body.get("sites"));
+            if (!sites.isEmpty()) {
+                Map<String, Object> site = sites.get(0);
+                t = doc1Table();
+                addDoc1Row(t, "Adresse", str(site.get("adresse")), font, bold);
+                addDoc1Row(t, "Activités réalisées", str(site.get("activites")), font, bold);
+                addDoc1Row(t, "Sous-traitance", str(site.get("soustraitance")), font, bold);
+                document.add(t);
+            }
+        }
+
+        // 5. Personnel
+        doc1Section(document, "5. Personnel", bold);
+        doc1Rows(document, doc1List(body.get("personnelSites")), "Personnel par site", new String[][]{
+                {"site", "Site"}, {"permanents", "Permanents"}, {"vacataires", "Vacataires"}}, font, bold);
+        doc1Rows(document, doc1List(body.get("responsablesTechniques")), "Responsables techniques", new String[][]{
+                {"nom", "Nom"}, {"qualifications", "Qualifications"}, {"experience", "Expérience (ans)"}}, font, bold);
+        String rqNom = str(body.get("responsableQualiteNom"));
+        String rqDiplomes = str(body.get("responsableQualiteQualif"));
+        String rqExp = str(body.get("responsableQualiteExp"));
+        if (!rqNom.isBlank() || !rqDiplomes.isBlank() || !rqExp.isBlank()) {
+            document.add(new Paragraph("Responsable qualité (cas échéant)").setFont(bold).setFontSize(10).setMarginTop(6));
+            t = doc1Table();
+            addDoc1Row(t, "Nom complet", rqNom, font, bold);
+            addDoc1Row(t, "Diplômes", rqDiplomes, font, bold);
+            addDoc1Row(t, "Années d'expérience", rqExp, font, bold);
+            document.add(t);
+        }
+
+        // 6. Prestations externes
+        String prestationConseil = str(body.get("prestationConseil"));
+        if (!prestationConseil.isBlank()) {
+            doc1Section(document, "6. Prestations externes", bold);
+            t = doc1Table();
+            addDoc1Row(t, "Avez-vous bénéficié de prestations externes ?", "oui".equalsIgnoreCase(prestationConseil) ? "Oui" : "Non", font, bold);
+            document.add(t);
+            if ("oui".equalsIgnoreCase(prestationConseil)) {
+                List<Map<String, Object>> prestations = new java.util.ArrayList<>();
+                for (Map<String, Object> p : doc1List(body.get("prestations"))) {
+                    Map<String, Object> row = new java.util.LinkedHashMap<>(p);
+                    row.put("types", listOf(p.get("types")).stream()
+                            .map(ty -> DOC1_PRESTATION_TYPES.getOrDefault(ty, ty)).toList());
+                    row.put("date", doc1Date(p.get("date")));
+                    prestations.add(row);
+                }
+                doc1Rows(document, prestations, null, new String[][]{
+                        {"types", "Types"}, {"autrePrecision", "Précision"}, {"prestataire", "Prestataire"},
+                        {"date", "Date"}, {"description", "Description"}}, font, bold);
+            }
+        }
+
+        // 7. Reconnaissances / Agréments
+        List<Map<String, Object>> reconnaissances = doc1List(body.get("reconnaissances"));
+        doc1Section(document, "7. Reconnaissances / Agréments", bold);
+        if (reconnaissances.stream().anyMatch(r -> !doc1Fmt(r.get("organisation")).isBlank()
+                || !doc1Fmt(r.get("domaine")).isBlank() || !doc1Fmt(r.get("validite")).isBlank())) {
+            doc1Rows(document, reconnaissances, null, new String[][]{
+                    {"organisation", "Organisme d'accréditation"}, {"domaine", "Domaine"}, {"validite", "Date de validité"}}, font, bold);
+        } else {
+            document.add(new Paragraph("Aucune.").setFont(font).setFontSize(9));
+        }
+
+        // 8. Pièces jointes (names only, never the encoded content)
+        List<Map<String, Object>> documents = new java.util.ArrayList<>();
+        for (Map<String, Object> d : doc1List(body.get("documents"))) {
+            String key = str(d.get("key"));
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("document", key.startsWith("admin-") ? key.substring(6) : key);
+            String fileName = str(d.get("name"));
+            row.put("fichier", fileName.equals(row.get("document")) ? "Non joint" : fileName);
+            documents.add(row);
+        }
+        if (!documents.isEmpty()) {
+            doc1Section(document, "8. Documents joints", bold);
+            doc1Rows(document, documents, null, new String[][]{{"document", "Document"}, {"fichier", "Fichier"}}, font, bold);
+        }
+
+        // 9. Déclaration
+        doc1Section(document, "9. Déclaration", bold);
+        document.add(new Paragraph("Je déclare que les informations fournies sont exactes et complètes.").setFont(font).setFontSize(9));
+        document.add(new Paragraph("Je m'engage à :").setFont(bold).setFontSize(9));
+        document.add(new Paragraph("- informer ALGERAC de tout changement affectant la portée d'accréditation ;").setFont(font).setFontSize(9));
+        document.add(new Paragraph("- transmettre tous les documents complémentaires demandés ;").setFont(font).setFontSize(9));
+        document.add(new Paragraph("- respecter les normes et règlements en vigueur ainsi que les procédures ALGERAC.").setFont(font).setFontSize(9));
+        document.add(new Paragraph("Je reconnais avoir pris connaissance des droits et obligations liés à l'accréditation.").setFont(font).setFontSize(9));
+        String organisme = str(body.get("organismeSoumission"));
+        if (organisme.isBlank()) organisme = str(body.get("nomLegal"));
+        if (organisme.isBlank() && oec != null) organisme = str(oec.getOrganizationName());
+        document.add(new Paragraph("Je certifie être dûment autorisé par l'organisme « " + organisme + " » à soumettre la présente demande.")
+                .setFont(font).setFontSize(9));
+        t = doc1Table();
+        addDoc1Row(t, "Demandeur", str(body.get("demandeurNom")), font, bold);
+        addDoc1Row(t, "Fonction", str(body.get("demandeurFonction")), font, bold);
+        addDoc1Row(t, "Date", doc1Date(body.get("demandeurDate")), font, bold);
+        document.add(t);
+    }
+
+    private void renderDoc1Criteria(Document document, String criteriaJson, PdfFont font, PdfFont bold) {
+        if (criteriaJson == null || criteriaJson.isBlank()) return;
+        try {
+            Map<String, Map<String, Object>> criteria = objectMapper.readValue(
+                    criteriaJson, new TypeReference<Map<String, Map<String, Object>>>() {});
+            List<Map<String, Object>> rows = new java.util.ArrayList<>();
+            for (String[] c : DOC1_MS_CRITERIA) {
+                Map<String, Object> entry = criteria.get(c[0]);
+                if (entry == null) continue;
+                Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("critere", c[1]);
+                row.put("satisfait", Boolean.TRUE.equals(entry.get("checked")));
+                row.put("justification", entry.get("justification"));
+                rows.add(row);
+            }
+            doc1Rows(document, rows, "Critères de qualification des sites (PRO 26 §5.1)", new String[][]{
+                    {"critere", "Critère"}, {"satisfait", "Satisfait"}, {"justification", "Justification"}}, font, bold);
+        } catch (Exception e) {
+            log.warn("Critères multisites illisibles dans le DOC1 : {}", e.getMessage());
+        }
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
-    private Table singleColumn(Document document, PdfFont font, PdfFont bold) {
-        Table tbl = new Table(UnitValue.createPercentArray(new float[]{3f, 7f})).useAllAvailableWidth();
+    /** Rows must be filled before the table is added to the document, otherwise iText drops them. */
+    private void keyValueTable(Document document, PdfFont font, PdfFont bold, String[][] rows) {
+        Table tbl = doc1Table();
+        for (String[] r : rows) addDoc1Row(tbl, r[0], r[1], font, bold);
         document.add(tbl);
-        return tbl;
     }
 
     private void addDoc1Row(Table t, String label, String value, PdfFont font, PdfFont bold) {
@@ -996,6 +1282,12 @@ public class PdfGenerationService {
         return l.isEmpty() ? "" : String.join(", ", l);
     }
 
+    /** "sousDomaine" -> "Sous domaine" */
+    private String humanizeKey(String key) {
+        String spaced = key.replaceAll("([a-z0-9])([A-Z])", "$1 $2").toLowerCase();
+        return spaced.isEmpty() ? spaced : Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+    }
+
     @SuppressWarnings("unchecked")
     private void renderTableIfAny(Document doc, Object raw, String title, PdfFont font, PdfFont bold) {
         if (!(raw instanceof List<?> rows) || rows.isEmpty()) return;
@@ -1016,9 +1308,9 @@ public class PdfGenerationService {
         float[] widths = new float[cols.size()];
         java.util.Arrays.fill(widths, 1f);
         Table table = new Table(UnitValue.createPercentArray(widths)).useAllAvailableWidth();
-        for (String c : cols) table.addHeaderCell(createCell(c, bold));
+        for (String c : cols) table.addHeaderCell(createCell(humanizeKey(c), bold));
         for (Map<String, Object> r : typed) {
-            for (String c : cols) table.addCell(createCell(str(r.get(c)), font));
+            for (String c : cols) table.addCell(createCell(doc1Fmt(r.get(c)), font));
         }
         doc.add(table);
         doc.add(new Paragraph(" "));

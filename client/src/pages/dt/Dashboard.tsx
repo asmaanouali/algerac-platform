@@ -10,20 +10,10 @@ import {
   CheckCircle2, XCircle, Stamp, Building2, FileText, Award
 } from "lucide-react";
 import { Link } from "wouter";
+import { UpcomingInterviewsCard } from "@/components/UpcomingInterviewsCard";
 import { Navbar } from "@/components/navbar";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { apiRequest } from "@/lib/queryClient";
-
-interface OECApplication {
-  id: number;
-  nomOrganisme: string;
-  typeOrganisme: string;
-  email: string;
-  nomRepresentant: string;
-  typeDemande: string;
-  status: string;
-  createdAt: string;
-}
 
 interface AccreditationReq {
   id: number;
@@ -31,9 +21,10 @@ interface AccreditationReq {
   type: string;
   domain: string;
   status: string;
+  isNewOec?: boolean;
   submissionDate: string;
   createdAt: string;
-  oec?: { organizationName?: string; fullName?: string };
+  oec?: { organizationName?: string; fullName?: string; typeDemande?: string | null };
 }
 
 interface MissionOrder {
@@ -42,16 +33,6 @@ interface MissionOrder {
   createdAt: string;
   teamMemberName?: string;
 }
-
-const oecAppStatusConfig: Record<string, { label: string; color: string }> = {
-  PENDING_DT: { label: "En attente", color: "bg-amber-100 text-amber-700" },
-  APPROVED_BY_DT: { label: "Approuvée", color: "bg-green-100 text-green-700" },
-  REJECTED_BY_DT: { label: "Rejetée", color: "bg-red-100 text-red-700" },
-  AWAITING_DAG_FEE: { label: "En attente DAG", color: "bg-blue-100 text-blue-700" },
-  FEE_SET_AWAITING_PAYMENT: { label: "Paiement en attente", color: "bg-indigo-100 text-indigo-700" },
-  PAYMENT_VERIFIED: { label: "Paiement vérifié", color: "bg-emerald-100 text-emerald-700" },
-  ACCOUNT_CREATED: { label: "Compte créé", color: "bg-green-100 text-green-800" },
-};
 
 const requestStatusConfig: Record<string, { label: string; color: string }> = {
   SUBMITTED: { label: "Soumise", color: "bg-blue-100 text-blue-700" },
@@ -64,8 +45,6 @@ const requestStatusConfig: Record<string, { label: string; color: string }> = {
 
 export default function DTDashboard() {
   const { t } = useTranslation();
-  const [pending, setPending] = useState<OECApplication[]>([]);
-  const [allApps, setAllApps] = useState<OECApplication[]>([]);
   const [requests, setRequests] = useState<AccreditationReq[]>([]);
   const [missionOrders, setMissionOrders] = useState<MissionOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,18 +56,12 @@ export default function DTDashboard() {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
-      const [pendingRes, allRes, reqsRes, moRes] = await Promise.all([
-        apiRequest("GET", "/api/oec-applications/pending").catch(() => null),
-        apiRequest("GET", "/api/oec-applications/all").catch(() => null),
+      const [reqsRes, moRes] = await Promise.all([
         apiRequest("GET", "/api/requests").catch(() => null),
         apiRequest("GET", "/api/workflow/mission-orders/pending-approval").catch(() => null),
       ]);
-      const pendingData = pendingRes ? await pendingRes.json() : [];
-      const allData = allRes ? await allRes.json() : [];
       const reqsData = reqsRes ? await reqsRes.json() : [];
       const moData = moRes ? await moRes.json() : [];
-      setPending(Array.isArray(pendingData) ? pendingData : []);
-      setAllApps(Array.isArray(allData) ? allData : []);
       setRequests(Array.isArray(reqsData) ? reqsData : []);
       setMissionOrders(Array.isArray(moData) ? moData : []);
     } catch {
@@ -99,14 +72,16 @@ export default function DTDashboard() {
     }
   };
 
-  const approvedApps = allApps.filter(a => a.status !== "PENDING_DT" && a.status !== "REJECTED_BY_DT").length;
-  const rejectedApps = allApps.filter(a => a.status === "REJECTED_BY_DT").length;
-
-  const requestsPendingDT = requests.filter(r => r.status === "SUBMITTED" || r.status === "PENDING_DT_REVIEW");
+  // Un nouvel OEC (sans compte) est une demande d'accréditation avec isNewOec = true
+  const isNewOec = (r: AccreditationReq) =>
+    r.isNewOec === true || !!(r.oec?.typeDemande && r.oec.typeDemande.trim());
+  const isAwaitingDT = (r: AccreditationReq) => r.status === "SUBMITTED" || r.status === "PENDING_DT_REVIEW";
+  const requestsAwaitingDT = requests.filter(isAwaitingDT);
+  const requestsPendingDT = requestsAwaitingDT.filter(r => !isNewOec(r));
+  const newOecPending = requestsAwaitingDT.filter(isNewOec);
   const requestsValidatedDT = requests.filter(r => r.status === "DT_APPROVED" || r.status === "PENDING_CD_ASSIGNMENT");
   const requestsActive = requests.filter(r => ["ASSIGNED_TO_RA", "EVALUATION_IN_PROGRESS", "EVALUATION_PLANNED"].includes(r.status));
 
-  const getAppStatus = (s: string) => oecAppStatusConfig[s] || { label: s?.replace(/_/g, " ") || "—", color: "bg-slate-100 text-slate-700" };
   const getReqStatus = (s: string) => requestStatusConfig[s] || { label: s?.replace(/_/g, " ") || "—", color: "bg-slate-100 text-slate-700" };
 
   const recentRequests = [...requests]
@@ -141,10 +116,10 @@ export default function DTDashboard() {
                 />
                 <StatCard
                   title="Candidatures en attente"
-                  value={pending.length}
+                  value={newOecPending.length}
                   icon={Clock}
                   description="Nouveaux OEC à examiner"
-                  className={pending.length > 0 ? "border-l-amber-500" : ""}
+                  className={newOecPending.length > 0 ? "border-l-amber-500" : ""}
                 />
                 <StatCard
                   title="Ordres de mission"
@@ -163,17 +138,17 @@ export default function DTDashboard() {
               </div>
 
               {/* Pending accreditation requests */}
-              {requestsPendingDT.length > 0 && (
+              {requestsAwaitingDT.length > 0 && (
                 <Card className="border-amber-200 bg-amber-50/60">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base text-amber-800 flex items-center gap-2">
                       <AlertCircle className="h-5 w-5" />
-                      {requestsPendingDT.length} demande(s) d'accréditation à vérifier
+                      {requestsAwaitingDT.length} demande(s) d'accréditation à vérifier
                     </CardTitle>
                     <CardDescription>Vérifiez les documents puis transmettez au CD du département concerné.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {requestsPendingDT.slice(0, 5).map(r => {
+                    {requestsAwaitingDT.slice(0, 5).map(r => {
                       const st = getReqStatus(r.status);
                       return (
                         <div key={r.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100">
@@ -266,7 +241,7 @@ export default function DTDashboard() {
                     </CardContent>
                   </Card>
                 </Link>
-                <Link href="/dt/candidatures">
+                <Link href="/dt/candidatures-oec">
                   <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full">
                     <CardContent className="p-6 text-center">
                       <Users className="w-10 h-10 mx-auto mb-3 text-primary" />
@@ -296,6 +271,9 @@ export default function DTDashboard() {
               </div>
             </div>
           )}
+          <div className="mt-6">
+            <UpcomingInterviewsCard href="/dt/entretiens-candidats" />
+          </div>
         </main>
       </div>
     </div>

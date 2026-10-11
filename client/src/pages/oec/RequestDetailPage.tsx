@@ -336,7 +336,6 @@ function DescriptionDisplay({ raw }: { raw?: string | null }) {
   if (parsed.siteType) rows.push({ label: "Type de site", value: SITE_TYPE_LABELS[parsed.siteType] || parsed.siteType });
   if (parsed.nomLegal) rows.push({ label: "Nom légal", value: parsed.nomLegal });
   if (parsed.abreviation) rows.push({ label: "Abréviation", value: parsed.abreviation });
-  if (parsed.sigle) rows.push({ label: "Sigle", value: parsed.sigle });
   if (parsed.statutJuridique) rows.push({ label: "Statut juridique", value: parsed.statutJuridique });
   if (parsed.registreCommerce) rows.push({ label: "Registre de commerce", value: parsed.registreCommerce });
   if (parsed.adresseSiege) rows.push({ label: "Adresse du siège", value: parsed.adresseSiege });

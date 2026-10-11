@@ -26,7 +26,6 @@ TRUNCATE TABLE
     mission_orders,
     multi_site_configs,
     notifications,
-    oec_applications,
     password_reset_token,
     payments,
     preparation_meetings,

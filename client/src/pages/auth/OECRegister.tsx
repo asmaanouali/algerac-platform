@@ -11,13 +11,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { ResetButton } from "@/components/ui/reset-button";
 import { useToast } from "@/hooks/use-toast";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useTheme } from "@/hooks/use-theme";
-import { Loader2, CheckCircle, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { Loader2, CheckCircle, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
+
+const MAX_LOGO_SIZE = 2 * 1024 * 1024;
 
 const TYPES_DEMANDE = [
   { value: "initiale", label: "Accréditation initiale" },
@@ -62,8 +65,6 @@ const DOCS_ADMIN = [
   "Copie de la carte d'immatriculation fiscale (NIS, NIF)",
   "Copie du N° article d'imposition",
   "Copie du registre de commerce",
-  "Chèque à l'ordre d'ALGERAC (organismes nationaux)",
-  "Ordre de virement à l'ordre d'ALGERAC (organismes étrangers)",
 ];
 
 // Documents à joindre (non-FOR) par activité
@@ -153,17 +154,17 @@ const STEPS = [
   { id: 3, title: "Personne à contacter" },
   { id: 4, title: "Sites et activités" },
   { id: 5, title: "Personnel" },
-  { id: 6, title: "Prestations conseil" },
-  { id: 7, title: "Reconnaissances" },
+  { id: 6, title: "Prestations externes" },
+  { id: 7, title: "Reconnaissances / Agréments" },
   { id: 8, title: "Formulaires techniques" },
   { id: 9, title: "Documents administratifs" },
-  { id: 10, title: "Déclaration et signature" },
+  { id: 10, title: "Déclaration" },
 ];
 
 // ── Interfaces ─────────────────────────────────────────────────────────────────
 
 interface Site {
-  id: number; localisation: string; adresse: string; activites: string; soustraitance: string; ebmd: string;
+  id: number; localisation: string; adresse: string; activites: string;   soustraitance: string;
 }
 interface PersonnelSite {
   id: number; site: string; permanents: string; vacataires: string;
@@ -271,12 +272,6 @@ export default function OECRegister() {
   const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ── Account credentials (public registration only) ──
-  const [accountEmail, setAccountEmail] = useState("");
-  const [accountPassword, setAccountPassword] = useState("");
-  const [accountPasswordConfirm, setAccountPasswordConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
   // ── DOC1 Fields ──
   const [typeDemande, setTypeDemande] = useState("");
   const [dateEvaluation, setDateEvaluation] = useState("");
@@ -286,7 +281,15 @@ export default function OECRegister() {
   // Organisme
   const [nomLegal, setNomLegal] = useState("");
   const [abreviation, setAbreviation] = useState("");
-  const [sigle, setSigle] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
+
+  useEffect(() => {
+    if (!logoFile) { setLogoPreview(""); return; }
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
   const [statutJuridique, setStatutJuridique] = useState("");
   const [statutJuridiqueAutre, setStatutJuridiqueAutre] = useState("");
   const [registreCommerce, setRegistreCommerce] = useState("");
@@ -299,7 +302,6 @@ export default function OECRegister() {
   const [groupeNom, setGroupeNom] = useState("");
   const [groupeAdresse, setGroupeAdresse] = useState("");
   const [groupeRelation, setGroupeRelation] = useState("");
-  const [groupeImpact, setGroupeImpact] = useState("");
 
   // Contact
   const [contactNom, setContactNom] = useState("");
@@ -310,7 +312,7 @@ export default function OECRegister() {
   const [contactEmail, setContactEmail] = useState("");
 
   // Sites & Personnel
-  const [sites, setSites] = useState<Site[]>([{ id: 1, localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }]);
+  const [sites, setSites] = useState<Site[]>([{ id: 1, localisation: "", adresse: "", activites: "",   soustraitance: "" }]);
   const [personnelSites, setPersonnelSites] = useState<PersonnelSite[]>([{ id: 1, site: "", permanents: "", vacataires: "" }]);
   const [responsablesTechniques, setResponsablesTechniques] = useState<ResponsableTechnique[]>([{ id: 1, nom: "", qualifications: "", experience: "" }]);
   const [responsableQualiteNom, setResponsableQualiteNom] = useState("");
@@ -360,7 +362,6 @@ export default function OECRegister() {
   const [demandeurNom, setDemandeurNom] = useState("");
   const [demandeurFonction, setDemandeurFonction] = useState("");
   const [demandeurDate, setDemandeurDate] = useState(new Date().toISOString().split("T")[0]);
-  const [signature, setSignature] = useState("");
   const [engagementsAcceptes, setEngagementsAcceptes] = useState(false);
 
   // ── FOR Form Data ──
@@ -416,6 +417,23 @@ export default function OECRegister() {
   const toggleActivite = (val: string) =>
     setActivites((prev) => prev.includes(val) ? prev.filter((a) => a !== val) : [...prev, val]);
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrors((p) => ({ ...p, logo: t("nrp.validation.logoType") }));
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      setErrors((p) => ({ ...p, logo: t("nrp.validation.logoSize") }));
+      e.target.value = "";
+      return;
+    }
+    setErrors((p) => { const { logo, ...rest } = p; return rest; });
+    setLogoFile(file);
+  };
+
   const toggleDoc = (key: string) =>
     setDocsChecked((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -441,31 +459,24 @@ export default function OECRegister() {
     const errs: Record<string, string> = {};
     if (currentStep === 1) {
       if (!typeDemande) errs.typeDemande = t("nrp.validation.typeDemande");
-      if (!dateEvaluation) errs.dateEvaluation = t("nrp.validation.dateEvaluation");
       if (activites.length === 0) errs.activites = t("nrp.validation.activites");
       if (!siteType) errs.siteType = t("nrp.validation.siteType");
     }
     if (currentStep === 2) {
-      // Account credentials (public registration only)
-      if (!accountEmail.trim()) errs.accountEmail = t("oecRegister.validation.accountEmail");
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountEmail.trim())) errs.accountEmail = t("oecRegister.validation.accountEmailInvalid");
-      if (!accountPassword) errs.accountPassword = t("oecRegister.validation.accountPassword");
-      else if (accountPassword.length < 8) errs.accountPassword = t("oecRegister.validation.accountPasswordTooShort");
-      if (accountPasswordConfirm !== accountPassword) errs.accountPasswordConfirm = t("oecRegister.validation.accountPasswordMismatch");
-
       if (!nomLegal.trim()) errs.nomLegal = t("nrp.validation.nomLegal");
       if (!statutJuridique) errs.statutJuridique = t("nrp.validation.statutJuridique");
       if (statutJuridique === REQUIRES_AUTRE_TEXT && !statutJuridiqueAutre.trim()) errs.statutJuridiqueAutre = t("nrp.validation.statutJuridiqueAutre");
       if (!registreCommerce.trim()) errs.registreCommerce = t("nrp.validation.registreCommerce");
       if (!codesActivite.trim()) errs.codesActivite = t("nrp.validation.codesActivite");
       if (!adresseSiege.trim()) errs.adresseSiege = t("nrp.validation.adresseSiege");
+      if (!adresseFacturation.trim()) errs.adresseFacturation = t("nrp.validation.adresseFacturation");
       if (!emailOrg.trim()) errs.emailOrg = t("nrp.validation.emailOrg");
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailOrg.trim())) errs.emailOrg = t("oecRegister.validation.accountEmailInvalid");
       if (!appartientGroupe) errs.appartientGroupe = t("nrp.validation.appartientGroupe");
       if (appartientGroupe === "oui") {
         if (!groupeNom.trim()) errs.groupeNom = t("nrp.validation.groupeNom");
         if (!groupeAdresse.trim()) errs.groupeAdresse = t("nrp.validation.groupeAdresse");
         if (!groupeRelation.trim()) errs.groupeRelation = t("nrp.validation.groupeRelation");
-        if (!groupeImpact.trim()) errs.groupeImpact = t("nrp.validation.groupeImpact");
       }
     }
     if (currentStep === 3) {
@@ -497,9 +508,6 @@ export default function OECRegister() {
     if (currentStep === 5) {
       if (!validateRows(personnelSites, ["site", "permanents"])) errs.personnelSites = t("nrp.validation.personnelSites");
       if (!validateRows(responsablesTechniques, ["nom", "qualifications", "experience"])) errs.responsablesTechniques = t("nrp.validation.responsablesTechniques");
-      if (!responsableQualiteNom.trim()) errs.responsableQualiteNom = t("nrp.validation.responsableQualiteNom");
-      if (!responsableQualiteQualif.trim()) errs.responsableQualiteQualif = t("nrp.validation.responsableQualiteQualif");
-      if (!responsableQualiteExp.trim()) errs.responsableQualiteExp = t("nrp.validation.responsableQualiteExp");
     }
     if (currentStep === 6) {
       if (!prestationConseil) errs.prestationConseil = t("nrp.validation.prestationConseil");
@@ -554,7 +562,6 @@ export default function OECRegister() {
       if (!demandeurNom.trim()) errs.demandeurNom = t("nrp.validation.demandeurNom");
       if (!demandeurFonction.trim()) errs.demandeurFonction = t("nrp.validation.demandeurFonction");
       if (!demandeurDate) errs.demandeurDate = t("nrp.validation.demandeurDate");
-      if (!signature.trim()) errs.signature = t("nrp.validation.signature");
     }
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
@@ -581,7 +588,7 @@ export default function OECRegister() {
   // ── Submit ──
   const handleSubmitClick = () => {
     if (!validate()) return;
-    if (submitted || createdRequestId) {
+    if (submitted) {
       toast({ title: t("nrp.validation.alreadySubmitted"), description: t("nrp.validation.alreadySubmittedDesc") });
       return;
     }
@@ -618,6 +625,8 @@ export default function OECRegister() {
         }
       }
 
+      const logoBase64 = logoFile ? await fileToBase64(logoFile) : undefined;
+
       const backendType = TYPE_MAP[typeDemande] || "INITIAL";
       const domain = activites
         .map((a) => TYPES_ACTIVITES.find((t) => t.value === a)?.label || a)
@@ -626,17 +635,17 @@ export default function OECRegister() {
       const description = JSON.stringify({
         // DOC1
         typeDemande, dateEvaluation, activites, siteType,
-        nomLegal, abreviation, sigle,
+        nomLegal, abreviation,
         statutJuridique: statutJuridique === REQUIRES_AUTRE_TEXT ? `Autre: ${statutJuridiqueAutre}` : statutJuridique,
         registreCommerce, codesActivite,
         adresseSiege, adresseFacturation, emailOrg, siteWeb,
-        appartientGroupe, groupeNom, groupeAdresse, groupeRelation, groupeImpact,
+        appartientGroupe, groupeNom, groupeAdresse, groupeRelation,
         contactNom, contactFonction, contactAdresse, contactTelephone, contactFax, contactEmail,
         sites, personnelSites, responsablesTechniques,
         responsableQualiteNom, responsableQualiteQualif, responsableQualiteExp,
         prestationConseil, prestations, reconnaissances, motifTransfert,
         // Declaration
-        demandeurNom, demandeurFonction, demandeurDate, signature, organismeSoumission,
+        demandeurNom, demandeurFonction, demandeurDate, organismeSoumission,
         // FOR technical forms
         technicalForms: {
           ...(activites.includes("inspection") ? { for04: { typeOrganisme: for04Type, domaines: for04Domaines, inspecteurs: for04Inspecteurs, equipements: for04Equipements } } : {}),
@@ -656,9 +665,8 @@ export default function OECRegister() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Account
-          email: accountEmail.trim(),
-          password: accountPassword,
+          // Account: login email is the organisation email; the password is generated at account activation
+          email: emailOrg.trim(),
           // Required by OECSignupRequest DTO
           userType: "OEC",
           // Organization basics
@@ -671,9 +679,10 @@ export default function OECRegister() {
           telephoneDirect: contactTelephone,
           emailProfessionnel: contactEmail,
           porteeAccreditation: domain,
+          logoBase64,
+          logoMimeType: logoFile?.type,
           typeDemande: backendType,
-          // Full form data persisted in OECApplication.formDataJson AND
-          // AccreditationRequest.description (createAndSubmitForNewOec)
+          // Full form data persisted in AccreditationRequest.description (createAndSubmitForNewOec)
           description: JSON.stringify({
             type: backendType,
             domain,
@@ -745,13 +754,13 @@ export default function OECRegister() {
             ))}
           </div>
         </RadioGroup>
+        <ResetButton show={!!typeDemande} onClick={() => setTypeDemande("")} label={t("nrp.reset")} />
         {errors.typeDemande && <p className="text-sm text-red-500">{errors.typeDemande}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label>{t("nrp.s1.dateEvaluation")} <span className="text-red-500">*</span></Label>
-        <StringDatePicker value={dateEvaluation} onChange={setDateEvaluation} min={new Date().toISOString().split("T")[0]} />
-        {errors.dateEvaluation && <p className="text-sm text-red-500">{errors.dateEvaluation}</p>}
+        <Label>{t("nrp.s1.dateEvaluation")}</Label>
+        <StringDatePicker clearable value={dateEvaluation} onChange={setDateEvaluation} min={new Date().toISOString().split("T")[0]} />
       </div>
 
       <div className="space-y-3">
@@ -790,6 +799,7 @@ export default function OECRegister() {
             </p>
           )}
         </RadioGroup>
+        <ResetButton show={!!siteType} onClick={() => setSiteType("")} label={t("nrp.reset")} />
         {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
       </div>
     </div>
@@ -798,59 +808,6 @@ export default function OECRegister() {
   // ── Step 2: Informations organisme (DOC1) ──
   const renderStep2 = () => (
     <div className="space-y-6">
-      {/* Account credentials section (public registration only) */}
-      <div className="space-y-4 p-4 border border-emerald-200 bg-emerald-50/50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-slate-900">{t("oecRegister.accountSection")}</h3>
-        </div>
-        <p className="text-xs text-slate-600">{t("oecRegister.accountSectionHelp")}</p>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2 md:col-span-2">
-            <Label>{t("oecRegister.email")} <span className="text-red-500">*</span></Label>
-            <Input
-              type="email"
-              value={accountEmail}
-              onChange={(e) => setAccountEmail(e.target.value)}
-              placeholder="oec@example.com"
-              autoComplete="email"
-            />
-            {errors.accountEmail && <p className="text-sm text-red-500">{errors.accountEmail}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t("oecRegister.password")} <span className="text-red-500">*</span></Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={accountPassword}
-                onChange={(e) => setAccountPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {errors.accountPassword && <p className="text-sm text-red-500">{errors.accountPassword}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t("oecRegister.passwordConfirm")} <span className="text-red-500">*</span></Label>
-            <Input
-              type={showPassword ? "text" : "password"}
-              value={accountPasswordConfirm}
-              onChange={(e) => setAccountPasswordConfirm(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="new-password"
-            />
-            {errors.accountPasswordConfirm && <p className="text-sm text-red-500">{errors.accountPasswordConfirm}</p>}
-          </div>
-        </div>
-      </div>
-
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2 md:col-span-2">
           <Label>{t("nrp.s2.nomLegal")} <span className="text-red-500">*</span></Label>
@@ -862,12 +819,20 @@ export default function OECRegister() {
           <Input value={abreviation} onChange={(e) => setAbreviation(e.target.value)} placeholder={t("nrp.s2.abreviation")} />
         </div>
         <div className="space-y-2">
-          <Label>{t("nrp.s2.sigle")}</Label>
-          <Input value={sigle} onChange={(e) => setSigle(e.target.value)} placeholder={t("nrp.s2.sigle")} />
+          <Label>{t("nrp.s2.logo")}</Label>
+          <Input key={logoFile?.name ?? "empty"} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoChange} />
+          <p className="text-xs text-slate-500">{t("nrp.s2.logoHelper")}</p>
+          {logoPreview && (
+            <div className="flex items-center gap-3">
+              <img src={logoPreview} alt="Logo" className="h-12 w-auto max-w-[8rem] object-contain border rounded bg-white p-1" />
+              <Button type="button" variant="ghost" size="sm" onClick={() => setLogoFile(null)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+            </div>
+          )}
+          {errors.logo && <p className="text-sm text-red-500">{errors.logo}</p>}
         </div>
         <div className="space-y-2">
           <Label>{t("nrp.s2.statutJuridique")} <span className="text-red-500">*</span></Label>
-          <Select value={statutJuridique} onValueChange={setStatutJuridique}>
+          <Select clearable value={statutJuridique} onValueChange={(v) => { setStatutJuridique(v); if (v !== REQUIRES_AUTRE_TEXT) setStatutJuridiqueAutre(""); }}>
             <SelectTrigger><SelectValue placeholder={t("nrp.s2.statutJuridiquePlaceholder")} /></SelectTrigger>
             <SelectContent>
               {STATUTS_JURIDIQUES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
@@ -895,8 +860,9 @@ export default function OECRegister() {
           {errors.adresseSiege && <p className="text-sm text-red-500">{errors.adresseSiege}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>{t("nrp.s2.adresseFacturation")}</Label>
+          <Label>{t("nrp.s2.adresseFacturation")} <span className="text-red-500">*</span></Label>
           <Textarea value={adresseFacturation} onChange={(e) => setAdresseFacturation(e.target.value)} placeholder={t("nrp.s2.adresseFacturationPlaceholder")} rows={2} />
+          {errors.adresseFacturation && <p className="text-sm text-red-500">{errors.adresseFacturation}</p>}
         </div>
         <div className="space-y-2">
           <Label>{t("nrp.s2.email")} <span className="text-red-500">*</span></Label>
@@ -918,18 +884,22 @@ export default function OECRegister() {
             <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="g-non" /><Label htmlFor="g-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
+        <ResetButton
+          show={!!appartientGroupe}
+          onClick={() => { setAppartientGroupe(""); setGroupeNom(""); setGroupeAdresse(""); setGroupeRelation(""); }}
+          label={t("nrp.reset")}
+        />
       </div>
 
       {appartientGroupe === "oui" && (
         <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
           <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeNom")} <span className="text-red-500">*</span></Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder={t("nrp.s2.groupeNomPlaceholder")} />{errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}</div>
           <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeAdresse")} <span className="text-red-500">*</span></Label><Textarea value={groupeAdresse} onChange={(e) => setGroupeAdresse(e.target.value)} placeholder={t("nrp.s2.groupeAdressePlaceholder")} rows={2} />{errors.groupeAdresse && <p className="text-sm text-red-500">{errors.groupeAdresse}</p>}</div>
-          <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeRelation")} <span className="text-red-500">*</span></Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder={t("nrp.s2.groupeRelationPlaceholder")} />{errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}</div>
           <div className="space-y-2 md:col-span-2">
-            <Label>{t("nrp.s2.groupeImpact")} <span className="text-red-500">*</span></Label>
-            <p className="text-xs text-slate-500">{t("nrp.s2.groupeImpactHelper")}</p>
-            <Textarea value={groupeImpact} onChange={(e) => setGroupeImpact(e.target.value)} placeholder={t("nrp.s2.groupeImpactPlaceholder")} rows={3} />
-            {errors.groupeImpact && <p className="text-sm text-red-500">{errors.groupeImpact}</p>}
+            <Label>{t("nrp.s2.groupeRelation")} <span className="text-red-500">*</span></Label>
+            <p className="text-xs text-slate-500">{t("nrp.s2.groupeRelationHelper")}</p>
+            <Textarea value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder={t("nrp.s2.groupeRelationPlaceholder")} rows={3} />
+            {errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}
           </div>
         </div>
       )}
@@ -978,11 +948,6 @@ export default function OECRegister() {
               <Label>{t("nrp.s4.soustraitance")}</Label>
               <p className="text-xs text-slate-500">{t("nrp.s4.soustraitanceHelper")}</p>
               <Input value={site.soustraitance} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, soustraitance: e.target.value } : s))} placeholder={t("nrp.s4.soustraitancePlaceholder")} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>{t("nrp.s4.ebmd")}</Label>
-              <p className="text-xs text-slate-500">{t("nrp.s4.ebmdHelper")}</p>
-              <Input value={site.ebmd} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, ebmd: e.target.value } : s))} placeholder={t("nrp.s4.ebmdPlaceholder")} />
             </div>
           </div>
         </div>
@@ -1161,11 +1126,11 @@ export default function OECRegister() {
       </div>
 
       <div className="space-y-4 pt-6 border-t">
-        <Label className="text-base font-semibold">{t("nrp.s5.responsableQualite")} <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s5.responsableQualite")}</Label>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder={t("nrp.s5.nomCompletPlaceholder")} />{errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.diplomes")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder={t("nrp.s5.diplomesPlaceholder")} />{errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")} <span className="text-red-500">*</span></Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder={t("nrp.s5.yearsExpPlaceholder")} />{errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")}</Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder={t("nrp.s5.nomCompletPlaceholder")} /></div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.diplomes")}</Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder={t("nrp.s5.diplomesPlaceholder")} /></div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")}</Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder={t("nrp.s5.yearsExpPlaceholder")} /></div>
         </div>
       </div>
     </div>
@@ -1183,6 +1148,11 @@ export default function OECRegister() {
             <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="pc-non" /><Label htmlFor="pc-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
+        <ResetButton
+          show={!!prestationConseil}
+          onClick={() => { setPrestationConseil(""); setPrestations([]); }}
+          label={t("nrp.reset")}
+        />
       </div>
 
       {prestationConseil === "oui" && (
@@ -1224,7 +1194,7 @@ export default function OECRegister() {
                 )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.prestataire")}</Label><Input value={pr.prestataire} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, prestataire: e.target.value } : x))} placeholder={t("nrp.s6.prestatairePlaceholder")} /></div>
-                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.date")}</Label><StringDatePicker value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
+                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.date")}</Label><StringDatePicker clearable value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
                 </div>
                 <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.description")}</Label><Textarea value={pr.description} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, description: e.target.value } : x))} placeholder={t("nrp.s6.descriptionPlaceholder")} rows={2} /></div>
                 <div className="flex justify-end">
@@ -1288,6 +1258,7 @@ export default function OECRegister() {
             <div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`for04-${t}`} /><Label htmlFor={`for04-${t}`}>Type {t}</Label></div>
           ))}
         </RadioGroup>
+        <ResetButton show={!!for04Type} onClick={() => setFor04Type("")} label="Réinitialiser" />
       </div>
       <DynamicTable
         title="Domaines d'inspection"
@@ -1790,30 +1761,17 @@ export default function OECRegister() {
       {/* Official declaration text */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4 text-sm text-slate-700 leading-relaxed">
         <p>
-          <span className="font-bold">{t("nrp.s10.declareLabel")}</span>{" "}{t("nrp.s10.declareText")}{" "}
-          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">www.algerac.dz</a>
+          <span className="font-bold">{t("nrp.s10.declareLabel")}</span>{" "}{t("nrp.s10.declareText")}
         </p>
 
         <div>
           <p className="font-bold mb-2">{t("nrp.s10.commitTitle")}</p>
-          <ol className="list-[lower-alpha] pl-6 space-y-2">
-            <li>
-              <span className="font-bold">{t("nrp.s10.informLabel")}</span>{" "}{t("nrp.s10.informText")}
-            </li>
-            <li>
-              <span className="font-bold">{t("nrp.s10.transmitLabel")}</span>{" "}{t("nrp.s10.transmitText")}
-            </li>
-            <li>
-              <span className="font-bold">{t("nrp.s10.allowLabel")}</span>{" "}{t("nrp.s10.allowText")}
-            </li>
-          </ol>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>{t("nrp.s10.informText")}</li>
+            <li>{t("nrp.s10.transmitText")}</li>
+            <li>{t("nrp.s10.normesText")}</li>
+          </ul>
         </div>
-
-        <p>
-          {t("nrp.s10.normesText")}{" "}
-          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">www.algerac.dz</a>{" "}
-          {t("nrp.s10.normesText2")}
-        </p>
 
         <p>{t("nrp.s10.droitsText")}</p>
 
@@ -1841,7 +1799,6 @@ export default function OECRegister() {
                 readOnly
                 className="bg-slate-50 text-slate-600 cursor-default"
               />
-              <span className="text-xs text-slate-400 whitespace-nowrap">{t("nrp.s10.dateAutoFill")}</span>
             </div>
           </div>
           <div className="space-y-2">
@@ -1853,11 +1810,6 @@ export default function OECRegister() {
             <Label>{t("nrp.s10.fonction")} <span className="text-red-500">*</span></Label>
             <Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder={t("nrp.s10.fonctionPlaceholder")} />
             {errors.demandeurFonction && <p className="text-sm text-red-500">{errors.demandeurFonction}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t("nrp.s10.signature")} <span className="text-red-500">*</span></Label>
-            <Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder={t("nrp.s10.signaturePlaceholder")} />
-            {errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}
           </div>
         </div>
       </div>
@@ -1883,13 +1835,8 @@ export default function OECRegister() {
     setActivites(["inspection"]);
     setSiteType("monosite");
 
-    setAccountEmail("oec.demo@algeractestapp.dz");
-    setAccountPassword("Demo1234!");
-    setAccountPasswordConfirm("Demo1234!");
-
     setNomLegal("LABO DEMO SARL");
     setAbreviation("LDEMO");
-    setSigle("LD");
     setStatutJuridique("SARL");
     setRegistreCommerce("16B1234567");
     setCodesActivite("7120 – Services d'essais et analyses techniques");
@@ -1906,7 +1853,7 @@ export default function OECRegister() {
     setContactFax("+213 21 123 456");
     setContactEmail("ahmed.bensalem@labodemo.dz");
 
-    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non", ebmd: "Non" }]);
+    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non" }]);
     setPersonnelSites([{ id: 1, site: "Alger", permanents: "10", vacataires: "3" }]);
     setResponsablesTechniques([{ id: 1, nom: "Karim Zouaoui", qualifications: "Ingénieur génie industriel", experience: "8 ans" }]);
     setResponsableQualiteNom("Fatima Cherif");
@@ -1926,7 +1873,6 @@ export default function OECRegister() {
     setDemandeurNom("Ahmed Bensalem");
     setDemandeurFonction("Directeur Général");
     setDemandeurDate(new Date().toISOString().split("T")[0]);
-    setSignature("A. Bensalem");
     setEngagementsAcceptes(true);
     setOrganismeSoumission("LABO DEMO SARL");
 

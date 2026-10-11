@@ -2,11 +2,54 @@
 
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const Select = SelectPrimitive.Root
+type SelectRootProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>
+
+const SelectClearContext = React.createContext<{
+  clearable: boolean
+  value: string
+  clear: () => void
+} | null>(null)
+
+// `clearable` adds an "x" in the trigger that resets the value to "" (optional fields).
+const Select = ({
+  clearable = false,
+  value,
+  defaultValue,
+  onValueChange,
+  ...props
+}: SelectRootProps & { clearable?: boolean }) => {
+  const [innerValue, setInnerValue] = React.useState(defaultValue ?? "")
+
+  if (!clearable) {
+    return (
+      <SelectPrimitive.Root
+        value={value}
+        defaultValue={defaultValue}
+        onValueChange={onValueChange}
+        {...props}
+      />
+    )
+  }
+
+  const isControlled = value !== undefined
+  const current = isControlled ? value : innerValue
+  const handleChange = (next: string) => {
+    if (!isControlled) setInnerValue(next)
+    onValueChange?.(next)
+  }
+
+  return (
+    <SelectClearContext.Provider
+      value={{ clearable, value: current, clear: () => handleChange("") }}
+    >
+      <SelectPrimitive.Root {...props} value={current} onValueChange={handleChange} />
+    </SelectClearContext.Provider>
+  )
+}
 
 const SelectGroup = SelectPrimitive.Group
 
@@ -15,21 +58,51 @@ const SelectValue = SelectPrimitive.Value
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-))
+>(({ className, children, ...props }, ref) => {
+  const clearCtx = React.useContext(SelectClearContext)
+  const showClear = !!clearCtx?.clearable && !!clearCtx.value && !props.disabled
+
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {showClear ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <div
+            role="button"
+            aria-label="Réinitialiser"
+            title="Réinitialiser"
+            className="rounded-sm p-0.5 opacity-50 hover:opacity-100"
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              clearCtx?.clear()
+            }}
+          >
+            <X className="h-3.5 w-3.5" />
+          </div>
+          <SelectPrimitive.Icon asChild>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </SelectPrimitive.Icon>
+        </div>
+      ) : (
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </SelectPrimitive.Icon>
+      )}
+    </SelectPrimitive.Trigger>
+  )
+})
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
 const SelectScrollUpButton = React.forwardRef<

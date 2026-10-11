@@ -36,7 +36,7 @@ export default function AdminDashboard() {
       else setLoading(true);
       const [usersRes, oecAppsRes] = await Promise.all([
         apiRequest("GET", "/api/users"),
-        apiRequest("GET", "/api/oec-applications/approved-for-admin"),
+        apiRequest("GET", "/api/users/pending-new-oec"),
       ]);
       const users = await usersRes.json();
       const pendingOec = await oecAppsRes.json();

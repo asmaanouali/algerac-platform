@@ -138,7 +138,6 @@ import DTRequestReviewPage from "@/pages/dt/RequestReviewPage";
 import DTAccreditationRequestsPage from "@/pages/dt/AccreditationRequestsPage";
 import DTRequestDetailPage from "@/pages/dt/RequestDetailPage";
 import CDRequestDetailPage from "@/pages/cd/RequestDetailPage";
-import DTOECApplicationDetailPage from "@/pages/dt/OECApplicationDetailPage";
 import CertificateSigningPage from "@/pages/shared/CertificateSigningPage";
 import InterviewPanelPage from "@/pages/shared/InterviewPanelPage";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -272,7 +271,6 @@ function Router() {
       <Route path="/dt/dashboard">{() => <ProtectedRoute component={DTDashboard} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/demandes-accreditation">{() => <ProtectedRoute component={DTAccreditationRequestsPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/demande/:requestId">{() => <ProtectedRoute component={DTRequestDetailPage} allowedRoles={["dt"]} />}</Route>
-      <Route path="/dt/candidature-oec/:id">{() => <ProtectedRoute component={DTOECApplicationDetailPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/candidatures-oec">{() => <ProtectedRoute component={DTAccreditationRequestsPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/demandes-accreditation-legacy">{() => <ProtectedRoute component={DTRequestReviewPage} allowedRoles={["dt"]} />}</Route>
       <Route path="/dt/candidatures">{() => <ProtectedRoute component={CandidaturesPage} allowedRoles={["dt"]} />}</Route>

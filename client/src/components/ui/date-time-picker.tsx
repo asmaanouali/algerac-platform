@@ -1,7 +1,7 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import { Calendar as CalendarIcon, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -25,12 +25,28 @@ import { Input } from "@/components/ui/input"
 // DatePicker — following https://ui.shadcn.com/docs/components/radix/date-picker
 // ---------------------------------------------------------------------------
 
+// Small "x" overlaid on the right of a picker to reset it (optional fields).
+function ClearOverlay({ onClear }: { onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Réinitialiser"
+      title="Réinitialiser"
+      onClick={onClear}
+      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground opacity-70 hover:opacity-100"
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
+  )
+}
+
 interface DatePickerProps {
   value?: Date
   onChange: (date: Date | undefined) => void
   placeholder?: string
   minDate?: Date
   className?: string
+  clearable?: boolean
 }
 
 export function DatePicker({
@@ -39,8 +55,11 @@ export function DatePicker({
   placeholder = "Sélectionner une date",
   minDate,
   className,
+  clearable = false,
 }: DatePickerProps) {
+  const showClear = clearable && !!value
   return (
+    <div className="relative">
     <Popover>
       <PopoverTrigger asChild>
         <Button
@@ -48,6 +67,7 @@ export function DatePicker({
           data-empty={!value}
           className={cn(
             "w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground",
+            showClear && "pr-8",
             className,
           )}
         >
@@ -76,6 +96,8 @@ export function DatePicker({
         />
       </PopoverContent>
     </Popover>
+    {showClear && <ClearOverlay onClear={() => onChange(undefined)} />}
+    </div>
   )
 }
 
@@ -88,6 +110,7 @@ interface TimePickerProps {
   onChange: (time: string) => void
   placeholder?: string
   className?: string
+  clearable?: boolean
 }
 
 export function TimePicker({
@@ -95,6 +118,7 @@ export function TimePicker({
   onChange,
   placeholder = "Heure",
   className,
+  clearable = false,
 }: TimePickerProps) {
   const hours = Array.from({ length: 11 }, (_, i) => i + 8) // 08:00 – 18:00
   const minutes = ["00", "15", "30", "45"]
@@ -104,7 +128,7 @@ export function TimePicker({
   )
 
   return (
-    <Select value={value || ""} onValueChange={onChange}>
+    <Select value={value || ""} onValueChange={onChange} clearable={clearable}>
       <SelectTrigger className={cn("w-full", className)}>
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
@@ -162,6 +186,7 @@ interface StringDatePickerProps {
   placeholder?: string
   min?: string // "YYYY-MM-DD"
   className?: string
+  clearable?: boolean
 }
 
 export function StringDatePicker({
@@ -170,6 +195,7 @@ export function StringDatePicker({
   placeholder = "Sélectionner une date",
   min,
   className,
+  clearable = false,
 }: StringDatePickerProps) {
   const dateValue = value ? new Date(value + "T00:00:00") : undefined
   const minDate = min ? new Date(min + "T00:00:00") : undefined
@@ -190,6 +216,7 @@ export function StringDatePicker({
       placeholder={placeholder}
       minDate={minDate}
       className={className}
+      clearable={clearable}
     />
   )
 }
@@ -275,12 +302,14 @@ interface MonthYearPickerProps {
   value?: string // "YYYY-MM"
   onChange: (value: string) => void
   className?: string
+  clearable?: boolean
 }
 
 export function MonthYearPicker({
   value,
   onChange,
   className,
+  clearable = false,
 }: MonthYearPickerProps) {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: currentYear - 1949 }, (_, i) => currentYear - i)
@@ -298,7 +327,8 @@ export function MonthYearPicker({
     <div className={cn("flex gap-2", className)}>
       <Select
         value={selectedMonth}
-        onValueChange={(m) => emit(m, selectedYear || String(currentYear))}
+        onValueChange={(m) => (m ? emit(m, selectedYear || String(currentYear)) : onChange(""))}
+        clearable={clearable}
       >
         <SelectTrigger className="flex-1">
           <SelectValue placeholder="Mois" />
@@ -313,7 +343,8 @@ export function MonthYearPicker({
       </Select>
       <Select
         value={selectedYear}
-        onValueChange={(y) => emit(selectedMonth || "01", y)}
+        onValueChange={(y) => (y ? emit(selectedMonth || "01", y) : onChange(""))}
+        clearable={clearable}
       >
         <SelectTrigger className="w-[100px]">
           <SelectValue placeholder="Année" />

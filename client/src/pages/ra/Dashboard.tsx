@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { UpcomingInterviewsCard } from "@/components/UpcomingInterviewsCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -334,6 +335,7 @@ export default function RADashboard() {
               </div>
             </>
           )}
+          <UpcomingInterviewsCard href="/ra/entretiens-candidats" />
         </main>
       </div>
     </div>

@@ -55,6 +55,10 @@ public class OECSignupRequest {
     private String porteeAccreditation;
     
     private String typeDemande; // "initiale", "extension", "renouvellement", "transfert"
+
+    // Logo facultatif de l'organisme (image encodée en base64)
+    private String logoBase64;
+    private String logoMimeType;
     
     @NotBlank(message = "Le type d'utilisateur est requis")
     private String userType; // "OEC"

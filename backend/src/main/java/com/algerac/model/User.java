@@ -103,6 +103,11 @@ public class User {
     private String situationFamiliale;
     @Column(columnDefinition = "TEXT")
     private String photoBase64;
+
+    // Logo de l'organisme (OEC), facultatif
+    @Column(columnDefinition = "TEXT")
+    private String logoBase64;
+    private String logoMimeType;
     
     // Section 2: Contacts
     private String telephoneMobile;

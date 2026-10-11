@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { ResetButton } from "@/components/ui/reset-button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -19,6 +20,8 @@ import { Loader2, CheckCircle, CreditCard, ArrowRight, ChevronLeft, AlertCircle,
 import { cn } from "@/lib/utils";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
+
+const MAX_LOGO_SIZE = 2 * 1024 * 1024;
 
 const TYPES_DEMANDE = [
   { value: "initiale", label: "Accréditation initiale" },
@@ -63,8 +66,6 @@ const DOCS_ADMIN = [
   "Copie de la carte d'immatriculation fiscale (NIS, NIF)",
   "Copie du N° article d'imposition",
   "Copie du registre de commerce",
-  "Chèque à l'ordre d'ALGERAC (organismes nationaux)",
-  "Ordre de virement à l'ordre d'ALGERAC (organismes étrangers)",
 ];
 
 // Documents à joindre (non-FOR) par activité
@@ -154,17 +155,17 @@ const STEPS = [
   { id: 3, title: "Personne à contacter" },
   { id: 4, title: "Sites et activités" },
   { id: 5, title: "Personnel" },
-  { id: 6, title: "Prestations conseil" },
-  { id: 7, title: "Reconnaissances" },
+  { id: 6, title: "Prestations externes" },
+  { id: 7, title: "Reconnaissances / Agréments" },
   { id: 8, title: "Formulaires techniques" },
   { id: 9, title: "Documents administratifs" },
-  { id: 10, title: "Déclaration et signature" },
+  { id: 10, title: "Déclaration" },
 ];
 
 // ── Interfaces ─────────────────────────────────────────────────────────────────
 
 interface Site {
-  id: number; localisation: string; adresse: string; activites: string; soustraitance: string; ebmd: string;
+  id: number; localisation: string; adresse: string; activites: string;   soustraitance: string;
 }
 interface PersonnelSite {
   id: number; site: string; permanents: string; vacataires: string;
@@ -273,6 +274,28 @@ export default function NewRequestPage() {
   const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // ── Logo (stored on the OEC account) ──
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [existingLogo, setExistingLogo] = useState<{ base64: string; mime: string } | null>(null);
+  const [logoRemoved, setLogoRemoved] = useState(false);
+
+  useEffect(() => {
+    if (!logoFile) { setLogoPreview(""); return; }
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
+
+  useEffect(() => {
+    fetch("/api/users/me/logo", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.logoBase64) setExistingLogo({ base64: d.logoBase64, mime: d.logoMimeType || "image/png" });
+      })
+      .catch(() => {});
+  }, []);
+
   // ── DOC1 Fields ──
   const [typeDemande, setTypeDemande] = useState("");
   const [dateEvaluation, setDateEvaluation] = useState("");
@@ -282,7 +305,6 @@ export default function NewRequestPage() {
   // Organisme
   const [nomLegal, setNomLegal] = useState("");
   const [abreviation, setAbreviation] = useState("");
-  const [sigle, setSigle] = useState("");
   const [statutJuridique, setStatutJuridique] = useState("");
   const [statutJuridiqueAutre, setStatutJuridiqueAutre] = useState("");
   const [registreCommerce, setRegistreCommerce] = useState("");
@@ -295,7 +317,6 @@ export default function NewRequestPage() {
   const [groupeNom, setGroupeNom] = useState("");
   const [groupeAdresse, setGroupeAdresse] = useState("");
   const [groupeRelation, setGroupeRelation] = useState("");
-  const [groupeImpact, setGroupeImpact] = useState("");
 
   // Contact
   const [contactNom, setContactNom] = useState("");
@@ -306,7 +327,7 @@ export default function NewRequestPage() {
   const [contactEmail, setContactEmail] = useState("");
 
   // Sites & Personnel
-  const [sites, setSites] = useState<Site[]>([{ id: 1, localisation: "", adresse: "", activites: "", soustraitance: "", ebmd: "" }]);
+  const [sites, setSites] = useState<Site[]>([{ id: 1, localisation: "", adresse: "", activites: "", soustraitance: "" }]);
   const [personnelSites, setPersonnelSites] = useState<PersonnelSite[]>([{ id: 1, site: "", permanents: "", vacataires: "" }]);
   const [responsablesTechniques, setResponsablesTechniques] = useState<ResponsableTechnique[]>([{ id: 1, nom: "", qualifications: "", experience: "" }]);
   const [responsableQualiteNom, setResponsableQualiteNom] = useState("");
@@ -356,7 +377,6 @@ export default function NewRequestPage() {
   const [demandeurNom, setDemandeurNom] = useState("");
   const [demandeurFonction, setDemandeurFonction] = useState("");
   const [demandeurDate, setDemandeurDate] = useState(new Date().toISOString().split("T")[0]);
-  const [signature, setSignature] = useState("");
   const [engagementsAcceptes, setEngagementsAcceptes] = useState(false);
 
   // ── FOR Form Data ──
@@ -469,7 +489,6 @@ export default function NewRequestPage() {
     // Step 2
     setNomLegal("LABO DEMO SARL");
     setAbreviation("LDEMO");
-    setSigle("LD");
     setStatutJuridique("SARL");
     setRegistreCommerce("16B1234567");
     setCodesActivite("7120 – Services d'essais et analyses techniques");
@@ -488,7 +507,7 @@ export default function NewRequestPage() {
     setContactEmail("ahmed.bensalem@labodemo.dz");
 
     // Step 4
-    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non", ebmd: "Non" }]);
+    setSites([{ id: 1, localisation: "Alger", adresse: "12 Rue des Labos, Alger", activites: "Inspection", soustraitance: "Non" }]);
 
     // Step 5
     setPersonnelSites([{ id: 1, site: "Alger", permanents: "10", vacataires: "3" }]);
@@ -519,7 +538,6 @@ export default function NewRequestPage() {
     setDemandeurNom("Ahmed Bensalem");
     setDemandeurFonction("Directeur Général");
     setDemandeurDate(new Date().toISOString().split("T")[0]);
-    setSignature("A. Bensalem");
     setEngagementsAcceptes(true);
     setOrganismeSoumission("LABO DEMO SARL");
 
@@ -537,7 +555,6 @@ export default function NewRequestPage() {
     const errs: Record<string, string> = {};
     if (currentStep === 1) {
       if (!typeDemande) errs.typeDemande = t("nrp.validation.typeDemande");
-      if (!dateEvaluation) errs.dateEvaluation = t("nrp.validation.dateEvaluation");
       if (activites.length === 0) errs.activites = t("nrp.validation.activites");
       if (!siteType) errs.siteType = t("nrp.validation.siteType");
     }
@@ -548,13 +565,13 @@ export default function NewRequestPage() {
       if (!registreCommerce.trim()) errs.registreCommerce = t("nrp.validation.registreCommerce");
       if (!codesActivite.trim()) errs.codesActivite = t("nrp.validation.codesActivite");
       if (!adresseSiege.trim()) errs.adresseSiege = t("nrp.validation.adresseSiege");
+      if (!adresseFacturation.trim()) errs.adresseFacturation = t("nrp.validation.adresseFacturation");
       if (!emailOrg.trim()) errs.emailOrg = t("nrp.validation.emailOrg");
       if (!appartientGroupe) errs.appartientGroupe = t("nrp.validation.appartientGroupe");
       if (appartientGroupe === "oui") {
         if (!groupeNom.trim()) errs.groupeNom = t("nrp.validation.groupeNom");
         if (!groupeAdresse.trim()) errs.groupeAdresse = t("nrp.validation.groupeAdresse");
         if (!groupeRelation.trim()) errs.groupeRelation = t("nrp.validation.groupeRelation");
-        if (!groupeImpact.trim()) errs.groupeImpact = t("nrp.validation.groupeImpact");
       }
     }
     if (currentStep === 3) {
@@ -586,9 +603,6 @@ export default function NewRequestPage() {
     if (currentStep === 5) {
       if (!validateRows(personnelSites, ["site", "permanents"])) errs.personnelSites = t("nrp.validation.personnelSites");
       if (!validateRows(responsablesTechniques, ["nom", "qualifications", "experience"])) errs.responsablesTechniques = t("nrp.validation.responsablesTechniques");
-      if (!responsableQualiteNom.trim()) errs.responsableQualiteNom = t("nrp.validation.responsableQualiteNom");
-      if (!responsableQualiteQualif.trim()) errs.responsableQualiteQualif = t("nrp.validation.responsableQualiteQualif");
-      if (!responsableQualiteExp.trim()) errs.responsableQualiteExp = t("nrp.validation.responsableQualiteExp");
     }
     if (currentStep === 6) {
       if (!prestationConseil) errs.prestationConseil = t("nrp.validation.prestationConseil");
@@ -643,7 +657,6 @@ export default function NewRequestPage() {
       if (!demandeurNom.trim()) errs.demandeurNom = t("nrp.validation.demandeurNom");
       if (!demandeurFonction.trim()) errs.demandeurFonction = t("nrp.validation.demandeurFonction");
       if (!demandeurDate) errs.demandeurDate = t("nrp.validation.demandeurDate");
-      if (!signature.trim()) errs.signature = t("nrp.validation.signature");
     }
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
@@ -665,6 +678,23 @@ export default function NewRequestPage() {
       setCurrentStep((s) => s - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrors((p) => ({ ...p, logo: t("nrp.validation.logoType") }));
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      setErrors((p) => ({ ...p, logo: t("nrp.validation.logoSize") }));
+      e.target.value = "";
+      return;
+    }
+    setErrors((p) => { const { logo, ...rest } = p; return rest; });
+    setLogoFile(file);
   };
 
   // ── Submit ──
@@ -715,17 +745,17 @@ export default function NewRequestPage() {
       const description = JSON.stringify({
         // DOC1
         typeDemande, dateEvaluation, activites, siteType,
-        nomLegal, abreviation, sigle,
+        nomLegal, abreviation,
         statutJuridique: statutJuridique === REQUIRES_AUTRE_TEXT ? `Autre: ${statutJuridiqueAutre}` : statutJuridique,
         registreCommerce, codesActivite,
         adresseSiege, adresseFacturation, emailOrg, siteWeb,
-        appartientGroupe, groupeNom, groupeAdresse, groupeRelation, groupeImpact,
+        appartientGroupe, groupeNom, groupeAdresse, groupeRelation,
         contactNom, contactFonction, contactAdresse, contactTelephone, contactFax, contactEmail,
         sites, personnelSites, responsablesTechniques,
         responsableQualiteNom, responsableQualiteQualif, responsableQualiteExp,
         prestationConseil, prestations, reconnaissances, motifTransfert,
         // Declaration
-        demandeurNom, demandeurFonction, demandeurDate, signature, organismeSoumission,
+        demandeurNom, demandeurFonction, demandeurDate, organismeSoumission,
         // FOR technical forms
         technicalForms: {
           ...(activites.includes("inspection") ? { for04: { typeOrganisme: for04Type, domaines: for04Domaines, inspecteurs: for04Inspecteurs, equipements: for04Equipements } } : {}),
@@ -791,6 +821,23 @@ export default function NewRequestPage() {
         throw new Error(err.error || err.message || "Erreur lors de la soumission");
       }
 
+      // Logo is stored on the OEC account; a failure here must not block the request itself
+      if (logoFile || (logoRemoved && existingLogo)) {
+        try {
+          const logoRes = await fetch("/api/users/me/logo", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(logoFile
+              ? { logoBase64: await fileToBase64(logoFile), logoMimeType: logoFile.type }
+              : { logoBase64: "" }),
+          });
+          if (!logoRes.ok) throw new Error();
+        } catch {
+          toast({ title: "Logo", description: t("nrp.validation.logoSaveFailed"), variant: "destructive" });
+        }
+      }
+
       setCreatedRequestId(requestId);
       setSubmitted(true);
       setShowPaymentDialog(true);
@@ -829,13 +876,13 @@ export default function NewRequestPage() {
             ))}
           </div>
         </RadioGroup>
+        <ResetButton show={!!typeDemande} onClick={() => setTypeDemande("")} label={t("nrp.reset")} />
         {errors.typeDemande && <p className="text-sm text-red-500">{errors.typeDemande}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label>{t("nrp.s1.dateEvaluation")} <span className="text-red-500">*</span></Label>
-        <StringDatePicker value={dateEvaluation} onChange={setDateEvaluation} min={new Date().toISOString().split("T")[0]} />
-        {errors.dateEvaluation && <p className="text-sm text-red-500">{errors.dateEvaluation}</p>}
+        <Label>{t("nrp.s1.dateEvaluation")}</Label>
+        <StringDatePicker clearable value={dateEvaluation} onChange={setDateEvaluation} min={new Date().toISOString().split("T")[0]} />
       </div>
 
       <div className="space-y-3">
@@ -874,6 +921,7 @@ export default function NewRequestPage() {
             </p>
           )}
         </RadioGroup>
+        <ResetButton show={!!siteType} onClick={() => setSiteType("")} label={t("nrp.reset")} />
         {errors.siteType && <p className="text-sm text-red-500">{errors.siteType}</p>}
       </div>
     </div>
@@ -896,12 +944,26 @@ export default function NewRequestPage() {
           <Input value={abreviation} onChange={(e) => setAbreviation(e.target.value)} placeholder={t("nrp.s2.abreviation")} />
         </div>
         <div className="space-y-2">
-          <Label>{t("nrp.s2.sigle")}</Label>
-          <Input value={sigle} onChange={(e) => setSigle(e.target.value)} placeholder={t("nrp.s2.sigle")} />
+          <Label>{t("nrp.s2.logo")}</Label>
+          <Input key={logoFile?.name ?? "empty"} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoChange} />
+          <p className="text-xs text-slate-500">{t("nrp.s2.logoHelper")}</p>
+          {(logoPreview || (existingLogo && !logoRemoved)) && (
+            <div className="flex items-center gap-3">
+              <img
+                src={logoPreview || `data:${existingLogo!.mime};base64,${existingLogo!.base64}`}
+                alt="Logo"
+                className="h-12 w-auto max-w-[8rem] object-contain border rounded bg-white p-1"
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => { if (logoFile) setLogoFile(null); else setLogoRemoved(true); }}>
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </Button>
+            </div>
+          )}
+          {errors.logo && <p className="text-sm text-red-500">{errors.logo}</p>}
         </div>
         <div className="space-y-2">
           <Label>{t("nrp.s2.statutJuridique")} <span className="text-red-500">*</span></Label>
-          <Select value={statutJuridique} onValueChange={setStatutJuridique}>
+          <Select clearable value={statutJuridique} onValueChange={(v) => { setStatutJuridique(v); if (v !== REQUIRES_AUTRE_TEXT) setStatutJuridiqueAutre(""); }}>
             <SelectTrigger><SelectValue placeholder={t("nrp.s2.statutJuridiquePlaceholder")} /></SelectTrigger>
             <SelectContent>
               {STATUTS_JURIDIQUES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
@@ -929,8 +991,9 @@ export default function NewRequestPage() {
           {errors.adresseSiege && <p className="text-sm text-red-500">{errors.adresseSiege}</p>}
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>{t("nrp.s2.adresseFacturation")}</Label>
+          <Label>{t("nrp.s2.adresseFacturation")} <span className="text-red-500">*</span></Label>
           <Textarea value={adresseFacturation} onChange={(e) => setAdresseFacturation(e.target.value)} placeholder={t("nrp.s2.adresseFacturationPlaceholder")} rows={2} />
+          {errors.adresseFacturation && <p className="text-sm text-red-500">{errors.adresseFacturation}</p>}
         </div>
         <div className="space-y-2">
           <Label>{t("nrp.s2.email")} <span className="text-red-500">*</span></Label>
@@ -952,18 +1015,22 @@ export default function NewRequestPage() {
             <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="g-non" /><Label htmlFor="g-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
+        <ResetButton
+          show={!!appartientGroupe}
+          onClick={() => { setAppartientGroupe(""); setGroupeNom(""); setGroupeAdresse(""); setGroupeRelation(""); }}
+          label={t("nrp.reset")}
+        />
       </div>
 
       {appartientGroupe === "oui" && (
         <div className="grid md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg">
           <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeNom")} <span className="text-red-500">*</span></Label><Input value={groupeNom} onChange={(e) => setGroupeNom(e.target.value)} placeholder={t("nrp.s2.groupeNomPlaceholder")} />{errors.groupeNom && <p className="text-sm text-red-500">{errors.groupeNom}</p>}</div>
           <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeAdresse")} <span className="text-red-500">*</span></Label><Textarea value={groupeAdresse} onChange={(e) => setGroupeAdresse(e.target.value)} placeholder={t("nrp.s2.groupeAdressePlaceholder")} rows={2} />{errors.groupeAdresse && <p className="text-sm text-red-500">{errors.groupeAdresse}</p>}</div>
-          <div className="space-y-2 md:col-span-2"><Label>{t("nrp.s2.groupeRelation")} <span className="text-red-500">*</span></Label><Input value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder={t("nrp.s2.groupeRelationPlaceholder")} />{errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}</div>
           <div className="space-y-2 md:col-span-2">
-            <Label>{t("nrp.s2.groupeImpact")} <span className="text-red-500">*</span></Label>
-            <p className="text-xs text-slate-500">{t("nrp.s2.groupeImpactHelper")}</p>
-            <Textarea value={groupeImpact} onChange={(e) => setGroupeImpact(e.target.value)} placeholder={t("nrp.s2.groupeImpactPlaceholder")} rows={3} />
-            {errors.groupeImpact && <p className="text-sm text-red-500">{errors.groupeImpact}</p>}
+            <Label>{t("nrp.s2.groupeRelation")} <span className="text-red-500">*</span></Label>
+            <p className="text-xs text-slate-500">{t("nrp.s2.groupeRelationHelper")}</p>
+            <Textarea value={groupeRelation} onChange={(e) => setGroupeRelation(e.target.value)} placeholder={t("nrp.s2.groupeRelationPlaceholder")} rows={3} />
+            {errors.groupeRelation && <p className="text-sm text-red-500">{errors.groupeRelation}</p>}
           </div>
         </div>
       )}
@@ -1012,11 +1079,6 @@ export default function NewRequestPage() {
               <Label>{t("nrp.s4.soustraitance")}</Label>
               <p className="text-xs text-slate-500">{t("nrp.s4.soustraitanceHelper")}</p>
               <Input value={site.soustraitance} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, soustraitance: e.target.value } : s))} placeholder={t("nrp.s4.soustraitancePlaceholder")} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>{t("nrp.s4.ebmd")}</Label>
-              <p className="text-xs text-slate-500">{t("nrp.s4.ebmdHelper")}</p>
-              <Input value={site.ebmd} onChange={(e) => setSites((p) => p.map((s) => s.id === site.id ? { ...s, ebmd: e.target.value } : s))} placeholder={t("nrp.s4.ebmdPlaceholder")} />
             </div>
           </div>
         </div>
@@ -1195,11 +1257,11 @@ export default function NewRequestPage() {
       </div>
 
       <div className="space-y-4 pt-6 border-t">
-        <Label className="text-base font-semibold">{t("nrp.s5.responsableQualite")} <span className="text-red-500">*</span></Label>
+        <Label className="text-base font-semibold">{t("nrp.s5.responsableQualite")}</Label>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder={t("nrp.s5.nomCompletPlaceholder")} />{errors.responsableQualiteNom && <p className="text-sm text-red-500">{errors.responsableQualiteNom}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.diplomes")} <span className="text-red-500">*</span></Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder={t("nrp.s5.diplomesPlaceholder")} />{errors.responsableQualiteQualif && <p className="text-sm text-red-500">{errors.responsableQualiteQualif}</p>}</div>
-          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")} <span className="text-red-500">*</span></Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder={t("nrp.s5.yearsExpPlaceholder")} />{errors.responsableQualiteExp && <p className="text-sm text-red-500">{errors.responsableQualiteExp}</p>}</div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.nomComplet")}</Label><Input value={responsableQualiteNom} onChange={(e) => setResponsableQualiteNom(e.target.value)} placeholder={t("nrp.s5.nomCompletPlaceholder")} /></div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.diplomes")}</Label><Input value={responsableQualiteQualif} onChange={(e) => setResponsableQualiteQualif(e.target.value)} placeholder={t("nrp.s5.diplomesPlaceholder")} /></div>
+          <div className="space-y-2"><Label className="text-sm">{t("nrp.s5.yearsExp")}</Label><Input type="number" value={responsableQualiteExp} onChange={(e) => setResponsableQualiteExp(e.target.value)} placeholder={t("nrp.s5.yearsExpPlaceholder")} /></div>
         </div>
       </div>
     </div>
@@ -1217,6 +1279,11 @@ export default function NewRequestPage() {
             <div className="flex items-center space-x-2"><RadioGroupItem value="non" id="pc-non" /><Label htmlFor="pc-non">{t("nrp.s2.non")}</Label></div>
           </div>
         </RadioGroup>
+        <ResetButton
+          show={!!prestationConseil}
+          onClick={() => { setPrestationConseil(""); setPrestations([]); }}
+          label={t("nrp.reset")}
+        />
       </div>
 
       {prestationConseil === "oui" && (
@@ -1258,7 +1325,7 @@ export default function NewRequestPage() {
                 )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.prestataire")}</Label><Input value={pr.prestataire} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, prestataire: e.target.value } : x))} placeholder={t("nrp.s6.prestatairePlaceholder")} /></div>
-                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.date")}</Label><StringDatePicker value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
+                  <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.date")}</Label><StringDatePicker clearable value={pr.date} onChange={(v) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, date: v } : x))} /></div>
                 </div>
                 <div className="space-y-2"><Label className="text-sm">{t("nrp.s6.description")}</Label><Textarea value={pr.description} onChange={(e) => setPrestations((p) => p.map((x) => x.id === pr.id ? { ...x, description: e.target.value } : x))} placeholder={t("nrp.s6.descriptionPlaceholder")} rows={2} /></div>
                 <div className="flex justify-end">
@@ -1322,6 +1389,7 @@ export default function NewRequestPage() {
             <div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`for04-${t}`} /><Label htmlFor={`for04-${t}`}>Type {t}</Label></div>
           ))}
         </RadioGroup>
+        <ResetButton show={!!for04Type} onClick={() => setFor04Type("")} label="Réinitialiser" />
       </div>
       <DynamicTable
         title="Domaines d'inspection"
@@ -1824,30 +1892,17 @@ export default function NewRequestPage() {
       {/* Official declaration text */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4 text-sm text-slate-700 leading-relaxed">
         <p>
-          <span className="font-bold">{t("nrp.s10.declareLabel")}</span>{" "}{t("nrp.s10.declareText")}{" "}
-          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">www.algerac.dz</a>
+          <span className="font-bold">{t("nrp.s10.declareLabel")}</span>{" "}{t("nrp.s10.declareText")}
         </p>
 
         <div>
           <p className="font-bold mb-2">{t("nrp.s10.commitTitle")}</p>
-          <ol className="list-[lower-alpha] pl-6 space-y-2">
-            <li>
-              <span className="font-bold">{t("nrp.s10.informLabel")}</span>{" "}{t("nrp.s10.informText")}
-            </li>
-            <li>
-              <span className="font-bold">{t("nrp.s10.transmitLabel")}</span>{" "}{t("nrp.s10.transmitText")}
-            </li>
-            <li>
-              <span className="font-bold">{t("nrp.s10.allowLabel")}</span>{" "}{t("nrp.s10.allowText")}
-            </li>
-          </ol>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>{t("nrp.s10.informText")}</li>
+            <li>{t("nrp.s10.transmitText")}</li>
+            <li>{t("nrp.s10.normesText")}</li>
+          </ul>
         </div>
-
-        <p>
-          {t("nrp.s10.normesText")}{" "}
-          <a href="https://www.algerac.dz" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">www.algerac.dz</a>{" "}
-          {t("nrp.s10.normesText2")}
-        </p>
 
         <p>{t("nrp.s10.droitsText")}</p>
 
@@ -1875,7 +1930,6 @@ export default function NewRequestPage() {
                 readOnly
                 className="bg-slate-50 text-slate-600 cursor-default"
               />
-              <span className="text-xs text-slate-400 whitespace-nowrap">{t("nrp.s10.dateAutoFill")}</span>
             </div>
           </div>
           <div className="space-y-2">
@@ -1887,11 +1941,6 @@ export default function NewRequestPage() {
             <Label>{t("nrp.s10.fonction")} <span className="text-red-500">*</span></Label>
             <Input value={demandeurFonction} onChange={(e) => setDemandeurFonction(e.target.value)} placeholder={t("nrp.s10.fonctionPlaceholder")} />
             {errors.demandeurFonction && <p className="text-sm text-red-500">{errors.demandeurFonction}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t("nrp.s10.signature")} <span className="text-red-500">*</span></Label>
-            <Input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder={t("nrp.s10.signaturePlaceholder")} />
-            {errors.signature && <p className="text-sm text-red-500">{errors.signature}</p>}
           </div>
         </div>
       </div>

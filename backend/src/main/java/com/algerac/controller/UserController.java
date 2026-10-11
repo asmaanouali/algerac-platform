@@ -9,6 +9,7 @@ import com.algerac.model.UserStatus;
 import com.algerac.repository.DepartmentRepository;
 import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
+import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,57 @@ public class UserController {
     private final DepartmentRepository departmentRepository;
     private final RequestRepository requestRepository;
     private final EmailService emailService;
+    private final AuthService authService;
+
+    /**
+     * OEC connecté : récupérer son logo
+     */
+    @GetMapping("/me/logo")
+    public ResponseEntity<?> getMyLogo(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.getRole() != UserRole.OEC) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux OEC"));
+        }
+        Map<String, String> body = new java.util.HashMap<>();
+        body.put("logoBase64", user.getLogoBase64());
+        body.put("logoMimeType", user.getLogoMimeType());
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * OEC connecté : définir ou supprimer son logo (logoBase64 vide = suppression)
+     */
+    @PutMapping("/me/logo")
+    @Transactional
+    public ResponseEntity<?> updateMyLogo(@RequestBody Map<String, String> body, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.getRole() != UserRole.OEC) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux OEC"));
+        }
+        String logoBase64 = body.get("logoBase64");
+        if (logoBase64 == null || logoBase64.isBlank()) {
+            user.setLogoBase64(null);
+            user.setLogoMimeType(null);
+        } else {
+            try {
+                authService.validateLogo(logoBase64, body.get("logoMimeType"));
+            } catch (RuntimeException e) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            }
+            user.setLogoBase64(logoBase64);
+            user.setLogoMimeType(body.get("logoMimeType"));
+        }
+        userRepository.save(user);
+        return ResponseEntity.ok(ApiResponse.success("Logo mis à jour", null));
+    }
     
     /**
      * Récupérer tous les utilisateurs (pour l'admin)

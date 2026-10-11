@@ -7,9 +7,6 @@ import com.algerac.repository.QuotationRepository;
 import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.repository.DocumentaryReviewRepository;
-import com.algerac.repository.OECApplicationRepository;
-import com.algerac.model.OECApplication;
-import com.algerac.model.OECApplication.ApplicationStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,7 +28,6 @@ public class PaymentService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final DocumentaryReviewRepository docReviewRepository;
-    private final OECApplicationRepository oecApplicationRepository;
     
     /**
      * Créer un paiement en attente de fixation des frais par le DAG.
@@ -223,25 +219,6 @@ public class PaymentService {
         
         // Notifier l'OEC qu'il doit se connecter pour payer
         notifyOECPaymentRequired(request, amount);
-
-        // Nouvel OEC : aligner la candidature (historique / admin)
-        if ("REGISTRATION_FEE".equals(payment.getPaymentType())
-                && Boolean.TRUE.equals(resolveIsNewOec(request))) {
-            String email = request.getOecEmail();
-            if (email != null && !email.isBlank()) {
-                oecApplicationRepository.findByEmail(email).ifPresent(app -> {
-                    if (app.getStatus() == ApplicationStatus.AWAITING_DAG_FEE
-                            || app.getStatus() == ApplicationStatus.FEE_SET_AWAITING_PAYMENT) {
-                        app.setDepositFeeAmount(amount);
-                        app.setFeeSetAt(LocalDateTime.now());
-                        app.setFeeSetByUserId(dagUserId);
-                        app.setPaymentDeadline(LocalDateTime.now().plusMonths(1));
-                        app.setStatus(ApplicationStatus.FEE_SET_AWAITING_PAYMENT);
-                        oecApplicationRepository.save(app);
-                    }
-                });
-            }
-        }
         
         return payment;
     }
@@ -403,42 +380,7 @@ public class PaymentService {
                     dagUserId, payment.getRequest().getReferenceNumber(), payment.getTransactionId());
         }
 
-        // Nouvel OEC : synchroniser la candidature pour que l'admin puisse créer le compte
-        if ("REGISTRATION_FEE".equals(payment.getPaymentType())
-                && Boolean.TRUE.equals(resolveIsNewOec(payment.getRequest()))) {
-            syncNewOecApplicationPaymentVerified(payment.getRequest(), dagUserId);
-        }
-        
         return payment;
-    }
-
-    private void syncNewOecApplicationPaymentVerified(AccreditationRequest request, Long dagUserId) {
-        String email = request.getOecEmail();
-        if (email == null || email.isBlank()) {
-            return;
-        }
-        oecApplicationRepository.findByEmail(email).ifPresent(app -> {
-            if (app.getStatus() == ApplicationStatus.AWAITING_DAG_FEE
-                    || app.getStatus() == ApplicationStatus.FEE_SET_AWAITING_PAYMENT) {
-                app.setStatus(ApplicationStatus.PAYMENT_VERIFIED);
-                app.setPaymentVerifiedAt(LocalDateTime.now());
-                app.setPaymentVerifiedByUserId(dagUserId);
-                oecApplicationRepository.save(app);
-                log.info("Candidature OEC {} marquée PAYMENT_VERIFIED (frais d'enregistrement validés)",
-                        app.getId());
-
-                List<User> admins = userRepository.findByRole(UserRole.ADMIN);
-                for (User admin : admins) {
-                    notificationService.createNotification(
-                            admin.getId(),
-                            "Paiement validé — Création de compte OEC",
-                            String.format("Le paiement des frais d'enregistrement de \"%s\" a été validé. "
-                                    + "Vous pouvez créer le compte.", app.getNomOrganisme()),
-                            "ACTION_REQUIRED"
-                    );
-                }
-            }
-        });
     }
     
     /**

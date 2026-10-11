@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { openAccreditationDoc1Pdf } from "@/lib/pdf-documents";
+import { openAccreditationDoc1Pdf, normalizeDoc1Payload } from "@/lib/pdf-documents";
 import {
   Loader2, ArrowLeft, FileText, CheckCircle, XCircle, Download,
   Building2, User, Mail, Phone, MapPin, Globe, Briefcase, Calendar, ClipboardList, Users, Shield, Send, Printer,
@@ -158,7 +158,7 @@ export default function DTRequestDetailPage() {
 
   const req = data.request;
   const oec = data.oecProfile || {};
-  const p = parsed || {};
+  const p = normalizeDoc1Payload(parsed, req);
   const canReview = req.status === "PENDING_DT_REVIEW";
 
   const printDoc1 = () => {
@@ -244,8 +244,13 @@ export default function DTRequestDetailPage() {
             <CardHeader><CardTitle>Informations de l'organisme</CardTitle></CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
+                {oec.logoBase64 && (
+                  <div className="md:col-span-2">
+                    <img src={`data:${oec.logoMimeType || "image/png"};base64,${oec.logoBase64}`} alt="Logo" className="h-14 w-auto max-w-[10rem] object-contain" />
+                  </div>
+                )}
                 <Info label="Nom légal" value={p.nomLegal || oec.organizationName} />
-                <Info label="Abréviation / Sigle" value={[p.abreviation, p.sigle].filter(Boolean).join(" / ")} />
+                <Info label="Abréviation" value={p.abreviation} />
                 <Info label="Statut juridique" value={p.statutJuridique || oec.typeOrganisme} />
                 <Info label="N° Registre de commerce" value={p.registreCommerce} />
                 <Info label="Codes d'activité" value={p.codesActivite} />
@@ -260,9 +265,8 @@ export default function DTRequestDetailPage() {
                   <p className="text-sm font-medium mb-2">Groupe d'appartenance</p>
                   <div className="grid md:grid-cols-2 gap-3 text-sm">
                     <Info label="Nom" value={p.groupeNom} />
-                    <Info label="Relation" value={p.groupeRelation} />
+                    <Info label="Relation avec le groupe (interventions du groupe)" value={[p.groupeRelation, p.groupeImpact].filter(Boolean).join(" — ")} />
                     <Info label="Adresse" value={p.groupeAdresse} />
-                    <Info label="Impact sur activités" value={p.groupeImpact} />
                   </div>
                 </div>
               )}
@@ -294,14 +298,13 @@ export default function DTRequestDetailPage() {
                   { key: "adresse", label: "Adresse" },
                   { key: "activites", label: "Activités" },
                   { key: "soustraitance", label: "Sous-traitance" },
-                  { key: "ebmd", label: "EBMD" },
                 ]} rows={p.sites} />
               </CardContent>
             </Card>
           )}
 
           {/* Personnel */}
-          {(Array.isArray(p.personnelSites) || Array.isArray(p.responsablesTechniques) || p.responsableQualiteNom) && (
+          {(Array.isArray(p.personnelSites) || Array.isArray(p.responsablesTechniques) || p.responsableQualiteNom || p.responsableQualiteQualif || p.responsableQualiteExp) && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><Users className="w-4 h-4" /> Personnel</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -315,10 +318,10 @@ export default function DTRequestDetailPage() {
                   { key: "qualifications", label: "Qualifications" },
                   { key: "experience", label: "Expérience (ans)" },
                 ]} rows={p.responsablesTechniques} />
-                {p.responsableQualiteNom && (
+                {(p.responsableQualiteNom || p.responsableQualiteQualif || p.responsableQualiteExp) && (
                   <div className="grid md:grid-cols-3 gap-3 p-3 rounded-lg bg-slate-50 border">
                     <Info label="Responsable qualité — Nom" value={p.responsableQualiteNom} />
-                    <Info label="Qualifications" value={p.responsableQualiteQualif} />
+                    <Info label="Diplômes" value={p.responsableQualiteQualif} />
                     <Info label="Expérience" value={p.responsableQualiteExp} />
                   </div>
                 )}
@@ -452,7 +455,7 @@ export default function DTRequestDetailPage() {
           )}
 
           {/* Déclaration */}
-          {(p.demandeurNom || p.signature) && (
+          {p.demandeurNom && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-4 h-4" /> Déclaration</CardTitle></CardHeader>
               <CardContent>
@@ -461,7 +464,6 @@ export default function DTRequestDetailPage() {
                   <Info label="Demandeur" value={p.demandeurNom} />
                   <Info label="Fonction" value={p.demandeurFonction} />
                   <Info label="Date" value={p.demandeurDate ? new Date(p.demandeurDate).toLocaleDateString("fr-FR") : "—"} />
-                  <Info label="Signature" value={p.signature} />
                 </div>
               </CardContent>
             </Card>

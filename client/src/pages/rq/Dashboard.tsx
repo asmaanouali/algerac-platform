@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { UpcomingInterviewsCard } from "@/components/UpcomingInterviewsCard";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { DashboardHeader } from "@/components/DashboardHeader";
@@ -221,6 +222,7 @@ export default function RQDashboard() {
               </div>
             </>
           )}
+          <UpcomingInterviewsCard href="/rq/entretiens-candidats" />
         </main>
       </div>
     </div>

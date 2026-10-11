@@ -5,17 +5,13 @@ package com.algerac.controller;
 import com.algerac.dto.*;
 import com.algerac.model.SystemLog;
 import com.algerac.model.User;
-import com.algerac.model.OECApplication;
-import com.algerac.model.RequestType;
 import com.algerac.repository.UserRepository;
-import com.algerac.repository.OECApplicationRepository;
 import com.algerac.repository.SystemLogRepository;
 import com.algerac.repository.SystemSettingRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
 import com.algerac.service.NotificationService;
 import com.algerac.service.RateLimiterService;
-import com.algerac.service.RequestService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -43,8 +39,6 @@ public class AuthController {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
-    private final OECApplicationRepository oecApplicationRepository;
-    private final RequestService requestService;
     private final RateLimiterService rateLimiterService;
     private final SystemSettingRepository systemSettingRepository;
     private final SystemLogRepository systemLogRepository;
@@ -481,42 +475,9 @@ public class AuthController {
         }
         
         try {
-            // Créer un User PENDING au lieu de OECApplication
-            User user = authService.registerOEC(request);
-            
-            // Créer aussi un OECApplication pour le workflow DT → DAG → Admin
-            OECApplication oecApp = OECApplication.builder()
-                    .nomOrganisme(request.getNomOrganisme())
-                    .typeOrganisme(request.getTypeOrganisme())
-                    .adresseSiege(request.getAdresseSiege())
-                    .telephone(request.getTelephone())
-                    .email(request.getEmail())
-                    .nomRepresentant(request.getNomRepresentant())
-                    .fonction(request.getFonction())
-                    .telephoneDirect(request.getTelephoneDirect())
-                    .emailProfessionnel(request.getEmailProfessionnel())
-                    .porteeAccreditation(request.getPorteeAccreditation())
-                    .typeDemande(request.getTypeDemande())
-                    .formDataJson(request.getDescription())
-                    .build();
-            oecApplicationRepository.save(oecApp);
-            
-            // Créer aussi une AccreditationRequest en PENDING_DT_REVIEW pour que ce
-            // nouvel OEC (sans compte) apparaisse dans la liste des demandes du DT
-            // au même titre qu'un OEC existant. Le champ User.typeDemande sert de
-            // discriminant côté UI ("Type demandeur").
-            try {
-                RequestType reqType = mapTypeDemande(request.getTypeDemande());
-                requestService.createAndSubmitForNewOec(
-                        user,
-                        reqType,
-                        request.getPorteeAccreditation(),
-                        request.getDescription()
-                );
-            } catch (Exception e) {
-                log.error("Erreur lors de la création de l'AccreditationRequest pour le nouvel OEC {} : {}",
-                        user.getEmail(), e.getMessage(), e);
-            }
+            // Un nouvel OEC = un User PENDING + une demande d'accréditation (créés dans la
+            // même transaction : l'un ne peut pas exister sans l'autre)
+            User user = authService.registerOECWithRequest(request);
             
             // Envoyer email de confirmation à l'OEC
             // L'échec d'envoi ne doit pas annuler l'inscription : le compte est déjà créé
@@ -650,15 +611,5 @@ public class AuthController {
     @GetMapping("/health")
     public ResponseEntity<ApiResponse> healthCheck() {
         return ResponseEntity.ok(ApiResponse.success("API is running"));
-    }
-
-    private RequestType mapTypeDemande(String typeDemande) {
-        if (typeDemande == null) return RequestType.INITIAL;
-        return switch (typeDemande.toLowerCase()) {
-            case "extension" -> RequestType.EXTENSION;
-            case "renouvellement" -> RequestType.RENOUVELLEMENT;
-            case "transfert" -> RequestType.EXTENSION;
-            default -> RequestType.INITIAL;
-        };
     }
 }

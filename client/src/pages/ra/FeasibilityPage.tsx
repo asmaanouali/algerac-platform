@@ -85,6 +85,7 @@ export default function RAFeasibilityPage() {
   const [study, setStudy] = useState<PersistedStudy>(emptyStudy);
 
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [paymentDeferred, setPaymentDeferred] = useState(false);
   const [paymentValidationDate, setPaymentValidationDate] = useState<string | null>(null);
 
   const [refuseDialogOpen, setRefuseDialogOpen] = useState(false);
@@ -198,6 +199,7 @@ export default function RAFeasibilityPage() {
 
     // Check payment verification from DAG
     setPaymentVerified(false);
+    setPaymentDeferred(false);
     setPaymentValidationDate(null);
     try {
       const pr = await apiRequest("GET", `/api/payments/request/${r.id}`);
@@ -205,9 +207,16 @@ export default function RAFeasibilityPage() {
       const validated = Array.isArray(payments)
         ? payments.find((p: any) => p.status === "DAG_VALIDATED" || p.status === "COMPLETED")
         : (payments?.status === "DAG_VALIDATED" || payments?.status === "COMPLETED") ? payments : null;
+      // Frais d'enregistrement reportés à la fin de l'évaluation par la Consolidation : RA non bloqué
+      const deferred = Array.isArray(payments)
+        ? payments.find((p: any) => p.paymentType === "REGISTRATION_FEE" && p.deferredToEvaluationEnd && p.status === "PENDING")
+        : null;
       if (validated) {
         setPaymentVerified(true);
         setPaymentValidationDate(validated.dagValidatedDate || validated.paymentDate || null);
+      } else if (deferred) {
+        setPaymentVerified(true);
+        setPaymentDeferred(true);
       }
     } catch { /* best effort */ }
   };
@@ -242,7 +251,7 @@ export default function RAFeasibilityPage() {
     if (!selectedRequest) return;
     if (!study.decision) return;
     if (study.decision === "RECEIVABLE" && !paymentVerified) {
-      toast({ variant: "destructive", title: "Paiement non confirmé", description: "Le DAG doit d'abord confirmer le paiement des frais d'enregistrement." });
+      toast({ variant: "destructive", title: "Paiement non confirmé", description: "Le service Consolidation doit d'abord confirmer le paiement des frais d'enregistrement." });
       return;
     }
     if (study.decision === "NOT_RECEIVABLE" && !study.rejectionReason.trim()) {
@@ -524,12 +533,12 @@ export default function RAFeasibilityPage() {
                           {paymentVerified ? <CheckCircle className="h-4 w-4 text-green-700" /> : <AlertTriangle className="h-4 w-4 text-amber-700" />}
                           <div>
                             <p className={`font-medium text-sm ${paymentVerified ? "text-green-700" : "text-amber-700"}`}>
-                              {paymentVerified ? "Paiement validé par le DAG" : "En attente de validation du paiement par le DAG"}
+                              {paymentVerified ? (paymentDeferred ? "Paiement différé à la fin de l'évaluation" : "Paiement validé par la Consolidation") : "En attente de validation du paiement par la Consolidation"}
                             </p>
                             <p className={`text-xs ${paymentVerified ? "text-green-600" : "text-amber-600"}`}>
                               {paymentVerified
-                                ? (paymentValidationDate ? `Validé le ${new Date(paymentValidationDate).toLocaleDateString("fr-FR")}` : "Frais d'enregistrement vérifiés")
-                                : "Vous ne pourrez pas valider (recevable) tant que le DAG n'a pas confirmé le paiement."}
+                                ? (paymentDeferred ? "La Consolidation a reporté les frais d'enregistrement : vous pouvez valider la recevabilité." : paymentValidationDate ? `Validé le ${new Date(paymentValidationDate).toLocaleDateString("fr-FR")}` : "Frais d'enregistrement vérifiés")
+                                : "Vous ne pourrez pas valider (recevable) tant que la Consolidation n'a pas confirmé le paiement."}
                             </p>
                           </div>
                         </div>
@@ -563,7 +572,7 @@ export default function RAFeasibilityPage() {
                         {!paymentVerified && (
                           <Alert variant="destructive">
                             <AlertTriangle className="h-4 w-4" />
-                            <AlertDescription><strong>Validation impossible.</strong> Le DAG n'a pas encore confirmé le paiement des frais d'enregistrement. Vous pouvez cependant enregistrer votre étude et revenir plus tard.</AlertDescription>
+                            <AlertDescription><strong>Validation impossible.</strong> Le service Consolidation n'a pas encore confirmé le paiement des frais d'enregistrement. Vous pouvez cependant enregistrer votre étude et revenir plus tard.</AlertDescription>
                           </Alert>
                         )}
                         <div className="space-y-3">

@@ -5,7 +5,7 @@ import RADashboard from "@/pages/ra/Dashboard";
 import OECDashboard from "@/pages/oec/Dashboard";
 import DTDashboard from "@/pages/dt/Dashboard";
 import CDDashboard from "@/pages/cd/Dashboard";
-import DAGDashboard from "@/pages/dag/Dashboard";
+import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 import ExpertDashboard from "@/pages/exp/Dashboard";
 import REEDashboard from "@/pages/ree/Dashboard";
 import ETDashboard from "@/pages/et/Dashboard";
@@ -15,7 +15,6 @@ import CASPresidentDashboard from "@/pages/cas/PresidentDashboard";
 import DGDashboard from "@/pages/dg/Dashboard";
 import GesCompetencesDashboard from "@/pages/ges_competences/Dashboard";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
-import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 import SupDashboard from "@/pages/sup/Dashboard";
 import EFDashboard from "@/pages/ef/Dashboard";
 
@@ -50,8 +49,8 @@ export default function DashboardPage() {
       return <OECDashboard />;
     case 'DT':
       return <DTDashboard />;
-    case 'DAG':
-      return <DAGDashboard />;
+    case 'CONSOLIDATION':
+      return <ConsolidationDashboard />;
     case 'EXPERT':
       return <ExpertDashboard />;
     case 'REE':
@@ -70,8 +69,6 @@ export default function DashboardPage() {
       return <GesCompetencesDashboard />;
     case 'RQ':
       return <RQComplaintsDashboard />;
-    case 'CONSOLIDATION':
-      return <ConsolidationDashboard />;
     case 'SUP':
       return <SupDashboard />;
     case 'EF':

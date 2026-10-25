@@ -222,7 +222,7 @@ export default function QuotationAndConventionPage() {
       setSendingToDAG(true);
       await apiRequest("POST", `/api/quotations/${quotationId}/send-to-dag`);
       setQuotationSentToDAG(true);
-      toast({ title: "Envoyé au DAG", description: "La demande d'établissement du devis a été envoyée au DAG" });
+      toast({ title: "Envoyé à la Consolidation", description: "La demande d'établissement du devis a été envoyée à la Consolidation" });
       loadRequest();
       checkExistingDocuments();
     } catch (err: any) {
@@ -313,7 +313,7 @@ export default function QuotationAndConventionPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
               {[
                 { num: 1, label: "Demande de devis" },
-                { num: 2, label: "Envoi au DAG" },
+                { num: 2, label: "Envoi à la Consolidation" },
                 { num: 3, label: "Convention" },
                 { num: 4, label: "Validation CD" },
                 { num: 5, label: "Envoi OEC" },
@@ -335,11 +335,11 @@ export default function QuotationAndConventionPage() {
                   <Users className="h-5 w-5" />
                   Demande d'Établissement du Devis
                   {quotationCreated && <Badge variant="outline" className="text-green-600 border-green-300 ml-2">Créée</Badge>}
-                  {quotationSentToDAG && <Badge variant="outline" className="text-blue-600 border-blue-300 ml-1">Envoyée au DAG</Badge>}
-                  {quotationApprovedByDAG && <Badge variant="outline" className="text-green-700 border-green-400 ml-1">DAG approuvé</Badge>}
+                  {quotationSentToDAG && <Badge variant="outline" className="text-blue-600 border-blue-300 ml-1">Envoyée à la Consolidation</Badge>}
+                  {quotationApprovedByDAG && <Badge variant="outline" className="text-green-700 border-green-400 ml-1">Consolidation approuvé</Badge>}
                 </CardTitle>
                 <CardDescription>
-                  Proposez la composition de l'équipe et la durée d'évaluation <strong>par membre</strong>. Le DAG fixera le montant.
+                  Proposez la composition de l'équipe et la durée d'évaluation <strong>par membre</strong>. Le service Consolidation fixera le montant.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -374,12 +374,12 @@ export default function QuotationAndConventionPage() {
                       </div>
                     )}
 
-                    {/* Étape 2: Envoi au DAG */}
+                    {/* Étape 2: Envoi à la Consolidation */}
                     {!quotationSentToDAG && quotationId && (
                       <Card className="border-primary mt-4">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-base">Envoyer au DAG</CardTitle>
-                          <CardDescription>Le DAG définira le montant du devis</CardDescription>
+                          <CardTitle className="text-base">Envoyer à la Consolidation</CardTitle>
+                          <CardDescription>La Consolidation définira le montant du devis</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-col sm:flex-row gap-3">
@@ -387,7 +387,7 @@ export default function QuotationAndConventionPage() {
                               <ArrowLeft className="mr-2 h-4 w-4" />Retour
                             </Button>
                             <Button className="sm:flex-1" onClick={handleSendToDAG} disabled={sendingToDAG}>
-                              {sendingToDAG ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer au DAG</>}
+                              {sendingToDAG ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi...</> : <><Send className="mr-2 h-4 w-4" />Envoyer à la Consolidation</>}
                             </Button>
                           </div>
                         </CardContent>
@@ -398,7 +398,7 @@ export default function QuotationAndConventionPage() {
                       <Alert className="border-blue-200 bg-blue-50">
                         <Clock className="h-4 w-4" />
                         <AlertDescription className="text-blue-800">
-                          En attente que le DAG établisse le montant du devis. Vous pouvez commencer à préparer la convention en attendant.
+                          En attente que la Consolidation établisse le montant du devis. Vous pouvez commencer à préparer la convention en attendant.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -407,7 +407,7 @@ export default function QuotationAndConventionPage() {
                       <Alert className="border-green-200 bg-green-50">
                         <CheckCircle className="h-4 w-4" />
                         <AlertDescription className="text-green-800">
-                          Le DAG a approuvé et établi le montant du devis.
+                          Le service Consolidation a approuvé et établi le montant du devis.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -561,7 +561,7 @@ export default function QuotationAndConventionPage() {
             </Card>
 
             {/* -------- ÉTAPE 3: CONVENTION -------- */}
-            {/* Convention can be created even before DAG approves the quotation */}
+            {/* Convention can be created even before Consolidation approves the quotation */}
             {quotationSentToDAG && (
               <Card className={step === 3 ? "border-primary" : ""}>
                 <CardHeader>
@@ -571,7 +571,7 @@ export default function QuotationAndConventionPage() {
                     {conventionCreated && <Badge variant="outline" className="text-green-600 border-green-300 ml-2">Créée</Badge>}
                   </CardTitle>
                   <CardDescription>
-                    Établissez la convention d'accréditation. Vous pouvez la créer même si le DAG n'a pas encore établi le montant du devis.
+                    Établissez la convention d'accréditation. Vous pouvez la créer même si la Consolidation n'a pas encore établi le montant du devis.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -621,7 +621,7 @@ export default function QuotationAndConventionPage() {
                     Demander la validation du CD
                   </CardTitle>
                   <CardDescription>
-                    Le devis est approuvé par le DAG et la convention est prête. Envoyez les deux documents au CD pour validation.
+                    Le devis est approuvé par la Consolidation et la convention est prête. Envoyez les deux documents au CD pour validation.
                     Le CD pourra valider et transmettre à l'OEC, ou vous demander des modifications.
                   </CardDescription>
                 </CardHeader>
@@ -629,7 +629,7 @@ export default function QuotationAndConventionPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
                       <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-                      <div><p className="text-sm font-medium text-green-800">Devis</p><p className="text-xs text-green-600">Approuvé par le DAG</p></div>
+                      <div><p className="text-sm font-medium text-green-800">Devis</p><p className="text-xs text-green-600">Approuvé par la Consolidation</p></div>
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
                       <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
@@ -644,13 +644,13 @@ export default function QuotationAndConventionPage() {
               </Card>
             )}
 
-            {/* Waiting for DAG + convention ready = explain the blocking */}
+            {/* Waiting for Consolidation + convention ready = explain the blocking */}
             {quotationSentToDAG && !quotationApprovedByDAG && conventionCreated && (
               <Alert className="border-amber-200 bg-amber-50">
                 <Clock className="h-4 w-4" />
                 <AlertDescription className="text-amber-800">
-                  <strong>En attente du DAG.</strong> La convention est prête, mais le devis n'est pas encore établi par le DAG.
-                  Vous pourrez demander la validation du CD dès que le DAG aura établi le montant.
+                  <strong>En attente de la Consolidation.</strong> La convention est prête, mais le devis n'est pas encore établi par la Consolidation.
+                  Vous pourrez demander la validation du CD dès que la Consolidation aura établi le montant.
                 </AlertDescription>
               </Alert>
             )}

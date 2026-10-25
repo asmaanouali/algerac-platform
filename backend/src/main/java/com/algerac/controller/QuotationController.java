@@ -129,7 +129,7 @@ public class QuotationController {
             if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
             User currentUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             Quotation quotation = quotationService.sendQuotationToDAG(id, currentUser);
-            return ResponseEntity.ok(ApiResponse.success("Devis envoyé au DAG pour approbation", quotation));
+            return ResponseEntity.ok(ApiResponse.success("Devis envoyé à la Consolidation pour approbation", quotation));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -281,9 +281,9 @@ public class QuotationController {
                     .body(ApiResponse.error("Non authentifié"));
         }
         User currentUser = userRepository.findById(userId).orElse(null);
-        if (currentUser == null || currentUser.getRole() != UserRole.DAG) {
+        if (currentUser == null || currentUser.getRole() != UserRole.CONSOLIDATION) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error("Accès réservé à la DAG"));
+                    .body(ApiResponse.error("Accès réservé au service Consolidation"));
         }
         return ResponseEntity.ok(quotationService.getEstablishedByDAGQuotations());
     }

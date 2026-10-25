@@ -3446,6 +3446,7 @@ public class WorkflowController {
             request.setCurrentStep("Évaluation terminée");
             request.setPendingWith("REE - Rédaction rapport");
             requestRepository.save(request);
+            paymentService.releaseDeferredRegistrationFeeForRequest(request.getId());
             return ResponseEntity.ok(ApiResponse.success("Évaluation terminée", request));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

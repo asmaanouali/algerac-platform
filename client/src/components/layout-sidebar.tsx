@@ -58,7 +58,9 @@ export function Sidebar() {
   const roleLabel: string = role ? (t(`roles.${role}`, { defaultValue: String(role) }) as string) : '';
 
   const navItems = {
-    oec: [
+    oec: (user as any).dossierPending
+      ? [{ href: "/oec/completer-dossier", label: t('nav.completeDossier', { defaultValue: 'Compléter mon dossier' }), icon: FileText }]
+      : [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
       { href: "/oec/new-request", label: t('nav.newRequest'), icon: FileText },
       { href: "/oec/mes-demandes", label: t('nav.myRequests'), icon: Files },
@@ -107,12 +109,12 @@ export function Sidebar() {
       { href: "/cd/transferts", label: t('nav.transfers'), icon: ArrowRightLeft },
       { href: "/cd/surveillance", label: t('nav.surveillance'), icon: Eye },
     ],
-    dag: [
+    consolidation: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
-      { href: "/dag/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
-      { href: "/dag/frais-enregistrement", label: t('nav.registrationFees'), icon: FileText },
-      { href: "/dag/fixation-devis", label: t('nav.quotationFixing', { defaultValue: 'Fixation des devis' }), icon: DollarSign },
-      { href: "/dag/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
+      { href: "/consolidation/candidatures-oec", label: t('nav.oecCandidatures'), icon: Building2 },
+      { href: "/consolidation/frais-enregistrement", label: t('nav.registrationFees'), icon: FileText },
+      { href: "/consolidation/fixation-devis", label: t('nav.quotationFixing', { defaultValue: 'Fixation des devis' }), icon: DollarSign },
+      { href: "/consolidation/paiements", label: t('nav.paymentTracking'), icon: DollarSign },
     ],
     admin: [
       { href: "/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -193,9 +195,6 @@ export function Sidebar() {
       { href: "/rq/plaintes", label: t('nav.complaints'), icon: MessageSquareWarning },
       { href: "/rq/entretiens-candidats", label: t('nav.interviewCandidates'), icon: Users },
     ],
-    consolidation: [
-      { href: "/consolidation/dashboard", label: t('nav.dashboard'), icon: LayoutDashboard },
-    ],
   };
 
   const roleMapping: Record<string, keyof typeof navItems> = {
@@ -204,7 +203,7 @@ export function Sidebar() {
     'RA': 'ra',
     'DT': 'dt',
     'CD': 'cd',
-    'DAG': 'dag',
+    'CONSOLIDATION': 'consolidation',
     'EXPERT': 'expert',
     'REE': 'ree',
     'ET': 'et',
@@ -215,7 +214,6 @@ export function Sidebar() {
     'GES_COMPETENCES': 'ges_competences',
     'RQ': 'rq',
     'SUP': 'sup',
-    'CONSOLIDATION': 'consolidation',
   };
 
   const normalizedRole = role?.toUpperCase() || '';

@@ -14,7 +14,7 @@ public class AppProperties {
     private EmailProperties notification = new EmailProperties();
     private EmailProperties dt = new EmailProperties();
     private GesCompetencesProperties ges = new GesCompetencesProperties();
-    private EmailProperties dag = new EmailProperties();
+    private EmailProperties consolidation = new EmailProperties();
 
     @Getter
     @Setter

@@ -143,7 +143,7 @@ export function useUpdateRequestStatus() {
 }
 
 export function useSendQuotationToDAG() {
-  const callbacks = useWorkflowMutation("Devis envoyé au DAG");
+  const callbacks = useWorkflowMutation("Devis envoyé à la Consolidation");
   return useMutation({
     mutationFn: (quotationId: number) =>
       workflowFetch(`/api/quotations/${quotationId}/send-to-dag`, { method: "POST" }),

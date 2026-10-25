@@ -21,6 +21,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentService {
+
+    public static final String PAYMENT_METHOD_BANK_TRANSFER = "BANK_TRANSFER";
+    public static final String PAYMENT_METHOD_CHECK = "CHECK";
     
     private final PaymentRepository paymentRepository;
     private final RequestRepository requestRepository;
@@ -167,12 +170,12 @@ public class PaymentService {
      * DAG: Fixer les frais d'enregistrement du dossier.
      */
     @Transactional
-    public Payment setRegistrationFee(Long paymentId, BigDecimal amount, Long dagUserId) {
-        // Vérifier que l'utilisateur est bien DAG
+    public Payment setRegistrationFee(Long paymentId, BigDecimal amount, Long dagUserId, boolean deferToEvaluationEnd) {
+        // Vérifier que l'utilisateur est bien Consolidation
         User dagUser = userRepository.findById(dagUserId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
-        if (dagUser.getRole() != UserRole.DAG) {
-            throw new RuntimeException("Seul le DAG peut fixer les frais d'enregistrement");
+                .orElseThrow(() -> new RuntimeException("Utilisateur Consolidation non trouvé"));
+        if (dagUser.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut fixer les frais d'enregistrement");
         }
         
         Payment payment = paymentRepository.findById(paymentId)
@@ -186,10 +189,14 @@ public class PaymentService {
             throw new RuntimeException("Le montant doit être positif");
         }
         
+        // Le report à la fin de l'évaluation ne concerne que les frais d'enregistrement
+        boolean deferred = deferToEvaluationEnd && "REGISTRATION_FEE".equals(payment.getPaymentType());
+
         payment.setAmount(amount);
         payment.setStatus(PaymentStatus.PENDING);
         payment.setFeeSetDate(LocalDateTime.now());
         payment.setFeeSetById(dagUserId);
+        payment.setDeferredToEvaluationEnd(deferred);
         
         payment = paymentRepository.save(payment);
 
@@ -208,24 +215,85 @@ public class PaymentService {
         } else if (request.getAssignedToRa() == null) {
             // Only change status if the dossier hasn't been assigned to an RA yet.
             // If already assigned, the RA's receivability study is in progress — don't disrupt it.
-            request.setStatus(RequestStatus.PENDING_PAYMENT);
-            request.setNextAction("OEC doit payer les frais d'enregistrement");
-            request.setPendingWith("OEC");
+            if (deferred) {
+                // Paiement reporté : le dossier n'attend pas l'OEC, il part directement au CD
+                request.setStatus(RequestStatus.PAYMENT_COMPLETED);
+                request.setNextAction("CD doit assigner le dossier à un RA");
+                request.setPendingWith("CD");
+            } else {
+                request.setStatus(RequestStatus.PENDING_PAYMENT);
+                request.setNextAction("OEC doit payer les frais d'enregistrement");
+                request.setPendingWith("OEC");
+            }
         }
         requestRepository.save(request);
         
-        log.info("Frais d'enregistrement fixés à {} DA pour la demande {} par DAG {}", 
-                amount, request.getReferenceNumber(), dagUserId);
+        log.info("Frais d'enregistrement fixés à {} DA pour la demande {} par DAG {} (paiement différé: {})", 
+                amount, request.getReferenceNumber(), dagUserId, deferred);
+
+        if (deferred) {
+            if (request.getAssignedToRa() == null) {
+                notificationService.notifyChefDepartmentNewRequest(request);
+            }
+            notifyOECDeferredFee(request, amount);
+        } else {
+            // Notifier l'OEC qu'il doit se connecter pour payer
+            notifyOECPaymentRequired(request, amount);
+        }
         
-        // Notifier l'OEC qu'il doit se connecter pour payer
-        notifyOECPaymentRequired(request, amount);
-        
+        return payment;
+    }
+
+    /**
+     * Consolidation: le paiement différé devient exigible (fin d'évaluation).
+     * Sans effet si le paiement n'est pas différé.
+     */
+    @Transactional
+    public Payment releaseDeferredRegistrationFee(Long paymentId, Long consolidationUserId) {
+        User user = userRepository.findById(consolidationUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur Consolidation non trouvé"));
+        if (user.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut exiger le paiement différé");
+        }
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
+        return releaseDeferred(payment);
+    }
+
+    /** Appelé à la fin de l'évaluation : rend exigibles les frais d'enregistrement différés. */
+    @Transactional
+    public void releaseDeferredRegistrationFeeForRequest(Long requestId) {
+        paymentRepository.findByRequest_IdAndPaymentType(requestId, "REGISTRATION_FEE")
+                .ifPresent(this::releaseDeferred);
+    }
+
+    private Payment releaseDeferred(Payment payment) {
+        if (!Boolean.TRUE.equals(payment.getDeferredToEvaluationEnd())) {
+            return payment;
+        }
+        payment.setDeferredToEvaluationEnd(false);
+        payment = paymentRepository.save(payment);
+
+        AccreditationRequest request = payment.getRequest();
+        if (payment.getStatus() == PaymentStatus.PENDING) {
+            notificationService.createNotification(
+                request.getOec().getId(),
+                "Frais d'enregistrement à régler",
+                "L'évaluation de votre dossier "
+                    + (request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId())
+                    + " est terminée. Vous devez maintenant régler les frais d'enregistrement ("
+                    + payment.getAmount().toPlainString() + " DA) depuis votre page de facturation.",
+                "ACTION_REQUIRED"
+            );
+        }
+        log.info("Frais d'enregistrement différés rendus exigibles pour la demande {}", request.getReferenceNumber());
         return payment;
     }
     
     /**
-     * OEC: Soumettre la preuve de paiement (transaction ID + document).
-     * Flux standardisé pour tous les types de paiement.
+     * OEC: Soumettre l'ordre de virement scanné (transaction ID + document).
+     * Le paiement par chèque n'est pas possible ici: l'OEC doit se présenter à ALGERAC
+     * et la Consolidation enregistre le chèque (voir {@link #registerCheckPayment}).
      */
     @Transactional
     public Payment submitPaymentProof(Long paymentId, String transactionId, String proofBase64, String proofName, String proofMimeType) {
@@ -235,25 +303,81 @@ public class PaymentService {
         if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.DAG_REJECTED) {
             throw new RuntimeException("Ce paiement n'est pas en attente de preuve");
         }
+        if (Boolean.TRUE.equals(payment.getDeferredToEvaluationEnd())) {
+            throw new RuntimeException("Ces frais sont à régler à la fin de l'évaluation");
+        }
         
         payment.setTransactionId(transactionId);
         payment.setProofDocumentBase64(proofBase64);
         payment.setProofDocumentName(proofName);
         payment.setProofDocumentMimeType(proofMimeType);
-        payment.setPaymentMethod("BANK_TRANSFER");
+        payment.setPaymentMethod(PAYMENT_METHOD_BANK_TRANSFER);
+        payment.setCheckBank(null);
         payment.setPaymentDate(LocalDateTime.now());
         payment.setStatus(PaymentStatus.PROOF_SUBMITTED);
         
         payment = paymentRepository.save(payment);
         
-        AccreditationRequest request = payment.getRequest();
+        applyRequestProgressionAfterProof(payment, transactionId);
         
+        // Notifier aussi le DAG pour qu'il vérifie la preuve de paiement en parallèle
+        notifyDAGPaymentProofSubmitted(payment.getRequest(), transactionId);
+        
+        return payment;
+    }
+
+    /**
+     * Consolidation: enregistrer un chèque remis en main propre par l'OEC à ALGERAC.
+     * Le chèque est scanné (upload) puis validé immédiatement par la Consolidation.
+     */
+    @Transactional
+    public Payment registerCheckPayment(Long paymentId, Long consolidationUserId, String checkNumber, String bankName,
+                                        String proofBase64, String proofName, String proofMimeType, String comments) {
+        User user = userRepository.findById(consolidationUserId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur Consolidation non trouvé"));
+        if (user.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut enregistrer un chèque");
+        }
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Paiement non trouvé"));
+
+        if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.DAG_REJECTED) {
+            throw new RuntimeException("Ce paiement n'est pas en attente de règlement");
+        }
+        if (Boolean.TRUE.equals(payment.getDeferredToEvaluationEnd())) {
+            throw new RuntimeException("Ces frais sont à régler à la fin de l'évaluation");
+        }
+
+        payment.setTransactionId(checkNumber);
+        payment.setCheckBank(bankName);
+        payment.setProofDocumentBase64(proofBase64);
+        payment.setProofDocumentName(proofName);
+        payment.setProofDocumentMimeType(proofMimeType);
+        payment.setPaymentMethod(PAYMENT_METHOD_CHECK);
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setStatus(PaymentStatus.PROOF_SUBMITTED);
+
+        payment = paymentRepository.save(payment);
+
+        applyRequestProgressionAfterProof(payment, checkNumber);
+
+        log.info("Chèque n° {} enregistré par la Consolidation {} pour la demande {}",
+                checkNumber, consolidationUserId, payment.getRequest().getReferenceNumber());
+
+        return validatePaymentByDAG(paymentId, consolidationUserId,
+                (comments == null || comments.isBlank()) ? "Chèque reçu et enregistré par la Consolidation" : comments);
+    }
+
+    private void applyRequestProgressionAfterProof(Payment payment, String transactionId) {
+        AccreditationRequest request = payment.getRequest();
+
         // Progression selon le type de paiement
         if ("DOC_REVIEW_FEE".equals(payment.getPaymentType())) {
-            // Frais d'analyse documentaire payés → en attente validation DAG
+            // Frais d'analyse documentaire payés → en attente validation Consolidation
             request.setStatus(RequestStatus.DOC_REVIEW_PAYMENT_SUBMITTED);
-            request.setNextAction("DAG doit valider le paiement des frais d'analyse documentaire");
-            request.setPendingWith("DAG");
+            request.setNextAction("La Consolidation doit valider le paiement des frais d'analyse documentaire");
+            request.setPendingWith("CONSOLIDATION");
             requestRepository.save(request);
             
             // Update documentary review status
@@ -310,11 +434,6 @@ public class PaymentService {
                         request.getReferenceNumber(), transactionId);
             }
         }
-        
-        // Notifier aussi le DAG pour qu'il vérifie la preuve de paiement en parallèle
-        notifyDAGPaymentProofSubmitted(request, transactionId);
-        
-        return payment;
     }
     
     /**
@@ -323,11 +442,11 @@ public class PaymentService {
      */
     @Transactional
     public Payment validatePaymentByDAG(Long paymentId, Long dagUserId, String comments) {
-        // Vérifier que l'utilisateur est bien DAG
+        // Vérifier que l'utilisateur est bien Consolidation
         User dagUser = userRepository.findById(dagUserId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
-        if (dagUser.getRole() != UserRole.DAG) {
-            throw new RuntimeException("Seul le DAG peut valider les paiements");
+                .orElseThrow(() -> new RuntimeException("Utilisateur Consolidation non trouvé"));
+        if (dagUser.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut valider les paiements");
         }
         
         Payment payment = paymentRepository.findById(paymentId)
@@ -365,7 +484,7 @@ public class PaymentService {
                 notificationService.createNotification(
                     request.getAssignedToRa().getId(),
                     "Paiement validé - Transmettez les documents",
-                    "Le DAG a validé le paiement des frais d'analyse documentaire pour " + request.getReferenceNumber()
+                    "Le service Consolidation a validé le paiement des frais d'analyse documentaire pour " + request.getReferenceNumber()
                         + ". Vous pouvez maintenant transmettre les documents de l'OEC à l'équipe d'évaluation.",
                     "ACTION_REQUIRED"
                 );
@@ -390,9 +509,9 @@ public class PaymentService {
     public Payment rejectPaymentByDAG(Long paymentId, Long dagUserId, String comments) {
         // Vérifier que l'utilisateur est bien DAG
         User dagUser = userRepository.findById(dagUserId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur DAG non trouvé"));
-        if (dagUser.getRole() != UserRole.DAG) {
-            throw new RuntimeException("Seul le DAG peut rejeter les paiements");
+                .orElseThrow(() -> new RuntimeException("Utilisateur Consolidation non trouvé"));
+        if (dagUser.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut rejeter les paiements");
         }
         
         Payment payment = paymentRepository.findById(paymentId)
@@ -503,6 +622,7 @@ public class PaymentService {
         return paymentRepository.findByRequest_Oec_Id(oecId)
                 .stream()
                 .filter(p -> p.getStatus() == PaymentStatus.PENDING || p.getStatus() == PaymentStatus.DAG_REJECTED)
+                .filter(p -> !Boolean.TRUE.equals(p.getDeferredToEvaluationEnd()))
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -525,6 +645,7 @@ public class PaymentService {
                 .status(payment.getStatus().name())
                 .transactionId(payment.getTransactionId())
                 .paymentMethod(payment.getPaymentMethod())
+                .checkBank(payment.getCheckBank())
                 .paymentDate(payment.getPaymentDate())
                 .createdAt(payment.getCreatedAt())
                 .proofDocumentName(payment.getProofDocumentName())
@@ -538,13 +659,14 @@ public class PaymentService {
                 .feeSetDate(payment.getFeeSetDate())
                 .currency(payment.getCurrency())
                 .invoiceNumber(payment.getInvoiceNumber())
+                .deferredToEvaluationEnd(Boolean.TRUE.equals(payment.getDeferredToEvaluationEnd()))
                 .build();
     }
     
     // ── Notification helpers ──────────────────────────────────────────────
     
     private void notifyDAGNewRequestFees(AccreditationRequest request) {
-        List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+        List<User> dagUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         for (User dag : dagUsers) {
             notificationService.createNotification(
                 dag.getId(),
@@ -569,8 +691,20 @@ public class PaymentService {
         );
     }
     
+    private void notifyOECDeferredFee(AccreditationRequest request, BigDecimal amount) {
+        notificationService.createNotification(
+            request.getOec().getId(),
+            "Frais d'enregistrement fixés — à payer à la fin de l'évaluation",
+            "Les frais d'enregistrement de votre dossier "
+                + (request.getReferenceNumber() != null ? request.getReferenceNumber() : "#" + request.getId())
+                + " ont été fixés à " + amount.toPlainString() + " DA. "
+                + "Aucun paiement n'est requis maintenant : ce montant est à régler à la fin de l'évaluation.",
+            "INFO"
+        );
+    }
+    
     private void notifyDAGPaymentProofSubmitted(AccreditationRequest request, String transactionId) {
-        List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+        List<User> dagUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         for (User dag : dagUsers) {
             notificationService.createNotification(
                 dag.getId(),
@@ -597,7 +731,7 @@ public class PaymentService {
     }
     
     private void notifyDAGDocReviewFees(AccreditationRequest request) {
-        List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+        List<User> dagUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         for (User dag : dagUsers) {
             notificationService.createNotification(
                 dag.getId(),
@@ -612,7 +746,7 @@ public class PaymentService {
     }
 
     private void notifyDAGEvaluationFeeCreated(AccreditationRequest request, BigDecimal amount) {
-        List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+        List<User> dagUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         for (User dag : dagUsers) {
             notificationService.createNotification(
                 dag.getId(),

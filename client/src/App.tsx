@@ -36,7 +36,7 @@ import QuotationConventionPage from "@/pages/ra/QuotationConventionPage";
 import CDDashboard from "@/pages/cd/Dashboard";
 import CDManageRequestsPage from "@/pages/cd/ManageRequestsPage";
 import CDRAWorkloadPage from "@/pages/cd/RAWorkloadPage";
-import DAGDashboard from "@/pages/dag/Dashboard";
+import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DashboardPage from "@/pages/dashboard-page";
 import CandidaturesPage from "@/pages/dt/CandidaturesPage";
@@ -107,12 +107,11 @@ import InternalComplaintsPage from "@/pages/complaints/InternalComplaintsPage";
 import RQComplaintsDashboard from "@/pages/rq/ComplaintsDashboard";
 import ComplaintReviewPage from "@/pages/rq/ComplaintReviewPage";
 import RQDashboard from "@/pages/rq/Dashboard";
-import ConsolidationDashboard from "@/pages/consolidation/Dashboard";
 
-// DAG Payment Tracking
-import DAGPaymentTracking from "@/pages/dag/PaymentTrackingPage";
-import DAGRegistrationFeesPage from "@/pages/dag/RegistrationFeesPage";
-import DAGQuotationFixingPage from "@/pages/dag/QuotationFixingPage";
+// Consolidation Payment Tracking
+import ConsolidationPaymentTracking from "@/pages/consolidation/PaymentTrackingPage";
+import ConsolidationRegistrationFeesPage from "@/pages/consolidation/RegistrationFeesPage";
+import ConsolidationQuotationFixingPage from "@/pages/consolidation/QuotationFixingPage";
 
 // RA Recusation
 import RecusationAnalysisPage from "@/pages/ra/RecusationAnalysisPage";
@@ -180,12 +179,14 @@ function Router() {
       <Route path="/oec/dashboard">{() => <ProtectedRoute component={OECDashboard} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/new-request">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/nouvelle-demande">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/completer-dossier">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/mes-demandes">{() => <ProtectedRoute component={MyRequestsPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/payments">{() => <ProtectedRoute component={PaymentsListPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/payment/:requestId">{() => <ProtectedRoute component={PaymentPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/paiement/:requestId">{() => <ProtectedRoute component={PaymentPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/demandes/:requestId/validation">{() => <ProtectedRoute component={ValidateQuotationPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/demandes/:requestId/corriger">{() => <ProtectedRoute component={CorrectRequestPage} allowedRoles={["oec"]} />}</Route>
+      <Route path="/oec/demandes/:requestId/corriger-dossier">{() => <ProtectedRoute component={NewRequestPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/demandes/:requestId/equipe">{() => <ProtectedRoute component={ValidateTeamPage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/demandes/:requestId/reponse-documentaire">{() => <ProtectedRoute component={DocumentaryResponsePage} allowedRoles={["oec"]} />}</Route>
       <Route path="/oec/demandes/:requestId/plans-actions">{() => <ProtectedRoute component={ActionPlansPage} allowedRoles={["oec"]} />}</Route>
@@ -239,14 +240,14 @@ function Router() {
       <Route path="/cd/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["cd"]} />}</Route>
       <Route path="/cd/demande/:requestId">{() => <ProtectedRoute component={CDRequestDetailPage} allowedRoles={["cd"]} />}</Route>
       
-      {/* DAG Routes */}
-      <Route path="/dag">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
-      <Route path="/dag/dashboard">{() => <ProtectedRoute component={DAGDashboard} allowedRoles={["dag"]} />}</Route>
-      <Route path="/dag/paiements">{() => <ProtectedRoute component={DAGPaymentTracking} allowedRoles={["dag"]} />}</Route>
-      <Route path="/dag/frais-enregistrement">{() => <ProtectedRoute component={DAGRegistrationFeesPage} allowedRoles={["dag"]} />}</Route>
-      <Route path="/dag/fixation-devis">{() => <ProtectedRoute component={DAGQuotationFixingPage} allowedRoles={["dag"]} />}</Route>
+      {/* Consolidation Routes */}
+      <Route path="/consolidation">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
+      <Route path="/consolidation/dashboard">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
+      <Route path="/consolidation/paiements">{() => <ProtectedRoute component={ConsolidationPaymentTracking} allowedRoles={["consolidation"]} />}</Route>
+      <Route path="/consolidation/frais-enregistrement">{() => <ProtectedRoute component={ConsolidationRegistrationFeesPage} allowedRoles={["consolidation"]} />}</Route>
+      <Route path="/consolidation/fixation-devis">{() => <ProtectedRoute component={ConsolidationQuotationFixingPage} allowedRoles={["consolidation"]} />}</Route>
       {/* Legacy: Candidatures OEC fusionnées dans Frais d'enregistrement */}
-      <Route path="/dag/candidatures-oec">{() => <ProtectedRoute component={DAGRegistrationFeesPage} allowedRoles={["dag"]} />}</Route>
+      <Route path="/consolidation/candidatures-oec">{() => <ProtectedRoute component={ConsolidationRegistrationFeesPage} allowedRoles={["consolidation"]} />}</Route>
       
       {/* Admin & Other Routes */}
       <Route path="/notifications">{() => <ProtectedRoute component={NotificationsPage} />}</Route>
@@ -380,14 +381,6 @@ function Router() {
       <Route path="/rq/plaintes/:id/examen">{() => <ProtectedRoute component={ComplaintReviewPage} allowedRoles={["rq"]} />}</Route>
       <Route path="/rq/entretiens-candidats">{() => <ProtectedRoute component={InterviewPanelPage} allowedRoles={["rq"]} />}</Route>
 
-      {/* Consolidation Routes */}
-      <Route path="/consolidation">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
-      <Route path="/consolidation/dashboard">{() => <ProtectedRoute component={ConsolidationDashboard} allowedRoles={["consolidation"]} />}</Route>
-      <Route path="/consolidation/reports">{() => <Redirect to="/consolidation/dashboard" />}</Route>
-      <Route path="/consolidation/invoices">{() => <Redirect to="/consolidation/dashboard" />}</Route>
-      <Route path="/consolidation/certificates">{() => <Redirect to="/consolidation/dashboard" />}</Route>
-      <Route path="/consolidation/payments">{() => <Redirect to="/consolidation/dashboard" />}</Route>
-      
       {/* Complaints (internal - for authenticated roles) */}
       <Route path="/complaints/internal">{() => <ProtectedRoute component={InternalComplaintsPage} />}</Route>
       

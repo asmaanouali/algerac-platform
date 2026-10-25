@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ResetButton } from "@/components/ui/reset-button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/layout-sidebar";
 import { Navbar } from "@/components/navbar";
 import { Loader2, CheckCircle, CreditCard, ArrowRight, ChevronLeft, AlertCircle, Plus, Trash2, MapPin } from "lucide-react";
@@ -256,13 +257,32 @@ function newRow(fields: string[]): ForRow {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function NewRequestPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
+  // Mode "complétion" : nouvel OEC dont le compte a été créé après l'envoi des étapes 1 à 3 ;
+  // il complète les étapes 4 à 10 de sa demande existante dans le délai imparti.
+  const completionMode = location === "/oec/completer-dossier";
+
+  // Mode "correction" : la DT a rejeté le dossier, l'OEC le modifie puis le renvoie.
+  const [isCorrectionRoute, correctionParams] = useRoute("/oec/demandes/:requestId/corriger-dossier");
+  const correctionMode = isCorrectionRoute;
+  const correctionRequestId = correctionParams?.requestId ? Number(correctionParams.requestId) : null;
+  const [correctionLoading, setCorrectionLoading] = useState(correctionMode);
+  const [dtRejectionComments, setDtRejectionComments] = useState("");
+  const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
+  // Pièces déjà transmises (conservées si l'OEC n'en joint pas de nouvelles)
+  const [existingDocs, setExistingDocs] = useState<Record<string, { key: string; name: string; base64?: string; mimeType?: string }>>({});
+
+  const firstStep = completionMode ? 4 : 1;
+  const [dossierRequestId, setDossierRequestId] = useState<number | null>(null);
+  const [dossierLoading, setDossierLoading] = useState(completionMode);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+
+  const [currentStep, setCurrentStep] = useState(firstStep);
+  const [maxStepReached, setMaxStepReached] = useState(correctionMode ? STEPS.length : firstStep);
   useEffect(() => {
     setMaxStepReached((m) => Math.max(m, currentStep));
   }, [currentStep]);
@@ -427,7 +447,7 @@ export default function NewRequestPage() {
 
   // ── Pre-fill from user profile ──
   useEffect(() => {
-    if (user) {
+    if (user && !completionMode && !correctionMode) {
       setNomLegal((user as any).organizationName || user.fullName || "");
       setAdresseSiege((user as any).adresseSiege || "");
       setEmailOrg(user.email || "");
@@ -440,9 +460,228 @@ export default function NewRequestPage() {
       setDemandeurNom((user as any).nomRepresentant || user.fullName || "");
       setDemandeurFonction((user as any).fonction || "");
     }
-  }, [user]);
+  }, [user, completionMode, correctionMode]);
 
-  if (authLoading) {
+  // ── Mode correction : recharger le dossier rejeté par la DT ──
+  useEffect(() => {
+    if (!correctionMode || !correctionRequestId || !user) return;
+    let cancelled = false;
+    const toArr = <T,>(v: any, fallback: T[]): T[] => (Array.isArray(v) && v.length > 0 ? v : fallback);
+    const toStr = (v: any) => (typeof v === "string" ? v : "");
+    (async () => {
+      try {
+        const res = await fetch(`/api/requests/${correctionRequestId}`, { credentials: "include" });
+        if (!res.ok) throw new Error();
+        const req = await res.json();
+        if (req.status !== "DT_REJECTED" || (req.oec && req.oec.id !== user.id)) throw new Error();
+
+        let raw: any = {};
+        try { raw = JSON.parse(req.description || "{}"); } catch { /* description illisible : champs laissés vides */ }
+        const d = raw.description && typeof raw.description === "object" ? raw.description : raw;
+        const statut = toStr(d.statutJuridique);
+        const statutAutre = statut.startsWith("Autre: ");
+
+        setDtRejectionComments(toStr(req.dtReviewComments));
+        setTypeDemande(toStr(d.typeDemande));
+        setDateEvaluation(toStr(d.dateEvaluation));
+        setActivites(Array.isArray(d.activites) ? d.activites : []);
+        setSiteType(toStr(d.siteType) || (req.isMultisite ? "multisites" : ""));
+        setNomLegal(toStr(d.nomLegal));
+        setAbreviation(toStr(d.abreviation));
+        setStatutJuridique(statutAutre ? REQUIRES_AUTRE_TEXT : statut);
+        setStatutJuridiqueAutre(statutAutre ? statut.slice("Autre: ".length) : "");
+        setRegistreCommerce(toStr(d.registreCommerce));
+        setCodesActivite(toStr(d.codesActivite));
+        setAdresseSiege(toStr(d.adresseSiege));
+        setAdresseFacturation(toStr(d.adresseFacturation));
+        setEmailOrg(toStr(d.emailOrg));
+        setSiteWeb(toStr(d.siteWeb));
+        setAppartientGroupe(toStr(d.appartientGroupe));
+        setGroupeNom(toStr(d.groupeNom));
+        setGroupeAdresse(toStr(d.groupeAdresse));
+        setGroupeRelation(toStr(d.groupeRelation));
+        setContactNom(toStr(d.contactNom));
+        setContactFonction(toStr(d.contactFonction));
+        setContactAdresse(toStr(d.contactAdresse));
+        setContactTelephone(toStr(d.contactTelephone));
+        setContactFax(toStr(d.contactFax));
+        setContactEmail(toStr(d.contactEmail));
+
+        setSites((p) => toArr(d.sites, p));
+        setPersonnelSites((p) => toArr(d.personnelSites, p));
+        setResponsablesTechniques((p) => toArr(d.responsablesTechniques, p));
+        setResponsableQualiteNom(toStr(d.responsableQualiteNom));
+        setResponsableQualiteQualif(toStr(d.responsableQualiteQualif));
+        setResponsableQualiteExp(toStr(d.responsableQualiteExp));
+        setPrestationConseil(toStr(d.prestationConseil));
+        setPrestations((p) => toArr(d.prestations, p));
+        setReconnaissances((p) => toArr(d.reconnaissances, p));
+        setMotifTransfert(toStr(d.motifTransfert));
+        setOrganismeSoumission(toStr(d.organismeSoumission) || toStr(d.nomLegal));
+        setDemandeurNom(toStr(d.demandeurNom) || toStr(d.contactNom));
+        setDemandeurFonction(toStr(d.demandeurFonction) || toStr(d.contactFonction));
+
+        const tf = d.technicalForms || {};
+        if (tf.for04) {
+          setFor04Type(toStr(tf.for04.typeOrganisme));
+          setFor04Domaines((p) => toArr(tf.for04.domaines, p));
+          setFor04Inspecteurs((p) => toArr(tf.for04.inspecteurs, p));
+          setFor04Equipements((p) => toArr(tf.for04.equipements, p));
+        }
+        if (tf.for05) {
+          setFor05Domaines((p) => toArr(tf.for05.domaines, p));
+          setFor05Methodes((p) => toArr(tf.for05.methodes, p));
+          setFor05Equipements((p) => toArr(tf.for05.equipements, p));
+          setFor05Personnel((p) => toArr(tf.for05.personnel, p));
+          setFor05ParticipationEIL(toStr(tf.for05.participationEIL));
+          setFor05ProcedureIncertitudes(toStr(tf.for05.procedureIncertitudes));
+        }
+        if (tf.for06) {
+          setFor06Grandeurs((p) => toArr(tf.for06.grandeurs, p));
+          setFor06Etalons((p) => toArr(tf.for06.etalons, p));
+          setFor06Equipements((p) => toArr(tf.for06.equipements, p));
+          setFor06Personnel((p) => toArr(tf.for06.personnel, p));
+          setFor06ConditionsEnv(toStr(tf.for06.conditionsEnvironnementales));
+        }
+        if (tf.for07) {
+          setFor07Referentiels(Array.isArray(tf.for07.referentiels) ? tf.for07.referentiels : []);
+          setFor07Secteurs((p) => toArr(tf.for07.secteurs, p));
+          setFor07Auditeurs((p) => toArr(tf.for07.auditeurs, p));
+          setFor07Comite((p) => toArr(tf.for07.comite, p));
+          setFor07NbClientsCertifies(toStr(tf.for07.nbClientsCertifies));
+        }
+        if (tf.for051) {
+          setFor051Disciplines((p) => toArr(tf.for051.disciplines, p));
+          setFor051Personnel((p) => toArr(tf.for051.personnel, p));
+          setFor051ParticipationEEQ(toStr(tf.for051.participationEEQ));
+        }
+        if (tf.for055) {
+          setFor055Programmes((p) => toArr(tf.for055.programmes, p));
+          setFor055Personnel((p) => toArr(tf.for055.personnel, p));
+        }
+        if (tf.for075) {
+          setFor075Produits((p) => toArr(tf.for075.produits, p));
+          setFor075Evaluateurs((p) => toArr(tf.for075.evaluateurs, p));
+        }
+        if (tf.for078) {
+          setFor078Schemas((p) => toArr(tf.for078.schemas, p));
+          setFor078Evaluateurs((p) => toArr(tf.for078.evaluateurs, p));
+        }
+
+        const docs: Array<{ key: string; name: string; base64?: string; mimeType?: string }> =
+          Array.isArray(d.documents) ? d.documents : [];
+        const byKey: Record<string, { key: string; name: string; base64?: string; mimeType?: string }> = {};
+        const checked: Record<string, boolean> = {};
+        const adminChecked: Record<string, boolean> = {};
+        for (const doc of docs) {
+          if (!doc?.key) continue;
+          byKey[doc.key] = doc;
+          if (doc.key.startsWith("admin-")) adminChecked[doc.key.slice("admin-".length)] = true;
+          else checked[doc.key] = true;
+        }
+        setExistingDocs(byKey);
+        setDocsChecked(checked);
+        setDocsAdminChecked(adminChecked);
+
+        if (req.isMultisite || d.siteType === "multisites") {
+          setMsMainSiteName(toStr(req.mainSiteName));
+          setMsMainSiteAddress(toStr(req.mainSiteAddress));
+          setMsMainSiteContactName(toStr(req.mainSiteContactName));
+          setMsMainSiteContactEmail(toStr(req.mainSiteContactEmail));
+          setMsCentralizedSM(req.centralizedManagementSystem !== false);
+          setMsSMDescription(toStr(req.managementSystemDescription));
+          setMsInterSiteExchangesDoc(toStr(req.interSiteExchangesDoc));
+          try {
+            const crit = JSON.parse(req.qualificationCriteriaJson || "{}");
+            setMsCriteria((p) => ({ ...p, ...crit }));
+          } catch { /* critères illisibles : valeurs par défaut */ }
+          const sitesRes = await fetch(`/api/requests/${correctionRequestId}/satellite-sites`, { credentials: "include" });
+          if (sitesRes.ok) {
+            const sitesJson = await sitesRes.json();
+            const list = Array.isArray(sitesJson?.data) ? sitesJson.data : [];
+            if (list.length > 0) {
+              setSatelliteSites(list.map((s: any, i: number) => ({
+                id: i + 1,
+                name: toStr(s.name),
+                address: toStr(s.address),
+                activities: toStr(s.activities),
+                personnel: toStr(s.personnel),
+                isInScope: s.isInScope !== false,
+              })));
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          toast({ title: "Erreur", description: t("correctDossier.loadError"), variant: "destructive" });
+          setLocation("/oec/mes-demandes");
+        }
+      } finally {
+        if (!cancelled) setCorrectionLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [correctionMode, correctionRequestId, user?.id]);
+
+  // ── Mode complétion : charger les étapes 1 à 3 déjà envoyées à l'inscription ──
+  useEffect(() => {
+    if (!completionMode) return;
+    let cancelled = false;
+    fetch("/api/requests/my-dossier-to-complete", { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((req) => {
+        if (cancelled) return;
+        let raw: any = {};
+        try { raw = JSON.parse(req.description || "{}"); } catch { /* description illisible : champs laissés vides */ }
+        const d = raw.description && typeof raw.description === "object" ? raw.description : raw;
+        const statut: string = d.statutJuridique || "";
+        const statutAutre = statut.startsWith("Autre: ");
+
+        setDossierRequestId(req.id);
+        setTypeDemande(d.typeDemande || "");
+        setDateEvaluation(d.dateEvaluation || "");
+        setActivites(Array.isArray(d.activites) ? d.activites : []);
+        setSiteType(d.siteType || (raw.isMultisite ? "multisites" : ""));
+        setNomLegal(d.nomLegal || "");
+        setAbreviation(d.abreviation || "");
+        setStatutJuridique(statutAutre ? REQUIRES_AUTRE_TEXT : statut);
+        setStatutJuridiqueAutre(statutAutre ? statut.slice("Autre: ".length) : "");
+        setRegistreCommerce(d.registreCommerce || "");
+        setCodesActivite(d.codesActivite || "");
+        setAdresseSiege(d.adresseSiege || "");
+        setAdresseFacturation(d.adresseFacturation || "");
+        setEmailOrg(d.emailOrg || "");
+        setSiteWeb(d.siteWeb || "");
+        setAppartientGroupe(d.appartientGroupe || "");
+        setGroupeNom(d.groupeNom || "");
+        setGroupeAdresse(d.groupeAdresse || "");
+        setGroupeRelation(d.groupeRelation || "");
+        setContactNom(d.contactNom || "");
+        setContactFonction(d.contactFonction || "");
+        setContactAdresse(d.contactAdresse || "");
+        setContactTelephone(d.contactTelephone || "");
+        setContactFax(d.contactFax || "");
+        setContactEmail(d.contactEmail || "");
+        setOrganismeSoumission(d.nomLegal || "");
+        setDemandeurNom(d.contactNom || "");
+        setDemandeurFonction(d.contactFonction || "");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: "Erreur", description: t("completeDossier.loadError"), variant: "destructive" });
+          setLocation("/oec/dashboard");
+        }
+      })
+      .finally(() => { if (!cancelled) setDossierLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completionMode]);
+
+  if (authLoading || dossierLoading || correctionLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -645,11 +884,11 @@ export default function NewRequestPage() {
         errs.for051Disciplines = t("nrp.validation.for051Disciplines");
       }
       // Fichiers pour docs cochés
-      const missingFile = Object.entries(docsChecked).some(([k, v]) => v && !documentFiles[k]);
+      const missingFile = Object.entries(docsChecked).some(([k, v]) => v && !documentFiles[k] && !existingDocs[k]);
       if (missingFile) errs.docsChecked = t("nrp.validation.docsChecked");
     }
     if (currentStep === 9) {
-      const missing = Object.entries(docsAdminChecked).some(([k, v]) => v && !documentFiles[`admin-${k}`]);
+      const missing = Object.entries(docsAdminChecked).some(([k, v]) => v && !documentFiles[`admin-${k}`] && !existingDocs[`admin-${k}`]);
       if (missing) errs.docsAdminChecked = t("nrp.validation.docsAdminChecked");
     }
     if (currentStep === 10) {
@@ -674,7 +913,7 @@ export default function NewRequestPage() {
   };
 
   const prev = () => {
-    if (currentStep > 1) {
+    if (currentStep > firstStep) {
       setCurrentStep((s) => s - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -726,14 +965,14 @@ export default function NewRequestPage() {
         if (checked) {
           const file = documentFiles[key];
           if (file) docsList.push({ key, name: file.name, base64: await fileToBase64(file), mimeType: file.type });
-          else docsList.push({ key, name: key });
+          else docsList.push(existingDocs[key] || { key, name: key });
         }
       }
       for (const [doc, checked] of Object.entries(docsAdminChecked)) {
         if (checked) {
           const file = documentFiles[`admin-${doc}`];
           if (file) docsList.push({ key: `admin-${doc}`, name: file.name, base64: await fileToBase64(file), mimeType: file.type });
-          else docsList.push({ key: `admin-${doc}`, name: doc });
+          else docsList.push(existingDocs[`admin-${doc}`] || { key: `admin-${doc}`, name: doc });
         }
       }
 
@@ -771,54 +1010,85 @@ export default function NewRequestPage() {
         documents: docsList,
       });
 
-      const createRes = await fetch("/api/requests/new", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          type: backendType,
-          domain,
-          description,
-          isMultisite: siteType === "multisites",
-          multisite: siteType === "multisites" ? {
-            mainSiteName: msMainSiteName,
-            mainSiteAddress: msMainSiteAddress,
-            mainSiteContactName: msMainSiteContactName,
-            mainSiteContactEmail: msMainSiteContactEmail,
-            centralizedManagementSystem: msCentralizedSM,
-            managementSystemDescription: msSMDescription,
-            interSiteExchangesDoc: msInterSiteExchangesDoc,
-            qualificationCriteriaJson: JSON.stringify(msCriteria),
-            satelliteSites: satelliteSites
-              .filter(s => s.name.trim() && s.address.trim())
-              .map(s => ({
-                name: s.name,
-                address: s.address,
-                activities: s.activities,
-                personnel: s.personnel,
-                isInScope: s.isInScope,
-              })),
-          } : null,
-        }),
+      const requestPayload = JSON.stringify({
+        type: backendType,
+        domain,
+        description,
+        isMultisite: siteType === "multisites",
+        multisite: siteType === "multisites" ? {
+          mainSiteName: msMainSiteName,
+          mainSiteAddress: msMainSiteAddress,
+          mainSiteContactName: msMainSiteContactName,
+          mainSiteContactEmail: msMainSiteContactEmail,
+          centralizedManagementSystem: msCentralizedSM,
+          managementSystemDescription: msSMDescription,
+          interSiteExchangesDoc: msInterSiteExchangesDoc,
+          qualificationCriteriaJson: JSON.stringify(msCriteria),
+          satelliteSites: satelliteSites
+            .filter(s => s.name.trim() && s.address.trim())
+            .map(s => ({
+              name: s.name,
+              address: s.address,
+              activities: s.activities,
+              personnel: s.personnel,
+              isInScope: s.isInScope,
+            })),
+        } : null,
       });
 
-      if (!createRes.ok) {
-        const err = await createRes.json();
-        throw new Error(err.error || err.message || "Erreur lors de la création");
-      }
+      let requestId: number;
+      if (correctionMode) {
+        if (!correctionRequestId) throw new Error(t("correctDossier.loadError"));
+        const correctRes = await fetch(`/api/requests/${correctionRequestId}/correct-after-dt`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: requestPayload,
+        });
+        if (!correctRes.ok) {
+          const err = await correctRes.json().catch(() => ({}));
+          throw new Error(err.error || err.message || "Erreur lors de la soumission");
+        }
+        requestId = correctionRequestId;
+      } else if (completionMode) {
+        if (!dossierRequestId) throw new Error(t("completeDossier.loadError"));
+        const completeRes = await fetch(`/api/requests/${dossierRequestId}/complete-dossier`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: requestPayload,
+        });
+        if (!completeRes.ok) {
+          const err = await completeRes.json().catch(() => ({}));
+          throw new Error(err.error || err.message || "Erreur lors de la soumission");
+        }
+        requestId = dossierRequestId;
+      } else {
+        const createRes = await fetch("/api/requests/new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: requestPayload,
+        });
 
-      const createData = await createRes.json();
-      const requestId = createData.data.id;
+        if (!createRes.ok) {
+          const err = await createRes.json();
+          throw new Error(err.error || err.message || "Erreur lors de la création");
+        }
 
-      const submitRes = await fetch(`/api/requests/${requestId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
+        const createData = await createRes.json();
+        requestId = createData.data.id;
 
-      if (!submitRes.ok) {
-        const err = await submitRes.json();
-        throw new Error(err.error || err.message || "Erreur lors de la soumission");
+        const submitRes = await fetch(`/api/requests/${requestId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+
+        if (!submitRes.ok) {
+          const err = await submitRes.json();
+          throw new Error(err.error || err.message || "Erreur lors de la soumission");
+        }
       }
 
       // Logo is stored on the OEC account; a failure here must not block the request itself
@@ -840,7 +1110,12 @@ export default function NewRequestPage() {
 
       setCreatedRequestId(requestId);
       setSubmitted(true);
-      setShowPaymentDialog(true);
+      if (correctionMode) {
+        setShowCorrectionDialog(true);
+      } else if (completionMode) {
+      } else {
+        setShowPaymentDialog(true);
+      }
     } catch (error) {
       toast({
         title: "Erreur",
@@ -855,6 +1130,13 @@ export default function NewRequestPage() {
   const goToPayment = () => {
     setShowPaymentDialog(false);
     setLocation(`/oec/paiement/${createdRequestId}`);
+  };
+
+  // Le dossier est transmis : le compte n'est plus restreint, on rafraîchit l'utilisateur avant de rediriger
+  const finishCompletion = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    setShowCompletionDialog(false);
+    setLocation("/oec/dashboard");
   };
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -1818,7 +2100,9 @@ export default function NewRequestPage() {
                                   }}
                                   className="text-xs w-full"
                                 />
-                                {documentFiles[key] && <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>}
+                                {documentFiles[key]
+                                  ? <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>
+                                  : existingDocs[key] && <p className="text-xs text-slate-500 mt-0.5">{t("correctDossier.alreadyAttached", { name: existingDocs[key].name })}</p>}
                               </div>
                             )}
                           </div>
@@ -1844,7 +2128,9 @@ export default function NewRequestPage() {
                           {!!docsChecked[key] && (
                             <div className="mt-1">
                               <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => { const file = e.target.files?.[0]; if (file) setDocumentFiles((p) => ({ ...p, [key]: file })); }} className="text-xs w-full" />
-                              {documentFiles[key] && <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>}
+                              {documentFiles[key]
+                                ? <p className="text-xs text-green-600 mt-0.5">{documentFiles[key].name}</p>
+                                : existingDocs[key] && <p className="text-xs text-slate-500 mt-0.5">{t("correctDossier.alreadyAttached", { name: existingDocs[key].name })}</p>}
                             </div>
                           )}
                         </div>
@@ -1876,7 +2162,9 @@ export default function NewRequestPage() {
               {!!docsAdminChecked[doc] && (
                 <div className="mt-1">
                   <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => { const file = e.target.files?.[0]; if (file) setDocumentFiles((p) => ({ ...p, [`admin-${doc}`]: file })); }} className="text-xs w-full" />
-                  {documentFiles[`admin-${doc}`] && <p className="text-xs text-green-600 mt-0.5">{documentFiles[`admin-${doc}`].name}</p>}
+                  {documentFiles[`admin-${doc}`]
+                    ? <p className="text-xs text-green-600 mt-0.5">{documentFiles[`admin-${doc}`].name}</p>
+                    : existingDocs[`admin-${doc}`] && <p className="text-xs text-slate-500 mt-0.5">{t("correctDossier.alreadyAttached", { name: existingDocs[`admin-${doc}`].name })}</p>}
                 </div>
               )}
             </div>
@@ -1987,27 +2275,61 @@ export default function NewRequestPage() {
           <div className="container mx-auto max-w-4xl space-y-6">
 
             <div>
-              <h1 className="text-2xl font-bold">{t("nrp.title")}</h1>
-              <p className="text-muted-foreground mt-1">{t("nrp.subtitle")}</p>
+              <h1 className="text-2xl font-bold">{correctionMode ? t("correctDossier.title") : completionMode ? t("completeDossier.title") : t("nrp.title")}</h1>
+              <p className="text-muted-foreground mt-1">{correctionMode ? t("correctDossier.subtitle") : completionMode ? t("completeDossier.subtitle") : t("nrp.subtitle")}</p>
             </div>
 
+            {correctionMode && (
+              <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold">{t("correctDossier.rejectedBanner")}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{dtRejectionComments || t("correctDossier.noComment")}</p>
+                </div>
+              </div>
+            )}
+
+            {completionMode && (() => {
+              const deadlineRaw = (user as any).dossierDeadline as string | undefined;
+              const deadlineDate = deadlineRaw ? new Date(deadlineRaw) : null;
+              const daysLeft = deadlineDate ? Math.max(0, Math.ceil((deadlineDate.getTime() - Date.now()) / 86_400_000)) : null;
+              return (
+                <div className={cn(
+                  "flex items-start gap-3 rounded-lg border px-4 py-3",
+                  daysLeft !== null && daysLeft <= 3 ? "border-red-300 bg-red-50 text-red-800" : "border-amber-300 bg-amber-50 text-amber-900"
+                )}>
+                  <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-semibold">
+                      {deadlineDate
+                        ? t("completeDossier.deadlineBanner", { days: daysLeft, date: deadlineDate.toLocaleDateString("fr-FR") })
+                        : t("completeDossier.deadlineBannerNoDate")}
+                    </p>
+                    <p className="mt-1">{t("completeDossier.suspensionWarning")}</p>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── DEMO FILL BAR (dev only) ── */}
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-4 py-3">
-              <span className="text-xs font-semibold text-amber-700 mr-1">Demo :</span>
-              {TYPES_DEMANDE.map((td) => (
-                <Button
-                  key={td.value}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs border-amber-400 text-amber-800 hover:bg-amber-100"
-                  onClick={() => fillDemo(td.value)}
-                >
-                  {td.label}
-                </Button>
-              ))}
-              <span className="text-[10px] text-amber-500 ml-auto">Rempli automatiquement pour test</span>
-            </div>
+            {!completionMode && !correctionMode && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-4 py-3">
+                <span className="text-xs font-semibold text-amber-700 mr-1">Demo :</span>
+                {TYPES_DEMANDE.map((td) => (
+                  <Button
+                    key={td.value}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-400 text-amber-800 hover:bg-amber-100"
+                    onClick={() => fillDemo(td.value)}
+                  >
+                    {td.label}
+                  </Button>
+                ))}
+                <span className="text-[10px] text-amber-500 ml-auto">Rempli automatiquement pour test</span>
+              </div>
+            )}
 
             {/* Progress */}
             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -2030,11 +2352,11 @@ export default function NewRequestPage() {
                 {STEPS.map((step) => (
                   <div
                     key={step.id}
-                    onClick={() => step.id <= maxStepReached && step.id !== currentStep && setCurrentStep(step.id)}
+                    onClick={() => step.id >= firstStep && step.id <= maxStepReached && step.id !== currentStep && setCurrentStep(step.id)}
                     className={cn(
                       "flex flex-col items-center transition-all",
                       step.id <= currentStep ? "opacity-100" : "opacity-40",
-                      step.id <= maxStepReached && step.id !== currentStep ? "cursor-pointer" : "cursor-default"
+                      step.id >= firstStep && step.id <= maxStepReached && step.id !== currentStep ? "cursor-pointer" : "cursor-default"
                     )}
                   >
                     <div className={cn(
@@ -2058,12 +2380,14 @@ export default function NewRequestPage() {
                 {renderStep()}
 
                 <div className="flex justify-between mt-8 pt-6 border-t">
-                  {currentStep > 1 ? (
+                  {currentStep > firstStep ? (
                     <Button type="button" variant="outline" onClick={prev} className="gap-2">
                       <ChevronLeft className="w-4 h-4" /> {t("nrp.nav.prev")}
                     </Button>
+                  ) : completionMode ? (
+                    <span />
                   ) : (
-                    <Button type="button" variant="outline" onClick={() => setLocation("/oec/dashboard")}>
+                    <Button type="button" variant="outline" onClick={() => setLocation(correctionMode ? "/oec/mes-demandes" : "/oec/dashboard")}>
                       {t("nrp.nav.cancel")}
                     </Button>
                   )}
@@ -2102,6 +2426,46 @@ export default function NewRequestPage() {
             <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={loading}>{t("nrp.dialogs.confirm.backToForm")}</Button>
             <Button onClick={handleSubmit} disabled={loading} style={{ backgroundColor: "#00A63E" }}>
               {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nrp.nav.submitting")}</> : t("nrp.dialogs.confirm.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dossier corrigé après rejet DT */}
+      <Dialog open={showCorrectionDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="h-5 w-5" />
+              {t("correctDossier.successTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("correctDossier.successDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => { setShowCorrectionDialog(false); setLocation("/oec/mes-demandes"); }} className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}>
+              {t("nrp.dialogs.success.viewRequests")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dossier complété (nouvel OEC) */}
+      <Dialog open={showCompletionDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="h-5 w-5" />
+              {t("completeDossier.successTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("completeDossier.successDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={finishCompletion} className="w-full" size="lg" style={{ backgroundColor: "#00A63E" }}>
+              {t("completeDossier.goToDashboard")}
             </Button>
           </DialogFooter>
         </DialogContent>

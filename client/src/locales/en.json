@@ -210,7 +210,6 @@
     "OEC": "Conformity Assessment Body",
     "EXPERT": "Expert",
     "CD": "Management Committee",
-    "DAG": "Administrative & Financial Direction",
     "REE": "Evaluation Team Leader",
     "ET": "Technical Assessor",
     "EQ": "Quality Assessor",
@@ -223,6 +222,7 @@
     "CONSOLIDATION": "Consolidation Service"
   },
   "nav": {
+    "completeDossier": "Complete my file",
     "dashboard": "Dashboard",
     "newRequest": "New Request",
     "myRequests": "My Requests",
@@ -491,8 +491,8 @@
     "validated": "Payment validated",
     "awaitingValidation": "Awaiting validation"
   },
-  "dag": {
-    "title": "Dashboard - DAG",
+  "consolidation": {
+    "title": "Dashboard - Consolidation",
     "description": "Establish quotations based on requests submitted by Accreditation Managers",
     "pendingQuotes": "Pending quotation requests",
     "establishQuote": "Establish quotation",
@@ -923,8 +923,8 @@
     "RECEIVABLE": "Receivable",
     "NOT_RECEIVABLE": "Not receivable",
     "QUOTATION_PREPARATION": "Quotation preparation",
-    "QUOTATION_SENT_TO_DAG": "Quotation sent to DAG",
-    "QUOTATION_APPROVED_BY_DAG": "Quotation approved by DAG",
+    "QUOTATION_SENT_TO_DAG": "Quotation sent to Consolidation",
+    "QUOTATION_APPROVED_BY_DAG": "Quotation approved by Consolidation",
     "CONVENTION_PREPARATION": "Convention preparation",
     "QUOTATION_CONVENTION_PENDING_CD": "Awaiting CD validation",
     "QUOTATION_CONVENTION_CD_MODIF": "CD modifications requested",
@@ -992,7 +992,7 @@
       "gapsNeedActionPlan": "Gaps need an action plan",
       "tenDayDeadline": "Deadline: 10 days",
       "paymentDue": "Payment due",
-      "paymentRejected": "Payment proof rejected by DAG",
+      "paymentRejected": "Payment proof rejected by Consolidation",
       "amountDue": "Amount: {{amount}} {{currency}}",
       "payNow": "Pay",
       "handleNow": "Handle now",
@@ -1917,8 +1917,8 @@
     "receivedDate": "Received",
     "statusLabel": "Status"
   },
-  "dag_page": {
-    "dashboardTitle": "DAG Dashboard",
+  "consolidation_page": {
+    "dashboardTitle": "Consolidation Dashboard",
     "dashboardSubtitle": "Establish quotations based on RA submissions.",
     "pendingQuotes": "Pending Quotations",
     "processedQuotes": "Processed",
@@ -2072,11 +2072,13 @@
   },
   "oecRegister": {
     "title": "OEC Accreditation Request",
-    "subtitle": "Create your account and submit your accreditation request in a single step.",
+    "subtitle": "Submit steps 1 to 3 of your accreditation request. You will complete the rest of the form once your account has been created.",
+    "twoStageNotice": "Registration is done in two stages: fill in and send steps 1 to 3 below. You will receive an acknowledgement of receipt, then ALGERAC will create your account and email you your credentials. You will then have 15 days to complete the rest of the form, otherwise your account will be suspended.",
+    "confirmDesc": "Do you confirm sending steps 1 to 3 of your request? You will complete the rest of the form once your account has been created.",
     "goToLogin": "Go to login",
-    "successTitle": "Request submitted successfully!",
-    "successDesc": "Your accreditation request has been registered.",
-    "successInfo": "The Technical Direction will review your file. You will be notified by email once a decision is made. Once your request is approved, your account will be activated.",
+    "successTitle": "Request received!",
+    "successDesc": "We acknowledge receipt of your accreditation request. An acknowledgement has been sent to you by email.",
+    "successInfo": "ALGERAC will create your account and email you your credentials. You will then have 15 days to complete the rest of the request form, otherwise your account will be suspended.",
     "accountSection": "Create your account",
     "accountSectionHelp": "These credentials will let you access your space once your request has been approved by the Technical Direction.",
     "email": "Login email",
@@ -2183,6 +2185,27 @@
         "deadline": "Deadline"
       }
     }
+  },
+  "completeDossier": {
+    "title": "Complete my accreditation file",
+    "subtitle": "Your general information (steps 1 to 3) has been saved. Complete steps 4 to 10 to submit your file.",
+    "deadlineBanner": "You have {{days}} day(s) left to complete your file (deadline: {{date}}).",
+    "deadlineBannerNoDate": "You must complete your file within 15 days.",
+    "suspensionWarning": "After this deadline your account will be suspended. Meanwhile, you can only access this form.",
+    "loadError": "No file to complete was found.",
+    "successTitle": "File submitted!",
+    "successDesc": "Your file is complete and has been sent to ALGERAC for review. Your account is now fully active.",
+    "goToDashboard": "Go to my dashboard"
+  },
+  "correctDossier": {
+    "title": "Correct my accreditation file",
+    "subtitle": "Update the information requested by the Technical Department, then resubmit your file at step 10.",
+    "rejectedBanner": "File rejected by the Technical Department — reason:",
+    "noComment": "No comment was provided. Please contact ALGERAC for more details.",
+    "loadError": "This request cannot be corrected.",
+    "alreadyAttached": "File already attached: {{name}} (attach a new one to replace it)",
+    "successTitle": "File corrected and resubmitted!",
+    "successDesc": "Your corrected file has been sent to the Technical Department for a new review."
   },
   "nrp": {
     "title": "New accreditation request",

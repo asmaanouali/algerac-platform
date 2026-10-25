@@ -38,6 +38,10 @@ public class UserDTO {
     private String organizationName;
     private String typeOrganisme;
 
+    // OEC inscrit en deux temps : dossier (DOC 1) à compléter avant l'échéance, sinon compte suspendu
+    private Boolean dossierPending;
+    private LocalDateTime dossierDeadline;
+
     // Pour CD / RA / staff interne : département ALGERAC
     private Long departmentId;
     private String departmentCode;
@@ -97,6 +101,11 @@ public class UserDTO {
         if ("OEC".equals(user.getRole())) {
             builder.organizationName(user.getOrganizationName())
                    .typeOrganisme(user.getTypeOrganisme());
+        }
+
+        if (user.isDossierPending()) {
+            builder.dossierPending(true)
+                   .dossierDeadline(user.getDossierDeadline());
         }
 
         if (user.getDepartment() != null) {

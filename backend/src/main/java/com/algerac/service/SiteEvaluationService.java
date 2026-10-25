@@ -34,6 +34,7 @@ public class SiteEvaluationService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final SatelliteSiteRepository satelliteSiteRepository;
+    private final PaymentService paymentService;
 
     // ========== ÉTAPE 6 : PRÉPARATION DE L'ÉVALUATION ==========
 
@@ -491,6 +492,9 @@ public class SiteEvaluationService {
         request.setNextAction("Remise des fiches d'écart FOR 02 à l'OEC");
         request.setPendingWith("REE");
         requestRepository.save(request);
+
+        // Les frais d'enregistrement différés deviennent exigibles à la fin de l'évaluation
+        paymentService.releaseDeferredRegistrationFeeForRequest(request.getId());
 
         log.info("Réunion de clôture terminée pour {}", request.getReferenceNumber());
         return note;

@@ -62,9 +62,9 @@ public class CandidatureService {
         
         // Comportement différent selon le rôle
         if (user.getRole() == UserRole.OEC) {
-            log.info("Candidature OEC approuvée - notification DAG pour fixation des frais de dépôt");
-            // Notify all DAG users via in-app notification
-            List<User> dagUsers = userRepository.findByRole(UserRole.DAG);
+            log.info("Candidature OEC approuvée -             notification Consolidation pour fixation des frais de dépôt");
+                        // Notify all Consolidation users via in-app notification
+            List<User> dagUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
             for (User dag : dagUsers) {
                 notificationService.createNotification(
                     dag.getId(),

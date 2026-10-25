@@ -44,6 +44,7 @@ interface NewOECPending {
   telephone: string;
   nomRepresentant: string;
   fonction: string;
+  emailProfessionnel?: string;
   porteeAccreditation: string;
   typeDemande: string;
   createdAt: string;
@@ -119,6 +120,7 @@ export default function UsersManagementPage() {
   const [newOecPending, setNewOecPending] = useState<NewOECPending[]>([]);
   const [newOecLoading, setNewOecLoading] = useState(true);
   const [newOecActivating, setNewOecActivating] = useState<number | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<number | null>(null);
   const [newOecConfirm, setNewOecConfirm] = useState<NewOECPending | null>(null);
   const [showNewOecConfirmDialog, setShowNewOecConfirmDialog] = useState(false);
 
@@ -221,7 +223,7 @@ export default function UsersManagementPage() {
       if (!res.ok) throw new Error(data.message || "Erreur lors de la création du compte");
       toast({
         title: "Compte créé",
-        description: `Le compte OEC pour ${newOecConfirm.nomOrganisme} a été activé et les identifiants ont été envoyés par email.`,
+        description: `Le compte OEC pour ${newOecConfirm.nomOrganisme} a été activé et les identifiants ont été envoyés par email. L'OEC a 15 jours pour compléter son dossier.`,
       });
       setShowNewOecConfirmDialog(false);
       fetchNewOecPending();
@@ -230,6 +232,24 @@ export default function UsersManagementPage() {
       toast({ variant: "destructive", title: "Erreur", description: err.message || "Impossible d'activer le compte" });
     } finally {
       setNewOecActivating(null);
+    }
+  };
+
+  const handleReactivateOec = async (oec: ActiveUser) => {
+    try {
+      setReactivatingId(oec.id);
+      const res = await apiRequest("POST", `/api/users/${oec.id}/reactivate-oec`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || "Erreur lors de la réactivation");
+      toast({
+        title: "Compte réactivé",
+        description: `Le compte de ${oec.email} a été réactivé avec un nouveau délai de 15 jours pour compléter son dossier.`,
+      });
+      fetchActiveUsers();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message || "Impossible de réactiver le compte" });
+    } finally {
+      setReactivatingId(null);
     }
   };
 
@@ -314,6 +334,8 @@ export default function UsersManagementPage() {
         return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
       case "REJECTED":
         return <Badge className="bg-red-100 text-red-800">Rejeté</Badge>;
+      case "SUSPENDED":
+        return <Badge className="bg-orange-100 text-orange-800">Suspendu</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -443,6 +465,7 @@ export default function UsersManagementPage() {
                           <SelectItem value="APPROVED">Actifs</SelectItem>
                           <SelectItem value="PENDING">En attente</SelectItem>
                           <SelectItem value="REJECTED">Rejetés</SelectItem>
+                          <SelectItem value="SUSPENDED">Suspendus</SelectItem>
                           <SelectItem value="all">Tous</SelectItem>
                         </SelectContent>
                       </Select>
@@ -506,6 +529,18 @@ export default function UsersManagementPage() {
                                 <TableCell>{getStatusBadge(u.status)}</TableCell>
                                 <TableCell>{u.dateInscription || "N/A"}</TableCell>
                                 <TableCell className="text-right">
+                                  {u.role === "OEC" && u.status === "SUSPENDED" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="mr-2"
+                                      disabled={reactivatingId === u.id}
+                                      onClick={() => handleReactivateOec(u)}
+                                    >
+                                      {reactivatingId === u.id && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+                                      Réactiver
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" size="sm">
                                     <Eye className="w-4 h-4 mr-1" />
                                     Voir
@@ -644,15 +679,15 @@ export default function UsersManagementPage() {
                   </CardContent>
                 </Card>
 
-                {/* New OECs from /oecregister whose DT approved the request */}
+                {/* New OECs from /oecregister: steps 1-3 received, account to create */}
                 <Card className={newOecPending.length > 0 ? "ring-2 ring-amber-300" : ""}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ShieldCheck className="w-5 h-5 text-amber-600" />
-                      Nouveaux OEC — validés par DT ({newOecPending.length})
+                      Nouveaux OEC — compte à créer ({newOecPending.length})
                     </CardTitle>
                     <CardDescription>
-                      OEC inscrits via le formulaire public dont le dossier a été approuvé par la Direction Technique. Créez leur compte pour qu'ils puissent se connecter.
+                      OEC ayant transmis les étapes 1 à 3 de leur demande via le formulaire public. Créez leur compte : ils recevront leurs identifiants par email et auront 15 jours pour compléter le reste du formulaire, sinon leur compte sera suspendu.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -752,13 +787,16 @@ export default function UsersManagementPage() {
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
                 <p><strong>Organisme :</strong> {newOecConfirm.nomOrganisme}</p>
                 <p><strong>Type :</strong> {newOecConfirm.typeOrganisme}</p>
+                <p><strong>Adresse du siège :</strong> {newOecConfirm.adresseSiege || "—"}</p>
                 <p><strong>Email :</strong> {newOecConfirm.email}</p>
-                <p><strong>Représentant :</strong> {newOecConfirm.nomRepresentant || "—"}</p>
+                <p><strong>Représentant :</strong> {newOecConfirm.nomRepresentant || "—"}{newOecConfirm.fonction ? ` (${newOecConfirm.fonction})` : ""}</p>
+                <p><strong>Téléphone :</strong> {newOecConfirm.telephone || "—"}</p>
+                <p><strong>Email du contact :</strong> {newOecConfirm.emailProfessionnel || "—"}</p>
                 <p><strong>Portée :</strong> {newOecConfirm.porteeAccreditation || "—"}</p>
                 <p><strong>Type de demande :</strong> {newOecConfirm.typeDemande || "initiale"}</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                L'OEC recevra un email contenant ses identifiants de connexion et un message confirmant que son dossier a été accepté.
+                L'OEC recevra ses identifiants par email. Son compte lui permettra uniquement de compléter le reste de son formulaire dans un délai de 15 jours, passé lequel il sera suspendu.
               </p>
             </div>
           )}

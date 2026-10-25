@@ -17,10 +17,10 @@ VALUES ('dg@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalA
         'Farida Benmansour', 'DG', 'ALGERAC', '0555000002', NOW(), 'APPROVED', false, false)
 ON CONFLICT (email) DO NOTHING;
 
--- DAG
+-- CONSOLIDATION
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
-VALUES ('dag@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
-        'Karim Mebarki', 'DAG', 'ALGERAC', '0555000003', NOW(), 'APPROVED', false, false)
+VALUES ('consolidation@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
+        'Karim Mebarki', 'CONSOLIDATION', 'ALGERAC', '0555000003', NOW(), 'APPROVED', false, false)
 ON CONFLICT (email) DO NOTHING;
 
 -- DT
@@ -39,12 +39,6 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
 VALUES ('rq@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
         'Leila Bouazza', 'RQ', 'ALGERAC', '0555000006', NOW(), 'APPROVED', false, false)
-ON CONFLICT (email) DO NOTHING;
-
--- CONSOLIDATION (facturation + délivrance certificat)
-INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
-VALUES ('consolidation@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
-        'Karim Bensalah', 'CONSOLIDATION', 'ALGERAC', '0555000016', NOW(), 'APPROVED', false, false)
 ON CONFLICT (email) DO NOTHING;
 
 -- CAS_PRESIDENT

@@ -11,6 +11,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,8 +35,8 @@ public class EmailService {
     @Value("${app.ges.competences.email}")
     private String gesCompetencesEmail;
 
-    @Value("${app.dag.email:asmaanouali256@gmail.com}")
-    private String dagEmail;
+    @Value("${app.consolidation.email:asmaanouali256@gmail.com}")
+    private String consolidationEmail;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -44,6 +45,7 @@ public class EmailService {
     private String frontendUrl;
 
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'à' HH:mm");
+    private static final int OEC_DOSSIER_DEADLINE_DAYS = OecOnboardingService.DOSSIER_DEADLINE_DAYS;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     // ============================================================
@@ -146,15 +148,16 @@ public class EmailService {
                     "SMTP non configuré : définissez les variables d'environnement MAIL_USERNAME et MAIL_PASSWORD");
         }
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(wrapBrandedHtml(contentHtml), true);
-            // The SMTP server intermittently drops connections, so retry before giving up
-            final int maxAttempts = 4;
+            String html = wrapBrandedHtml(contentHtml);
+            // The SMTP server intermittently drops connections, so retry (with a pause) before giving up
+            final int maxAttempts = 6;
             for (int attempt = 1; ; attempt++) {
+                MimeMessage mimeMessage = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                helper.setFrom(fromEmail);
+                helper.setTo(to);
+                helper.setSubject(subject);
+                helper.setText(html, true);
                 try {
                     mailSender.send(mimeMessage);
                     break;
@@ -163,6 +166,12 @@ public class EmailService {
                         throw e;
                     }
                     log.warn("Échec envoi email à {} (tentative {}/{}): {}", to, attempt, maxAttempts, e.getMessage());
+                    try {
+                        Thread.sleep(1000L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
                 }
             }
             log.info("Email envoyé à {} - {}", to, subject);
@@ -406,59 +415,125 @@ public class EmailService {
     }
 
     public void sendOECAccountCredentials(User user, String generatedPassword) {
+        sendOECAccountCredentials(user, generatedPassword, null);
+    }
+
+    /**
+     * Identifiants du nouvel OEC. Si {@code dossierDeadline} est renseigné, le compte est limité à la
+     * complétion du dossier jusqu'à cette date (au-delà, le compte est suspendu).
+     */
+    public void sendOECAccountCredentials(User user, String generatedPassword, LocalDateTime dossierDeadline) {
+        String org = HtmlUtils.htmlEscape(safe(user.getOrganizationName()));
+        if (dossierDeadline == null) {
+            String content = """
+                    <p>Bonjour,</p>
+                    <p>Nous avons le plaisir de vous informer que votre demande d'accréditation pour l'organisme
+                       <strong>« %s »</strong> a été approuvée.</p>
+                    %s
+                    %s
+                    %s
+                    <p>Bienvenue sur ALGERAC !</p>
+                    """.formatted(org,
+                            calloutCard(null, "Votre compte sur la plateforme ALGERAC est maintenant actif.", "success"),
+                            credentialsCard(user.getEmail(), generatedPassword),
+                            calloutCard("Sécurité", "Pour des raisons de sécurité, nous vous recommandons fortement de vous connecter dès que possible et de changer votre mot de passe après la première connexion.", "warning"));
+            sendBrandedEmail(user.getEmail(),
+                    "Votre compte ALGERAC a été créé - Identifiants de connexion", content);
+            return;
+        }
+
+        String deadline = dossierDeadline.format(DATE_FMT);
         String content = """
                 <p>Bonjour,</p>
-                <p>Nous avons le plaisir de vous informer que votre demande d'accréditation pour l'organisme
-                   <strong>« %s »</strong> a été approuvée.</p>
+                <p>Votre compte ALGERAC pour l'organisme <strong>« %s »</strong> a été créé.</p>
                 %s
                 %s
                 %s
                 <p>Bienvenue sur ALGERAC !</p>
-                """.formatted(user.getOrganizationName(),
-                        calloutCard(null, "Votre compte sur la plateforme ALGERAC est maintenant actif.", "success"),
+                """.formatted(org,
                         credentialsCard(user.getEmail(), generatedPassword),
-                        calloutCard("Sécurité", "Pour des raisons de sécurité, nous vous recommandons fortement de vous connecter dès que possible et de changer votre mot de passe après la première connexion.", "warning"));
+                        calloutCard("Action requise : compléter votre dossier",
+                                "Votre compte vous permet uniquement de compléter le reste de votre formulaire de demande d'accréditation (DOC 1). "
+                                        + "Vous disposez de <strong>" + OEC_DOSSIER_DEADLINE_DAYS + " jours</strong>, soit jusqu'au <strong>" + deadline + "</strong>. "
+                                        + "Passé ce délai, votre compte sera <strong>suspendu</strong>.", "warning"),
+                        calloutCard("Sécurité", "Nous vous recommandons de changer votre mot de passe après la première connexion.", "info"));
         sendBrandedEmail(user.getEmail(),
-                "Votre compte ALGERAC a été créé - Identifiants de connexion", content);
+                "Votre compte ALGERAC a été créé - Complétez votre dossier avant le " + deadline, content);
     }
 
+    public void sendOECAccountSuspended(User user) {
+        String content = """
+                <p>Bonjour,</p>
+                <p>Le compte ALGERAC de l'organisme <strong>« %s »</strong> a été <strong>suspendu</strong> car le dossier
+                   de demande d'accréditation n'a pas été complété dans le délai de %d jours suivant la création du compte.</p>
+                <p>Pour réactiver votre compte, veuillez contacter ALGERAC.</p>
+                %s
+                """.formatted(HtmlUtils.htmlEscape(safe(user.getOrganizationName())), OEC_DOSSIER_DEADLINE_DAYS, supportLine());
+        sendBrandedEmail(user.getEmail(), "Votre compte ALGERAC a été suspendu", content);
+    }
+
+    public void sendOECAccountReactivated(User user, LocalDateTime dossierDeadline) {
+        String deadline = dossierDeadline.format(DATE_FMT);
+        String content = """
+                <p>Bonjour,</p>
+                <p>Le compte ALGERAC de l'organisme <strong>« %s »</strong> a été réactivé.</p>
+                %s
+                %s
+                """.formatted(HtmlUtils.htmlEscape(safe(user.getOrganizationName())),
+                        calloutCard("Action requise : compléter votre dossier",
+                                "Vous disposez d'un nouveau délai de <strong>" + OEC_DOSSIER_DEADLINE_DAYS + " jours</strong>, soit jusqu'au <strong>"
+                                        + deadline + "</strong>, pour compléter votre formulaire de demande d'accréditation. Passé ce délai, votre compte sera de nouveau suspendu.", "warning"),
+                        supportLine());
+        sendBrandedEmail(user.getEmail(), "Votre compte ALGERAC a été réactivé", content);
+    }
+
+    /** Accusé de réception envoyé à l'OEC après l'envoi des étapes 1 à 3 du formulaire. */
     public void sendOECRegistrationConfirmation(User user) {
         LinkedHashMap<String, String> rows = new LinkedHashMap<>();
-        rows.put("Organisme", user.getOrganizationName());
-        rows.put("Email", user.getEmail());
-        rows.put("Date de soumission", user.getCreatedAt().format(DATE_TIME_FMT));
+        rows.put("Organisme", HtmlUtils.htmlEscape(safe(user.getOrganizationName())));
+        rows.put("Email", HtmlUtils.htmlEscape(safe(user.getEmail())));
+        rows.put("Date de réception", user.getCreatedAt().format(DATE_TIME_FMT));
 
         String content = """
                 <p>Bonjour,</p>
-                <p>Nous avons bien reçu votre demande d'accréditation pour l'organisme <strong>« %s »</strong>.</p>
-                <p>Votre demande est actuellement en cours d'examen par notre Direction Technique.
-                   Vous serez informé(e) par email de l'évolution de votre dossier.</p>
+                <p>Nous accusons réception de votre demande d'accréditation pour l'organisme <strong>« %s »</strong>
+                   (informations générales du formulaire DOC 1).</p>
                 %s
+                <p>Prochaines étapes :</p>
+                <ol style="color: #333; font-size: 14px; line-height: 1.6;">
+                    <li>ALGERAC crée votre compte sur la plateforme.</li>
+                    <li>Vous recevez vos identifiants de connexion par email.</li>
+                    <li>Vous complétez le reste du formulaire dans un délai de <strong>%d jours</strong> après la création de votre compte,
+                        faute de quoi votre compte sera suspendu.</li>
+                </ol>
                 %s
-                """.formatted(user.getOrganizationName(),
+                """.formatted(HtmlUtils.htmlEscape(safe(user.getOrganizationName())),
                         detailsCard("Informations de votre demande", rows),
+                        OEC_DOSSIER_DEADLINE_DAYS,
                         supportLine());
         sendBrandedEmail(user.getEmail(),
-                "Confirmation de réception - Demande d'accréditation OEC", content);
+                "Accusé de réception - Demande d'accréditation OEC", content);
     }
 
-    public void sendDTNewOECNotification(User user) {
+    public void sendAdminNewOECRegistration(String adminEmail, User user) {
         LinkedHashMap<String, String> rows = new LinkedHashMap<>();
         rows.put("ID", "#" + user.getId());
-        rows.put("Organisme", user.getOrganizationName());
-        rows.put("Représentant", safe(user.getNomRepresentant()));
-        rows.put("Email", user.getEmail());
-        rows.put("Téléphone", safe(user.getPhone()));
-        rows.put("Date de soumission", user.getCreatedAt().format(DATE_TIME_FMT));
+        rows.put("Organisme", HtmlUtils.htmlEscape(safe(user.getOrganizationName())));
+        rows.put("Représentant", HtmlUtils.htmlEscape(safe(user.getNomRepresentant())));
+        rows.put("Email", HtmlUtils.htmlEscape(safe(user.getEmail())));
+        rows.put("Téléphone", HtmlUtils.htmlEscape(safe(user.getPhone())));
+        rows.put("Date de réception", user.getCreatedAt().format(DATE_TIME_FMT));
 
         String content = """
                 <p>Bonjour,</p>
-                <p>Une nouvelle demande d'accréditation <strong>OEC</strong> a été soumise et nécessite votre examen.</p>
+                <p>Un nouvel <strong>OEC</strong> a transmis les étapes 1 à 3 de sa demande d'accréditation.
+                   Son compte doit être créé afin qu'il puisse compléter son dossier.</p>
                 %s
-                <p>Veuillez vous connecter à la plateforme pour examiner la demande et le document <strong>DOC 1</strong>.</p>
+                <p>Veuillez vous connecter à la plateforme (Utilisateurs &gt; Comptes OEC) pour créer le compte.
+                   Les identifiants seront générés et envoyés à l'OEC par email.</p>
                 """.formatted(detailsCard("Informations de la demande", rows));
-        sendBrandedEmail("orginag65msf@gmail.com",
-                "Nouvelle demande d'accréditation OEC - " + user.getOrganizationName(),
+        sendBrandedEmail(adminEmail,
+                "Nouvel OEC - Création de compte requise : " + HtmlUtils.htmlEscape(safe(user.getOrganizationName())),
                 content);
     }
 

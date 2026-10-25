@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle, Search, Eye, CreditCard, XCircle, FileText, Download, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, Search, Eye, CreditCard, XCircle, FileText, Download, AlertTriangle, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout-sidebar";
@@ -28,6 +28,7 @@ interface PaymentRecord {
   status: string;
   transactionId?: string;
   paymentMethod?: string;
+  checkBank?: string;
   paymentDate?: string;
   createdAt: string;
   proofDocumentName?: string;
@@ -40,7 +41,7 @@ interface PaymentRecord {
   invoiceNumber?: string;
 }
 
-export default function DAGPaymentTracking() {
+export default function ConsolidationPaymentTracking() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
@@ -60,6 +61,15 @@ export default function DAGPaymentTracking() {
   // Details dialog
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPayment, setDetailsPayment] = useState<PaymentRecord | null>(null);
+
+  // Check registration dialog
+  const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+  const [checkPayment, setCheckPayment] = useState<PaymentRecord | null>(null);
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkBank, setCheckBank] = useState("");
+  const [checkComments, setCheckComments] = useState("");
+  const [checkFile, setCheckFile] = useState<File | null>(null);
+  const [registeringCheck, setRegisteringCheck] = useState(false);
 
   useEffect(() => {
     if (user && !authLoading) loadPayments();
@@ -130,12 +140,53 @@ export default function DAGPaymentTracking() {
     } finally { setRejecting(false); }
   };
 
+  // ── Check registration ───────────────────────────────────────────────────
+
+  const openCheckDialog = (payment: PaymentRecord) => {
+    setCheckPayment(payment);
+    setCheckNumber("");
+    setCheckBank("");
+    setCheckComments("");
+    setCheckFile(null);
+    setCheckDialogOpen(true);
+  };
+
+  const fileToBase64 = (f: File): Promise<string> =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onloadend = () => res((r.result as string).split(",")[1]);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+
+  const handleRegisterCheck = async () => {
+    if (!checkPayment || !checkFile) return;
+    try {
+      setRegisteringCheck(true);
+      const proofBase64 = await fileToBase64(checkFile);
+      await apiRequest("POST", `/api/payments/${checkPayment.id}/register-check`, {
+        checkNumber: checkNumber.trim(),
+        bankName: checkBank.trim(),
+        comments: checkComments,
+        proofBase64,
+        proofName: checkFile.name,
+        proofMimeType: checkFile.type,
+      });
+      toast({ title: "Chèque enregistré", description: "Le chèque a été enregistré et le paiement validé." });
+      setCheckDialogOpen(false);
+      loadPayments();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setRegisteringCheck(false); }
+  };
+
   // ── Filtering ──────────────────────────────────────────────────────────
 
   const isOverdue = (p: PaymentRecord) => p.dueDate && new Date(p.dueDate) < new Date() && p.status === "PENDING";
 
   const paymentsForTracking = payments.filter(p => p.status !== "AWAITING_FEE_SETTING");
   const awaitingValidation = paymentsForTracking.filter(p => p.status === "PROOF_SUBMITTED");
+  const awaitingPayment = paymentsForTracking.filter(p => p.status === "PENDING" || p.status === "DAG_REJECTED");
   const overduePayments = paymentsForTracking.filter(isOverdue);
   const allFiltered = paymentsForTracking.filter(p => {
     const matchSearch = (p.oecName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -240,10 +291,14 @@ export default function DAGPaymentTracking() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="awaiting-validation" className="gap-1 text-xs">
                   <FileText className="h-4 w-4" />
                   Preuves ({awaitingValidation.length})
+                </TabsTrigger>
+                <TabsTrigger value="check" className="gap-1 text-xs">
+                  <CreditCard className="h-4 w-4" />
+                  Chèques ({awaitingPayment.length})
                 </TabsTrigger>
                 <TabsTrigger value="overdue" className="gap-1 text-xs">
                   <AlertTriangle className="h-4 w-4" />
@@ -322,6 +377,61 @@ export default function DAGPaymentTracking() {
                                 <TableCell className="text-right">
                                   <Button size="sm" onClick={() => openVerifyDialog(payment)}>
                                     <Eye className="w-4 h-4 mr-1" /> Vérifier
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Tab: Chèques à enregistrer */}
+              <TabsContent value="check">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Paiements par chèque</CardTitle>
+                    <CardDescription>
+                      L'OEC qui paie par chèque doit se présenter à ALGERAC. Enregistrez le chèque reçu (scan) : le paiement est validé immédiatement.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                    ) : awaitingPayment.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground">Aucun paiement en attente de règlement</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Référence</TableHead>
+                              <TableHead>Organisme</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Montant</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {awaitingPayment.map((payment) => (
+                              <TableRow key={payment.id}>
+                                <TableCell className="font-mono text-sm">
+                                  {payment.requestReferenceNumber || `#${payment.requestId}`}
+                                </TableCell>
+                                <TableCell>
+                                  <p className="font-medium">{payment.oecName || "N/A"}</p>
+                                  <p className="text-xs text-muted-foreground">{payment.oecEmail}</p>
+                                </TableCell>
+                                <TableCell><Badge variant="outline">{fmtPaymentType(payment.paymentType)}</Badge></TableCell>
+                                <TableCell className="font-semibold">{Number(payment.amount).toLocaleString()} {payment.currency || "DA"}</TableCell>
+                                <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button size="sm" onClick={() => openCheckDialog(payment)}>
+                                    <Upload className="w-4 h-4 mr-1" /> Enregistrer un chèque
                                   </Button>
                                 </TableCell>
                               </TableRow>
@@ -468,6 +578,56 @@ export default function DAGPaymentTracking() {
         </main>
       </div>
 
+      {/* Dialog: Enregistrer un chèque */}
+      <Dialog open={checkDialogOpen} onOpenChange={setCheckDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Enregistrer un chèque</DialogTitle>
+            <DialogDescription>
+              Dossier {checkPayment?.requestReferenceNumber || `#${checkPayment?.requestId}`} — {checkPayment?.oecName}
+            </DialogDescription>
+          </DialogHeader>
+          {checkPayment && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-muted-foreground text-xs">Montant attendu</Label>
+                <p className="font-bold text-lg">{Number(checkPayment.amount).toLocaleString()} {checkPayment.currency || "DA"}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="checkNumber">N° du chèque *</Label>
+                <Input id="checkNumber" value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="checkBank">Banque émettrice *</Label>
+                <Input id="checkBank" value={checkBank} onChange={(e) => setCheckBank(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="checkFile">Scan du chèque *</Label>
+                <Input
+                  id="checkFile"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setCheckFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Commentaires</Label>
+                <Textarea value={checkComments} onChange={(e) => setCheckComments(e.target.value)} rows={2} />
+              </div>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={handleRegisterCheck}
+                disabled={registeringCheck || !checkNumber.trim() || !checkBank.trim() || !checkFile}
+              >
+                {registeringCheck
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enregistrement...</>
+                  : <><CheckCircle className="mr-2 h-4 w-4" />Enregistrer et valider le paiement</>}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog: Vérifier la preuve de paiement */}
       <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -591,10 +751,10 @@ export default function DAGPaymentTracking() {
                   </div>
                 )}
                 {detailsPayment.dagComments && (
-                  <div className="col-span-2"><Label className="text-muted-foreground text-xs">Commentaires DAG</Label><p>{detailsPayment.dagComments}</p></div>
+                  <div className="col-span-2"><Label className="text-muted-foreground text-xs">Commentaires Consolidation</Label><p>{detailsPayment.dagComments}</p></div>
                 )}
                 {detailsPayment.dagValidatedDate && (
-                  <div><Label className="text-muted-foreground text-xs">Date validation DAG</Label><p>{new Date(detailsPayment.dagValidatedDate).toLocaleDateString("fr-FR")}</p></div>
+                  <div><Label className="text-muted-foreground text-xs">Date validation Consolidation</Label><p>{new Date(detailsPayment.dagValidatedDate).toLocaleDateString("fr-FR")}</p></div>
                 )}
               </div>
             </div>

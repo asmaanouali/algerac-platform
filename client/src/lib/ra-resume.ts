@@ -99,9 +99,9 @@ const RULES: Record<string, ResumeRule> = {
   TEAM_VALIDATED: { path: (id) => page("/ra/revue-documentaire", id), label: "Lancer la revue documentaire", actionRequired: true, phase: "Revue documentaire" },
 
   // Revue documentaire
-  DOC_REVIEW_AWAITING_FEE: { path: (id) => page("/ra/revue-documentaire", id), label: "Voir la revue", actionRequired: false, waitingOn: "DAG", phase: "Revue documentaire" },
+  DOC_REVIEW_AWAITING_FEE: { path: (id) => page("/ra/revue-documentaire", id), label: "Voir la revue", actionRequired: false,   waitingOn: "Consolidation", phase: "Revue documentaire" },
   DOC_REVIEW_FEE_PENDING_PAYMENT: { path: (id) => page("/ra/revue-documentaire", id), label: "Voir la revue", actionRequired: false, waitingOn: "OEC", phase: "Revue documentaire" },
-  DOC_REVIEW_PAYMENT_SUBMITTED: { path: (id) => page("/ra/revue-documentaire", id), label: "Voir la revue", actionRequired: false, waitingOn: "DAG", phase: "Revue documentaire" },
+  DOC_REVIEW_PAYMENT_SUBMITTED: { path: (id) => page("/ra/revue-documentaire", id), label: "Voir la revue", actionRequired: false,   waitingOn: "Consolidation", phase: "Revue documentaire" },
   DOC_REVIEW_PAYMENT_VALIDATED: { path: (id) => page("/ra/revue-documentaire", id), label: "Transmettre les documents", actionRequired: true, phase: "Revue documentaire" },
   DOC_REVIEW_IN_PROGRESS: { path: (id) => page("/ra/revue-documentaire", id), label: "Suivre la revue", actionRequired: false, waitingOn: "Équipe", phase: "Revue documentaire" },
   DOCUMENTARY_REVIEW: { path: (id) => page("/ra/revue-documentaire", id), label: "Reprendre la revue", actionRequired: true, phase: "Revue documentaire" },

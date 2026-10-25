@@ -86,14 +86,6 @@ export default function MyRequestsPage() {
     } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
   };
 
-  const handleResubmitAfterDT = async (requestId: number) => {
-    try {
-      await apiRequest("POST", `/api/requests/${requestId}/resubmit-after-dt`);
-      toast({ title: t("mrd.toasts.resubmitted"), description: t("mrd.toasts.resubmittedDesc") });
-      loadRequests();
-    } catch (err: any) { toast({ variant: "destructive", title: "Erreur", description: err.message }); }
-  };
-
   // Filter requests by action needed
   const actionNeeded = requests.filter((r) => [
     "DT_REJECTED", "PENDING_PAYMENT", "NOT_RECEIVABLE", "PRELIMINARY_VISIT_PROPOSED",
@@ -116,7 +108,7 @@ export default function MyRequestsPage() {
         actions.push(<Button key="pay" size="sm" onClick={() => setLocation(`/oec/paiement/${request.id}`)}>{t("mrd.actions.makePayment")}</Button>);
         break;
       case "DT_REJECTED":
-        actions.push(<Button key="resubmit-dt" size="sm" variant="destructive" onClick={() => handleResubmitAfterDT(request.id)}>{t("mrd.actions.correctResubmit")}</Button>);
+        actions.push(<Button key="resubmit-dt" size="sm" variant="destructive" onClick={() => setLocation(`/oec/demandes/${request.id}/corriger-dossier`)}>{t("mrd.actions.correctResubmit")}</Button>);
         break;
       case "NOT_RECEIVABLE":
         actions.push(<Button key="correct" size="sm" variant="destructive" onClick={() => setLocation(`/oec/demandes/${request.id}/corriger`)}>{t("mrd.actions.correctResubmit")}</Button>);

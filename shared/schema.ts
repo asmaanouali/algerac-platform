@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 // === ENUMS ===
-export const userTypes = ["admin", "ra", "dt", "oec", "expert", "ree", "et", "eq", "dag", "dg", "cas_member", "cas_president", "ges_competences", "rq", "sup", "ef", "consolidation"] as const;
-export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT", "REE", "ET", "EQ", "CAS_MEMBER", "CAS_PRESIDENT", "DG", "DAG", "GES_COMPETENCES", "FORMATEUR", "RQ", "SUP", "EF", "CONSOLIDATION"] as const;
+export const userTypes = ["admin", "ra", "dt", "oec", "expert", "ree", "et", "eq", "consolidation", "dg", "cas_member", "cas_president", "ges_competences", "rq", "sup", "ef"] as const;
+export const userRoles = ["ADMIN", "RA", "CD", "DT", "OEC", "EXPERT", "REE", "ET", "EQ", "CAS_MEMBER", "CAS_PRESIDENT", "DG", "CONSOLIDATION", "GES_COMPETENCES", "FORMATEUR", "RQ", "SUP", "EF"] as const;
 export const requestTypes = ["initial", "surveillance", "renouvellement", "extension"] as const;
 export const requestStatuses = [
   // Phase initiale

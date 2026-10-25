@@ -57,7 +57,7 @@ export default function Login() {
             RA: '/ra/dashboard',
             DT: '/dashboard',
             CD: '/cd/dashboard',
-            DAG: '/dag/dashboard',
+            CONSOLIDATION: '/consolidation/dashboard',
             EXPERT: '/expert/dashboard',
             REE: '/ree/dashboard',
             ET: '/et/dashboard',
@@ -68,7 +68,6 @@ export default function Login() {
             GES_COMPETENCES: '/ges-competences/dashboard',
             RQ: '/rq/dashboard',
             SUP: '/dashboard',
-            CONSOLIDATION: '/consolidation/dashboard',
           };
           setLocation(rolePaths[role] || '/dashboard');
         }}

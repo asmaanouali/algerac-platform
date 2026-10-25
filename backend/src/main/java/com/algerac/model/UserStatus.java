@@ -9,5 +9,6 @@ public enum UserStatus {
     INTERVIEW_COMPLETED,       // Entretien effectué, en attente de décision
     CANDIDATURE_APPROVED,      // Approuvé (OEC: par DT / Expert: par GES_COMPETENCES après entretien), compte pas encore créé
     APPROVED,                  // Compte créé par l'admin, utilisateur actif
-    REJECTED                   // Rejeté (dossier ou après entretien)
+    REJECTED,                  // Rejeté (dossier ou après entretien)
+    SUSPENDED                  // Compte suspendu (ex: OEC n'ayant pas complété son dossier dans les 15 jours)
 }

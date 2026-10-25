@@ -2,6 +2,7 @@ package com.algerac.filter;
 
 import com.algerac.repository.UserRepository;
 import com.algerac.model.User;
+import com.algerac.model.UserStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Filtre d'authentification basé sur les sessions HTTP.
@@ -49,6 +51,8 @@ public class AuthenticationFilter implements Filter {
     );
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final Pattern DOSSIER_COMPLETION_PATH = Pattern.compile("^/api/requests/\\d+/complete-dossier$");
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -85,13 +89,36 @@ public class AuthenticationFilter implements Filter {
             return;
         }
 
-        if (isSessionStale(session)) {
+        User sessionUser = userRepository.findById((Long) session.getAttribute("userId")).orElse(null);
+
+        if (isSessionStale(session, sessionUser)) {
             session.invalidate();
             sendUnauthorized(httpResponse, "Session expirée suite à un changement de mot de passe. Veuillez vous reconnecter.");
             return;
         }
 
+        // Compte suspendu (ou délai de complétion du dossier dépassé) : la session en cours n'est plus valide
+        if (sessionUser != null && (sessionUser.getStatus() == UserStatus.SUSPENDED || sessionUser.isDossierOverdue())) {
+            session.invalidate();
+            sendUnauthorized(httpResponse, "Votre compte est suspendu. Veuillez contacter ALGERAC.");
+            return;
+        }
+
+        // Nouvel OEC dont le compte vient d'être créé : seul le formulaire de complétion du dossier est accessible
+        if (sessionUser != null && sessionUser.isDossierPending() && !isAllowedWhileDossierPending(path)) {
+            sendError(httpResponse, HttpServletResponse.SC_FORBIDDEN, "DOSSIER_INCOMPLETE",
+                    "Vous devez d'abord compléter votre dossier de demande d'accréditation.");
+            return;
+        }
+
         chain.doFilter(request, response);
+    }
+
+    private boolean isAllowedWhileDossierPending(String path) {
+        return path.startsWith("/api/users/me")
+                || path.startsWith("/api/notifications")
+                || path.equals("/api/requests/my-dossier-to-complete")
+                || DOSSIER_COMPLETION_PATH.matcher(path).matches();
     }
 
     /**
@@ -99,13 +126,11 @@ public class AuthenticationFilter implements Filter {
      * password reset forcibly logs out any other active session for that account, since there
      * is no central session registry to invalidate them directly.
      */
-    private boolean isSessionStale(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
+    private boolean isSessionStale(HttpSession session, User user) {
         Long loginAt = (Long) session.getAttribute("loginAt");
-        if (userId == null || loginAt == null) {
+        if (loginAt == null) {
             return false;
         }
-        User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return true;
         }
@@ -131,6 +156,18 @@ public class AuthenticationFilter implements Filter {
         Map<String, Object> body = Map.of(
                 "success", false,
                 "error", message,
+                "timestamp", LocalDateTime.now().toString()
+        );
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    private void sendError(HttpServletResponse response, int status, String code, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        Map<String, Object> body = Map.of(
+                "success", false,
+                "error", message,
+                "code", code,
                 "timestamp", LocalDateTime.now().toString()
         );
         response.getWriter().write(objectMapper.writeValueAsString(body));

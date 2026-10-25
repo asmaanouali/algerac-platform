@@ -36,7 +36,10 @@ public class Payment {
     
     private String transactionId; // ID de la transaction de paiement
     
-    private String paymentMethod; // "CARD", "BANK_TRANSFER", "CHECK", etc.
+    private String paymentMethod; // "BANK_TRANSFER" (ordre de virement) ou "CHECK" (chèque remis à ALGERAC)
+
+    // Banque émettrice du chèque (paiement par chèque uniquement; le n° de chèque est stocké dans transactionId)
+    private String checkBank;
     
     private LocalDateTime paymentDate;
     
@@ -82,6 +85,15 @@ public class Payment {
     @Builder.Default
     private Boolean isNewOec = false;
     
+    /**
+     * true = la Consolidation a décidé que l'OEC règle ces frais à la fin de l'évaluation
+     * (le RA n'est pas bloqué dans son étude de recevabilité). Repasse à false quand le
+     * paiement devient exigible.
+     */
+    @Column(name = "deferred_to_evaluation_end")
+    @Builder.Default
+    private Boolean deferredToEvaluationEnd = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

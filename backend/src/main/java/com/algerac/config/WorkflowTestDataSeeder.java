@@ -123,7 +123,7 @@ public class WorkflowTestDataSeeder implements ApplicationRunner {
         cd1 = findUser("cd.domaine1@algeractestapp.dz");
         cd2 = findUser("cd.domaine2@algeractestapp.dz");
 
-        dag = findUser("dag@algeractestapp.dz");
+        dag = findUser("consolidation@algeractestapp.dz");
         dt = findUser("dt@algeractestapp.dz");
         dg = findUser("dg@algeractestapp.dz");
 

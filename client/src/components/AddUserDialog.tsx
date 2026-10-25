@@ -145,7 +145,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 <SelectItem value="DT">Direction Technique</SelectItem>
                 <SelectItem value="RA">Responsable Accréditation</SelectItem>
                 <SelectItem value="CD">Chef de Département</SelectItem>
-                <SelectItem value="DAG">Directeur Administratif Général</SelectItem>
+                <SelectItem value="CONSOLIDATION">Service Consolidation</SelectItem>
                 <SelectItem value="DG">Directrice Générale</SelectItem>
                 <SelectItem value="REE">Responsable d'Équipe d'Évaluation</SelectItem>
                 <SelectItem value="ET">Évaluateur Technique</SelectItem>
@@ -153,7 +153,6 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 <SelectItem value="CAS_MEMBER">Membre du CAS</SelectItem>
                 <SelectItem value="CAS_PRESIDENT">Président du CAS</SelectItem>
                 <SelectItem value="GES_COMPETENCES">Gestionnaire Compétences</SelectItem>
-                <SelectItem value="CONSOLIDATION">Service Consolidation</SelectItem>
               </SelectContent>
             </Select>
           </div>

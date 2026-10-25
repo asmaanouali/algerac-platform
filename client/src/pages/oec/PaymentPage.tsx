@@ -24,6 +24,7 @@ export default function PaymentPage() {
   const [request, setRequest] = useState<any>(null);
   const [transactionId, setTransactionId] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [method, setMethod] = useState<"transfer" | "check">("transfer");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export default function PaymentPage() {
 
       toast({
         title: "Preuve de paiement soumise",
-        description: "Le DAG va vérifier votre paiement. Vous serez notifié du résultat.",
+        description: "Le service Consolidation va vérifier votre paiement. Vous serez notifié du résultat.",
       });
 
       await loadPaymentInfo();
@@ -139,7 +140,8 @@ export default function PaymentPage() {
 
   const status = payment?.status;
   const isAwaitingFees = status === "AWAITING_FEE_SETTING";
-  const isPending = status === "PENDING" || status === "DAG_REJECTED";
+  const isDeferred = status === "PENDING" && !!payment?.deferredToEvaluationEnd;
+  const isPending = (status === "PENDING" || status === "DAG_REJECTED") && !isDeferred;
   const isProofSubmitted = status === "PROOF_SUBMITTED";
   const isValidated = status === "DAG_VALIDATED" || status === "COMPLETED";
   const isRejected = status === "DAG_REJECTED";
@@ -208,11 +210,11 @@ export default function PaymentPage() {
                   </CardTitle>
                   <CardDescription>
                     {isValidated 
-                      ? "Le paiement a été validé par le DAG. Votre dossier est en cours de traitement."
+                      ? "Le paiement a été validé par la Consolidation. Votre dossier est en cours de traitement."
                       : isProofSubmitted
-                      ? "Votre preuve de paiement a été reçue et est en cours de vérification par le DAG."
+                      ? "Votre preuve de paiement a été reçue et est en cours de vérification par la Consolidation."
                       : isAwaitingFees
-                      ? "Le DAG est en train de fixer les frais d'enregistrement de votre dossier. Vous serez notifié dès qu'ils seront prêts."
+                      ? "Le service Consolidation est en train de fixer les frais d'enregistrement de votre dossier. Vous serez notifié dès qu'ils seront prêts."
                       : "Veuillez effectuer le paiement et soumettre votre preuve pour que votre dossier soit traité."}
                   </CardDescription>
                 </CardHeader>
@@ -242,7 +244,7 @@ export default function PaymentPage() {
                   {payment && !isAwaitingFees && (
                     <div className="border rounded-lg p-4 space-y-2">
                       <div className="flex justify-between text-lg">
-                        <span className="font-medium">Montant à payer :</span>
+                        <span className="font-medium">{isDeferred ? "Montant (à payer à la fin de l'évaluation) :" : "Montant à payer :"}</span>
                         <span className="font-bold text-xl">{Number(payment.amount).toLocaleString()} {currency}</span>
                       </div>
                       <div className="flex justify-between">
@@ -277,6 +279,17 @@ export default function PaymentPage() {
                     </div>
                   )}
 
+                  {/* Frais différés à la fin de l'évaluation */}
+                  {isDeferred && (
+                    <Alert className="bg-indigo-50 border-indigo-300">
+                      <Clock className="h-4 w-4 text-indigo-600" />
+                      <AlertDescription className="text-indigo-900">
+                        <strong>Aucun paiement requis pour le moment.</strong> Ce montant est à régler à la fin de
+                        l'évaluation de votre dossier. Vous serez notifié lorsque le paiement deviendra exigible.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Overdue alert */}
                   {isOverdue && (
                     <Alert className="bg-red-50 border-red-400">
@@ -288,8 +301,50 @@ export default function PaymentPage() {
                     </Alert>
                   )}
 
-                  {/* Bank details block */}
+                  {/* Mode de paiement */}
                   {isPending && (
+                    <div className="space-y-2">
+                      <Label>Mode de paiement</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          type="button"
+                          variant={method === "transfer" ? "default" : "outline"}
+                          onClick={() => setMethod("transfer")}
+                        >
+                          <Building2 className="mr-2 h-4 w-4" />
+                          Ordre de virement
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={method === "check" ? "default" : "outline"}
+                          onClick={() => setMethod("check")}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Chèque
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Paiement par chèque : présence obligatoire chez ALGERAC */}
+                  {isPending && method === "check" && (
+                    <Alert className="bg-blue-50 border-blue-300">
+                      <AlertTriangle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-900 space-y-2">
+                        <p>
+                          <strong>Paiement par chèque :</strong> vous devez impérativement vous présenter à ALGERAC
+                          avec le chèque{payment?.invoiceNumber ? ` (réf. ${payment.invoiceNumber})` : ""}.
+                        </p>
+                        <p className="text-sm">
+                          Le service Consolidation enregistrera lui-même le chèque et validera le paiement.
+                          Aucun document n'est à déposer sur la plateforme ; vous serez notifié dès la validation.
+                        </p>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Bank details block */}
+                  {isPending && method === "transfer" && (
                     <div className="border rounded-lg overflow-hidden">
                       {isNational ? (
                         <div className="p-4 bg-blue-50/60">
@@ -334,12 +389,12 @@ export default function PaymentPage() {
                     </Alert>
                   )}
 
-                  {/* Rejet du DAG */}
+                  {/* Rejet de la Consolidation */}
                   {isRejected && payment?.dagComments && (
                     <Alert className="bg-red-50 border-red-300">
                       <XCircle className="h-4 w-4 text-red-600" />
                       <AlertDescription className="text-red-900">
-                        <strong>Paiement rejeté par le DAG :</strong> {payment.dagComments}
+                        <strong>Paiement rejeté par la Consolidation :</strong> {payment.dagComments}
                         <br />
                         <span className="text-sm mt-1 block">Veuillez soumettre une nouvelle preuve de paiement valide.</span>
                       </AlertDescription>
@@ -347,9 +402,9 @@ export default function PaymentPage() {
                   )}
 
                   {/* Formulaire de soumission de preuve */}
-                  {isPending && (
+                  {isPending && method === "transfer" && (
                     <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-                      <h3 className="font-semibold text-base">Soumettre votre preuve de paiement</h3>
+                      <h3 className="font-semibold text-base">Soumettre votre ordre de virement</h3>
                       
                       <div className="space-y-2">
                         <Label htmlFor="transactionId">Identifiant de la transaction *</Label>
@@ -365,7 +420,7 @@ export default function PaymentPage() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Preuve de paiement *</Label>
+                        <Label>Ordre de virement scanné *</Label>
                         <div
                           className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
                           onClick={() => fileInputRef.current?.click()}
@@ -392,7 +447,7 @@ export default function PaymentPage() {
                             <div className="space-y-2">
                               <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
                               <p className="text-sm text-muted-foreground">
-                                Cliquez pour joindre la preuve de paiement
+                                Cliquez pour joindre l'ordre de virement scanné
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 PDF, JPG ou PNG (reçu bancaire, confirmation de virement)
@@ -420,7 +475,7 @@ export default function PaymentPage() {
                     <Alert className="bg-blue-50 border-blue-200">
                       <Clock className="h-4 w-4 text-blue-600" />
                       <AlertDescription className="text-blue-900">
-                        Votre preuve de paiement est en cours de vérification par le DAG. 
+                        Votre preuve de paiement est en cours de vérification par la Consolidation. 
                         Vous serez notifié dès que la vérification sera terminée.
                       </AlertDescription>
                     </Alert>
@@ -445,7 +500,7 @@ export default function PaymentPage() {
                   >
                     Retour à la facturation
                   </Button>
-                  {isPending && (
+                  {isPending && method === "transfer" && (
                     <Button 
                       onClick={handleSubmitProof} 
                       disabled={processing || !transactionId.trim() || !proofFile}

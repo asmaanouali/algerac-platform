@@ -92,12 +92,12 @@ const routeTitles: Array<[RegExp, string]> = [
   [/^\/cd\/surveillance$/, "Surveillance"],
   [/^\/cd\/entretiens-candidats$/, "Entretiens candidats"],
 
-  [/^\/dag\/?$/, "Tableau de bord DAG"],
-  [/^\/dag\/dashboard$/, "Tableau de bord DAG"],
-  [/^\/dag\/paiements$/, "Suivi des paiements"],
-  [/^\/dag\/frais-enregistrement$/, "Frais d'enregistrement"],
-  [/^\/dag\/fixation-devis$/, "Fixation des devis"],
-  [/^\/dag\/candidatures-oec$/, "Frais d'enregistrement"],
+  [/^\/consolidation\/?$/, "Tableau de bord Consolidation"],
+  [/^\/consolidation\/dashboard$/, "Tableau de bord Consolidation"],
+  [/^\/consolidation\/paiements$/, "Suivi des paiements"],
+  [/^\/consolidation\/frais-enregistrement$/, "Frais d'enregistrement"],
+  [/^\/consolidation\/fixation-devis$/, "Fixation des devis"],
+  [/^\/consolidation\/candidatures-oec$/, "Frais d'enregistrement"],
 
   [/^\/dt\/?$/, "Tableau de bord DT"],
   [/^\/dt\/dashboard$/, "Tableau de bord DT"],

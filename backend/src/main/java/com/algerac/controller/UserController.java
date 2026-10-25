@@ -11,6 +11,7 @@ import com.algerac.repository.RequestRepository;
 import com.algerac.repository.UserRepository;
 import com.algerac.service.AuthService;
 import com.algerac.service.EmailService;
+import com.algerac.service.OecOnboardingService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class UserController {
     private final RequestRepository requestRepository;
     private final EmailService emailService;
     private final AuthService authService;
+    private final OecOnboardingService onboardingService;
 
     /**
      * OEC connecté : récupérer son logo
@@ -293,12 +295,13 @@ public class UserController {
     }
 
     // =====================================================================
-    // Nouveaux OEC sans compte — inscrits via /oecregister, validés par DT
+    // =====================================================================
+    // Nouveaux OEC sans compte — inscrits via /oecregister (étapes 1 à 3 du DOC 1)
     // =====================================================================
 
     /**
-     * Retourne les utilisateurs OEC en statut PENDING dont le DT a validé la demande.
-     * Ces utilisateurs ont rempli le formulaire OECRegister sans avoir de compte existant.
+     * Retourne les OEC en statut PENDING en attente de création de compte : ils ont transmis
+     * les étapes 1 à 3 du formulaire OECRegister sans avoir de compte existant.
      */
     @GetMapping("/pending-new-oec")
     public ResponseEntity<?> getPendingNewOec(HttpSession session) {
@@ -306,7 +309,12 @@ public class UserController {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
         }
+        User caller = userRepository.findById(userId).orElse(null);
+        if (caller == null || caller.getRole() != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux administrateurs"));
+        }
 
+        // Exclut les anciennes demandes encore en cours de vérification DT (flux antérieur à l'inscription en deux temps)
         List<RequestStatus> excluded = List.of(
                 RequestStatus.DRAFT,
                 RequestStatus.PENDING_DT_REVIEW,
@@ -325,6 +333,7 @@ public class UserController {
             m.put("telephone", u.getPhone());
             m.put("nomRepresentant", u.getNomRepresentant());
             m.put("fonction", u.getFonction());
+            m.put("emailProfessionnel", u.getEmailProfessionnel());
             m.put("porteeAccreditation", u.getPorteeAccreditation());
             m.put("typeDemande", u.getTypeDemande());
             m.put("createdAt", u.getCreatedAt());
@@ -335,11 +344,10 @@ public class UserController {
     }
 
     /**
-     * Crée le compte d'un OEC inscrit via /oecregister dont le DT a validé la demande :
-     * active le User (PENDING → APPROVED), génère un mot de passe temporaire et
-     * envoie l'email de bienvenue avec les identifiants.
+     * Crée le compte d'un OEC inscrit via /oecregister : active le User (PENDING → APPROVED),
+     * génère un mot de passe temporaire, envoie les identifiants par email et démarre le délai
+     * de 15 jours pendant lequel l'OEC doit compléter le reste de son dossier.
      */
-    @Transactional
     @PostMapping("/{id}/activate-oec")
     public ResponseEntity<?> activateNewOec(@PathVariable Long id, HttpSession session) {
         Long callerId = (Long) session.getAttribute("userId");
@@ -355,24 +363,11 @@ public class UserController {
         if (oec == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Utilisateur introuvable"));
         }
-        if (oec.getRole() != UserRole.OEC) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Cet utilisateur n'est pas un OEC"));
-        }
-        if (oec.getStatus() != UserStatus.PENDING) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Ce compte est déjà actif ou a été rejeté"));
-        }
 
-        // Générer un mot de passe sécurisé de 12 caractères
-        String rawPassword = generateSecurePassword();
-        oec.setPassword(passwordEncoder.encode(rawPassword));
-        oec.setStatus(UserStatus.APPROVED);
-        userRepository.save(oec);
-
-        // Envoyer l'email de bienvenue avec les identifiants
         try {
-            emailService.sendOECAccountCredentials(oec, rawPassword);
-        } catch (Exception e) {
-            log.warn("Envoi email de bienvenue OEC {} échoué : {}", oec.getEmail(), e.getMessage());
+            oec = onboardingService.activateAccount(oec);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
 
         log.info("Compte OEC activé par admin {} pour {} ({})", callerId, oec.getOrganizationName(), oec.getEmail());
@@ -382,11 +377,32 @@ public class UserController {
         ));
     }
 
-    private String generateSecurePassword() {
-        String chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
-        java.security.SecureRandom rng = new java.security.SecureRandom();
-        StringBuilder sb = new StringBuilder(12);
-        for (int i = 0; i < 12; i++) sb.append(chars.charAt(rng.nextInt(chars.length())));
-        return sb.toString();
+    /**
+     * Réactive un compte OEC suspendu pour dossier incomplet et relance un délai de 15 jours.
+     */
+    @PostMapping("/{id}/reactivate-oec")
+    public ResponseEntity<?> reactivateSuspendedOec(@PathVariable Long id, HttpSession session) {
+        Long callerId = (Long) session.getAttribute("userId");
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Non authentifié"));
+        }
+        User caller = userRepository.findById(callerId).orElse(null);
+        if (caller == null || caller.getRole() != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Réservé aux administrateurs"));
+        }
+
+        User oec = userRepository.findById(id).orElse(null);
+        if (oec == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Utilisateur introuvable"));
+        }
+
+        try {
+            oec = onboardingService.reactivateSuspendedAccount(oec);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+
+        log.info("Compte OEC {} réactivé par admin {}", oec.getEmail(), callerId);
+        return ResponseEntity.ok(ApiResponse.success("Compte réactivé", UserDTO.fromUser(oec)));
     }
 }

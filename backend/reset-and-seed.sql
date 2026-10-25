@@ -61,11 +61,11 @@ VALUES ('dg@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalA
         'Farida Benmansour', 'DG', 'ALGERAC', '0555000002', NOW(), 'APPROVED', false, false);
 
 -- ============================================================
--- DAG - Directeur Administratif Général (1)
+-- CONSOLIDATION (1)
 -- ============================================================
 INSERT INTO users (email, password, full_name, role, organization_name, phone, created_at, status, blacklisted, starred)
-VALUES ('dag@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
-        'Karim Mebarki', 'DAG', 'ALGERAC', '0555000003', NOW(), 'APPROVED', false, false);
+VALUES ('consolidation@algeractestapp.dz', '$2a$10$AfEgCB5hUnlvbHu/x/MtguEWwY3xnfsmehkKWalAA1LXGnNUhFTtS',
+        'Karim Mebarki', 'CONSOLIDATION', 'ALGERAC', '0555000003', NOW(), 'APPROVED', false, false);
 
 -- ============================================================
 -- DT - Direction Technique (1)
@@ -282,7 +282,7 @@ INSERT INTO users (email, password, full_name, role, organization_name, phone, c
 -- Résumé : 
 --   1 ADMIN
 --   1 DG
---   1 DAG
+--   1 CONSOLIDATION
 --   1 DT
 --   1 GES_COMPETENCES
 --   1 RQ

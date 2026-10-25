@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -7,8 +7,12 @@ interface ProtectedRouteProps {
   allowedRoles?: string[];
 }
 
+// Nouvel OEC dont le dossier est à compléter : seule cette page est accessible
+const DOSSIER_COMPLETION_PATH = "/oec/completer-dossier";
+
 export default function ProtectedRoute({ component: Component, allowedRoles }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -20,6 +24,10 @@ export default function ProtectedRoute({ component: Component, allowedRoles }: P
 
   if (!user) {
     return <Redirect to="/" />;
+  }
+
+  if ((user as any).role?.toLowerCase() === "oec" && (user as any).dossierPending && location !== DOSSIER_COMPLETION_PATH) {
+    return <Redirect to={DOSSIER_COMPLETION_PATH} />;
   }
 
   if (allowedRoles && allowedRoles.length > 0) {

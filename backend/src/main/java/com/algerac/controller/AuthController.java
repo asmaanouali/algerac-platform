@@ -409,7 +409,8 @@ public class AuthController {
         }
         
         User user = authService.getUserById(userId);
-        if (user == null) {
+        if (user == null || user.getStatus() == com.algerac.model.UserStatus.SUSPENDED) {
+            session.invalidate();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         
@@ -479,27 +480,34 @@ public class AuthController {
             // même transaction : l'un ne peut pas exister sans l'autre)
             User user = authService.registerOECWithRequest(request);
             
-            // Envoyer email de confirmation à l'OEC
-            // L'échec d'envoi ne doit pas annuler l'inscription : le compte est déjà créé
-            try {
-                emailService.sendOECRegistrationConfirmation(user);
-            } catch (Exception e) {
-                log.error("Email de confirmation OEC non envoyé à {} : {}", user.getEmail(), e.getMessage());
-            }
+            // Emails envoyés en arrière-plan : le SMTP est lent/instable (retries) et ne doit
+            // ni bloquer la réponse ni annuler l'inscription (le compte est déjà créé)
+            java.util.List<String> adminEmails = userRepository.findByRole(com.algerac.model.UserRole.ADMIN).stream()
+                    .map(User::getEmail)
+                    .toList();
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                // Accusé de réception à l'OEC
+                try {
+                    emailService.sendOECRegistrationConfirmation(user);
+                } catch (Exception e) {
+                    log.error("Email de confirmation OEC non envoyé à {} : {}", user.getEmail(), e.getMessage());
+                }
+                // L'admin doit créer le compte de l'OEC
+                for (String adminEmail : adminEmails) {
+                    try {
+                        emailService.sendAdminNewOECRegistration(adminEmail, user);
+                    } catch (Exception e) {
+                        log.error("Notification admin (nouvel OEC) non envoyée à {} : {}", adminEmail, e.getMessage());
+                    }
+                }
+            });
             
-            // Envoyer notification au DT (sans DOC1 en pièce jointe)
-            try {
-                emailService.sendDTNewOECNotification(user);
-            } catch (Exception e) {
-                log.error("Notification DT (nouvel OEC) non envoyée : {}", e.getMessage());
-            }
-            
-            log.info("Candidature OEC créée avec succès (User PENDING) - ID: {}, Organisme: {}", 
+            log.info("Inscription OEC enregistrée (User PENDING, en attente de création de compte) - ID: {}, Organisme: {}", 
                     user.getId(), user.getOrganizationName());
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
-                            "Votre demande d'accréditation a bien été enregistrée. Vous recevrez un email dès qu'elle sera examinée par la Direction Technique.",
+                            "Votre demande a bien été reçue. Un accusé de réception vous a été envoyé par email ; vos identifiants de connexion vous seront transmis après la création de votre compte.",
                             user.getId()
                     ));
         } catch (RuntimeException e) {

@@ -23,6 +23,7 @@ interface Payment {
   dueDate?: string;
   currency?: string;
   invoiceNumber?: string;
+  deferredToEvaluationEnd?: boolean;
   request?: {
     id: number;
     referenceNumber?: string;
@@ -232,9 +233,13 @@ export default function PaymentsListPage() {
                               <div className="text-xs text-amber-600">J−{daysRemaining}</div>
                             )}
                           </TableCell>
-                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                          <TableCell>
+                            {payment.status === 'PENDING' && payment.deferredToEvaluationEnd
+                              ? <Badge className="bg-indigo-100 text-indigo-800">À payer à la fin de l'évaluation</Badge>
+                              : getStatusBadge(payment.status)}
+                          </TableCell>
                           <TableCell className="text-right">
-                            {(payment.status === 'PENDING' || payment.status === 'DAG_REJECTED') && (
+                            {(payment.status === 'PENDING' || payment.status === 'DAG_REJECTED') && !payment.deferredToEvaluationEnd && (
                               <Button
                                 size="sm"
                                 onClick={() => setLocation(`/oec/payment/${payment.requestId}`)}

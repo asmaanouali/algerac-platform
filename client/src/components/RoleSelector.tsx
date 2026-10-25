@@ -19,7 +19,7 @@ const roleIcons: Record<string, string> = {
   OEC: '🏢',
   EXPERT: '🎓',
   CD: '📊',
-  DAG: '💰',
+  CONSOLIDATION: '💰',
   REE: '👨‍🔬',
   ET: '🔍',
   EQ: '✅',
@@ -29,7 +29,6 @@ const roleIcons: Record<string, string> = {
   GES_COMPETENCES: '📚',
   RQ: '📝',
   SUP: '👁️',
-  CONSOLIDATION: '🧾',
   EVALUATEUR: '🔎',
   FORMATEUR: '📖',
   EF: '🌱',
@@ -42,7 +41,7 @@ const roleColors: Record<string, string> = {
   OEC: 'from-green-500 to-green-700',
   EXPERT: 'from-amber-500 to-amber-700',
   CD: 'from-indigo-500 to-indigo-700',
-  DAG: 'from-emerald-500 to-emerald-700',
+  CONSOLIDATION: 'from-emerald-500 to-emerald-700',
   REE: 'from-cyan-500 to-cyan-700',
   ET: 'from-orange-500 to-orange-700',
   EQ: 'from-teal-500 to-teal-700',
@@ -52,7 +51,6 @@ const roleColors: Record<string, string> = {
   GES_COMPETENCES: 'from-sky-500 to-sky-700',
   RQ: 'from-fuchsia-500 to-fuchsia-700',
   SUP: 'from-stone-500 to-stone-700',
-  CONSOLIDATION: 'from-pink-500 to-pink-700',
   EF: 'from-lime-500 to-lime-700',
 };
 

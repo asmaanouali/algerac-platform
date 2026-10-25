@@ -16,9 +16,9 @@
       "description": "Gestion des compétences email"
     },
     {
-      "name": "app.dag.email",
+      "name": "app.consolidation.email",
       "type": "java.lang.String",
-      "description": "Direction Administrative et Générale email"
+      "description": "Service Consolidation email"
     }
   ]
 }

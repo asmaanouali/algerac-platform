@@ -25,7 +25,7 @@ const roleColors: Record<string, string> = {
   OEC: 'bg-green-100 text-green-700',
   EXPERT: 'bg-amber-100 text-amber-700',
   CD: 'bg-indigo-100 text-indigo-700',
-  DAG: 'bg-emerald-100 text-emerald-700',
+  CONSOLIDATION: 'bg-emerald-100 text-emerald-700',
   REE: 'bg-cyan-100 text-cyan-700',
   ET: 'bg-orange-100 text-orange-700',
   EQ: 'bg-teal-100 text-teal-700',
@@ -35,7 +35,6 @@ const roleColors: Record<string, string> = {
   GES_COMPETENCES: 'bg-sky-100 text-sky-700',
   RQ: 'bg-fuchsia-100 text-fuchsia-700',
   SUP: 'bg-stone-100 text-stone-700',
-  CONSOLIDATION: 'bg-pink-100 text-pink-700',
 };
 
 const roleIcons: Record<string, string> = {
@@ -45,7 +44,7 @@ const roleIcons: Record<string, string> = {
   OEC: '🏢',
   EXPERT: '🎓',
   CD: '📊',
-  DAG: '💰',
+  CONSOLIDATION: '💰',
   REE: '👨‍🔬',
   ET: '🔍',
   EQ: '✅',
@@ -55,7 +54,6 @@ const roleIcons: Record<string, string> = {
   GES_COMPETENCES: '📚',
   RQ: '📝',
   SUP: '👁️',
-  CONSOLIDATION: '🧾',
 };
 
 export function RoleSwitcher({ currentRole, availableRoles, onSwitchRole, className }: RoleSwitcherProps) {

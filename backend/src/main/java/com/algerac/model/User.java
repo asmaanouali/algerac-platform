@@ -177,6 +177,20 @@ public class User {
     private UserStatus status; // PENDING, INTERVIEW_SCHEDULED, INTERVIEW_CONFIRMED, INTERVIEW_COMPLETED, CANDIDATURE_APPROVED, APPROVED, REJECTED
     private LocalDateTime dateApprobation;
     private String rejectionReason; // Motif de refus si rejeté
+
+    // OEC inscrit via le formulaire public (étapes 1-3) : délai pour compléter le DOC1 après création du compte
+    private LocalDateTime dossierDeadline;
+    private LocalDateTime dossierCompletedAt;
+
+    @JsonIgnore
+    public boolean isDossierPending() {
+        return role == UserRole.OEC && dossierDeadline != null && dossierCompletedAt == null;
+    }
+
+    @JsonIgnore
+    public boolean isDossierOverdue() {
+        return isDossierPending() && LocalDateTime.now().isAfter(dossierDeadline);
+    }
     
     // INTERVIEW FIELDS
     private LocalDateTime interviewDate;

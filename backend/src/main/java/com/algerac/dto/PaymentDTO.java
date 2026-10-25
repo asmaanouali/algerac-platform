@@ -20,6 +20,7 @@ public class PaymentDTO {
     private String status;
     private String transactionId;
     private String paymentMethod;
+    private String checkBank;
     private LocalDateTime paymentDate;
     private LocalDateTime createdAt;
     
@@ -36,4 +37,6 @@ public class PaymentDTO {
     private LocalDateTime feeSetDate;
     private String currency;
     private String invoiceNumber;
+    /** true = frais à régler à la fin de l'évaluation (pas maintenant) */
+    private Boolean deferredToEvaluationEnd;
 }

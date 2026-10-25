@@ -119,7 +119,7 @@ public class QuotationService {
         }
 
         if (quotation.getStatus() != QuotationStatus.DRAFT) {
-            throw new RuntimeException("Ce devis ne peut plus être modifié car il a déjà été envoyé au DAG");
+            throw new RuntimeException("Ce devis ne peut plus être modifié car il a déjà été envoyé à la Consolidation");
         }
 
         boolean newlyRequestedCdHelp = Boolean.TRUE.equals(cdHelpRequested)
@@ -181,7 +181,7 @@ public class QuotationService {
         
         notificationService.notifyDAGNewQuotation(quotation);
         
-        log.info("Devis {} envoyé au DAG", quotation.getQuotationNumber());
+        log.info("Devis {} envoyé à la Consolidation", quotation.getQuotationNumber());
         
         return quotation;
     }
@@ -213,8 +213,8 @@ public class QuotationService {
                                             java.time.LocalDate devisEstimatifDate,
                                             String siteName, String siteAddress,
                                             User currentUser) {
-        if (currentUser.getRole() != UserRole.DAG) {
-            throw new RuntimeException("Seuls les DAG peuvent approuver les devis");
+        if (currentUser.getRole() != UserRole.CONSOLIDATION) {
+            throw new RuntimeException("Seul le service Consolidation peut approuver les devis");
         }
 
         Quotation quotation = quotationRepository.findById(quotationId)
@@ -269,7 +269,7 @@ public class QuotationService {
         // Notifier le RA que le devis est approuvé (sans le montant)
         notificationService.notifyRAQuotationApproved(quotation);
         
-        log.info("Devis {} approuvé par le DAG {}", 
+        log.info("Devis {} approuvé par la Consolidation {}", 
                 quotation.getQuotationNumber(), currentUser.getFullName());
         
         return quotation;
@@ -291,7 +291,7 @@ public class QuotationService {
         // Vérifier que le devis est approuvé par le DAG
         List<Quotation> quotations = quotationRepository.findByRequest_Id(requestId);
         if (quotations.isEmpty() || quotations.stream().noneMatch(q -> q.getStatus() == QuotationStatus.APPROVED_BY_DAG)) {
-            throw new RuntimeException("Le devis doit être approuvé par le DAG avant de demander la validation CD");
+            throw new RuntimeException("Le devis doit être approuvé par la Consolidation avant de demander la validation CD");
         }
         
         // Vérifier que la convention est créée

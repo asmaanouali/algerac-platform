@@ -16,7 +16,7 @@ const PENDING_WITH_LABELS: Record<string, string> = {
   DT:  "Direction Technique",
   CD:  "Chef de Département",
   RA:  "Responsable d'Accréditation",
-  DAG: "Direction Administrative et Générale",
+  CONSOLIDATION: "Service Consolidation",
   DG:  "Direction Générale",
   CAS: "Commission d'Accréditation et de Supervision",
   OEC: "Votre organisme",

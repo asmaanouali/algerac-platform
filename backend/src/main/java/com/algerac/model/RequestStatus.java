@@ -3,6 +3,8 @@ package com.algerac.model;
 public enum RequestStatus {
     // Phase initiale
     DRAFT,                              // Brouillon
+    PENDING_ACCOUNT_CREATION,           // Nouvel OEC : étapes 1-3 reçues, en attente de création du compte par l'admin
+    PENDING_DOSSIER_COMPLETION,         // Nouvel OEC : compte créé, doit compléter le reste du DOC1 (délai 15 jours)
     SUBMITTED,                          // Soumise par OEC
     PENDING_DT_REVIEW,                  // En attente de vérification des documents par DT
     DT_APPROVED,                        // Documents validés par DT, en attente d'assignation CD

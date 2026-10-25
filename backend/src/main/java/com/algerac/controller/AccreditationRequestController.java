@@ -297,6 +297,60 @@ public class AccreditationRequestController {
     }
     
     /**
+     * OEC (nouvel inscrit) : récupérer la demande dont il doit compléter le dossier (étapes 4 à 10)
+     */
+    @GetMapping("/my-dossier-to-complete")
+    public ResponseEntity<?> getMyDossierToComplete(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Non authentifié"));
+        }
+        return requestService.getRequestsByOec(userId).stream()
+                .filter(r -> r.getStatus() == RequestStatus.PENDING_DOSSIER_COMPLETION)
+                .findFirst()
+                .<ResponseEntity<?>>map(r -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("type", r.getType());
+                    m.put("domain", r.getDomain());
+                    m.put("description", r.getDescription());
+                    return ResponseEntity.ok(m);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Aucun dossier à compléter")));
+    }
+
+    /**
+     * OEC (nouvel inscrit) : compléter le dossier (DOC 1) et le transmettre à la Direction Technique
+     */
+    @PutMapping("/{id}/complete-dossier")
+    public ResponseEntity<ApiResponse> completeDossier(
+            @PathVariable Long id,
+            @Valid @RequestBody NewRequestDTO dto,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            AccreditationRequest request = requestService.completeDossier(id, dto, currentUser);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Dossier complété avec succès. La Direction Technique va vérifier vos documents.",
+                    request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * OEC: Soumettre une demande avec paiement automatique (workflow simplifié)
      * Crée et complète automatiquement le paiement
      */
@@ -483,6 +537,31 @@ public class AccreditationRequestController {
         }
     }
     
+    /**
+     * OEC: Corriger le dossier rejeté par la DT et le resoumettre
+     */
+    @PutMapping("/{id}/correct-after-dt")
+    public ResponseEntity<ApiResponse> correctAfterDTRejection(
+            @PathVariable Long id,
+            @Valid @RequestBody NewRequestDTO dto,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) return unauthorized();
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            AccreditationRequest request = requestService.correctAndResubmitAfterDTRejection(id, dto, currentUser);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Demande corrigée et resoumise avec succès. La Direction Technique va vérifier vos documents corrigés.",
+                    request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     /**
      * CD: Assigner à un RA
      */

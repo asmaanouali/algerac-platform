@@ -1,6 +1,6 @@
 /**
  * Libellés et messages destinés à l'OEC uniquement.
- * Masque le jargon interne ALGERAC (DT, CD, RA, DAG, DG…).
+ * Masque le jargon interne ALGERAC (DT, CD, RA, Consolidation, DG…).
  */
 
 export type OecBadgeVariant = "default" | "secondary" | "destructive" | "outline";
@@ -24,6 +24,20 @@ const STATUS_DISPLAY: Record<string, OecStatusDisplay> = {
     message: "Complétez et soumettez votre demande.",
     variant: "secondary",
     color: "bg-gray-100 text-gray-800",
+    phase: "Soumission",
+  },
+  PENDING_ACCOUNT_CREATION: {
+    label: "Demande reçue",
+    message: "Votre demande a bien été reçue. Votre compte est en cours de création par ALGERAC.",
+    variant: "outline",
+    color: "bg-blue-100 text-blue-800",
+    phase: "Soumission",
+  },
+  PENDING_DOSSIER_COMPLETION: {
+    label: "Dossier à compléter",
+    message: "Complétez votre dossier de demande dans le délai imparti (15 jours), sinon votre compte sera suspendu.",
+    variant: "destructive",
+    color: "bg-amber-100 text-amber-800",
     phase: "Soumission",
   },
   SUBMITTED: {
@@ -841,7 +855,7 @@ const STATUS_DISPLAY: Record<string, OecStatusDisplay> = {
 };
 
 const INTERNAL_ROLE_PATTERN =
-  /\b(DT|CD|RA|DAG|DG|REE|CAS|GES[_ ]?COMPETENCES|Chef de Département|Responsable d'Accréditation|Direction Technique|Direction Administrative|Direction Générale)\b/gi;
+  /\b(DT|CD|RA|CONSOLIDATION|DG|REE|CAS|GES[_ ]?COMPETENCES|Chef de Département|Responsable d'Accréditation|Direction Technique|Direction Administrative|Direction Générale)\b/gi;
 
 const PHASE_LABELS: Record<string, string> = {
   INITIAL: "Soumission",

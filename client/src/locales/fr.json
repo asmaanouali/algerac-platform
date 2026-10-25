@@ -210,7 +210,6 @@
     "OEC": "Organisme d'Évaluation de la Conformité",
     "EXPERT": "Expert",
     "CD": "Chef de Département",
-    "DAG": "Direction Administrative et Financière",
     "REE": "Responsable Équipe Évaluation",
     "ET": "Évaluateur Technique",
     "EQ": "Évaluateur Qualité",
@@ -223,6 +222,7 @@
     "CONSOLIDATION": "Service Consolidation"
   },
   "nav": {
+    "completeDossier": "Compléter mon dossier",
     "dashboard": "Tableau de bord",
     "newRequest": "Nouvelle Demande",
     "myRequests": "Mes Demandes",
@@ -491,8 +491,8 @@
     "validated": "Payement validé",
     "awaitingValidation": "En attente de validation"
   },
-  "dag": {
-    "title": "Dashboard - DAG",
+  "consolidation": {
+    "title": "Dashboard - Consolidation",
     "description": "Établissez les devis sur la base des demandes soumises par les Responsables d'Accréditation",
     "pendingQuotes": "Demandes de devis en attente",
     "establishQuote": "Établir le devis",
@@ -1009,7 +1009,7 @@
       "gapsNeedActionPlan": "Des écarts nécessitent un plan d'action",
       "tenDayDeadline": "Délai : 10 jours",
       "paymentDue": "Paiement à effectuer",
-      "paymentRejected": "Preuve de paiement rejetée par le DAG",
+      "paymentRejected": "Preuve de paiement rejetée par la Consolidation",
       "amountDue": "Montant : {{amount}} {{currency}}",
       "payNow": "Payer",
       "handleNow": "Traiter maintenant",
@@ -1198,8 +1198,8 @@
     "receivedDate": "Reçue le",
     "statusLabel": "Statut"
   },
-  "dag_page": {
-    "dashboardTitle": "Tableau de bord DAG",
+  "consolidation_page": {
+    "dashboardTitle": "Tableau de bord Consolidation",
     "dashboardSubtitle": "Établir des devis sur la base des soumissions RA.",
     "pendingQuotes": "Devis en attente",
     "processedQuotes": "Traités",
@@ -2010,11 +2010,13 @@
   },
   "oecRegister": {
     "title": "Demande d'Accréditation OEC",
-    "subtitle": "Créez votre compte et soumettez votre demande d'accréditation en une seule étape.",
+    "subtitle": "Envoyez les étapes 1 à 3 de votre demande d'accréditation. Vous compléterez le reste du formulaire après la création de votre compte.",
+    "twoStageNotice": "L'inscription se fait en deux temps : remplissez les étapes 1 à 3 ci-dessous et envoyez-les. Vous recevrez un accusé de réception, puis ALGERAC créera votre compte et vous enverra vos identifiants par email. Vous aurez alors 15 jours pour compléter le reste du formulaire, faute de quoi votre compte sera suspendu.",
+    "confirmDesc": "Confirmez-vous l'envoi des étapes 1 à 3 de votre demande ? Vous compléterez le reste du formulaire une fois votre compte créé.",
     "goToLogin": "Aller à la connexion",
-    "successTitle": "Demande soumise avec succès !",
-    "successDesc": "Votre demande d'accréditation a bien été enregistrée.",
-    "successInfo": "La Direction Technique va examiner votre dossier. Vous serez notifié par email dès qu'une décision sera prise. Une fois votre demande approuvée, votre compte sera activé.",
+    "successTitle": "Demande reçue !",
+    "successDesc": "Nous accusons réception de votre demande d'accréditation. Un accusé de réception vous a été envoyé par email.",
+    "successInfo": "ALGERAC va créer votre compte et vous envoyer vos identifiants par email. Vous disposerez alors de 15 jours pour compléter le reste du formulaire de demande, faute de quoi votre compte sera suspendu.",
     "accountSection": "Création de votre compte",
     "accountSectionHelp": "Ces identifiants vous permettront d'accéder à votre espace une fois votre demande approuvée par la Direction Technique.",
     "email": "Email de connexion",
@@ -2121,6 +2123,27 @@
         "deadline": "Échéance"
       }
     }
+  },
+  "completeDossier": {
+    "title": "Compléter mon dossier d'accréditation",
+    "subtitle": "Vos informations générales (étapes 1 à 3) ont été enregistrées. Complétez les étapes 4 à 10 pour transmettre votre dossier.",
+    "deadlineBanner": "Il vous reste {{days}} jour(s) pour compléter votre dossier (échéance : {{date}}).",
+    "deadlineBannerNoDate": "Vous devez compléter votre dossier dans un délai de 15 jours.",
+    "suspensionWarning": "Passé ce délai, votre compte sera suspendu. En attendant, vous ne pouvez accéder qu'à ce formulaire.",
+    "loadError": "Aucun dossier à compléter n'a été trouvé.",
+    "successTitle": "Dossier transmis !",
+    "successDesc": "Votre dossier est complet et a été transmis à ALGERAC pour vérification. Votre compte est désormais pleinement actif.",
+    "goToDashboard": "Accéder à mon tableau de bord"
+  },
+  "correctDossier": {
+    "title": "Corriger mon dossier d'accréditation",
+    "subtitle": "Modifiez les informations demandées par la Direction Technique, puis renvoyez votre dossier à l'étape 10.",
+    "rejectedBanner": "Dossier rejeté par la Direction Technique — motif :",
+    "noComment": "Aucun commentaire n'a été fourni. Veuillez contacter ALGERAC pour plus de détails.",
+    "loadError": "Cette demande ne peut pas être corrigée.",
+    "alreadyAttached": "Fichier déjà joint : {{name}} (joignez-en un nouveau pour le remplacer)",
+    "successTitle": "Dossier corrigé et renvoyé !",
+    "successDesc": "Votre dossier corrigé a été transmis à la Direction Technique pour une nouvelle vérification."
   },
   "nrp": {
     "title": "Nouvelle demande d'accréditation",

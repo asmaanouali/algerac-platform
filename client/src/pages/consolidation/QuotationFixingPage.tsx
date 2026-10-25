@@ -49,8 +49,8 @@ interface Quotation {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   DRAFT:                 { label: "Brouillon", color: "bg-slate-200 text-slate-700" },
-  SENT_TO_DAG:           { label: "En attente DAG", color: "bg-amber-500 text-white" },
-  APPROVED_BY_DAG:       { label: "Établi par DAG", color: "bg-blue-500 text-white" },
+  SENT_TO_DAG:           { label: "En attente Consolidation", color: "bg-amber-500 text-white" },
+  APPROVED_BY_DAG:       { label: "Établi par Consolidation", color: "bg-blue-500 text-white" },
   PENDING_CD_VALIDATION: { label: "Validation CD", color: "bg-indigo-500 text-white" },
   CD_VALIDATED:          { label: "Validé CD", color: "bg-teal-600 text-white" },
   SENT_TO_OEC:           { label: "Envoyé à l'OEC", color: "bg-violet-600 text-white" },
@@ -69,7 +69,7 @@ function formatAmount(amount?: number) {
   return new Intl.NumberFormat("fr-DZ", { style: "currency", currency: "DZD", maximumFractionDigits: 0 }).format(amount);
 }
 
-export default function DAGQuotationFixingPage() {
+export default function ConsolidationQuotationFixingPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [pending, setPending] = useState<Quotation[]>([]);
@@ -272,7 +272,7 @@ export default function DAGQuotationFixingPage() {
                     <ClipboardCheck className="h-5 w-5" /> Devis
                   </CardTitle>
                   <CardDescription>
-                    Devis envoyés par les RA et devis déjà établis par la DAG.
+                    Devis envoyés par les RA et devis déjà établis par la Consolidation.
                   </CardDescription>
                 </div>
                 <div className="relative w-full md:w-72">

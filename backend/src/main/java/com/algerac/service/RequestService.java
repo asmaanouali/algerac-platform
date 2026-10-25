@@ -90,20 +90,8 @@ public class RequestService {
         AccreditationRequest request = requestRepository.save(builder.build());
 
         // PRO 26 §5.2-2 : persister les sites satellites comme entités enfants
-        if (isMultisite && ms != null && ms.getSatelliteSites() != null) {
-            for (MultisiteRequestPayloadDTO.SatelliteSiteInputDTO s : ms.getSatelliteSites()) {
-                if (s == null || s.getName() == null || s.getName().isBlank()) continue;
-                SatelliteSite site = SatelliteSite.builder()
-                        .request(request)
-                        .name(s.getName())
-                        .address(s.getAddress())
-                        .activities(s.getActivities())
-                        .personnel(s.getPersonnel())
-                        .isInScope(s.getIsInScope() == null ? Boolean.TRUE : s.getIsInScope())
-                        .status(SatelliteSiteStatus.ACTIVE)
-                        .build();
-                satelliteSiteRepository.save(site);
-            }
+        if (isMultisite && ms != null) {
+            saveSatelliteSites(request, ms);
         }
 
         log.info("Nouvelle demande créée en brouillon par l'OEC {} (multisite={})",
@@ -113,38 +101,124 @@ public class RequestService {
     }
 
     /**
-     * Création + soumission directe d'une demande pour un OEC qui n'a pas encore
-     * de compte (inscription via /oecregister). La demande est immédiatement placée
-     * en PENDING_DT_REVIEW pour être visible dans la liste des demandes du DT.
+     * Création de la demande d'un OEC qui n'a pas encore de compte (inscription via /oecregister,
+     * étapes 1 à 3 du DOC1). La demande attend la création du compte par l'admin ; elle n'est
+     * transmise à la DT qu'une fois le dossier complété par l'OEC (voir completeDossier).
      */
     @Transactional
-    public AccreditationRequest createAndSubmitForNewOec(User pendingOec, RequestType type, String domain, String description) {
+    public AccreditationRequest createForNewOec(User pendingOec, RequestType type, String domain, String description) {
         AccreditationRequest request = AccreditationRequest.builder()
                 .oec(pendingOec)
                 .type(type != null ? type : RequestType.INITIAL)
                 .isNewOec(true)
                 .domain(domain != null && !domain.isBlank() ? domain : "À définir")
                 .description(description)
-                .status(RequestStatus.PENDING_DT_REVIEW)
-                .progress(5)
+                .status(RequestStatus.PENDING_ACCOUNT_CREATION)
+                .progress(2)
                 .currentPhase("INITIAL")
-                .currentStep("Dossier en cours d'examen")
-                .nextAction("Votre dossier est en cours d'examen par ALGERAC.")
-                .pendingWith("DT")
+                .currentStep("Demande reçue - création du compte en cours")
+                .nextAction("ALGERAC va créer votre compte et vous envoyer vos identifiants par email.")
+                .pendingWith("ADMIN")
                 .submissionDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .sequenceNumber(nextSequenceNumber())
                 .build();
 
         request = requestRepository.save(request);
-        log.info("Demande créée+soumise (nouvel OEC sans compte) #{} pour {}",
+        log.info("Demande créée (nouvel OEC sans compte) #{} pour {}",
                 request.getSequenceNumber(),
                 pendingOec.getOrganizationName());
 
-        // Notifier le DT qu'une nouvelle demande nécessite la vérification des documents
+        notificationService.notifyAdminNewOecRegistration(request);
+
+        return request;
+    }
+
+    /**
+     * Nouvel OEC (compte créé par l'admin) : complète le DOC1 (étapes 4 à 10) dans le délai imparti.
+     * La demande est alors transmise à la DT, comme une soumission classique.
+     */
+    @Transactional
+    public AccreditationRequest completeDossier(Long requestId, NewRequestDTO dto, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        if (request.getOec() == null || !request.getOec().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à modifier cette demande");
+        }
+        if (request.getStatus() != RequestStatus.PENDING_DOSSIER_COMPLETION) {
+            throw new RuntimeException("Cette demande n'attend pas de complément de dossier");
+        }
+        if (currentUser.isDossierOverdue()) {
+            throw new RuntimeException("Le délai de 15 jours pour compléter votre dossier est dépassé");
+        }
+
+        boolean isMultisite = Boolean.TRUE.equals(dto.getIsMultisite());
+        MultisiteRequestPayloadDTO ms = dto.getMultisite();
+
+        applyDossierContent(request, dto);
+
+        request.setStatus(RequestStatus.PENDING_DT_REVIEW);
+        request.setSubmissionDate(LocalDateTime.now());
+        request.setProgress(5);
+        request.setCurrentPhase("INITIAL");
+        request.setCurrentStep("Dossier en cours d'examen");
+        request.setNextAction("Votre dossier est en cours d'examen par ALGERAC.");
+        request.setPendingWith("DT");
+        request = requestRepository.save(request);
+
+        if (isMultisite && ms != null) {
+            saveSatelliteSites(request, ms);
+        }
+
+        currentUser.setDossierCompletedAt(LocalDateTime.now());
+        userRepository.save(currentUser);
+
+        log.info("Dossier complété par le nouvel OEC {} (demande #{})",
+                currentUser.getOrganizationName(), request.getSequenceNumber());
+
         notificationService.notifyDTNewRequest(request);
 
         return request;
+    }
+
+    /** Recopie le contenu du formulaire DOC 1 (type, domaine, description, multisite) sur la demande. */
+    private void applyDossierContent(AccreditationRequest request, NewRequestDTO dto) {
+        boolean isMultisite = Boolean.TRUE.equals(dto.getIsMultisite());
+        MultisiteRequestPayloadDTO ms = dto.getMultisite();
+
+        if (dto.getType() != null) request.setType(dto.getType());
+        request.setDomain(dto.getDomain());
+        request.setDescription(dto.getDescription());
+        request.setIsMultisite(isMultisite);
+        if (isMultisite && ms != null) {
+            request.setMainSiteName(ms.getMainSiteName());
+            request.setMainSiteAddress(ms.getMainSiteAddress());
+            request.setMainSiteContactName(ms.getMainSiteContactName());
+            request.setMainSiteContactEmail(ms.getMainSiteContactEmail());
+            request.setCentralizedManagementSystem(ms.getCentralizedManagementSystem());
+            request.setManagementSystemDescription(ms.getManagementSystemDescription());
+            request.setInterSiteExchangesDoc(ms.getInterSiteExchangesDoc());
+            request.setQualificationCriteriaJson(ms.getQualificationCriteriaJson());
+        }
+    }
+
+    /** PRO 26 §5.2-2 : persister les sites satellites comme entités enfants */
+    private void saveSatelliteSites(AccreditationRequest request, MultisiteRequestPayloadDTO ms) {
+        if (ms.getSatelliteSites() == null) return;
+        for (MultisiteRequestPayloadDTO.SatelliteSiteInputDTO s : ms.getSatelliteSites()) {
+            if (s == null || s.getName() == null || s.getName().isBlank()) continue;
+            SatelliteSite site = SatelliteSite.builder()
+                    .request(request)
+                    .name(s.getName())
+                    .address(s.getAddress())
+                    .activities(s.getActivities())
+                    .personnel(s.getPersonnel())
+                    .isInScope(s.getIsInScope() == null ? Boolean.TRUE : s.getIsInScope())
+                    .status(SatelliteSiteStatus.ACTIVE)
+                    .build();
+            satelliteSiteRepository.save(site);
+        }
     }
 
     /**
@@ -232,20 +306,7 @@ public class RequestService {
             request = requestRepository.save(request);
             log.info("DT a rejeté les documents de la demande {}", request.getReferenceNumber());
 
-            User oecUser = request.getOec();
-            if (oecUser != null && oecUser.getStatus() == UserStatus.PENDING) {
-                // Nouvel OEC sans compte : il ne peut pas voir de notification in-app.
-                // Email + statut REJECTED pour qu'il puisse déposer une nouvelle inscription.
-                try {
-                    emailService.sendOECRejectionByDT(oecUser, comments);
-                } catch (Exception e) {
-                    log.warn("Email de rejet DT non envoyé à {} : {}", oecUser.getEmail(), e.getMessage());
-                }
-                oecUser.setStatus(UserStatus.REJECTED);
-                userRepository.save(oecUser);
-            } else {
-                notificationService.notifyOECDTRejection(request, comments);
-            }
+            notificationService.notifyOECDTRejection(request, comments);
         }
         
         return request;
@@ -385,6 +446,47 @@ public class RequestService {
         return request;
     }
     
+    /**
+     * OEC: corriger le dossier (DOC 1) rejeté par la DT puis le resoumettre à la DT.
+     */
+    @Transactional
+    public AccreditationRequest correctAndResubmitAfterDTRejection(Long requestId, NewRequestDTO dto, User currentUser) {
+        AccreditationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        if (request.getOec() == null || !request.getOec().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à modifier cette demande");
+        }
+        if (request.getStatus() != RequestStatus.DT_REJECTED) {
+            throw new RuntimeException("Cette demande n'est pas en attente de correction");
+        }
+
+        boolean isMultisite = Boolean.TRUE.equals(dto.getIsMultisite());
+        MultisiteRequestPayloadDTO ms = dto.getMultisite();
+
+        applyDossierContent(request, dto);
+
+        satelliteSiteRepository.deleteAll(satelliteSiteRepository.findByRequest_IdOrderByIdAsc(requestId));
+
+        request.setStatus(RequestStatus.PENDING_DT_REVIEW);
+        request.setProgress(5);
+        request.setCurrentPhase("INITIAL");
+        request.setCurrentStep("Documents corrigés - nouvelle vérification");
+        request.setNextAction("Votre dossier corrigé est en cours d'examen par la Direction Technique");
+        request.setPendingWith("DT");
+        request = requestRepository.save(request);
+
+        if (isMultisite && ms != null) {
+            saveSatelliteSites(request, ms);
+        }
+
+        log.info("OEC a corrigé et resoumis la demande {} après rejet DT", request.getReferenceNumber());
+
+        notificationService.notifyDTNewRequest(request);
+
+        return request;
+    }
+
     /**
      * Assignation d'une demande à un RA par le CD
      * Également envoi au DAG pour fixer les frais d'enregistrement

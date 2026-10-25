@@ -98,9 +98,9 @@ public class PaymentController {
             User currentUser = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             
-            if (currentUser.getRole() != UserRole.DAG) {
+            if (currentUser.getRole() != UserRole.CONSOLIDATION) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Seul le DAG peut fixer les frais"));
+                        .body(ApiResponse.error("Seul le service Consolidation peut fixer les frais"));
             }
             
             Object amountObj = body.get("amount");
@@ -111,12 +111,33 @@ public class PaymentController {
                 amount = new BigDecimal((String) amountObj);
             }
             
-            Payment payment = paymentService.setRegistrationFee(id, amount, userId);
+            boolean deferred = Boolean.TRUE.equals(body.get("deferToEvaluationEnd"));
+            Payment payment = paymentService.setRegistrationFee(id, amount, userId, deferred);
             
             return ResponseEntity.ok(ApiResponse.success(
-                    "Frais d'enregistrement fixés à " + amount.toPlainString() + " DA",
+                    "Frais d'enregistrement fixés à " + amount.toPlainString() + " DA"
+                            + (Boolean.TRUE.equals(payment.getDeferredToEvaluationEnd()) ? " (à payer à la fin de l'évaluation)" : ""),
                     payment
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Consolidation: rendre exigibles des frais d'enregistrement différés à la fin de l'évaluation
+     */
+    @PostMapping("/{id}/release-deferred")
+    public ResponseEntity<ApiResponse> releaseDeferredFee(@PathVariable Long id, HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+            Payment payment = paymentService.releaseDeferredRegistrationFee(id, userId);
+            return ResponseEntity.ok(ApiResponse.success("Les frais sont désormais exigibles auprès de l'OEC", payment));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -147,12 +168,77 @@ public class PaymentController {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error("L'identifiant de la transaction est requis"));
             }
+
+            if ("CHECK".equalsIgnoreCase(body.get("paymentMethod"))) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Le paiement par chèque nécessite de vous présenter à ALGERAC avec le chèque : "
+                                + "le service Consolidation l'enregistrera lui-même."));
+            }
+
+            if (proofBase64 == null || proofBase64.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("L'ordre de virement scanné est requis"));
+            }
             
             Payment payment = paymentService.submitPaymentProof(
                     id, transactionId.trim(), proofBase64, proofName, proofMimeType);
             
             return ResponseEntity.ok(ApiResponse.success(
-                    "Preuve de paiement soumise avec succès. Le DAG va vérifier votre paiement.",
+                    "Ordre de virement soumis avec succès. Le service Consolidation va vérifier votre paiement.",
+                    payment
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * Consolidation: enregistrer et valider un chèque remis en main propre par l'OEC à ALGERAC
+     */
+    @PostMapping("/{id}/register-check")
+    public ResponseEntity<ApiResponse> registerCheck(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            HttpSession session) {
+        try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Non authentifié"));
+            }
+
+            User currentUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (currentUser.getRole() != UserRole.CONSOLIDATION) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Seul le service Consolidation peut enregistrer un chèque"));
+            }
+
+            String checkNumber = body.get("checkNumber");
+            String bankName = body.get("bankName");
+            String proofBase64 = body.get("proofBase64");
+
+            if (checkNumber == null || checkNumber.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Le numéro du chèque est requis"));
+            }
+            if (bankName == null || bankName.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("La banque émettrice est requise"));
+            }
+            if (proofBase64 == null || proofBase64.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Le scan du chèque est requis"));
+            }
+
+            Payment payment = paymentService.registerCheckPayment(
+                    id, userId, checkNumber.trim(), bankName.trim(), proofBase64,
+                    body.get("proofName"), body.get("proofMimeType"), body.get("comments"));
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Chèque enregistré et paiement validé.",
                     payment
             ));
         } catch (Exception e) {
@@ -179,9 +265,9 @@ public class PaymentController {
             User currentUser = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             
-            if (currentUser.getRole() != UserRole.DAG) {
+            if (currentUser.getRole() != UserRole.CONSOLIDATION) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Seul le DAG peut valider les paiements"));
+                        .body(ApiResponse.error("Seul le service Consolidation peut valider les paiements"));
             }
             
             String comments = body != null ? body.getOrDefault("comments", "") : "";
@@ -216,9 +302,9 @@ public class PaymentController {
             User currentUser = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
             
-            if (currentUser.getRole() != UserRole.DAG) {
+            if (currentUser.getRole() != UserRole.CONSOLIDATION) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Seul le DAG peut rejeter les paiements"));
+                        .body(ApiResponse.error("Seul le service Consolidation peut rejeter les paiements"));
             }
             
             String comments = body.getOrDefault("comments", "Paiement non conforme");

@@ -17,6 +17,8 @@ public class WorkflowProgressService {
     private static final Map<RequestStatus, WorkflowState> STATUS_MAP = Map.ofEntries(
             // Phase initiale (0-10%)
             Map.entry(RequestStatus.DRAFT, new WorkflowState(0, "INITIAL", "Phase Initiale", "Brouillon")),
+            Map.entry(RequestStatus.PENDING_ACCOUNT_CREATION, new WorkflowState(1, "INITIAL", "Phase Initiale", "En attente de création du compte")),
+            Map.entry(RequestStatus.PENDING_DOSSIER_COMPLETION, new WorkflowState(2, "INITIAL", "Phase Initiale", "Dossier à compléter par l'OEC")),
             Map.entry(RequestStatus.SUBMITTED, new WorkflowState(2, "INITIAL", "Phase Initiale", "Soumise")),
             Map.entry(RequestStatus.PENDING_DT_REVIEW, new WorkflowState(3, "INITIAL", "Phase Initiale", "Vérification DT en cours")),
             Map.entry(RequestStatus.DT_APPROVED, new WorkflowState(5, "INITIAL", "Phase Initiale", "Validée par DT")),

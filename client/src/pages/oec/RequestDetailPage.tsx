@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ interface RequestDetail {
     currentStep: string;
     nextAction: string;
     pendingWith: string;
+    dtReviewComments?: string;
     isReceivable: boolean | null;
     receivabilityComments: string;
     receivabilityCorrectionNeeded: string;
@@ -79,6 +81,7 @@ function formatDate(dateStr: string | null | undefined): string {
 export default function RequestDetailPage() {
   const params = useParams<{ requestId: string }>();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
   const [data, setData] = useState<RequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,6 +168,21 @@ export default function RequestDetailPage() {
             </div>
             <Badge className={`${statusInfo.color} text-sm px-3 py-1`}>{statusInfo.label}</Badge>
           </div>
+
+          {req.status === "DT_REJECTED" && (
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold">{t("correctDossier.rejectedBanner")}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{req.dtReviewComments || t("correctDossier.noComment")}</p>
+                </div>
+              </div>
+              <Button variant="destructive" onClick={() => setLocation(`/oec/demandes/${req.id}/corriger-dossier`)}>
+                {t("mrd.actions.correctResubmit")}
+              </Button>
+            </div>
+          )}
 
           {/* Progress - Workflow Timeline */}
           <WorkflowTimeline requestId={req.id} audience="oec" />

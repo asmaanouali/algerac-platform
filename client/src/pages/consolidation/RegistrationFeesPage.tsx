@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,6 +45,8 @@ interface PaymentRecord {
   invoiceNumber?: string;
   /** true = nouvel OEC (candidature), false = OEC existant */
   isNewOec?: boolean;
+  /** true = frais à régler à la fin de l'évaluation */
+  deferredToEvaluationEnd?: boolean;
 }
 
 function OecTypeBadge({ isNewOec }: { isNewOec?: boolean }) {
@@ -62,7 +65,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   COMPLETED:           { label: "Complété", color: "bg-green-700 text-white" },
 };
 
-/** Dossiers où le DAG doit encore agir */
+/** Dossiers où la Consolidation doit encore agir */
 const PENDING_STATUSES = new Set(["AWAITING_FEE_SETTING", "PROOF_SUBMITTED"]);
 
 function StatusBadge({ status }: { status: string }) {
@@ -76,7 +79,7 @@ function formatAmount(amount?: number, currency = "DA") {
   return `${Number(amount).toLocaleString("fr-FR")} ${currency}`;
 }
 
-export default function DAGRegistrationFeesPage() {
+export default function ConsolidationRegistrationFeesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
@@ -95,7 +98,9 @@ export default function DAGRegistrationFeesPage() {
   // Fix fee dialog
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [feeAmount, setFeeAmount] = useState("");
+  const [deferFee, setDeferFee] = useState(false);
   const [settingFee, setSettingFee] = useState(false);
+  const [releasing, setReleasing] = useState(false);
 
   // Validate payment dialog
   const [validateDialogOpen, setValidateDialogOpen] = useState(false);
@@ -182,7 +187,7 @@ export default function DAGRegistrationFeesPage() {
     } catch { return null; }
   })();
 
-  // DAG only needs DOC1 and the technical form (FOR4/5/...) — admin docs excluded
+  // Consolidation only needs DOC1 and the technical form (FOR4/5/...) — admin docs excluded
   const allDocuments: Array<{ key?: string; name: string; base64?: string; mimeType?: string }> =
     Array.isArray(parsedDescription?.documents) ? parsedDescription.documents : [];
   const documents = allDocuments.filter((d) => {
@@ -217,13 +222,17 @@ export default function DAGRegistrationFeesPage() {
       setSettingFee(true);
       await apiRequest("POST", `/api/payments/${selected.id}/set-fee`, {
         amount: parseFloat(feeAmount),
+        deferToEvaluationEnd: deferFee,
       });
       toast({
         title: "Frais fixés",
-        description: `Frais d'enregistrement fixés à ${parseFloat(feeAmount).toLocaleString()} DA. L'OEC sera notifié.`,
+        description: deferFee
+          ? `Frais fixés à ${parseFloat(feeAmount).toLocaleString()} DA, à payer à la fin de l'évaluation. Le RA n'est pas bloqué.`
+          : `Frais d'enregistrement fixés à ${parseFloat(feeAmount).toLocaleString()} DA. L'OEC sera notifié.`,
       });
       setFeeDialogOpen(false);
       setFeeAmount("");
+      setDeferFee(false);
       setDetailOpen(false);
       setSelected(null);
       setActiveTab("done");
@@ -231,6 +240,20 @@ export default function DAGRegistrationFeesPage() {
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erreur", description: err.message });
     } finally { setSettingFee(false); }
+  };
+
+  const handleRelease = async () => {
+    if (!selected) return;
+    try {
+      setReleasing(true);
+      await apiRequest("POST", `/api/payments/${selected.id}/release-deferred`);
+      toast({ title: "Paiement exigible", description: "L'OEC a été notifié : il doit régler les frais maintenant." });
+      setDetailOpen(false);
+      setSelected(null);
+      await loadPayments();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erreur", description: err.message });
+    } finally { setReleasing(false); }
   };
 
   const handleValidate = async () => {
@@ -289,6 +312,9 @@ export default function DAGRegistrationFeesPage() {
             </p>
             <StatusBadge status={p.status} />
             <OecTypeBadge isNewOec={!!p.isNewOec} />
+            {p.deferredToEvaluationEnd && p.status === "PENDING" && (
+              <Badge className="bg-indigo-600 text-white">À payer fin d&apos;évaluation</Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             OEC : {p.oecName || "—"}
@@ -361,7 +387,7 @@ export default function DAGRegistrationFeesPage() {
                     <ClipboardCheck className="h-5 w-5" /> Frais d&apos;enregistrement
                   </CardTitle>
                   <CardDescription>
-                    Dossiers en attente d&apos;action DAG et dossiers déjà traités.
+                    Dossiers en attente d&apos;action Consolidation et dossiers déjà traités.
                   </CardDescription>
                 </div>
                 <div className="relative w-full md:w-72">
@@ -453,7 +479,8 @@ export default function DAGRegistrationFeesPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">
                     {selected.status === "AWAITING_FEE_SETTING" && "En attente de fixation des frais"}
-                    {selected.status === "PENDING" && `Frais fixés à ${formatAmount(selected.amount, selected.currency || "DA")} — en attente du paiement de l'OEC`}
+                    {selected.status === "PENDING" && selected.deferredToEvaluationEnd && `Frais fixés à ${formatAmount(selected.amount, selected.currency || "DA")} — à payer par l'OEC à la fin de l'évaluation`}
+                    {selected.status === "PENDING" && !selected.deferredToEvaluationEnd && `Frais fixés à ${formatAmount(selected.amount, selected.currency || "DA")} — en attente du paiement de l'OEC`}
                     {selected.status === "PROOF_SUBMITTED" && "Preuve de paiement reçue — à vérifier"}
                     {(selected.status === "DAG_VALIDATED" || selected.status === "COMPLETED") && "Paiement validé"}
                     {selected.status === "DAG_REJECTED" && "Paiement rejeté — en attente d'une nouvelle preuve"}
@@ -484,6 +511,12 @@ export default function DAGRegistrationFeesPage() {
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertDescription className="text-amber-800">
                     Consultez les documents ci-dessous, puis fixez le montant des frais d&apos;enregistrement. Le RA ne pourra pas valider la recevabilité tant que le paiement n&apos;est pas confirmé.
+                  </AlertDescription>
+                </Alert>
+              ) : selected.status === "PENDING" && selected.deferredToEvaluationEnd ? (
+                <Alert className="border-indigo-200 bg-indigo-50">
+                  <AlertDescription className="text-indigo-900">
+                    Paiement différé : l&apos;OEC a été informé du montant ({formatAmount(selected.amount, selected.currency || "DA")}) à régler à la fin de l&apos;évaluation. Le RA n&apos;est pas bloqué. Le paiement devient exigible automatiquement à la fin de l&apos;évaluation, ou vous pouvez le rendre exigible manuellement.
                   </AlertDescription>
                 </Alert>
               ) : selected.status === "PENDING" ? (
@@ -603,7 +636,7 @@ export default function DAGRegistrationFeesPage() {
                 {selected.status === "AWAITING_FEE_SETTING" && (
                   <Button
                     className="bg-amber-600 hover:bg-amber-700"
-                    onClick={() => { setFeeAmount(""); setFeeDialogOpen(true); }}
+                    onClick={() => { setFeeAmount(""); setDeferFee(false); setFeeDialogOpen(true); }}
                   >
                     <DollarSign className="w-4 h-4 mr-2" /> Fixer les frais d&apos;enregistrement
                   </Button>
@@ -613,6 +646,12 @@ export default function DAGRegistrationFeesPage() {
                     onClick={() => { setValidateComments(""); setValidateDialogOpen(true); }}
                   >
                     <Eye className="w-4 h-4 mr-2" /> Vérifier le paiement
+                  </Button>
+                )}
+                {selected.status === "PENDING" && selected.deferredToEvaluationEnd && (
+                  <Button onClick={handleRelease} disabled={releasing}>
+                    {releasing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <DollarSign className="w-4 h-4 mr-2" /> Rendre le paiement exigible
                   </Button>
                 )}
               </div>
@@ -645,6 +684,20 @@ export default function DAGRegistrationFeesPage() {
               <p className="text-xs text-muted-foreground">
                 Ce montant sera communiqué à l&apos;OEC qui devra effectuer le virement avant que le RA puisse valider la recevabilité.
               </p>
+            </div>
+            <div className="flex items-start gap-3 rounded-md border p-3 bg-slate-50">
+              <Checkbox
+                id="defer-fee"
+                checked={deferFee}
+                onCheckedChange={(v) => setDeferFee(v === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="defer-fee" className="cursor-pointer">Paiement à la fin de l&apos;évaluation</Label>
+                <p className="text-xs text-muted-foreground">
+                  Le RA n&apos;est pas bloqué dans son étude de recevabilité. L&apos;OEC reçoit le montant mais est informé qu&apos;il est à payer à la fin de l&apos;évaluation, pas maintenant.
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -700,7 +753,7 @@ export default function DAGRegistrationFeesPage() {
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800 text-sm">
-                En validant, l&apos;étude de recevabilité du RA affichera <strong>« Paiement validé par le DAG »</strong> et il pourra finaliser sa décision.
+                En validant, l&apos;étude de recevabilité du RA affichera <strong>« Paiement validé par la Consolidation »</strong> et il pourra finaliser sa décision.
               </AlertDescription>
             </Alert>
           </div>

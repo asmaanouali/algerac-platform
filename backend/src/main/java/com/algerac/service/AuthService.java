@@ -42,6 +42,7 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final LoginTwoFactorTokenRepository loginTwoFactorTokenRepository;
     private final RequestService requestService;
+    private final OecOnboardingService onboardingService;
 
     private static final String EXPERT_PREFIX = "EXP";
     private static final String FORMATEUR_PREFIX = "FOR";
@@ -130,14 +131,14 @@ public class AuthService {
     }
 
     /**
-     * Inscription publique d'un nouvel OEC : crée le User PENDING et sa demande d'accréditation
-     * (PENDING_DT_REVIEW) dans une seule transaction. La demande est la source de vérité
-     * du dossier ; le User n'est activé qu'à la création du compte par l'admin.
+     * Inscription publique d'un nouvel OEC (étapes 1 à 3 du DOC1) : crée le User PENDING et sa
+     * demande d'accréditation (PENDING_ACCOUNT_CREATION) dans une seule transaction. Le User n'est
+     * activé qu'à la création du compte par l'admin, après quoi l'OEC complète le reste du dossier.
      */
     @Transactional
     public User registerOECWithRequest(OECSignupRequest request) {
         User user = registerOEC(request);
-        requestService.createAndSubmitForNewOec(
+        requestService.createForNewOec(
                 user,
                 mapTypeDemande(request.getTypeDemande()),
                 request.getPorteeAccreditation(),
@@ -367,6 +368,13 @@ public class AuthService {
             throw new RuntimeException("INVALID_CREDENTIALS");
         }
         
+        if (user.getStatus() == UserStatus.APPROVED && onboardingService.suspendIfDossierOverdue(user)) {
+            throw new RuntimeException("Votre compte a été suspendu : le dossier n'a pas été complété dans le délai de "
+                    + OecOnboardingService.DOSSIER_DEADLINE_DAYS + " jours. Veuillez contacter ALGERAC.");
+        }
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new RuntimeException("Votre compte est suspendu. Veuillez contacter ALGERAC.");
+        }
         if (user.getStatus() != UserStatus.APPROVED) {
             throw new RuntimeException("Votre compte n'est pas encore approuvé");
         }

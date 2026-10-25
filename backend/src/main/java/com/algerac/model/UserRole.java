@@ -4,7 +4,6 @@ public enum UserRole {
     ADMIN,
     CD, // Chef de Département
     RA, // Responsable d'Accréditation
-    DAG, // Directeur Administratif Général
     DT, // Direction Technique
     OEC, // Organisme d'Évaluation de la Conformité
     EXPERT, // Expert externe
@@ -19,5 +18,5 @@ public enum UserRole {
     FORMATEUR, // Formateur
     RQ, // Responsable Qualité
     SUP, // Superviseur (PRO 06 §5.2 / LIS 09)
-    CONSOLIDATION // Service Consolidation : facturation + envoi certificat/annexe à l'OEC
+    CONSOLIDATION // Service Consolidation : devis, frais d'enregistrement et suivi des paiements
 }

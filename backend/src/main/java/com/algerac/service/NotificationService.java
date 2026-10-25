@@ -65,7 +65,7 @@ public class NotificationService {
             case RA:             return "/ra/dashboard";
             case CD:             return "/cd/demande/" + id;
             case DT:             return "/dt/demande/" + id;
-            case DAG:            return "/dag/dashboard";
+            case CONSOLIDATION:  return "/consolidation/dashboard";
             case ADMIN:          return "/admin";
             case DG:             return "/dg/dashboard";
             case CAS_PRESIDENT:  return "/cas-president/dashboard";
@@ -73,7 +73,6 @@ public class NotificationService {
             case GES_COMPETENCES:return "/ges-competences/dashboard";
             case RQ:             return "/rq/dashboard";
             case SUP:            return "/sup/dashboard";
-            case CONSOLIDATION:  return "/consolidation/dashboard";
             case FORMATEUR:      return "/dashboard";
             case EXPERT:
             case REE:
@@ -293,20 +292,20 @@ public class NotificationService {
     }
     
     /**
-     * Notifier le DAG qu'une nouvelle demande nécessite la fixation des frais d'enregistrement
+     * Notifier la Consolidation qu'une nouvelle demande nécessite la fixation des frais d'enregistrement
      */
     @Transactional
     public void notifyDAGNewRequest(AccreditationRequest request) {
-        List<User> dags = userRepository.findByRole(UserRole.valueOf("DAG"));
+        List<User> consolidationUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         
-        for (User dag : dags) {
+        for (User consolidationUser : consolidationUsers) {
             Notification notification = Notification.builder()
-                    .user(dag)
+                    .user(consolidationUser)
                     .title("Nouvelle demande - Frais à fixer")
                     .message(String.format("La demande de %s nécessite la fixation des frais d'enregistrement.",
                             request.getOec() != null ? request.getOec().getOrganizationName() : "OEC #" + request.getId()))
                     .type("action_required")
-                    .link("/dag/frais-enregistrement")
+                    .link("/consolidation/frais-enregistrement")
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -314,7 +313,7 @@ public class NotificationService {
             notificationRepository.save(notification);
         }
         
-        log.info("Notification envoyée aux DAG pour la nouvelle demande {}", request.getId());
+        log.info("Notification envoyée à la Consolidation pour la nouvelle demande {}", request.getId());
     }
     
     /**
@@ -367,6 +366,31 @@ public class NotificationService {
         }
         
         log.info("Notification envoyée aux CD après validation DT de la demande {}", request.getReferenceNumber());
+    }
+
+    /**
+     * Notifier les admins qu'un nouvel OEC a transmis les étapes 1 à 3 de sa demande
+     * et attend la création de son compte.
+     */
+    @Transactional
+    public void notifyAdminNewOecRegistration(AccreditationRequest request) {
+        User oec = request.getOec();
+        String orgName = oec != null && oec.getOrganizationName() != null ? oec.getOrganizationName() : "OEC";
+        String email = oec != null ? oec.getEmail() : "—";
+
+        for (User admin : userRepository.findByRole(UserRole.ADMIN)) {
+            notificationRepository.save(Notification.builder()
+                    .user(admin)
+                    .title("Nouvel OEC - création de compte requise")
+                    .message(String.format(
+                            "L'organisme %s (%s) a transmis sa demande d'accréditation (étapes 1 à 3). Veuillez créer son compte afin qu'il puisse compléter son dossier.",
+                            orgName, email))
+                    .type("action_required")
+                    .link("/admin/utilisateurs-pending")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
     }
 
     /**
@@ -430,17 +454,17 @@ public class NotificationService {
 
     @Transactional
     public void notifyDAGNewQuotation(com.algerac.model.Quotation quotation) {
-        List<User> dags = userRepository.findByRole(UserRole.valueOf("DAG"));
+        List<User> consolidationUsers = userRepository.findByRole(UserRole.CONSOLIDATION);
         
-        for (User dag : dags) {
+        for (User consolidationUser : consolidationUsers) {
             Notification notification = Notification.builder()
-                    .user(dag)
+                    .user(consolidationUser)
                     .title("Nouveau devis à approuver")
                     .message(String.format("Le devis %s pour la demande %s nécessite votre approbation.",
                             quotation.getQuotationNumber(),
                             quotation.getRequest().getReferenceNumber()))
                     .type("info")
-                    .link("/dag/fixation-devis")
+                    .link("/consolidation/fixation-devis")
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -448,7 +472,7 @@ public class NotificationService {
             notificationRepository.save(notification);
         }
         
-        log.info("Notification envoyée aux DAG pour le devis {}", quotation.getQuotationNumber());
+        log.info("Notification envoyée à la Consolidation pour le devis {}", quotation.getQuotationNumber());
     }
     
     @Transactional
@@ -458,7 +482,7 @@ public class NotificationService {
         Notification notification = Notification.builder()
                 .user(ra)
                 .title("Devis approuvé")
-                .message(String.format("Votre devis %s a été approuvé par le DAG. " +
+                .message(String.format("Votre devis %s a été approuvé par la Consolidation. " +
                         "Vous pouvez maintenant l'envoyer à l'OEC avec la convention.",
                         quotation.getQuotationNumber()))
                 .type("success")

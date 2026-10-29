@@ -1,0 +1,7 @@
+backend
+documentation
+script
+scripts
+*.sql
+*.ps1
+*.cjs

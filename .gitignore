@@ -8,3 +8,4 @@ backend/src/main/resources/static
 .env
 .env.*
 backend/target
+.vercel

@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: algerac-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: "8082"
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xmx384m"
+      - key: DB_HOST
+        fromDatabase:
+          name: algerac-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: algerac-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: algerac-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: algerac-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: algerac-db
+          property: password
+      # First deploy only: create the schema and load seed data, then set to validate / never.
+      - key: DDL_AUTO
+        value: update
+      - key: SQL_INIT_MODE
+        value: always
+      - key: OTP_HASH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://algerac-platform.vercel.app
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: https://algerac-platform.vercel.app
+      - key: TRUSTED_PROXIES
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+
+databases:
+  - name: algerac-db
+    plan: free
+    databaseName: algerac_db
